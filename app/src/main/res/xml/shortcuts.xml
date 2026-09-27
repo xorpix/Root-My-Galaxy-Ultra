@@ -31,7 +31,7 @@
         android:shortcutLongLabel="@string/reboot_sheet_title">
         <intent
             android:action="dev.busung.s25uroot.action.RESTART_OPTIONS"
-            android:targetPackage="dev.rushiranpise.rmgnext"
+            android:targetPackage="dev.experimental.azhlroot"
             android:targetClass="dev.busung.s25uroot.MainActivity" />
     </shortcut>
 
@@ -52,7 +52,7 @@
         android:shortcutLongLabel="@string/shortcut_soft_restart_long">
         <intent
             android:action="dev.busung.s25uroot.action.SOFT_RESTART"
-            android:targetPackage="dev.rushiranpise.rmgnext"
+            android:targetPackage="dev.experimental.azhlroot"
             android:targetClass="dev.busung.s25uroot.MainActivity" />
     </shortcut>
 </shortcuts>
