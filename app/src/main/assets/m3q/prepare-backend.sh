@@ -22,9 +22,16 @@ previous=
 if [ -e "$receipt" ]; then previous=$(cat "$receipt") || exit 66; fi
 installed_matches=0
 if [ -f /data/adb/ksud ] && [ ! -L /data/adb/ksud ]; then
-    installed=$(sha256sum /data/adb/ksud) || exit 66
-    installed=${installed%% *}
-    if [ "$installed" = "$expected" ]; then installed_matches=1; fi
+    # The installed daemon may be unreadable to this root (restricted
+    # capabilities / foreign ownership from another installer) while the
+    # check itself must not fail a run. Unknown means mismatch: that only
+    # disables modules and restages, strictly the safer direction.
+    if installed=$(sha256sum /data/adb/ksud 2>/dev/null); then
+        installed=${installed%% *}
+        if [ "$installed" = "$expected" ]; then installed_matches=1; fi
+    else
+        echo 'installed ksud unreadable; treating as mismatch' >&2
+    fi
 fi
 if [ "$disable_requested" = 1 ] || [ "$previous" != "$backend" ] || [ "$installed_matches" != 1 ]; then
     for directory in /data/adb/modules /data/adb/modules_update; do
