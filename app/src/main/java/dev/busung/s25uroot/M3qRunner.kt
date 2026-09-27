@@ -66,7 +66,15 @@ internal class M3qRunner(
         // Query as root before loading: any driver (even one with a different
         // version/UAPI) prevents replacement in a live kernel. Only the native
         // helper's specific no-driver result is accepted as absence.
-        val existing = app(helper, listOf("-c", "${shellQuote(helper.path)} --ksu-info"))
+        //
+        // Run --ksu-info DIRECTLY as an app child, never nested through
+        // `helper -c`. The nested path (daemon spawns sh, sh runs helper as
+        // root) gets SIGKILLed on AZHL — observed on both reference and Next
+        // backends: the inner sh reports "Killed", the check fails closed.
+        // The direct query is proven safe (same binary, same question, clean
+        // answer as shell), and the app-child profile is already proven by
+        // the -c outer clients that survive it.
+        val existing = app(helper, listOf("--ksu-info"))
         check(existing.code == 13 && existing.output.contains("KernelSU driver fd unavailable")) {
             "An existing or unrecognized root control channel prevents loading. Fully reboot; nothing was replaced."
         }
