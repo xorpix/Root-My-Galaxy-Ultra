@@ -96,14 +96,6 @@ or module support — those were proven on the phone instead.
 Home with the loaded backend named on the card, and Settings showing the
 bundled AZHL payloads. Taken on SM-S948B / S948BXXS4AZHL running ReSukiSU.
 
-## Screenshots
-
-<img width="200" alt="Home with ReSukiSU active, manager and device status" src="docs/screenshots/home.jpg" />
-<img width="200" alt="Settings with bundled AZHL payloads and run management" src="docs/screenshots/settings.jpg" />
-
-Home with the loaded backend named on the card, and Settings showing the
-bundled AZHL payloads. Taken on SM-S948B / S948BXXS4AZHL running ReSukiSU.
-
 ## Validation status
 
 - Full run on SM-S948B/S948BXXS4AZHL verified on hardware for all three
