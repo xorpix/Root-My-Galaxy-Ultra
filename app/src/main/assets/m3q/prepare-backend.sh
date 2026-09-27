@@ -65,9 +65,17 @@ for destination in /data/local/tmp/ksud-m3q-S948NKSS4AZG3-kdp /data/local/tmp/.k
 done
 # This records preparation, not proof of a loaded driver. Success is recorded
 # separately by the app only after a fresh native control query succeeds.
-temporary=$(mktemp /data/adb/.azhl-prepared.XXXXXXXX) || exit 68
-trap 'rm -f "$temporary"' EXIT HUP INT TERM
-printf '%s\n' "$backend" > "$temporary"
-mv -f "$temporary" "$receipt"
-trap - EXIT HUP INT TERM
+# The receipt directory may reject new files from this root (observed EPERM
+# creating in /data/adb while /data/local/tmp works). Never fail a run over
+# bookkeeping: without a receipt the next run simply disables and restages
+# again, strictly the safer direction.
+temporary=$(mktemp /data/adb/.azhl-prepared.XXXXXXXX 2>/dev/null) || temporary=
+if [ -n "$temporary" ]; then
+    trap 'rm -f "$temporary"' EXIT HUP INT TERM
+    printf '%s\n' "$backend" > "$temporary"
+    mv -f "$temporary" "$receipt"
+    trap - EXIT HUP INT TERM
+else
+    echo 'preparation receipt unwritable; continuing without it' >&2
+fi
 echo "M3Q_STAGE_OK:$backend:$expected"
