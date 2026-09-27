@@ -63,18 +63,16 @@ internal class M3qRunner(
         check(rootCheck.code == 0 && rootCheck.output.lineSequence().any { it.trim() == "M3Q_TEMP_ROOT_OK" }) {
             "The app cannot reach verified temporary root. Fully reboot before another attempt."
         }
-        // Query as root before loading: any driver (even one with a different
-        // version/UAPI) prevents replacement in a live kernel. Only the native
-        // helper's specific no-driver result is accepted as absence.
-        //
-        // Run --ksu-info DIRECTLY as an app child, never nested through
-        // `helper -c`. The nested path (daemon spawns sh, sh runs helper as
-        // root) gets SIGKILLed on AZHL — observed on both reference and Next
-        // backends: the inner sh reports "Killed", the check fails closed.
-        // The direct query is proven safe (same binary, same question, clean
-        // answer as shell), and the app-child profile is already proven by
-        // the -c outer clients that survive it.
-        val existing = app(helper, listOf("--ksu-info"))
+        // Query driver absence through the SHIZUKU SHELL (uid 2000), never as
+        // an app child and never nested through `helper -c`. App children
+        // inherit the app seccomp filter, under which --ksu-info's raw driver
+        // query dies of SIGSYS with no output (observed: silent failure, no
+        // "Killed", since no shell exists to report it); the nested-as-root
+        // path instead gets SIGKILLed on AZHL (inner sh reports "Killed" on
+        // both reference and variant helpers). The Shizuku shell profile is
+        // proven: same binary, same question, clean exit 13 + "KernelSU
+        // driver fd unavailable".
+        val existing = shell("${shellQuote(helper.path)} --ksu-info")
         check(existing.code == 13 && existing.output.contains("KernelSU driver fd unavailable")) {
             "An existing or unrecognized root control channel prevents loading. Fully reboot; nothing was replaced."
         }
@@ -96,8 +94,10 @@ internal class M3qRunner(
         check(loaded.code == 0) { "${flavor.label} activation failed (exit ${loaded.code}). Fully reboot before another attempt." }
         stage(RunStage.Verify)
         // Successful late-load stops the bootstrap server and unlinks its socket.
-        // --ksu-info is a direct control query: do not wrap it in helper -c.
-        val verified = app(helper, listOf("--ksu-info"))
+        // --ksu-info is a direct control query: do not wrap it in helper -c,
+        // and do not run it as an app child either — same shell-direct rule
+        // as the absence query above (app seccomp kills the raw query).
+        val verified = shell("${shellQuote(helper.path)} --ksu-info")
         check(verified.code == 0 && verifiedM3qControl(verified.output, flavor) != null) {
             "Fresh verification of ${flavor.label} failed. Fully reboot before another attempt."
         }
