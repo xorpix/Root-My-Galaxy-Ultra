@@ -5,12 +5,12 @@
 > Read [M3Q_PORT.md](M3Q_PORT.md) and the checkpoint's BUILD_WINDOWS.md first.
 > The upstream README below describes the original project, not this restricted build.
 
-# Root My Galaxy Next
+# Root My Galaxy Ultra
 
 <img width="108" height="108" alt="sprout_icon_108" src="https://github.com/user-attachments/assets/2ba0e360-0876-489c-b256-f75df7589785" />
 
 
-Root My Galaxy Next is a one-click installer for explicitly supported Samsung model and
+Root My Galaxy Ultra is a one-click installer for explicitly supported Samsung model and
 kernel combinations, and an independent fork of
 [Root My Galaxy](https://github.com/BuSung-dev/Root-My-Galaxy) by BuSung-dev. It keeps that
 app's device feed, payload contract and KernelSU-first approach, and adds to it: KernelSU-Next
