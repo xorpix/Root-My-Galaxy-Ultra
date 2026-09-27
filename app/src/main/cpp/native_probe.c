@@ -257,14 +257,18 @@ Java_dev_busung_s25uroot_NativeProbe_isKernelSuActive(JNIEnv *env,
   (void)env;
   (void)thiz;
 
-  // KernelSU's get-driver-fd request uses non-reboot magic values. This
-  // read-only probe also sees drivers hidden from the module directory/list.
-  int control_fd = -1;
-  (void)syscall(SYS_reboot, 0xDEADBEEFUL, 0xCAFEBABEUL, 0, &control_fd);
-  if (control_fd >= 0) {
-    close(control_fd);
-    return JNI_TRUE;
-  }
+  // NOTE: do NOT probe the driver with the magic reboot(2) request here.
+  // That call (SYS_reboot, arm64 syscall 142) is issued in the APP process,
+  // and Android's app seccomp-BPF kills any app issuing reboot() with
+  // SIGSYS no matter the arguments — tombstone "Fatal signal 31 (SIGSYS),
+  // code 1 (SYS_SECCOMP), syscall 142", ~2s after launch. runCatching
+  // cannot catch a signal, so this function can never return through that
+  // path in-app. Driver presence in-app is therefore read from /sys/module
+  // and /proc/modules only (false negatives tolerated); the authoritative
+  // check runs post-root through su/Shizuku, and the magic-reboot probe
+  // stays in the loader/helper/shell processes where it belongs.
+  //
+  // Removed: syscall(SYS_reboot, 0xDEADBEEF, 0xCAFEBABE, 0, &control_fd).
 
   if (access("/sys/module/kernelsu", F_OK) == 0) {
     return JNI_TRUE;
