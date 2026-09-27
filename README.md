@@ -1,33 +1,115 @@
-> **AZHL source checkpoint v6 (27 September 2026).** This tree targets only
-> SM-S948B / m3q / S948BXXS4AZHL and installs as `dev.experimental.azhlroot`.
-> It includes the corrected M3Q launch and KernelSU / Next / ReSukiSU selection.
-> This wrapper and the alternative backends still require phone testing.
-> Read [M3Q_PORT.md](M3Q_PORT.md) and the checkpoint's BUILD_WINDOWS.md first.
-> The upstream README below describes the original project, not this restricted build.
-
 # Root My Galaxy Ultra
 
-<img width="108" height="108" alt="sprout_icon_108" src="https://github.com/user-attachments/assets/2ba0e360-0876-489c-b256-f75df7589785" />
+> **AZHL build.** Targets only SM-S948B (m3q) on `S948BXXS4AZHL`, installs as
+> `dev.experimental.azhlroot` beside any other root app. Bundles three
+> backends — KernelSU, KernelSU-Next, ReSukiSU — driven by the tested M3Q
+> multi-stage exploit. Reference backend verified on-device 2026-09-27
+> (temporary root → late-load → control channel); all three backends
+> load-tested on the phone. Everything here can freeze or reboot the phone:
+> **one attempt per boot**, full reboot between tries.
 
+## Supported device
 
-Root My Galaxy Ultra is a one-click installer for explicitly supported Samsung model and
-kernel combinations, and an independent fork of
-[Root My Galaxy](https://github.com/BuSung-dev/Root-My-Galaxy) by BuSung-dev. It keeps that
-app's device feed, payload contract and KernelSU-first approach, and adds to it: KernelSU-Next
-and KernelSU-Next+SUSFS payload flavours beside KernelSU, a choice of manager versions, root on
-boot through a verified handoff, wireless ADB pairing as a shell transport, Shizuku started at
-boot, a logs tab, filterable run history, and the repair actions once the kernel is loaded.
+| Field | Value |
+|---|---|
+| Model / device | SM-S948B / m3q |
+| Incremental | S948BXXS4AZHL |
+| Android | 16 (API 36), arm64-v8a, 4K pages |
+| Kernel | 6.12.30-android16-5-pd30ff70-abogkiS948BXXS4AZHL-4k |
 
-It installs as its own app (`dev.rushiranpise.rmgnext`), so it can sit beside the original:
-neither upgrades the other, and this one starts with no settings, no history and no superuser
-grant of its own.
+Anything else is refused before anything runs. A generic S26 row never enables
+this build.
 
+## Backends
 
-[Latest release](https://github.com/rushiranpise/Root-My-Galaxy-Next/releases)
+| Backend | Driver | Manager |
+|---|---|---|
+| KernelSU 3.3.0 | 32636 | 3.3.0 (`me.weishu.kernelsu`) |
+| KernelSU-Next 3.4.0 | 33294 | 3.4.0 (`com.rifsxd.ksunext`) |
+| ReSukiSU 4.2.0-rc3 | 35171 | 4.2.0-rc3 (`com.resukisu.resukisu`) |
 
-The device feed and native payloads used here are maintained in
-[Root-My-Galaxy-Payloads](https://github.com/rushiranpise/Root-My-Galaxy-Payloads), a fork of
-[the original catalog](https://github.com/BuSung-dev/Root-My-Galaxy-Payloads).
+One backend per boot: they hook the same paths, so switching needs a full
+reboot. Changing backends (or meeting an unrecognized installed daemon)
+disables existing modules first — re-enable the compatible ones in the
+selected manager afterwards. Grant this app superuser in the manager, or the
+post-root actions cannot run.
+
+## Build (Windows)
+
+Requirements: JDK 21, Android SDK 37 (`platforms;android-37.0`),
+build-tools 36.0.0, CMake 3.22.1, NDK 28.2.13676358, Git, Python 3 (only for
+the bundling helpers). Native payloads ship ready in the tree — do not
+rebuild backends just to compile the app.
+
+```powershell
+cd source
+git init; git add -A; git commit -m "ultra"   # the build records the commit
+"sdk.dir=C:/Users/<you>/AppData/Local/Android/Sdk" | Out-File local.properties -Encoding ascii
+$env:JAVA_HOME = "<path to JDK 21>"
+.\gradlew.bat :app:assembleDebug :app:testDebugUnitTest
+```
+
+Output: `app/build/outputs/apk/debug/app-debug.apk`. Version reads
+`1.0-ultra+local.<commit>`; the code grows monotonically so newer builds
+install over older ones. Keep your previous APK as backup; `local.properties`
+is gitignored and stays on your machine.
+
+## First run
+
+1. Full reboot. Wait out the app's boot settle (3 minutes, enforced).
+2. Start Shizuku through wireless debugging and grant this app.
+3. Run. The log narrates every step; export it if anything fails.
+4. On success, install the matching manager when offered and grant this app
+   root there, or the post-root actions stay unavailable.
+5. To change backend: select it, full reboot, run again. Never twice in one
+   boot — the guard refuses, because a second attempt is what panics phones.
+
+## M3Q integration (v6)
+
+The exploit is the tested M3Q multi-stage payload (`libm3qpayload.so` plus its
+oracle and root helper, extracted from the working M3Q APK), reused as-is
+because its author never open-sourced it. One Shizuku invocation runs
+`helper --run-payload payload helper` with the recovered tracefs environment
+(`M3Q_STAGE=root-single`, `M3Q_APP_UID` set to the app UID, never the shell
+UID); no diagnostic pre-stages. The app then verifies UID 0, requires the
+helper's explicit no-driver result, prepares the selected backend (module
+disable markers, hash-checked staging to both daemon paths, preparation
+receipt), late-loads exactly once, and verifies the control channel fresh —
+only the selected version, UAPI 4 and required flags pass.
+
+KernelSU 32636 uses the original helper unchanged. Next 33294 and ReSukiSU
+35171 helpers change exactly three ARM64 instructions each: two
+expected/printed version constants and the `execl` argument-list terminator
+before `--package-name`, so each fork uses its compiled manager default.
+Version comparison, UAPI and flags checks and the ioctl stay intact; no
+success is spoofed. See `app/src/main/assets/m3q/helper-variants.json` for
+every hash and byte edit; reproduce with `python tools/prepare_m3q_helpers.py`.
+JNI daemon copies match `assets/azhl/*/ksud` byte-for-byte. Both forks report
+UAPI 4, which alone never guaranteed a live late-load, manager authorization
+or module support — those were proven on the phone instead.
+
+## Validation status
+
+- Full run on SM-S948B/S948BXXS4AZHL verified on hardware for all three
+  backends (temp root → late-load → `KernelSU control verified`).
+- Focused unit tests (`AzhlBundleTest`, `ExploitPlanTest`, …) pin the bundle
+  hashes, the M3Q stage environment and per-flavor verification; run them with
+  `:app:testDebugUnitTest`.
+- The wider 700+ inherited suite was never green end to end; a few UI-contract
+  tests predate this fork's flows. They do not block the APK.
+
+## Lineage
+
+Fork of [Root My Galaxy](https://github.com/BuSung-dev/Root-My-Galaxy) by
+BuSung-dev, via [Root-My-Galaxy-Next](https://github.com/rushiranpise/Root-My-Galaxy-Next).
+Upstream application docs follow, adapted where this build differs. Device
+payloads build on the KernelSU / KernelSU-Next / ReSukiSU projects and the
+M3Q exploit author respectively; their licenses travel with their files.
+
+---
+
+*Upstream application manual below. "Two flavours" passages describe the
+original feed model; this build ships three AZHL backends as above.*
 
 ## Application
 
@@ -36,7 +118,7 @@ The device feed and native payloads used here are maintained in
 <img width="200" alt="The app log" src="docs/screenshots/logs.png" />
 
 From left to right: Home with the live status card, the payload sheet, Settings, and the app log. All
-four are this fork's own build, capturing the KernelSU and KernelSU-Next payload flavours it publishes
+four are this fork's own build, capturing the three payload flavours it publishes
 beside the upstream ones.
 
 The app selects a payload whose model list and three-part kernel version match
@@ -446,12 +528,13 @@ wireless debugging on by hand. A grant that does not happen is a line in the log
 root that was obtained is the result, and the cable (or the next boot, which has root of its own) is
 still there.
 
-## Two KernelSUs, one at a time
+## Three backends, one at a time
 
-**Settings → Root Management → KernelSU flavour** picks which KernelSU the app installs and drives:
-KernelSU (`me.weishu.kernelsu`, releases from `tiann/KernelSU`) or KernelSU-Next
-(`com.rifsxd.ksunext`, releases from `KernelSU-Next/KernelSU-Next`). They are separate projects with
-separate kernels, separate managers and separate daemons, and they **cannot both be in the kernel at
+**Settings → Root Management → KernelSU flavour** picks which backend the app installs and drives:
+KernelSU (`me.weishu.kernelsu`, releases from `tiann/KernelSU`), KernelSU-Next
+(`com.rifsxd.ksunext`, releases from `KernelSU-Next/KernelSU-Next`) or ReSukiSU
+(`com.resukisu.resukisu`, releases from `ReSukiSU/ReSukiSU`). They are separate projects with
+separate kernels, separate managers and separate daemons, and they **cannot all be in the kernel at
 once** — each hooks the same syscall paths — so a boot carries one of them or neither.
 
 That is why the choice is stored for the app rather than passed to a single run: it decides which daemon
@@ -1076,13 +1159,11 @@ further and made its updater inert outright; this app keeps the feature and refu
 flight, which is the narrower version of the same rule — the automatic check is not made, the update card
 comes off the screen, and an explicit request says why instead of doing nothing.
 
-**Not ported: bundling the payload into the APK.** Extended's production build carries its own validated
-payload snapshot and resolves nothing over the network. That is a real trade — no feed, no drift, no
-traceability — and this app is built the other way on purpose: every run is resolved from a payload
-source pinned to a commit, and the run history records which source and revision served it. Bundling
-would mean the app could not say where its payload came from, and a fix in the feed would need an app
-release. The device support Extended adds with a fresh snapshot reaches this app through the feed
-instead, with no release needed.
+**Not ported as upstream wrote it: bundling the payload into the APK.** Extended's production build carries its own validated
+payload snapshot and resolves nothing over the network. This AZHL build does the same for its one
+device (the bundled `assets/azhl` catalog plus the M3Q binaries under `assets/m3q`), while keeping
+the feed model below for everything else: remote sources still resolve per run and run history
+still records which source and revision served a payload.
 
 **Not ported: their release plumbing.** The production-bundle build step, the preflight that validates
 one, `FUNDING.yml` and their release notes are about shipping *their* artifact.
@@ -1094,8 +1175,8 @@ carries a version name that says which one it is:
 
 | build | version name | version code |
 |---|---|---|
-| CI | `0.4+ci.<run number>.<commit>` | base + seconds since 2026-01-01 UTC |
-| local | `0.4+local.<commit>` | base + seconds since 2026-01-01 UTC |
+| CI | `1.0-ultra+ci.<run number>.<commit>` | base + seconds since 2026-01-01 UTC |
+| local | `1.0-ultra+local.<commit>` | base + seconds since 2026-01-01 UTC |
 
 `appVersionBase` in `app/build.gradle.kts` is the only version written by hand. Both workflows
 read that literal out of the file, and a release tag is `v<base>`.
@@ -1146,7 +1227,7 @@ key is generated per machine: a debug APK built on a CI runner could not be inst
 previous one, or over the signed release APK, without an uninstall.
 
 This fork is its own app, and that is what those lines stop applying at: it carries its own
-package id (`dev.rushiranpise.rmgnext`) and its own signature, so it installs *beside* Root My
+package id (`dev.experimental.azhlroot`) and its own signature, so it installs *beside* Root My
 Galaxy rather than over it. The original keeps working if you leave it installed, neither build
 can upgrade the other, and a phone that has already allowed the original's superuser request has
 allowed nothing for this one.
