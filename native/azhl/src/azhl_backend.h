@@ -1,0 +1,21 @@
+#ifndef AZHL_BACKEND_H
+#define AZHL_BACKEND_H
+#include <stdint.h>
+#include <string.h>
+struct azhl_backend { const char *id, *version_text, *manager; uint32_t version; };
+static const struct azhl_backend azhl_backends[] = {
+  {"kernelsu", "32636", "me.weishu.kernelsu", 32636},
+  {"kernelsu-next", "33294", "com.rifsxd.ksunext", 33294},
+  {"resukisu", "35171", "com.resukisu.resukisu", 35171},
+};
+static inline const struct azhl_backend *azhl_backend_find(const char *id, const char *version) {
+  if (!id || !version) return NULL;
+  for (unsigned i=0; i<sizeof(azhl_backends)/sizeof(azhl_backends[0]); i++)
+    if (!strcmp(id,azhl_backends[i].id) && !strcmp(version,azhl_backends[i].version_text))
+      return &azhl_backends[i];
+  return NULL;
+}
+static inline int azhl_disable_valid(const char *value) {
+  return value && (!strcmp(value,"0") || !strcmp(value,"1"));
+}
+#endif

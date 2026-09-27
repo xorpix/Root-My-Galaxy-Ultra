@@ -1,0 +1,64 @@
+{
+  "originalSha256": "39b018c3648c26fc7e801f6ec7a25018b3ef8544033afadbad4b36dd714d9d59",
+  "variants": {
+    "kernelsu": {
+      "library": "libm3qroot_kernelsu.so",
+      "driverVersion": 32636,
+      "size": 24232,
+      "sha256": "39b018c3648c26fc7e801f6ec7a25018b3ef8544033afadbad4b36dd714d9d59",
+      "changes": []
+    },
+    "kernelsu-next": {
+      "library": "libm3qroot_kernelsu_next.so",
+      "driverVersion": 33294,
+      "size": 24232,
+      "sha256": "98a41d063f57e288e0332780b9938f33f4c25082af4b0185a8c17d4fa7021c77",
+      "changes": [
+        {
+          "virtual_address": "0x6c94",
+          "file_offset": 11412,
+          "before": "528fef89",
+          "after": "529041c9"
+        },
+        {
+          "virtual_address": "0x6cc8",
+          "file_offset": 11464,
+          "before": "528fef82",
+          "after": "529041c2"
+        },
+        {
+          "virtual_address": "0x7234",
+          "file_offset": 12852,
+          "before": "911f28a5",
+          "after": "aa1f03e5"
+        }
+      ]
+    },
+    "resukisu": {
+      "library": "libm3qroot_resukisu.so",
+      "driverVersion": 35171,
+      "size": 24232,
+      "sha256": "b4700da91d3ad24169cd805786e8fe7f258f36ec53a46c3c092526d5fc1858ab",
+      "changes": [
+        {
+          "virtual_address": "0x6c94",
+          "file_offset": 11412,
+          "before": "528fef89",
+          "after": "52912c69"
+        },
+        {
+          "virtual_address": "0x6cc8",
+          "file_offset": 11464,
+          "before": "528fef82",
+          "after": "52912c62"
+        },
+        {
+          "virtual_address": "0x7234",
+          "file_offset": 12852,
+          "before": "911f28a5",
+          "after": "aa1f03e5"
+        }
+      ]
+    }
+  }
+}
