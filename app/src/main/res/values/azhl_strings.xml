@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="azhl_app_name">AZHL Root — experimental</string>
+    <string name="azhl_app_name">Root My Galaxy Ultra</string>
     <string name="backend_choice_title">Choose your root backend</string>
     <string name="backend_choice_explanation">Experimental build for SM-S948B on S948BXXS4AZHL. Choose a backend, then start Shizuku through wireless debugging before rooting. These builds still need testing on your phone. Changing an active backend requires a full reboot. Existing modules are disabled when changing backends; re-enable compatible modules in the chosen manager.</string>
     <string name="backend_choice_save">Save choice</string>
