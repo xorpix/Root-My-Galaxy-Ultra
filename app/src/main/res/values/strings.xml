@@ -15,7 +15,9 @@
     <string name="action_back">Back</string>
     <string name="action_back_to_top">Back to top</string>
     <string name="install_tap_manager">Tap to install KernelSU Manager</string>
+    <string name="install_tap_manager_flavor">Tap to install %1$s Manager</string>
     <string name="install_tap_open_manager">Tap to open KernelSU Manager</string>
+    <string name="install_tap_open_manager_flavor">Tap to open %1$s Manager</string>
     <string name="install_tap_retry">Tap to retry</string>
     <string name="install_tap_start">Tap to install KernelSU</string>
     <string name="device">Device</string>
@@ -344,6 +346,7 @@
     <string name="phase_failed">Check the log below for the failure point</string>
 
     <string name="status_ksu_active">KernelSU active</string>
+    <string name="status_flavor_active">%1$s active</string>
     <string name="status_root_only">Root acquired. KernelSU was not loaded because it is disabled in Settings.</string>
     <string name="status_not_installed">Not installed</string>
     <!-- The install card's title before anything has been read. It is the state's own message rather than the

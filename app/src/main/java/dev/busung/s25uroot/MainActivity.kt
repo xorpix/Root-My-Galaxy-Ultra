@@ -2143,8 +2143,12 @@ private fun InstallStatusCard(installState: InstallUiState, onInstall: () -> Uni
     // to: the two managers are different apps with different packages and only one of them is the one
     // a finished run leaves needing to be opened.
     val managerFlavor = remember(installState) { AppPreferences.kernelsuFlavor(context) }
-    val managerInstalled = remember(installState, managerFlavor) {
-        KernelSuManager.isInstalled(context, managerFlavor)
+    // The backend actually loaded this boot wins over the setting: after a run the setting may have
+    // moved on while the kernel still carries what was loaded, and the card must name that, open its
+    // manager, and offer its install — not the newly selected one.
+    val displayFlavor = remember(installState) { AppPreferences.loadedFlavor(context) ?: managerFlavor }
+    val managerInstalled = remember(installState, displayFlavor) {
+        KernelSuManager.isInstalled(context, displayFlavor)
     }
     Card(
         onClick = {
@@ -2155,7 +2159,7 @@ private fun InstallStatusCard(installState: InstallUiState, onInstall: () -> Uni
                     // A named version that is not the default has to be looked up before there is a
                     // download to offer, so the card says what it is doing rather than appearing to
                     // ignore the tap.
-                    KernelSuManager.open(context, managerFlavor) { message ->
+                    KernelSuManager.open(context, displayFlavor) { message ->
                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                     }
                 }
@@ -2208,7 +2212,7 @@ private fun InstallStatusCard(installState: InstallUiState, onInstall: () -> Uni
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         )
                         Text(
-                            text = stringResource(R.string.status_ksu_active),
+                            text = stringResource(R.string.status_flavor_active, displayFlavor.label),
                             style = MaterialTheme.typography.titleMedium,
                         )
                     }
@@ -2225,10 +2229,11 @@ private fun InstallStatusCard(installState: InstallUiState, onInstall: () -> Uni
                     text = when (installState.phase) {
                         InstallPhase.Installed -> stringResource(
                             if (managerInstalled) {
-                                R.string.install_tap_open_manager
+                                R.string.install_tap_open_manager_flavor
                             } else {
-                                R.string.install_tap_manager
+                                R.string.install_tap_manager_flavor
                             },
+                            displayFlavor.label,
                         )
                         InstallPhase.Failed -> stringResource(R.string.install_tap_retry)
                         else -> stringResource(R.string.install_tap_start)
@@ -2258,6 +2263,18 @@ private fun InstallStatusCard(installState: InstallUiState, onInstall: () -> Uni
 @Composable
 private fun ReadinessCard(readiness: Readiness, onOpenSettings: () -> Unit) {
     val view = LocalView.current
+    val context = LocalContext.current
+    // The backend actually loaded this boot, so the row names ReSukiSU rather
+    // than the generic KernelSU when that is what is running; anything else
+    // keeps the old generic label. Refreshed with the readiness itself, which
+    // already re-reads on every run phase and foreground return.
+    val activeFlavorLabel = remember(readiness) {
+        if (readiness.kernelSu == KernelSuStatus.Active) {
+            AppPreferences.loadedFlavor(context)?.label
+        } else {
+            null
+        }
+    }
     Card(
         modifier = Modifier.fillMaxWidth().animateContentSize(),
         shape = MaterialTheme.shapes.large,
@@ -2272,7 +2289,7 @@ private fun ReadinessCard(readiness: Readiness, onOpenSettings: () -> Unit) {
             Text(stringResource(R.string.readiness), style = MaterialTheme.typography.titleMedium)
             InfoRow(
                 icon = Icons.Rounded.Security,
-                label = stringResource(R.string.readiness_kernelsu),
+                label = activeFlavorLabel ?: stringResource(R.string.readiness_kernelsu),
                 value = stringResource(
                     when (readiness.kernelSu) {
                         KernelSuStatus.Active -> R.string.readiness_ksu_active
