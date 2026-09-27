@@ -88,6 +88,22 @@ JNI daemon copies match `assets/azhl/*/ksud` byte-for-byte. Both forks report
 UAPI 4, which alone never guaranteed a live late-load, manager authorization
 or module support — those were proven on the phone instead.
 
+## Screenshots
+
+<img width="200" alt="Home with ReSukiSU active, manager and device status" src="docs/screenshots/home.jpg" />
+<img width="200" alt="Settings with bundled AZHL payloads and run management" src="docs/screenshots/settings.jpg" />
+
+Home with the loaded backend named on the card, and Settings showing the
+bundled AZHL payloads. Taken on SM-S948B / S948BXXS4AZHL running ReSukiSU.
+
+## Screenshots
+
+<img width="200" alt="Home with ReSukiSU active, manager and device status" src="docs/screenshots/home.jpg" />
+<img width="200" alt="Settings with bundled AZHL payloads and run management" src="docs/screenshots/settings.jpg" />
+
+Home with the loaded backend named on the card, and Settings showing the
+bundled AZHL payloads. Taken on SM-S948B / S948BXXS4AZHL running ReSukiSU.
+
 ## Validation status
 
 - Full run on SM-S948B/S948BXXS4AZHL verified on hardware for all three
@@ -110,33 +126,6 @@ M3Q exploit author respectively; their licenses travel with their files.
 
 *Upstream application manual below. "Two flavours" passages describe the
 original feed model; this build ships three AZHL backends as above.*
-
-## Application
-
-<img width="200" alt="Home: live KernelSU and Shizuku status" src="docs/screenshots/home.png" /> <img width="200" alt="Choosing a payload: KernelSU and KernelSU-Next flavours" src="docs/screenshots/payload-picker.png" />
-<img width="200" alt="Settings, grouped into sections" src="docs/screenshots/settings.png" />
-<img width="200" alt="The app log" src="docs/screenshots/logs.png" />
-
-From left to right: Home with the live status card, the payload sheet, Settings, and the app log. All
-four are this fork's own build, capturing the three payload flavours it publishes
-beside the upstream ones.
-
-The app selects a payload whose model list and three-part kernel version match
-the phone. For example, `6.6.98-android15-8-...` matches `6.6.98`. Advanced
-mode filters the catalog by both values and allows manual selection with model
-and kernel-version warnings.
-
-Each candidate in that sheet also reports how its kernel versions line up with
-the phone. Regional siblings share a model and a three-part version, so a
-profile that lists this build's full release is marked **Exact kernel release
-match** while one that only lists the three-part version is marked **Kernel
-version match only (6.6.98)** — the difference between a feed that has tied
-the payload to your build and one that has not. The sheet opens preselected on
-the exact match when the feed offers one.
-
-The sheet also carries a search box, by device, model or kernel, and a **Show only my device** toggle
-that is remembered — with a dozen sources configured it can hold every device its catalogs know, and
-the row being looked for is found by name long before it is found by scrolling.
 
 ## Build
 
