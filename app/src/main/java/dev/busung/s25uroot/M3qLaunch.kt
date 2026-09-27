@@ -10,6 +10,12 @@ internal object M3qLaunch {
     const val DAEMON_STAGE = "/data/local/tmp/.ksud-stage"
     const val LOAD_LOG = "/data/local/tmp/m3q-kernelsu-late-load.log"
 
+    /** Android sh treats a CR after `set -eu` as another option, even with `sh -c`. */
+    fun normalizeShellScript(source: String): String = source
+        .removePrefix("\uFEFF")
+        .replace("\r\n", "\n")
+        .replace('\r', '\n')
+
     data class Backend(val id: String, val version: Int, val helperHash: String) {
         val helperLibrary: String get() = "libm3qroot_${id.replace('-', '_')}.so"
         val daemonLibrary: String get() = "libm3qksud_${id.replace('-', '_')}.so"

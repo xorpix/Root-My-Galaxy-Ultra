@@ -39,6 +39,12 @@ internal class M3qRunner(
         val daemonArtifact = payloads.profile.kernelSu
         val daemon = checkedLibrary(libraryDirectory, backend.daemonLibrary,
             daemonArtifact.size, requireNotNull(daemonArtifact.sha256))
+        // Read before claiming a boot. Windows checkouts or editors can add CRLF/BOM
+        // to assets; shell quoting preserves those bytes rather than fixing them.
+        val rawScript = context.assets.open("m3q/prepare-backend.sh")
+            .bufferedReader(Charsets.UTF_8).use { it.readText() }
+        val script = M3qLaunch.normalizeShellScript(rawScript)
+        if (script != rawScript) log("[*] Normalized bundled preparation script line endings/encoding marker")
         val uid = shell("id -u")
         check(uid.code == 0 && uid.output.trim() == "2000") {
             "Start Shizuku through wireless debugging (shell UID 2000). Reboot if root is already active."
@@ -77,7 +83,6 @@ internal class M3qRunner(
             "An existing or unrecognized root control channel prevents loading. Fully reboot; nothing was replaced."
         }
         stage(RunStage.KernelSu)
-        val script = context.assets.open("m3q/prepare-backend.sh").bufferedReader().use { it.readText() }
         val prepareCommand = listOf("/system/bin/sh", "-c", script, "m3q-prepare", flavor.id,
             daemon.path, daemonArtifact.sha256, if (disableModules) "1" else "0")
             .joinToString(" ") { shellQuote(requireNotNull(it)) }
