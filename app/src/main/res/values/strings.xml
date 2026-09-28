@@ -33,6 +33,9 @@
     <string name="language_description">Choose the language</string>
     <string name="appearance">Appearance</string>
     <string name="settings_section_payloads">Payload Management</string>
+    <string name="bundled_payloads_title">Built-in AZHL payloads</string>
+    <string name="bundled_payloads_description">Includes KernelSU, KernelSU-Next and ReSukiSU for SM-S948B / S948BXXS4AZHL.</string>
+    <string name="bundled_payloads_included">Included</string>
     <string name="settings_section_run">Run Management</string>
     <string name="settings_section_shizuku">Shizuku Management</string>
     <string name="settings_section_root">Root Management</string>

@@ -1583,22 +1583,15 @@ private fun OverviewPage(
                     contentDescription = null,
                     modifier = Modifier.size(36.dp),
                 )
-                // The name and the build are one column that gives up room rather than takes it. Side by
-                // side with the button they were wider than a phone: the title is 32sp and the version is
-                // a whole build label, and a Row hands its unweighted children the width they ask for - so
-                // the button was pushed past the right edge and clipped by the list. It was there on a
-                // tablet and gone on a phone, which is the shape of a bug this header had no room to show.
-                //
-                // Medium rather than large since the fork's own name: "Root My Galaxy Next" is a third
-                // longer than the name this header was laid out for, and at 32sp it ended in an ellipsis on
-                // a phone - the app's own name, unreadable on the screen that shows it. 28sp is the largest
-                // step that fits all of it beside the power button.
+                // Reserve room for the power button. A compact title fits on phones and can wrap
+                // at larger system font sizes, keeping the full app name readable.
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(R.string.app_name),
-                        style = MaterialTheme.typography.headlineMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontSize = 22.sp,
+                            lineHeight = 28.sp,
+                        ),
                     )
                     AppVersionText(
                         style = MaterialTheme.typography.bodyMedium,
@@ -4233,9 +4226,9 @@ private fun SettingsPage(
             SettingsSectionBody {
                 SettingsCard(
                     icon = Icons.Rounded.Memory,
-                    title = "Bundled AZHL payloads",
-                    description = "KernelSU, KernelSU-Next and ReSukiSU are included. Rooting uses verified local files for SM-S948B / S948BXXS4AZHL.",
-                    value = "Offline",
+                    title = stringResource(R.string.bundled_payloads_title),
+                    description = stringResource(R.string.bundled_payloads_description),
+                    value = stringResource(R.string.bundled_payloads_included),
                     position = SettingsCardPosition.Bottom,
                     onClick = {},
                 )
