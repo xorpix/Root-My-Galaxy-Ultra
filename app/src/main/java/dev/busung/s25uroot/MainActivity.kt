@@ -4308,8 +4308,8 @@ private fun SettingsPage(
                         icon = Icons.Rounded.Lock,
                         title = stringResource(R.string.partition_read_only),
                         description = stringResource(R.string.azhl_partition_read_only_description),
-                        checked = false,
-                        enabled = false,
+                        checked = partitionReadOnly,
+                        enabled = true,
                         position = SettingsCardPosition.Middle,
                         onCheckedChange = {
                             clickHaptic(view)

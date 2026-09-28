@@ -69,6 +69,13 @@ internal class M3qRunner(
         check(rootCheck.code == 0 && rootCheck.output.lineSequence().any { it.trim() == "M3Q_TEMP_ROOT_OK" }) {
             "The app cannot reach verified temporary root. Fully reboot before another attempt."
         }
+        // Image partitions go read-only here when the setting is on: temp
+        // root is verified above and nothing has been staged or loaded yet,
+        // which is the window the protection exists to close. Best-effort:
+        // a device that cannot set the flags runs on unchanged.
+        if (AppPreferences.partitionReadOnlyMode(context)) {
+            protectPartitions(helper)
+        }
         // Query driver absence through the SHIZUKU SHELL (uid 2000), never as
         // an app child and never nested through `helper -c`. App children
         // inherit the app seccomp filter, under which --ksu-info's raw driver
@@ -107,6 +114,38 @@ internal class M3qRunner(
             "Fresh verification of ${flavor.label} failed. Fully reboot before another attempt."
         }
         return verified.output
+    }
+
+    /**
+     * Marks image partitions read-only with the verified bootstrap root.
+     *
+     * Best-effort by design: a restricted root that cannot set the flags
+     * (missing CAP_SYS_ADMIN surfaces as count 0) runs on exactly as
+     * before, with one log line saying so. The count is persisted per boot
+     * so later EROFS failures in this boot blame the wall correctly.
+     */
+    private suspend fun protectPartitions(helper: File) {
+        val script = runCatching {
+            context.assets.open(PartitionReadOnly.SCRIPT_ASSET)
+                .bufferedReader(Charsets.UTF_8).use { it.readText() }
+        }.getOrNull()?.let(M3qLaunch::normalizeShellScript)
+        if (script.isNullOrBlank()) {
+            log("[!] Read-only partition script is missing from this build")
+            return
+        }
+        val result = app(helper, listOf("-c", script))
+        val count = PartitionReadOnly.countFrom(result.output)
+        if (count >= 1) {
+            log("[+] Set $count partitions to read-only for this boot")
+        } else {
+            log("[!] Partition protection was on, but no block device could be set read-only")
+        }
+        val boot = shell("cat /proc/sys/kernel/random/boot_id")
+        AppPreferences.setReadOnlyProtectedDevices(
+            context,
+            boot.output.trim().takeIf { boot.code == 0 && it.isNotBlank() },
+            count,
+        )
     }
 
     private fun checkedLibrary(directory: File, name: String, size: Long, sha: String): File {

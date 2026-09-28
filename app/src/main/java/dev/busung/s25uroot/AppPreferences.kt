@@ -581,7 +581,7 @@ object AppPreferences {
      * choice is never overwritten: a stored value wins over this default.
      */
     fun partitionReadOnlyMode(context: Context): Boolean =
-        false // The AZHL loader does not support this mode.
+        prefs(context).getBoolean(PARTITION_READ_ONLY_MODE, true)
 
     fun setPartitionReadOnlyMode(context: Context, enabled: Boolean) {
         prefs(context).edit()

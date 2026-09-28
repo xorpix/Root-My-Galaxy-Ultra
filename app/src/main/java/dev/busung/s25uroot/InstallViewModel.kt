@@ -790,7 +790,6 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                     "This AZHL build requires Shizuku started through wireless debugging (shell UID 2000)."
                 }
                 require(AppPreferences.loadKernelSu(app)) { "AZHL loads the selected backend as part of rooting." }
-                require(!AppPreferences.partitionReadOnlyMode(app)) { "Partition read-only mode is unavailable in this AZHL build." }
                 val profile = if (selectionId == null) repository.resolveTarget(DeviceSnapshot.current(), requestedFlavor)
                     else repository.resolveTarget(selectionId)
                 backendRunRefusal(
