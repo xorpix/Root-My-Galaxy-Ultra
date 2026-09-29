@@ -36,6 +36,7 @@ object AppPreferences {
     private const val THEME_MODE = "theme_mode"
     private const val ADVANCED_MODE = "advanced_mode"
     private const val DISABLE_KSU_MODULES = "disable_ksu_modules"
+    private const val WIPE_MODULE_STATE = "wipe_module_state"
     private const val LOAD_KERNEL_SU = "load_kernel_su"
     private const val KERNEL_SU_FLAVOR = "kernel_su_flavor"
     private const val MANAGER_VERSION_PREFIX = "manager_version_"
@@ -208,6 +209,24 @@ object AppPreferences {
     fun setDisableKsuModules(context: Context, enabled: Boolean) {
         prefs(context).edit()
             .putBoolean(DISABLE_KSU_MODULES, enabled)
+            .apply()
+    }
+
+    /**
+     * Recovery-only reset of all root state before the backend loads.
+     *
+     * Off unless turned on: when on, preparation deletes everything under /data/adb -
+     * modules, manager data and staged metamodule copies included - before late-load,
+     * before late-load, for boots whose leftover state hangs the load even
+     * with every module disabled. Deleting is one-directional, so this never
+     * defaults on, and the settings row confirms before enabling.
+     */
+    fun wipeModuleState(context: Context): Boolean =
+        prefs(context).getBoolean(WIPE_MODULE_STATE, false)
+
+    fun setWipeModuleState(context: Context, enabled: Boolean) {
+        prefs(context).edit()
+            .putBoolean(WIPE_MODULE_STATE, enabled)
             .apply()
     }
 

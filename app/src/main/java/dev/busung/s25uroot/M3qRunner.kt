@@ -90,15 +90,43 @@ internal class M3qRunner(
             "An existing or unrecognized root control channel prevents loading. Fully reboot; nothing was replaced."
         }
         stage(RunStage.KernelSu)
+        // Recovery wipe: read here like the partition mode above, so no
+        // caller threading is needed. Off unless the setting says so.
+        val wipeModules = AppPreferences.wipeModuleState(context)
+        if (wipeModules) {
+            log("[!] Module state wipe is ON: preparation deletes all modules before loading")
+        }
         val prepareCommand = listOf("/system/bin/sh", "-c", script, "m3q-prepare", flavor.id,
-            daemon.path, daemonArtifact.sha256, if (disableModules) "1" else "0")
+            daemon.path, daemonArtifact.sha256, if (disableModules) "1" else "0",
+            if (wipeModules) "1" else "0")
             .joinToString(" ") { shellQuote(requireNotNull(it)) }
         val prepared = app(helper, listOf("-c", prepareCommand))
+        // Surface the script's own removal markers before the stage check,
+        // so they survive in the log even when the stage itself then fails.
+        val lateMarkers = prepared.output.lineSequence()
+
+            .filter { it.startsWith("MOUNTIFY_REMOVED ") || it.startsWith("MODULE_STATE_WIPED ") || it.startsWith("ADB_TOP ") || it.startsWith("ADB_CHILD ") || it.startsWith("ADB_HUNT ") || it.startsWith("WIPE_DEBUG ") }
+            .toList()
+        lateMarkers
+            .filter { !it.startsWith("ADB_HUNT ") }
+            .forEach { line ->
+                if (line.startsWith("MOUNTIFY_REMOVED ")) {
+                    log("[!] Mountify footprint removed before loading: ${line.removePrefix("MOUNTIFY_REMOVED ")}")
+                } else {
+
+                    if (line.startsWith("MODULE_STATE_WIPED ")) log("[!] Module state wiped before loading: ${line.removePrefix("MODULE_STATE_WIPED ")}") else log("[*] $line")
+                }
+            }
         val marker = "M3Q_STAGE_OK:${flavor.id}:${daemonArtifact.sha256}"
         check(prepared.code == 0 && prepared.output.lineSequence().any { it.trim() == marker }) {
             "Backend preparation failed (exit ${prepared.code}). Modules and files were preserved; fully reboot."
         }
         log("[*] Activating ${flavor.label} once through the app's root helper")
+        // Hunt hits and the top-level inventory print here - after the load
+        // starts - so a panic at late-load leaves them as the last lines.
+        lateMarkers
+            .filter { it.startsWith("ADB_HUNT ") || it.startsWith("ADB_TOP ") || it.startsWith("WIPE_DEBUG ") }
+            .forEach { log("[*] $it") }
         val loaded = app(helper, listOf("--late-load"), M3qLaunch.LOAD_TIMEOUT_MS, kernelOperation = true)
         // The native helper writes useful daemon diagnostics to this separate log.
         val detail = shell("if [ -f ${shellQuote(M3qLaunch.LOAD_LOG)} ]; then tail -c 32768 ${shellQuote(M3qLaunch.LOAD_LOG)}; fi")

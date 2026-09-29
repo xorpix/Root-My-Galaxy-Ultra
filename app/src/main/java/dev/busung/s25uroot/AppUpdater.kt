@@ -35,7 +35,7 @@ object AppUpdater {
     private const val GITHUB_API = "https://api.github.com/repos/xorpix/Root-My-Galaxy-Ultra"
     private const val RELEASES_PAGE = "$ROOT_MY_GALAXY_URL/releases/latest"
 
-    suspend fun fetchLatestRelease(): UpdateInfo? = null
+    suspend fun fetchLatestRelease(): UpdateInfo? = fetchUpstreamRelease()
 
     private suspend fun fetchUpstreamRelease(): UpdateInfo? = withContext(Dispatchers.IO) {
         try {

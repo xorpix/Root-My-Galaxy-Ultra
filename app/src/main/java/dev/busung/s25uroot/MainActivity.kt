@@ -236,6 +236,7 @@ class MainActivity : ComponentActivity() {
     private var themeMode by mutableStateOf(AppThemeMode.System)
     private var advancedMode by mutableStateOf(false)
 	private var disableKsuModules by mutableStateOf(false)
+	private var wipeModuleState by mutableStateOf(false)
     private var loadKernelSu by mutableStateOf(true)
     private var kernelsuFlavor by mutableStateOf(KernelSuFlavor.Default)
     private var needsBackendChoice by mutableStateOf(false)
@@ -378,6 +379,7 @@ class MainActivity : ComponentActivity() {
         themeMode = AppPreferences.themeMode(this)
         advancedMode = AppPreferences.advancedMode(this)
 		disableKsuModules = AppPreferences.disableKsuModules(this)
+		wipeModuleState = AppPreferences.wipeModuleState(this)
         loadKernelSu = AppPreferences.loadKernelSu(this)
         kernelsuFlavor = AppPreferences.kernelsuFlavor(this)
         needsBackendChoice = !AppPreferences.hasKernelsuFlavorChoice(this)
@@ -407,6 +409,7 @@ class MainActivity : ComponentActivity() {
                     themeMode = themeMode,
                     advancedMode = advancedMode,
 					disableKsuModules = disableKsuModules,
+					wipeModuleState = wipeModuleState,
                     loadKernelSu = loadKernelSu,
                     kernelsuFlavor = kernelsuFlavor,
                     shizukuMode = shizukuMode,
@@ -443,6 +446,10 @@ class MainActivity : ComponentActivity() {
 					onDisableKsuModulesChanged = { enabled ->
 						AppPreferences.setDisableKsuModules(this, enabled)
 						disableKsuModules = enabled
+					},
+					onWipeModuleStateChanged = { enabled ->
+						AppPreferences.setWipeModuleState(this, enabled)
+						wipeModuleState = enabled
 					},
                     onLoadKernelSuChanged = { enabled ->
                         AppPreferences.setLoadKernelSu(this, enabled)
@@ -679,6 +686,7 @@ private fun RootApp(
     themeMode: AppThemeMode,
     advancedMode: Boolean,
 	disableKsuModules: Boolean,
+	wipeModuleState: Boolean,
     loadKernelSu: Boolean,
     kernelsuFlavor: KernelSuFlavor,
     shizukuMode: Boolean,
@@ -702,6 +710,7 @@ private fun RootApp(
     onThemeModeChanged: (AppThemeMode) -> Unit,
     onAdvancedModeChanged: (Boolean) -> Unit,
 	onDisableKsuModulesChanged: (Boolean) -> Unit,
+	onWipeModuleStateChanged: (Boolean) -> Unit,
     onLoadKernelSuChanged: (Boolean) -> Unit,
     onKernelsuFlavorChanged: (KernelSuFlavor) -> Unit,
     onManagerVersionChanged: (String) -> Unit,
@@ -1263,6 +1272,7 @@ private fun RootApp(
                         themeMode = themeMode,
                         advancedMode = advancedMode,
                         disableKsuModules = disableKsuModules,
+                        wipeModuleState = wipeModuleState,
                         loadKernelSu = loadKernelSu,
                         kernelsuFlavor = kernelsuFlavor,
                         shizukuMode = shizukuMode,
@@ -1283,6 +1293,7 @@ private fun RootApp(
                         onThemeModeChanged = onThemeModeChanged,
                         onAdvancedModeChanged = onAdvancedModeChanged,
                         onDisableKsuModulesChanged = onDisableKsuModulesChanged,
+                        onWipeModuleStateChanged = onWipeModuleStateChanged,
                         onLoadKernelSuChanged = onLoadKernelSuChanged,
                         onKernelsuFlavorChanged = onKernelsuFlavorChanged,
                         onManagerVersionChanged = onManagerVersionChanged,
@@ -3539,6 +3550,7 @@ private fun SettingsPage(
     themeMode: AppThemeMode,
     advancedMode: Boolean,
 	disableKsuModules: Boolean,
+	wipeModuleState: Boolean,
     loadKernelSu: Boolean,
     kernelsuFlavor: KernelSuFlavor,
     shizukuMode: Boolean,
@@ -3567,6 +3579,7 @@ private fun SettingsPage(
     onThemeModeChanged: (AppThemeMode) -> Unit,
     onAdvancedModeChanged: (Boolean) -> Unit,
 	onDisableKsuModulesChanged: (Boolean) -> Unit,
+	onWipeModuleStateChanged: (Boolean) -> Unit,
     onLoadKernelSuChanged: (Boolean) -> Unit,
     onKernelsuFlavorChanged: (KernelSuFlavor) -> Unit,
     onManagerVersionChanged: (String) -> Unit,
@@ -3620,6 +3633,7 @@ private fun SettingsPage(
         AppLog.info(AppLogTags.STAGING, report.logLine(context))
     }
     var showShizukuMissingDialog by remember { mutableStateOf(false) }
+    var showWipeConfirm by remember { mutableStateOf(false) }
     // Read live, not once at composition: Shizuku hands out its binder asynchronously after the
     // service starts, so a snapshot taken while the screen is being built can say "not running" about
     // a service that is already up - which is how this row came to offer a start that had nothing to
@@ -3704,6 +3718,34 @@ private fun SettingsPage(
         )
     }
 
+    if (showWipeConfirm) {
+        AlertDialog(
+            onDismissRequest = { showWipeConfirm = false },
+            icon = { Icon(Icons.Rounded.Delete, contentDescription = null) },
+            title = {
+                DialogDimAmount(0.34f)
+                Text(stringResource(R.string.azhl_wipe_confirm_title))
+            },
+            text = { Text(stringResource(R.string.azhl_wipe_confirm_body)) },
+            confirmButton = {
+                FilledTonalButton(onClick = {
+                    clickHaptic(view)
+                    onWipeModuleStateChanged(true)
+                    showWipeConfirm = false
+                }) {
+                    Text(stringResource(R.string.action_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    clickHaptic(view)
+                    showWipeConfirm = false
+                }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
     if (showRunPlanDialog) {
         RunPlanDialog(display = runPlan(), onDismiss = { showRunPlanDialog = false })
     }
@@ -4261,6 +4303,18 @@ private fun SettingsPage(
                         onAdvancedModeChanged(it)
                     },
                 )
+                SettingsSwitchCard(
+                    icon = Icons.Rounded.Delete,
+                    title = stringResource(R.string.azhl_wipe_module_state),
+                    description = stringResource(R.string.azhl_wipe_module_state_description),
+                    checked = wipeModuleState,
+                    position = SettingsCardPosition.Middle,
+                    enabled = loadKernelSu,
+                    onCheckedChange = {
+                        clickHaptic(view)
+                        if (it) showWipeConfirm = true else onWipeModuleStateChanged(false)
+                    },
+                    )
                 SettingsSwitchCard(
                     icon = Icons.Rounded.Security,
                     title = stringResource(R.string.disable_ksu_modules),
