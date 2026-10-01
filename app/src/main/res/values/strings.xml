@@ -9,10 +9,6 @@
     <string name="install_confirm_body">The app will check your device, then download and run the exploit and KernelSU payload from GitHub.</string>
     <string name="action_confirm">Confirm</string>
     <string name="action_cancel">Cancel</string>
-    <string name="su_grant_hold_title">Grant su for %1$s to continue</string>
-    <string name="su_grant_hold_body">The %1$s backend is running, but this app has no su grant yet, so the run is parked — not failed. Turn on its switch in the %1$s manager, then press Confirm. Without a grant the run continues to a manager check instead of failing.</string>
-    <string name="manager_confirm_title">Manager says Working for %1$s?</string>
-    <string name="manager_confirm_body">The exploit ran but this app cannot reach su without a grant, so it cannot verify itself. Open the %1$s manager now: if it reports Working, press Confirm and this run is recorded as manager-confirmed (by your check, not an app probe). Grant this app su in the manager afterwards — modules, updates and automatic root at boot need it.</string>
     <string name="action_close">Close</string>
     <string name="action_retry">Retry</string>
     <string name="action_done">Done</string>

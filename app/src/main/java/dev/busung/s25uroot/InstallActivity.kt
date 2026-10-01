@@ -170,16 +170,6 @@ class InstallActivity : ComponentActivity() {
                 // Asked over the run screen, because the run is what the answer is about: starting
                 // Shizuku runs the installation the screen was opened for, and running without it runs
                 // the same one the other way.
-                SuGrantHoldDialog(
-                    hold = installState.suGrantHold,
-                    onContinue = installViewModel::confirmSuGrant,
-                    onStop = installViewModel::cancelSuGrant,
-                )
-                ManagerConfirmDialog(
-                    hold = installState.managerConfirmHold,
-                    onConfirm = installViewModel::confirmManagerWorking,
-                    onStop = installViewModel::cancelManagerConfirm,
-                )
                 ShizukuHoldDialog(
                     prompt = installState.transportPrompt,
                     onStartShizuku = { installViewModel.startShizukuForHeldRun(selectionId) },
@@ -1104,75 +1094,6 @@ private fun installPhaseDetail(installState: InstallUiState): String =
  * A start that failed stays here with its reason rather than closing: the other answer is still open,
  * and a second ask is exactly what a route that was not up yet needs.
  */
-/**
- * The run is parked waiting for a su grant instead of failed for missing one.
- * Continue re-checks in place; Stop ends the run through the existing stopped
- * path. Mirrors the hold dialog above it.
- */
-@Composable
-private fun SuGrantHoldDialog(
-    hold: SuGrantHold?,
-    onContinue: () -> Unit,
-    onStop: () -> Unit,
-) {
-    hold ?: return
-    val view = LocalView.current
-    AlertDialog(
-        onDismissRequest = onStop,
-        icon = { Icon(Icons.Rounded.VerifiedUser, contentDescription = null) },
-        title = { Text(stringResource(R.string.su_grant_hold_title, hold.flavorLabel)) },
-        text = { Text(stringResource(R.string.su_grant_hold_body, hold.flavorLabel)) },
-        confirmButton = {
-            TextButton(onClick = {
-                clickHaptic(view)
-                onContinue()
-            }) {
-                Text(stringResource(R.string.action_confirm))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = {
-                clickHaptic(view)
-                onStop()
-            }) {
-                Text(stringResource(R.string.action_cancel))
-            }
-        },
-    )
-}
-
-@Composable
-private fun ManagerConfirmDialog(
-    hold: ManagerConfirmHold?,
-    onConfirm: () -> Unit,
-    onStop: () -> Unit,
-) {
-    hold ?: return
-    val view = LocalView.current
-    AlertDialog(
-        onDismissRequest = onStop,
-        icon = { Icon(Icons.Rounded.FactCheck, contentDescription = null) },
-        title = { Text(stringResource(R.string.manager_confirm_title, hold.flavorLabel)) },
-        text = { Text(stringResource(R.string.manager_confirm_body, hold.flavorLabel)) },
-        confirmButton = {
-            TextButton(onClick = {
-                clickHaptic(view)
-                onConfirm()
-            }) {
-                Text(stringResource(R.string.action_confirm))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = {
-                clickHaptic(view)
-                onStop()
-            }) {
-                Text(stringResource(R.string.action_cancel))
-            }
-        },
-    )
-}
-
 @Composable
 private fun ShizukuHoldDialog(
     prompt: TransportPrompt?,

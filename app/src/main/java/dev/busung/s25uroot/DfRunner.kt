@@ -25,13 +25,16 @@ import kotlinx.coroutines.withTimeout
  * Two fail-closed marker directions: a marker already present before the run
  * means something (possibly another app's DirtyFrag run) already rooted this
  * boot, and a missing marker after a zero return means the proof never
- * landed. Both refuse rather than guess. Phase 2 verifies through su when a
- * persisted grant exists; without one the run parks on a question instead of
- * failing, and Continue re-checks in place - one boot, one manual toggle.
+ * landed. Both refuse rather than guess. With su attempted (boot runs), a
+ * persisted grant verifies the resident daemon through plain commands no
+ * seccomp filter kills; without one the run fails naming the grant.
+ * Attended runs never attempt su: no prompts, no dialogs - the trigger is
+ * recorded as unverified, and a grant given afterwards verifies later boots.
  */
-/** Whether a DirtyFrag run proved its backend, or is parked waiting for a grant. */
+/** Whether a DirtyFrag run proved its backend, or is recorded without proof. */
 internal sealed interface DfOutcome {
     data class Verified(val report: String) : DfOutcome
+    data class Unverified(val report: String) : DfOutcome
     data object GrantMissing : DfOutcome
 }
 
@@ -50,7 +53,7 @@ internal class DfRunner(
         private const val SU_TIMEOUT_MS = 30_000L
     }
 
-    suspend fun execute(payloads: VerifiedPayloads): DfOutcome {
+    suspend fun execute(payloads: VerifiedPayloads, attemptSu: Boolean = true): DfOutcome {
         currentCoroutineContext().ensureActive()
         checkStop()
         val flavor = payloads.profile.flavor
@@ -88,6 +91,14 @@ internal class DfRunner(
         if (runCatching { NativeProbe.isKernelSuActive() }.getOrDefault(false)) {
             log("[+] DirtyFrag daemon active via native probe (no su grant needed)")
             return DfOutcome.Verified("DirtyFrag root verified (native probe: kernelsu active)")
+        }
+        // Grant-free attended runs never touch su: no prompts, no dialogs. The
+        // trigger firing in init as uid 0 (proven by the mutex line above when
+        // present) plus the per-flavor staged daemon is recorded as-is; a su
+        // grant given afterwards verifies later boots unattended.
+        if (!attemptSu) {
+            log("[*] Recorded without app verification; confirm Working in the manager")
+            return DfOutcome.Unverified("DirtyFrag trigger ran (unverified; confirm Working in the manager, grant su to verify)")
         }
         // Phase 2: the marker shell may die with the flow while the daemon it
         // started keeps serving. A persisted su grant lets this app verify the

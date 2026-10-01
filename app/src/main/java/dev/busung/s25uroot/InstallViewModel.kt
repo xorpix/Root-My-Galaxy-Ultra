@@ -91,8 +91,6 @@ data class InstallUiState(
      * it is, and the run that follows either goes through Shizuku or says it is not to.
      */
     val transportPrompt: TransportPrompt? = null,
-    val suGrantHold: SuGrantHold? = null,
-    val managerConfirmHold: ManagerConfirmHold? = null,
 ) {
     /**
      * Whether a run is under way, which is not the same question as whether the app is working.
@@ -118,30 +116,6 @@ data class InstallUiState(
  * a failed one, so the dialog can say why retrying might not be worth it without swallowing the fact
  * that the person asked. [starting] keeps the dialog from being pressed twice.
  */
-/**
- * A run parked waiting for a su grant instead of failed for missing one. The
- * daemon is up; only a person flipping a switch stands between this run and
- * its backend. Attempts cap the loop so tapping Continue without granting
- * ends as a failed run, not a shrine.
- */
-data class SuGrantHold(
-    val flavorLabel: String,
-    val attempts: Int = 0,
-)
-
-/**
- * A run parked on the manager's own verdict instead of failed for missing su.
- * The exploit ran, markers/sysfs/su are all blind from this UID, but the
- * person can read the manager (which talks to the daemon itself). Confirm
- * records a manager-confirmed install — by the person's check, said as such
- * in the log and receipt — and requires that flavor's manager to be installed
- * so a wrong-flavor tap cannot confirm.
- */
-data class ManagerConfirmHold(
-    val flavorLabel: String,
-    val managerPackage: String,
-)
-
 data class TransportPrompt(
     val starting: Boolean = false,
     val startDetail: String? = null,
@@ -1034,10 +1008,9 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                 // what makes "known good" mean something, and it is why nothing is written while the
                 // exploit is running. Publishing is best-effort - a full disk must not turn a root
                 // that worked into a failure - but it is said out loud when it does not happen.
-                // DirtyFrag included: publish copies the verified files into the cache, and a DF
-                // run re-stages its daemon from APK assets every time, so boot auto-root (offline,
-                // no network) works once one verified run exists.
-                if (payloads.origin == PayloadOrigin.Bundled || payloads.origin == PayloadOrigin.Downloaded) {
+                // DirtyFrag included, but only verified installs: an unverified
+                // trigger run must never become the offline fallback a boot trusts.
+                if ((payloads.origin == PayloadOrigin.Bundled || payloads.origin == PayloadOrigin.Downloaded) && (!runUsesDirtyFrag || dfVerifiedInstall)) {
                     runCatching { KnownGoodPayloadStore.publish(app, payloads) }
                         .onSuccess { cached ->
                             appendLog(app.getString(R.string.log_payload_cached_now, cached.profileId))
@@ -1458,7 +1431,14 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         appendLog(app.getString(R.string.log_bootstrap_root))
     }
 
-    /** DirtyFrag needs no shell, no helper and no claim: the JNI call is the whole launch. */
+    /** DirtyFrag needs no shell, no helper and no claim: the JNI call is the whole launch.
+     *
+     * Attended runs never touch su and never park on a dialog: the trigger is
+     * recorded as unverified when no grant-free proof fires. Boot runs attempt
+     * su (fail fast without a grant) so a persisted grant verifies unattended.
+     */
+    private var dfVerifiedInstall = false
+
     private suspend fun executeDfExploit(payloads: VerifiedPayloads) {
         val dfRunner = DfRunner(
             context = app,
@@ -1471,40 +1451,31 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
             },
             checkStop = ::stopIfAskedFromOutside,
         )
-        var outcome: DfOutcome = dfRunner.execute(payloads)
-        // One su re-check while parked (covers the granted case, which then
-        // verifies without any manager step). A fresh install has no grant and
-        // Samsung policy blinds markers/sysfs from this UID, so a still-missing
-        // grant falls through to an explicit manager confirmation below
-        // instead of failing after repeated su prompts. Unattended boot runs
-        // have nobody to answer either hold: they fail fast naming the grant,
-        // which persists in the manager once given and verifies on later boots.
-        if (outcome is DfOutcome.GrantMissing) {
-            if (runIsUnattended) {
+        dfVerifiedInstall = false
+        val outcome: DfOutcome = dfRunner.execute(payloads, attemptSu = runIsUnattended)
+        when (outcome) {
+            is DfOutcome.Verified -> {
+                dfControlReport = outcome.report
+                dfVerifiedInstall = true
+            }
+            is DfOutcome.Unverified -> {
+                dfControlReport = outcome.report
+            }
+            is DfOutcome.GrantMissing -> {
+                // Unattended only: attended runs never attempt su.
                 error("Root has no su grant for this app yet. Open the app once, grant it su in the ${payloads.profile.flavor.label} manager, then boot auto-root verifies unattended.")
             }
-            holdForSuGrant(payloads.profile.flavor, 0)
-            outcome = dfRunner.verifyGrant(payloads)
         }
-        if (outcome is DfOutcome.GrantMissing) {
-            if (runIsUnattended) {
-                error("Root has no su grant for this app yet. Open the app once, grant it su in the ${payloads.profile.flavor.label} manager, then boot auto-root verifies unattended.")
-            }
-            holdForManagerConfirm(payloads)
-            dfControlReport = "DirtyFrag root manager-confirmed (${payloads.profile.flavor.label} Working per user check)"
-        } else {
-            dfControlReport = (outcome as DfOutcome.Verified).report
-        }
-        protectPartitionsViaSu()
+        // Only with a proven grant (su-verified): any other proof leaves su
+        // unattempted so a first run never prompts for anything.
+        if (dfVerifiedInstall && "through su" in dfControlReport) protectPartitionsViaSu()
     }
 
     /**
      * Marks image partitions read-only on the DirtyFrag path, where there is
-     * no helper socket and su is the only root channel. Best-effort like the
-     * M3Q equivalent: without a grant there is no channel, so protection is
-     * skipped with a line saying the grant it needs — the run itself already
-     * succeeded. Updates the same attribution bookkeeping the failure
-     * diagnosis reads.
+     * no helper socket and su is the only root channel. Called only with a
+     * proven grant (su-verified runs); anything else leaves su unattempted so
+     * a first run never prompts for anything.
      */
     private suspend fun protectPartitionsViaSu() {
         if (!AppPreferences.partitionReadOnlyMode(app)) return
@@ -1540,71 +1511,6 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         protectedDevices = count
         protectedFrom = mutableState.value.log.length
         AppPreferences.setReadOnlyProtectedDevices(app, kernelBootToken(), count)
-    }
-
-    /**
-     * Parks the run on a question instead of failing it: the daemon is up,
-     * only the grant is missing, and granting needs a person. The coroutine
-     * suspends here; Continue resumes it in place, Stop cancels into the
-     * existing stopped path. Attempts cap the loop so tapping Continue
-     * without granting ends as a failed run, not a shrine.
-     */
-    private var suGrantGate: CompletableDeferred<Unit>? = null
-
-    private suspend fun holdForSuGrant(flavor: KernelSuFlavor, attempts: Int) {
-        setPhase(InstallPhase.LoadingKernelSu, app.getString(R.string.su_grant_hold_title, flavor.label))
-        mutableState.value = mutableState.value.copy(
-            suGrantHold = SuGrantHold(flavorLabel = flavor.label, attempts = attempts),
-        )
-        val gate = CompletableDeferred<Unit>()
-        suGrantGate = gate
-        try {
-            gate.await()
-        } finally {
-            suGrantGate = null
-            mutableState.value = mutableState.value.copy(suGrantHold = null)
-        }
-    }
-
-    fun confirmSuGrant() {
-        suGrantGate?.complete(Unit)
-    }
-
-    fun cancelSuGrant() {
-        stopRequested = true
-        suGrantGate?.cancel(CancellationException("Su grant hold stopped"))
-    }
-
-    private var managerConfirmGate: CompletableDeferred<Unit>? = null
-
-    private suspend fun holdForManagerConfirm(payloads: VerifiedPayloads) {
-        val flavor = payloads.profile.flavor
-        val manager = KernelSuManager.installedFor(app, flavor)
-        require(manager != null) {
-            "The ${flavor.label} manager is not installed, so nothing can confirm this backend. Install it, then reboot and run again."
-        }
-        setPhase(InstallPhase.LoadingKernelSu, app.getString(R.string.manager_confirm_title, flavor.label))
-        mutableState.value = mutableState.value.copy(
-            managerConfirmHold = ManagerConfirmHold(flavorLabel = flavor.label, managerPackage = manager.packageName),
-        )
-        val gate = CompletableDeferred<Unit>()
-        managerConfirmGate = gate
-        try {
-            gate.await()
-        } finally {
-            managerConfirmGate = null
-            mutableState.value = mutableState.value.copy(managerConfirmHold = null)
-        }
-        appendLog("Manager-confirmed ${flavor.label} backend (user checked Working in ${manager.packageName}; su grant still unlocks modules and updates)")
-    }
-
-    fun confirmManagerWorking() {
-        managerConfirmGate?.complete(Unit)
-    }
-
-    fun cancelManagerConfirm() {
-        stopRequested = true
-        managerConfirmGate?.cancel(CancellationException("Manager confirm stopped"))
     }
 
     /** The exploit transport and the app-UID management channel are separate. */
@@ -1744,12 +1650,16 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         val proof = when {
             "through su" in dfControlReport -> "su-verified"
             "native probe" in dfControlReport -> "native-probe"
-            "manager-confirmed" in dfControlReport -> "manager-confirmed"
+            "unverified" in dfControlReport -> "trigger-ran"
             else -> "dfm0"
         }
-        appendLog("Verified ${payloads.profile.flavor.label} backend ($proof); su grant in the manager unlocks modules, updates and automatic root at boot")
+        if (!dfVerifiedInstall) {
+            appendLog("Recorded ${payloads.profile.flavor.label} backend ($proof) without app verification; confirm Working in the manager, and grant su to verify later runs")
+        } else {
+            appendLog("Verified ${payloads.profile.flavor.label} backend ($proof); su grant in the manager unlocks modules, updates and automatic root at boot")
+        }
         AppPreferences.setLoadedFlavor(app, payloads.profile.flavor, AutoRootSupport.currentBootToken())
-        storeInstallReceipt()
+        if (dfVerifiedInstall) storeInstallReceipt()
         val refreshed = KernelSuManagerRefresh.afterLoad(app, flavor = payloads.profile.flavor)
         refreshed.forEach { packageName ->
             appendLog(app.getString(R.string.log_manager_refreshed, packageName))
