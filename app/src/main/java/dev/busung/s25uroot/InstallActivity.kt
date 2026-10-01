@@ -175,6 +175,11 @@ class InstallActivity : ComponentActivity() {
                     onContinue = installViewModel::confirmSuGrant,
                     onStop = installViewModel::cancelSuGrant,
                 )
+                ManagerConfirmDialog(
+                    hold = installState.managerConfirmHold,
+                    onConfirm = installViewModel::confirmManagerWorking,
+                    onStop = installViewModel::cancelManagerConfirm,
+                )
                 ShizukuHoldDialog(
                     prompt = installState.transportPrompt,
                     onStartShizuku = { installViewModel.startShizukuForHeldRun(selectionId) },
@@ -1121,6 +1126,38 @@ private fun SuGrantHoldDialog(
             TextButton(onClick = {
                 clickHaptic(view)
                 onContinue()
+            }) {
+                Text(stringResource(R.string.action_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = {
+                clickHaptic(view)
+                onStop()
+            }) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun ManagerConfirmDialog(
+    hold: ManagerConfirmHold?,
+    onConfirm: () -> Unit,
+    onStop: () -> Unit,
+) {
+    hold ?: return
+    val view = LocalView.current
+    AlertDialog(
+        onDismissRequest = onStop,
+        icon = { Icon(Icons.Rounded.FactCheck, contentDescription = null) },
+        title = { Text(stringResource(R.string.manager_confirm_title, hold.flavorLabel)) },
+        text = { Text(stringResource(R.string.manager_confirm_body, hold.flavorLabel)) },
+        confirmButton = {
+            TextButton(onClick = {
+                clickHaptic(view)
+                onConfirm()
             }) {
                 Text(stringResource(R.string.action_confirm))
             }
