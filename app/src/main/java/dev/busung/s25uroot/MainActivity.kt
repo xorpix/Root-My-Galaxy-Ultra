@@ -6105,7 +6105,7 @@ private fun RunLimitsDialog(
                     onChanged = onChanged,
                 )
                 Text(
-                    "AZHL uses one attempt per boot and requires a full reboot before another attempt. Its payload settings are fixed.",
+                    "This build uses one attempt per boot and requires a full reboot before another attempt. Its payload settings are fixed.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

@@ -824,7 +824,7 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                 require(dfDevice || (!withoutShizuku && AppPreferences.shizukuMode(app))) {
                     "This AZHL build requires Shizuku started through wireless debugging (shell UID 2000)."
                 }
-                require(AppPreferences.loadKernelSu(app)) { "AZHL loads the selected backend as part of rooting." }
+                require(AppPreferences.loadKernelSu(app)) { "Loading the selected backend is part of rooting." }
                 val profile = if (selectionId == null) repository.resolveTarget(DeviceSnapshot.current(), requestedFlavor)
                     else repository.resolveTarget(selectionId)
                 backendRunRefusal(
@@ -967,7 +967,7 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                 if (!runUsesDirtyFrag) awaitBootSettle(maxOf(180, AppPreferences.bootSettleSeconds(app)))
 
                 activeStage = RunStage.Download
-                setPhase(InstallPhase.Downloading, "Verifying bundled AZHL payloads")
+                setPhase(InstallPhase.Downloading, if (runUsesDirtyFrag) "Verifying bundled BZIG payloads" else "Verifying bundled AZHL payloads")
                 val payloads = if (runUsesDirtyFrag) DfCatalog.stage(app, profile) { appendLog("[*] $it") } else repository.download(profile) { appendLog("[*] $it") }
 
                 // Before the exploit, because the record exists for the runs that fail during it: a

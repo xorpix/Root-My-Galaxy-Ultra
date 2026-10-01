@@ -279,7 +279,7 @@ class PayloadRepository(private val context: Context) {
     /** Resolves a catalog selection, which may name the source it came from. */
     fun resolveTarget(selectionId: String): TargetProfile {
         return loadTargets().singleOrNull { it.selectionId == selectionId || it.profileId == selectionId }
-            ?: error("Select a backend from this APK’s AZHL bundle.")
+            ?: error("Select a backend from this APK’s bundled payloads.")
     }
 
     /**

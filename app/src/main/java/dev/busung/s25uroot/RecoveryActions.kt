@@ -97,7 +97,7 @@ internal suspend fun runRecoveryAction(context: Context, tool: RecoveryTool): Re
         val outcome = when {
             tool == RecoveryTool.ReloadModules -> RecoveryOutcome(
                 accepted = false,
-                detail = "AZHL does not replay late-load. Reboot, then root with the selected backend.",
+                detail = "This build does not replay loads. Reboot, then root with the selected backend.",
             )
             !tier.canRun(tool) -> RecoveryOutcome(accepted = false, detail = refusalDetail)
             bootToken == null -> RecoveryOutcome(
