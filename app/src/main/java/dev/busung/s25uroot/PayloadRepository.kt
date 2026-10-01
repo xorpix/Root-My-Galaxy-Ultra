@@ -189,7 +189,7 @@ data class LoadedCatalog(
 )
 
 class PayloadRepository(private val context: Context) {
-    fun loadCatalog(): LoadedCatalog = LoadedCatalog(AzhlCatalog.load(context), emptyList())
+    fun loadCatalog(): LoadedCatalog = LoadedCatalog(AzhlCatalog.load(context) + DfCatalog.load(context), emptyList())
 
     private fun loadRemoteCatalog(): LoadedCatalog {
         val sources = AppPreferences.payloadSources(context).enabledSources()

@@ -112,7 +112,7 @@ data class TargetProfile(
     fun matches(snapshot: DeviceSnapshot): Boolean =
         matchesDevice(snapshot) && matchesKernelVersion(snapshot) &&
             (firmware?.matches(snapshot) ?: true) &&
-            (!AzhlPort.isTargetDevice(snapshot) || firmware == AzhlPort.identity)
+            (!AzhlPort.isTargetDevice(snapshot) || firmware == AzhlPort.identity || firmware == BzigPort.identity)
 
     /** Unique across sources, unlike [profileId], which two sources may both offer. */
     val selectionId: String

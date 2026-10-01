@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 3,
+  "payloads": [
+    {
+      "payloadId": "df-bzig-kernelsu",
+      "displayName": "SM-S948B BZIG / dirtyfrag / KernelSU",
+      "models": [
+        "SM-S948B"
+      ],
+      "kernelVersions": [
+        "6.12.69-android16-6-pb4d3caf-abogkiS948BXXS4BZIG-4k"
+      ],
+      "firmware": {
+        "model": "SM-S948B",
+        "device": "m3q",
+        "incremental": "S948BXXS4BZIG",
+        "kernelRelease": "6.12.69-android16-6-pb4d3caf-abogkiS948BXXS4BZIG-4k",
+        "sdk": 37,
+        "abi": "arm64-v8a",
+        "pageSize": 4096
+      },
+      "flavor": "kernelsu",
+      "routePolicy": {
+        "slideRoute": "default",
+        "attempts": 1,
+        "attemptTimeoutSec": 120,
+        "p0AttemptTimeoutSec": 45,
+        "p0OffsetCache": false,
+        "prefersShellTransport": false
+      },
+      "exploit": {
+        "url": "native://libexp.so",
+        "size": 0,
+        "verifySize": false
+      },
+      "kernelsu": {
+        "url": "asset://azhl/kernelsu/ksud",
+        "size": 5003448,
+        "sha256": "c95eb525d2c50d9eb046be9e57ba624d5b7f456fcb81859809af9a3565a97d56",
+        "version": "3.3.0"
+      }
+    },
+    {
+      "payloadId": "df-bzig-kernelsu-next",
+      "displayName": "SM-S948B BZIG / dirtyfrag / KernelSU-Next",
+      "models": [
+        "SM-S948B"
+      ],
+      "kernelVersions": [
+        "6.12.69-android16-6-pb4d3caf-abogkiS948BXXS4BZIG-4k"
+      ],
+      "firmware": {
+        "model": "SM-S948B",
+        "device": "m3q",
+        "incremental": "S948BXXS4BZIG",
+        "kernelRelease": "6.12.69-android16-6-pb4d3caf-abogkiS948BXXS4BZIG-4k",
+        "sdk": 37,
+        "abi": "arm64-v8a",
+        "pageSize": 4096
+      },
+      "flavor": "kernelsu-next",
+      "routePolicy": {
+        "slideRoute": "default",
+        "attempts": 1,
+        "attemptTimeoutSec": 120,
+        "p0AttemptTimeoutSec": 45,
+        "p0OffsetCache": false,
+        "prefersShellTransport": false
+      },
+      "exploit": {
+        "url": "native://libexp.so",
+        "size": 0,
+        "verifySize": false
+      },
+      "kernelsu": {
+        "url": "asset://azhl/kernelsu-next/ksud",
+        "size": 4249872,
+        "sha256": "591f567fd07e78d5d5ca22e8c82f468e55d2dd242f044885b90b4cc80642f06b",
+        "version": "3.4.0"
+      }
+    },
+    {
+      "payloadId": "df-bzig-resukisu",
+      "displayName": "SM-S948B BZIG / dirtyfrag / ReSukiSU",
+      "models": [
+        "SM-S948B"
+      ],
+      "kernelVersions": [
+        "6.12.69-android16-6-pb4d3caf-abogkiS948BXXS4BZIG-4k"
+      ],
+      "firmware": {
+        "model": "SM-S948B",
+        "device": "m3q",
+        "incremental": "S948BXXS4BZIG",
+        "kernelRelease": "6.12.69-android16-6-pb4d3caf-abogkiS948BXXS4BZIG-4k",
+        "sdk": 37,
+        "abi": "arm64-v8a",
+        "pageSize": 4096
+      },
+      "flavor": "resukisu",
+      "routePolicy": {
+        "slideRoute": "default",
+        "attempts": 1,
+        "attemptTimeoutSec": 120,
+        "p0AttemptTimeoutSec": 45,
+        "p0OffsetCache": false,
+        "prefersShellTransport": false
+      },
+      "exploit": {
+        "url": "native://libexp.so",
+        "size": 0,
+        "verifySize": false
+      },
+      "kernelsu": {
+        "url": "asset://azhl/resukisu/ksud",
+        "size": 4384936,
+        "sha256": "70ce11702696acf3454f59678b043af978dd5c86a6a20df3da620c5846e5ebbd",
+        "version": "4.2.0-rc3"
+      }
+    }
+  ]
+}

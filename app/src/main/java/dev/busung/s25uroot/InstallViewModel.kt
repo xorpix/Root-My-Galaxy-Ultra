@@ -6,6 +6,7 @@ import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -89,6 +90,7 @@ data class InstallUiState(
      * it is, and the run that follows either goes through Shizuku or says it is not to.
      */
     val transportPrompt: TransportPrompt? = null,
+    val suGrantHold: SuGrantHold? = null,
 ) {
     /**
      * Whether a run is under way, which is not the same question as whether the app is working.
@@ -114,6 +116,17 @@ data class InstallUiState(
  * a failed one, so the dialog can say why retrying might not be worth it without swallowing the fact
  * that the person asked. [starting] keeps the dialog from being pressed twice.
  */
+/**
+ * A run parked waiting for a su grant instead of failed for missing one. The
+ * daemon is up; only a person flipping a switch stands between this run and
+ * its backend. Attempts cap the loop so tapping Continue without granting
+ * ends as a failed run, not a shrine.
+ */
+data class SuGrantHold(
+    val flavorLabel: String,
+    val attempts: Int = 0,
+)
+
 data class TransportPrompt(
     val starting: Boolean = false,
     val startDetail: String? = null,
@@ -309,6 +322,7 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
      * line ([verifiedM3qControl]) instead of sharing [azhlControlReport].
      */
     private var m3qControlReport: String = ""
+    private var dfControlReport: String = ""
 
     /**
      * What the screen said before a run stopped to ask about Shizuku.
@@ -660,10 +674,14 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         val disableModules = AppPreferences.disableKsuModules(app)
         azhlControlReport = ""
         m3qControlReport = ""
+        dfControlReport = ""
         val initialRefusal = if (!AppPreferences.hasKernelsuFlavorChoice(app)) {
             app.getString(R.string.backend_choice_required)
         } else {
-            AzhlPort.identityRefusal(DeviceSnapshot.current())
+            // Either supported firmware family passes; a device on neither gets both requirements.
+            val snapshot = DeviceSnapshot.current()
+            if (AzhlPort.identity.matches(snapshot) || BzigPort.identity.matches(snapshot)) null
+            else "${AzhlPort.identityRefusal(snapshot)}\n${BzigPort.identityRefusal(snapshot)}"
         }
         if (initialRefusal != null) {
             discoveryJob?.cancel()
@@ -715,11 +733,14 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         // Asked before anything else is taken or written, so a run that is going to be a question leaves
         // no trace of one that ran: no history entry, no log, and a screen that can still say what the
         // question is.
+        // The device family decides the exploit before anything gates on it: DirtyFrag
+        // runs with no Shizuku at all, so the Shizuku requirements below do not apply to it.
+        val dfDevice = BzigPort.identity.matches(DeviceSnapshot.current())
         if (shouldHoldForShizuku(
                 unattended = unattended,
                 requested = AppPreferences.shizukuMode(app),
                 running = ShizukuController.isRunning(),
-                ignoringShizuku = withoutShizuku,
+                ignoringShizuku = withoutShizuku || dfDevice,
             )
         ) {
             stateBeforeHold = mutableState.value
@@ -785,8 +806,8 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
             var stagingSwept = false
             try {
                 activeStage = RunStage.Target
-                setPhase(InstallPhase.Checking, "Checking the bundled AZHL profile")
-                require(!withoutShizuku && AppPreferences.shizukuMode(app)) {
+                setPhase(InstallPhase.Checking, if (dfDevice) "Checking the bundled BZIG profile" else "Checking the bundled AZHL profile")
+                require(dfDevice || (!withoutShizuku && AppPreferences.shizukuMode(app))) {
                     "This AZHL build requires Shizuku started through wireless debugging (shell UID 2000)."
                 }
                 require(AppPreferences.loadKernelSu(app)) { "AZHL loads the selected backend as part of rooting." }
@@ -847,14 +868,16 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                 // settings screen while this run is in flight must not be able to produce a half-load
                 // - staged on one reading and skipped on another.
                 val loadKernelSu = AppPreferences.loadKernelSu(app)
-                val shizukuRequested = true
-                require(ShizukuController.isRunning()) { "Start Shizuku using wireless debugging first." }
-                require(ShizukuController.isGranted() || (!unattended && ShizukuController.requestPermission())) {
+                // The profile, not a setting, decides the exploit family from here on.
+                val runUsesDirtyFrag = DfCatalog.isDfPayload(profile)
+                val shizukuRequested = !runUsesDirtyFrag
+                require(runUsesDirtyFrag || ShizukuController.isRunning()) { "Start Shizuku using wireless debugging first." }
+                require(runUsesDirtyFrag || (ShizukuController.isGranted() || (!unattended && ShizukuController.requestPermission()))) {
                     "Grant this app access to Shizuku before rooting."
                 }
                 val shizukuUsable = true
                 val localAdbPaired = false
-                val transport = RunTransport.Shizuku
+                val transport = if (runUsesDirtyFrag) RunTransport.App else RunTransport.Shizuku
                 activeRunTransport = transport
                 activeRunShizuku = transport == RunTransport.Shizuku
                 // Requested and used, side by side: the one outcome that used to be invisible from
@@ -923,11 +946,15 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
 
                 // Before the download, so the wait is the first thing the screen reports rather than
                 // something that appears after the payload is already staged.
-                awaitBootSettle(maxOf(180, AppPreferences.bootSettleSeconds(app)))
+                // No settle floor for DirtyFrag: its page-cache primitive does not race
+                // the boot the way a slab race does, and everything it needs (IpSec
+                // service, apex binaries, vendor libs) is up with the framework. A run
+                // too early fails explicitly, not flakily.
+                if (!runUsesDirtyFrag) awaitBootSettle(maxOf(180, AppPreferences.bootSettleSeconds(app)))
 
                 activeStage = RunStage.Download
                 setPhase(InstallPhase.Downloading, "Verifying bundled AZHL payloads")
-                val payloads = repository.download(profile) { appendLog("[*] $it") }
+                val payloads = if (runUsesDirtyFrag) DfCatalog.stage(app, profile) { appendLog("[*] $it") } else repository.download(profile) { appendLog("[*] $it") }
 
                 // Before the exploit, because the record exists for the runs that fail during it: a
                 // record written after would only ever describe runs that did not need one. Best-effort,
@@ -975,7 +1002,7 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                             ),
                         )
                     }
-                if (AppPreferences.shizukuBootMode(app)) ShizukuBootService.start(app)
+                if (!runUsesDirtyFrag && AppPreferences.shizukuBootMode(app)) ShizukuBootService.start(app)
 
                 setPhase(
                     if (loadKernelSu) InstallPhase.Installed else InstallPhase.RootOnly,
@@ -992,7 +1019,10 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                 // what makes "known good" mean something, and it is why nothing is written while the
                 // exploit is running. Publishing is best-effort - a full disk must not turn a root
                 // that worked into a failure - but it is said out loud when it does not happen.
-                if (payloads.origin == PayloadOrigin.Bundled || payloads.origin == PayloadOrigin.Downloaded) {
+                // No offline publishing for DirtyFrag: its staged daemon lives at a
+                // staging path that later sweeps remove, so a cached entry would
+                // point at a file that is gone by the next boot.
+                if (!runUsesDirtyFrag && (payloads.origin == PayloadOrigin.Bundled || payloads.origin == PayloadOrigin.Downloaded)) {
                     runCatching { KnownGoodPayloadStore.publish(app, payloads) }
                         .onSuccess { cached ->
                             appendLog(app.getString(R.string.log_payload_cached_now, cached.profileId))
@@ -1276,6 +1306,11 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         routePolicy: ExploitRoutePolicy,
         disableModules: Boolean,
     ) {
+        // DirtyFrag runs in-process with no transport, so only the profile decides.
+        if (DfCatalog.isDfPayload(payloads.profile)) {
+            executeDfExploit(payloads)
+            return
+        }
         require(activeRunTransport == RunTransport.Shizuku) { "AZHL requires the Shizuku shell transport." }
         // Every flavor uses the original M3Q root launch, then its own
         // daemon and matching control verifier for the separate late-load.
@@ -1408,6 +1443,63 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         appendLog(app.getString(R.string.log_bootstrap_root))
     }
 
+    /** DirtyFrag needs no shell, no helper and no claim: the JNI call is the whole launch. */
+    private suspend fun executeDfExploit(payloads: VerifiedPayloads) {
+        val dfRunner = DfRunner(
+            context = app,
+            log = ::appendLog,
+            stage = { stage ->
+                activeStage = stage
+                if (stage == RunStage.KernelSu || stage == RunStage.Verify) {
+                    setPhase(InstallPhase.LoadingKernelSu, app.getString(stage.label))
+                }
+            },
+            checkStop = ::stopIfAskedFromOutside,
+        )
+        var outcome: DfOutcome = dfRunner.execute(payloads)
+        var attempts = 0
+        while (outcome is DfOutcome.GrantMissing) {
+            require(attempts < 3) { "Su was still not granted after 3 checks. Grant it su in the manager, then reboot and run again." }
+            holdForSuGrant(payloads.profile.flavor, attempts)
+            attempts++
+            outcome = dfRunner.verifyGrant(payloads)
+        }
+        dfControlReport = (outcome as DfOutcome.Verified).report
+    }
+
+    /**
+     * Parks the run on a question instead of failing it: the daemon is up,
+     * only the grant is missing, and granting needs a person. The coroutine
+     * suspends here; Continue resumes it in place, Stop cancels into the
+     * existing stopped path. Attempts cap the loop so tapping Continue
+     * without granting ends as a failed run, not a shrine.
+     */
+    private var suGrantGate: CompletableDeferred<Unit>? = null
+
+    private suspend fun holdForSuGrant(flavor: KernelSuFlavor, attempts: Int) {
+        setPhase(InstallPhase.LoadingKernelSu, app.getString(R.string.su_grant_hold_title, flavor.label))
+        mutableState.value = mutableState.value.copy(
+            suGrantHold = SuGrantHold(flavorLabel = flavor.label, attempts = attempts),
+        )
+        val gate = CompletableDeferred<Unit>()
+        suGrantGate = gate
+        try {
+            gate.await()
+        } finally {
+            suGrantGate = null
+            mutableState.value = mutableState.value.copy(suGrantHold = null)
+        }
+    }
+
+    fun confirmSuGrant() {
+        suGrantGate?.complete(Unit)
+    }
+
+    fun cancelSuGrant() {
+        stopRequested = true
+        suGrantGate?.cancel(CancellationException("Su grant hold stopped"))
+    }
+
     /** The exploit transport and the app-UID management channel are separate. */
     private suspend fun executeM3qExploit(payloads: VerifiedPayloads, disableModules: Boolean) {
         m3qControlReport = M3qRunner(
@@ -1534,9 +1626,35 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         updateHistoryLog()
     }
 
+    /**
+     * DirtyFrag leaves its daemon running; there is nothing to late-load and no
+     * second load is ever attempted. This records the verified backend the same
+     * way a load does, so manager refresh, receipts and history agree. Steps
+     * needing su (modules, updates) stay unavailable until the person grants
+     * this app su in the manager - said in the log, not hidden.
+     */
+    private suspend fun verifyDfBackend(payloads: VerifiedPayloads) {
+        val proof = when {
+            "through su" in dfControlReport -> "su-verified"
+            "native probe" in dfControlReport -> "native-probe"
+            else -> "dfm0"
+        }
+        appendLog("Verified ${payloads.profile.flavor.label} backend ($proof); su grant in the manager unlocks modules and updates")
+        AppPreferences.setLoadedFlavor(app, payloads.profile.flavor, AutoRootSupport.currentBootToken())
+        storeInstallReceipt()
+        val refreshed = KernelSuManagerRefresh.afterLoad(app, flavor = payloads.profile.flavor)
+        refreshed.forEach { packageName ->
+            appendLog(app.getString(R.string.log_manager_refreshed, packageName))
+        }
+    }
+
     private suspend fun installKernelSu(payloads: VerifiedPayloads) {
         activeStage = RunStage.Verify
         val flavor = payloads.profile.flavor
+        if (DfCatalog.isDfPayload(payloads.profile)) {
+            verifyDfBackend(payloads)
+            return
+        }
         // The M3Q flow verifies against the daemon's own control line (M3Q never
         // prints our marker); the legacy flow needs marker + control report.
         val report = if (AzhlCatalog.isM3qPayload(payloads.profile)) {
