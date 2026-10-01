@@ -1033,10 +1033,10 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                 // what makes "known good" mean something, and it is why nothing is written while the
                 // exploit is running. Publishing is best-effort - a full disk must not turn a root
                 // that worked into a failure - but it is said out loud when it does not happen.
-                // No offline publishing for DirtyFrag: its staged daemon lives at a
-                // staging path that later sweeps remove, so a cached entry would
-                // point at a file that is gone by the next boot.
-                if (!runUsesDirtyFrag && (payloads.origin == PayloadOrigin.Bundled || payloads.origin == PayloadOrigin.Downloaded)) {
+                // DirtyFrag included: publish copies the verified files into the cache, and a DF
+                // run re-stages its daemon from APK assets every time, so boot auto-root (offline,
+                // no network) works once one verified run exists.
+                if (payloads.origin == PayloadOrigin.Bundled || payloads.origin == PayloadOrigin.Downloaded) {
                     runCatching { KnownGoodPayloadStore.publish(app, payloads) }
                         .onSuccess { cached ->
                             appendLog(app.getString(R.string.log_payload_cached_now, cached.profileId))
@@ -1475,12 +1475,20 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         // verifies without any manager step). A fresh install has no grant and
         // Samsung policy blinds markers/sysfs from this UID, so a still-missing
         // grant falls through to an explicit manager confirmation below
-        // instead of failing after repeated su prompts.
+        // instead of failing after repeated su prompts. Unattended boot runs
+        // have nobody to answer either hold: they fail fast naming the grant,
+        // which persists in the manager once given and verifies on later boots.
         if (outcome is DfOutcome.GrantMissing) {
+            if (runIsUnattended) {
+                error("Root has no su grant for this app yet. Open the app once, grant it su in the ${payloads.profile.flavor.label} manager, then boot auto-root verifies unattended.")
+            }
             holdForSuGrant(payloads.profile.flavor, 0)
             outcome = dfRunner.verifyGrant(payloads)
         }
         if (outcome is DfOutcome.GrantMissing) {
+            if (runIsUnattended) {
+                error("Root has no su grant for this app yet. Open the app once, grant it su in the ${payloads.profile.flavor.label} manager, then boot auto-root verifies unattended.")
+            }
             holdForManagerConfirm(payloads)
             dfControlReport = "DirtyFrag root manager-confirmed (${payloads.profile.flavor.label} Working per user check)"
         } else {
@@ -1693,7 +1701,7 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
             "manager-confirmed" in dfControlReport -> "manager-confirmed"
             else -> "dfm0"
         }
-        appendLog("Verified ${payloads.profile.flavor.label} backend ($proof); su grant in the manager unlocks modules and updates")
+        appendLog("Verified ${payloads.profile.flavor.label} backend ($proof); su grant in the manager unlocks modules, updates and automatic root at boot")
         AppPreferences.setLoadedFlavor(app, payloads.profile.flavor, AutoRootSupport.currentBootToken())
         storeInstallReceipt()
         val refreshed = KernelSuManagerRefresh.afterLoad(app, flavor = payloads.profile.flavor)
