@@ -19,6 +19,7 @@ import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.io.InputStream
 import java.security.MessageDigest
+import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
@@ -1494,6 +1495,51 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         } else {
             dfControlReport = (outcome as DfOutcome.Verified).report
         }
+        protectPartitionsViaSu()
+    }
+
+    /**
+     * Marks image partitions read-only on the DirtyFrag path, where there is
+     * no helper socket and su is the only root channel. Best-effort like the
+     * M3Q equivalent: without a grant there is no channel, so protection is
+     * skipped with a line saying the grant it needs — the run itself already
+     * succeeded. Updates the same attribution bookkeeping the failure
+     * diagnosis reads.
+     */
+    private suspend fun protectPartitionsViaSu() {
+        if (!AppPreferences.partitionReadOnlyMode(app)) return
+        val script = runCatching {
+            app.assets.open(PartitionReadOnly.SCRIPT_ASSET).bufferedReader().use { it.readText() }
+        }.getOrNull()
+        if (script == null) {
+            appendLog(app.getString(R.string.log_ro_blocks_script_missing))
+            return
+        }
+        val result = withContext(Dispatchers.IO) {
+            runCatching {
+                val process = ProcessBuilder("su", "-c", script).redirectErrorStream(true).start()
+                if (!process.waitFor(30L, TimeUnit.SECONDS)) {
+                    process.destroyForcibly()
+                    null
+                } else {
+                    val output = runCatching { process.inputStream.bufferedReader().readText() }.getOrDefault("")
+                    process.exitValue() to output
+                }
+            }.getOrNull()
+        }
+        if (result == null) {
+            appendLog("Partition protection skipped: no su grant, so image partitions stay writable this boot")
+            return
+        }
+        val count = PartitionReadOnly.countFrom(result.second)
+        if (count >= 1) {
+            appendLog(app.getString(R.string.log_ro_blocks_successful, count))
+        } else {
+            appendLog(app.getString(R.string.log_ro_blocks_failed))
+        }
+        protectedDevices = count
+        protectedFrom = mutableState.value.log.length
+        AppPreferences.setReadOnlyProtectedDevices(app, kernelBootToken(), count)
     }
 
     /**
