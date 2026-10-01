@@ -598,25 +598,23 @@ Java_dev_busung_s25uroot_dirtyfrag_DfExploitRunner_nativeRunAll(JNIEnv *env, jcl
         { "/dev/dfm0", "***SUCCESS***",                        0 },
         { "/dev/dfm1", "***FAILED***: ksud exited with error", 1 },
     };
-    int seen[sizeof(markers)/sizeof(markers[0])] = {0};
+    // Single-shot stat below; no seen[] needed without a poll loop.
 
-    for (int elapsed = 0; elapsed < 120000; elapsed += 10) {
-        usleep(10000);
-        for (size_t j = 0; j < sizeof(markers)/sizeof(markers[0]); j++) {
-            if (!seen[j] && has_marker(markers[j].path)) {
-                seen[j] = 1;
-                REPORTLN("%s", markers[j].msg);
-                if (markers[j].rc >= 0) {
-                    rc = markers[j].rc;
-                    goto done;
-                }
+    // No marker wait: the daemon is proven by the manager, not by /dev
+    // markers (late-load hangs after the daemon is up, and app SELinux blinds
+    // sysfs). One single stat keeps the dfm0/dfm1 fast path; otherwise return
+    // so the app verifies via su grant or an explicit manager confirmation.
+    usleep(5000000);
+    for (size_t j = 0; j < sizeof(markers)/sizeof(markers[0]); j++) {
+        if (has_marker(markers[j].path)) {
+            REPORTLN("%s", markers[j].msg);
+            if (markers[j].rc >= 0) {
+                rc = markers[j].rc;
+                goto done;
             }
         }
-        if ((elapsed % 10000) == 0 && elapsed > 0) {
-            REPORTLN("* waiting for daemon markers (%d s)...", elapsed / 1000);
-        }
     }
-    REPORTLN("***FAILED***: check logs");
+    REPORTLN("* marker check skipped by policy; verifying via su/manager");
 done:
     if (rc == 3) REPORTLN("***FAILED***: failed to patch files");
     REPORTLN("\n=== cleanup ===");
