@@ -19,7 +19,7 @@ partitions="${partitions} super"
 # CSC
 partitions="${partitions} optics prism"
 # AVB
-partitions="${partitions} vbmeta"
+partitions="${partitions} vbmeta vbmeta_system"
 
 count=0
 for p in ${partitions}; do
