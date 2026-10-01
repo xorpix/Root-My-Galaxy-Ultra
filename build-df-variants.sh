@@ -46,7 +46,7 @@ for flavor in kernelsu kernelsu-next resukisu; do
     # Late-load hangs after the daemon is up: background it, touch dfm0 when
     # the driver appears, only fall back to wait/exit-code on early exit or
     # 120 s timeout (60 x 2 s). Log late-load output for post-mortem.
-    sed -i 's# && touch /dev/dfm0 || touch /dev/dfm1# > /data/local/tmp/.ll.log 2>\&1 \& LL=$!;i=0;while [ $i -lt 60 ];do [ -e /sys/module/kernelsu ]\&\&touch /dev/dfm0\&\&exit 0;kill -0 $LL 2>/dev/null||break;i=$((i+1));sleep 2;done;if [ $i -ge 60 ];then kill -9 $LL 2>/dev/null;touch /dev/dfm1;else wait $LL\&\&touch /dev/dfm0||touch /dev/dfm1;fi#' "$d/dirtyfrag.c"
+    sed -i 's# && touch /dev/dfm0 || touch /dev/dfm1# > /data/local/tmp/.ll.log 2>\&1 \& LL=$!;i=0;while [ $i -lt 60 ];do [ -e /sys/module/kernelsu ]||[ -e /sys/module/ksunext ]||[ -e /sys/module/sukisu ]||[ -e /sys/module/resukisu ]||[ -e /sys/module/ksu ]\&\&touch /dev/dfm0\&\&exit 0;kill -0 $LL 2>/dev/null||break;i=$((i+1));sleep 2;done;if [ $i -ge 60 ];then kill -9 $LL 2>/dev/null;touch /dev/dfm1;else wait $LL\&\&touch /dev/dfm0||touch /dev/dfm1;fi#' "$d/dirtyfrag.c"
     grep -c "$OUR_PATH" "$d/dirtyfrag.c"
     grep -c "$(flavor_pkg "$flavor")" "$d/dirtyfrag.c"
     grep -c "/sys/module/kernelsu" "$d/dirtyfrag.c"

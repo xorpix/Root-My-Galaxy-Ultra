@@ -21,12 +21,14 @@ and execs ksud from a memfd. No Shizuku, no WiFi needed.
   (12048/10920/11168/11168/7176/7624/8104/8176 bytes; selected at runtime
   by `uname`, so OneUI 9 / BZIG takes a per-flavor blob below, not generic)
 - `ko/dirtyfrag-android16-6.12-{kernelsu,kernelsu-next,resukisu}.ko`
-  (9720/9720/9784 bytes stripped; selected by `select_ko_image()` in `exp.c:352` when
+  (9848 bytes each stripped; selected by `select_ko_image()` in `exp.c:352` when
   `uname` reports android16/6.12 plus matching `flavorId`. Each embeds
   `mkdir -p /data/adb && cat /data/user_de/0/dev.experimental.azhlroot/ksud`
   `> /data/local/tmp/.ksud-stage && <ksud> late-load --package-name <flavor>`
   `> /data/local/tmp/.ll.log 2>&1 &` plus a 60x2 s driver poll:
-  `[ -e /sys/module/kernelsu ] && touch /dev/dfm0 && exit 0` on first sight
+  `[ -e /sys/module/kernelsu ] || [ -e /sys/module/ksunext ] ||`
+  `[ -e /sys/module/sukisu ] || [ -e /sys/module/resukisu ] ||`
+  `[ -e /sys/module/ksu ] && touch /dev/dfm0 && exit 0` on first sight
   (late-load hangs after the daemon is up, so waiting for its exit never
   fires), `touch /dev/dfm1` on 120 s timeout or non-zero exit. Flavor manager
   packages: `me.weishu.kernelsu`, `com.rifsxd.ksunext`,
