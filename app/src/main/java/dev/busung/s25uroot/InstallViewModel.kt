@@ -1433,9 +1433,10 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
 
     /** DirtyFrag needs no shell, no helper and no claim: the JNI call is the whole launch.
      *
-     * Attended runs never touch su and never park on a dialog: the trigger is
-     * recorded as unverified when no grant-free proof fires. Boot runs attempt
-     * su (fail fast without a grant) so a persisted grant verifies unattended.
+     * No dialogs on any path: su is attempted silently (a persisted grant
+     * verifies with no UI), a denial records the trigger as unverified, and
+     * only unattended boot runs fail — fail fast naming the grant, since
+     * nobody can answer there.
      */
     private var dfVerifiedInstall = false
 
@@ -1452,30 +1453,27 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
             checkStop = ::stopIfAskedFromOutside,
         )
         dfVerifiedInstall = false
-        val outcome: DfOutcome = dfRunner.execute(payloads, attemptSu = runIsUnattended)
-        when (outcome) {
+        when (val outcome = dfRunner.execute(payloads)) {
             is DfOutcome.Verified -> {
                 dfControlReport = outcome.report
                 dfVerifiedInstall = true
             }
-            is DfOutcome.Unverified -> {
-                dfControlReport = outcome.report
-            }
             is DfOutcome.GrantMissing -> {
-                // Unattended only: attended runs never attempt su.
-                error("Root has no su grant for this app yet. Open the app once, grant it su in the ${payloads.profile.flavor.label} manager, then boot auto-root verifies unattended.")
+                if (runIsUnattended) {
+                    error("Root has no su grant for this app yet. Open the app once, grant it su in the ${payloads.profile.flavor.label} manager, then boot auto-root verifies unattended.")
+                }
+                dfControlReport = "DirtyFrag trigger ran (unverified; confirm Working in the manager, grant su to verify)"
             }
         }
-        // Only with a proven grant (su-verified): any other proof leaves su
-        // unattempted so a first run never prompts for anything.
+        // Only with a proven grant (su-verified): protection itself must not
+        // become a second su use on a grantless run.
         if (dfVerifiedInstall && "through su" in dfControlReport) protectPartitionsViaSu()
     }
 
     /**
      * Marks image partitions read-only on the DirtyFrag path, where there is
      * no helper socket and su is the only root channel. Called only with a
-     * proven grant (su-verified runs); anything else leaves su unattempted so
-     * a first run never prompts for anything.
+     * proven grant (su-verified runs).
      */
     private suspend fun protectPartitionsViaSu() {
         if (!AppPreferences.partitionReadOnlyMode(app)) return
