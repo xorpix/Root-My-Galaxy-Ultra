@@ -33,8 +33,8 @@
     <string name="language_description">Choose the language</string>
     <string name="appearance">Appearance</string>
     <string name="settings_section_payloads">Payload Management</string>
-    <string name="bundled_payloads_title">Built-in BZIG payloads</string>
-    <string name="bundled_payloads_description">Includes KernelSU, KernelSU-Next and ReSukiSU for SM-S948B / S948BXXS4BZIG (OneUI 9).</string>
+    <string name="bundled_payloads_title">Built-in root payloads</string>
+    <string name="bundled_payloads_description">Includes KernelSU, KernelSU-Next and ReSukiSU for SM-S948B (S948BXXS4AZHL and S948BXXS4BZIG OneUI 9).</string>
     <string name="bundled_payloads_included">Included</string>
     <string name="settings_section_run">Run Management</string>
     <string name="settings_section_shizuku">Shizuku Management</string>
@@ -855,4 +855,5 @@ Hold Power and Volume Down together for 7 seconds to restart it from there.</str
     <string name="install_m3q_attempted_boot">This boot already has a root attempt. Fully reboot before trying again or changing backends. A userspace restart is insufficient.</string>
     <string name="azhl_install_confirm_title">Install %1$s?</string>
     <string name="azhl_install_confirm_body">Use the bundled %1$s backend on SM-S948B / S948BXXS4BZIG (OneUI 9). This experimental build can freeze or reboot the phone. Begin after a full reboot. Changing an active backend requires another full reboot; existing modules are disabled during a change.</string>
+    <string name="azhl_install_confirm_body_azhl">Use the bundled %1$s backend on SM-S948B / S948BXXS4AZHL. This experimental build can freeze or reboot the phone. Begin after a full reboot with Shizuku running. Changing an active backend requires another full reboot; existing modules are disabled during a change.</string>
 </resources>

@@ -13,6 +13,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -27,13 +28,14 @@ import androidx.compose.ui.window.DialogProperties
 internal fun BackendChoiceDialog(onChoose: (KernelSuFlavor) -> Unit) {
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     val selected = KernelSuFlavor.fromId(selectedId)
+    val isAzhlDevice = remember { AzhlPort.identity.matches(DeviceSnapshot.current()) }
     AlertDialog(
         onDismissRequest = {},
         properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
         title = { Text(stringResource(R.string.backend_choice_title)) },
         text = {
             Column {
-                Text(stringResource(R.string.backend_choice_explanation))
+                Text(stringResource(if (isAzhlDevice) R.string.backend_choice_explanation_azhl else R.string.backend_choice_explanation))
                 Column(Modifier.selectableGroup()) {
                     KernelSuFlavor.entries.forEach { flavor ->
                         Row(

@@ -757,6 +757,7 @@ private fun RootApp(
     var showInstallConfirmation by remember { mutableStateOf(false) }
     var showTargetPicker by remember { mutableStateOf(false) }
     var showRebootSheet by remember { mutableStateOf(false) }
+    val isAzhlDevice = remember { AzhlPort.identity.matches(DeviceSnapshot.current()) }
     // The app's one undo surface. Held here rather than per page, so a deletion on History and a deletion in
     // the residue dialog use the same one - and so neither has to know where it is drawn.
     val snackbarHostState = remember { SnackbarHostState() }
@@ -1147,7 +1148,7 @@ private fun RootApp(
                 DialogDimAmount(0.34f)
                 Text(stringResource(R.string.azhl_install_confirm_title, kernelsuFlavor.label))
             },
-            text = { Text(stringResource(R.string.azhl_install_confirm_body, kernelsuFlavor.label)) },
+            text = { Text(stringResource(if (isAzhlDevice) R.string.azhl_install_confirm_body_azhl else R.string.azhl_install_confirm_body, kernelsuFlavor.label)) },
             confirmButton = {
                 FilledTonalButton(onClick = {
                     clickHaptic(view)
