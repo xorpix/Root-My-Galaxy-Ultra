@@ -43,6 +43,13 @@ class AutoRootService : Service() {
     private var progressJob: Job? = null
     private var stopping = false
     private var viewModel: InstallViewModel? = null
+    /**
+     * Whether startForeground succeeded. OneUI/Samsung refuse FGS dataSync
+     * from BOOT_COMPLETED (ForegroundServiceStartNotAllowedException) — the
+     * gate then runs as an ordinary background service instead of crashing.
+     * Teardown must not call stopForeground when it never started.
+     */
+    private var foregrounded = false
 
     /**
      * Whether this boot's attempt is a one-shot retry, whichever way the boot was also asked for.
@@ -77,7 +84,7 @@ class AutoRootService : Service() {
         retryArmedThisBoot = AutoRootSupport.currentBootToken()
             ?.let { bootToken -> AppPreferences.retryPendingForBoot(this, bootToken) }
             ?: false
-        startForeground(
+        startForegroundSafely(
             NOTIFICATION_ID,
             buildNotification(getString(R.string.autoroot_stabilizing), ongoing = true),
         )
@@ -112,8 +119,26 @@ class AutoRootService : Service() {
         stopping = true
         progressJob?.cancel()
         scope.cancel()
-        stopForegroundCompat()
+        stopForegroundCompatIfStarted()
         super.onDestroy()
+    }
+
+    /**
+     * Foreground when the system allows it, background otherwise. A denial
+     * here used to crash the boot run outright; the gate holds its own wake
+     * lock and reports through the notification either way.
+     */
+    private fun startForegroundSafely(id: Int, notification: android.app.Notification) {
+        try {
+            startForeground(id, notification)
+            foregrounded = true
+        } catch (denied: android.app.ForegroundServiceStartNotAllowedException) {
+            foregrounded = false
+            AppLog.warn(
+                AppLogTags.BOOT,
+                "Foreground start refused at boot (${denied.javaClass.simpleName}); running as a background service",
+            )
+        }
     }
 
     private suspend fun runGate() {
@@ -620,7 +645,7 @@ class AutoRootService : Service() {
                 answers = answers,
             ),
         )
-        stopForegroundCompat()
+        stopForegroundCompatIfStarted()
         stopSelf()
     }
 
@@ -629,7 +654,7 @@ class AutoRootService : Service() {
         if (stopping) return
         stopping = true
         getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID)
-        stopForegroundCompat()
+        stopForegroundCompatIfStarted()
         stopSelf()
     }
 
@@ -767,6 +792,12 @@ class AutoRootService : Service() {
             @Suppress("DEPRECATION")
             stopForeground(false)
         }
+    }
+
+    private fun stopForegroundCompatIfStarted() {
+        if (!foregrounded) return
+        foregrounded = false
+        stopForegroundCompat()
     }
 
     companion object {

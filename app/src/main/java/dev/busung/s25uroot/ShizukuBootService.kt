@@ -36,11 +36,23 @@ class ShizukuBootService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val notificationId = 0x53484b5a
+    /**
+     * Whether startForeground succeeded. BOOT_COMPLETED refuses some FGS
+     * types (ForegroundServiceStartNotAllowedException) — the starter then
+     * runs as an ordinary background service instead of crashing.
+     */
+    private var foregrounded = false
 
     override fun onCreate() {
         super.onCreate()
         createChannel()
-        startForeground(notificationId, buildNotification(getString(R.string.status_shizuku_starting)))
+        try {
+            startForeground(notificationId, buildNotification(getString(R.string.status_shizuku_starting)))
+            foregrounded = true
+        } catch (denied: android.app.ForegroundServiceStartNotAllowedException) {
+            foregrounded = false
+            android.util.Log.w(TAG, "Foreground start refused at boot; running as a background service")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -57,7 +69,10 @@ class ShizukuBootService : Service() {
 
     override fun onDestroy() {
         scope.cancel()
-        stopForegroundCompat()
+        if (foregrounded) {
+            foregrounded = false
+            stopForegroundCompat()
+        }
         super.onDestroy()
     }
 
