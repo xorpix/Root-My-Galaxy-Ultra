@@ -1008,9 +1008,11 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                 // what makes "known good" mean something, and it is why nothing is written while the
                 // exploit is running. Publishing is best-effort - a full disk must not turn a root
                 // that worked into a failure - but it is said out loud when it does not happen.
-                // DirtyFrag included, but only verified installs: an unverified
-                // trigger run must never become the offline fallback a boot trusts.
-                if ((payloads.origin == PayloadOrigin.Bundled || payloads.origin == PayloadOrigin.Downloaded) && (!runUsesDirtyFrag || dfVerifiedInstall)) {
+                // DirtyFrag included, verified or not: the files are hash-checked
+                // either way, and a trigger run is enough to attempt boot root —
+                // the persisted su grant verifies there, or its absence fails
+                // the boot fast by name. "Known good" here means ran once.
+                if (payloads.origin == PayloadOrigin.Bundled || payloads.origin == PayloadOrigin.Downloaded) {
                     runCatching { KnownGoodPayloadStore.publish(app, payloads) }
                         .onSuccess { cached ->
                             appendLog(app.getString(R.string.log_payload_cached_now, cached.profileId))
@@ -1695,7 +1697,11 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
             appendLog("Verified ${payloads.profile.flavor.label} backend ($proof); su grant in the manager unlocks modules, updates and automatic root at boot")
         }
         AppPreferences.setLoadedFlavor(app, payloads.profile.flavor, AutoRootSupport.currentBootToken())
-        if (dfVerifiedInstall) storeInstallReceipt()
+        // Stored for every completed run, verified or not: the boot gate needs
+        // a receipt plus a cache entry to attempt boot root, and an unverified
+        // trigger is enough to attempt — the persisted su grant (or its
+        // absence, failed fast by name) decides the boot, not this receipt.
+        storeInstallReceipt()
         val refreshed = KernelSuManagerRefresh.afterLoad(app, flavor = payloads.profile.flavor)
         refreshed.forEach { packageName ->
             appendLog(app.getString(R.string.log_manager_refreshed, packageName))
