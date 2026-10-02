@@ -51,12 +51,13 @@ for flavor in kernelsu kernelsu-next resukisu; do
     # devices read-only itself in kernel context, so the first grantless run
     # is covered too; same list as set_ro_blocks.sh; opt-out flag managed by
     # the app (protection defaults on); /dev/dfro marks success. Then the
-    # wipe: armed by the app's flag file while its reset switch is on (no root
-    # needed for its own files); modules only, grants kept; skipped while a
-    # backend is live. Reboot clears the flags, like the su path.
+    # wipe, then the module-disable (empty `disable` file per module dir, as
+    # managers honor it): both armed by flag files while their switches are
+    # on; wipe skipped while a backend is live. Reboot clears the flags.
     sed -i 's#"mkdir -p /data/adb#"rm -f /dev/dfro /dev/dfwipe /dev/dfwipeskip;if [ ! -f /data/user_de/0/dev.experimental.azhlroot/df-noro ];then n=0;for p in boot dtbo init_boot vendor_boot super optics prism vbmeta vbmeta_system;do [ -e /dev/block/by-name/$p ]\&\&/system/bin/blockdev --setro /dev/block/by-name/$p 2>/dev/null\&\&n=$((n+1));[ -e /dev/block/by-name/${p}_a ]\&\&/system/bin/blockdev --setro /dev/block/by-name/${p}_a 2>/dev/null\&\&n=$((n+1));[ -e /dev/block/by-name/${p}_b ]\&\&/system/bin/blockdev --setro /dev/block/by-name/${p}_b 2>/dev/null\&\&n=$((n+1));done;[ $n -gt 0 ]\&\&touch /dev/dfro;fi;W=/data/user_de/0/dev.experimental.azhlroot/df-wipe-requested;if [ -f $W ];then if [ -e /sys/module/kernelsu ]||[ -e /sys/module/ksunext ]||[ -e /sys/module/sukisu ]||[ -e /sys/module/resukisu ]||[ -e /sys/module/ksu ];then touch /dev/dfwipeskip;else rm -rf /data/adb/modules/* /data/adb/modules/.[!.]* /data/adb/modules/..?* /data/adb/modules_update/* /data/adb/modules_update/.[!.]* /data/adb/modules_update/..?* 2>/dev/null;touch /dev/dfwipe;rm -f $W;fi;fi;mkdir -p /data/adb#' "$d/dirtyfrag.c"
     grep -c "df-noro" "$d/dirtyfrag.c"
-    grep -c "df-wipe-requested" "$d/dirtyfrag.c"
+    sed -i 's#rm -f $W;fi;fi;mkdir -p /data/adb#rm -f $W;fi;fi;D=/data/user_de/0/dev.experimental.azhlroot/df-disable-modules;if [ -f $D ];then for m in /data/adb/modules/* /data/adb/modules_update/*;do [ -d $m ]\&\&[ ! -L $m ]\&\&[ ! -e $m/disable ]\&\&: >> $m/disable;done;touch /dev/dfmoddis;rm -f $D;fi;mkdir -p /data/adb#' "$d/dirtyfrag.c"
+    grep -c "df-disable-modules" "$d/dirtyfrag.c"
     # Late-load hangs after the daemon is up: background it, touch dfm0 when
     # the driver appears, only fall back to wait/exit-code on early exit or
     # 120 s timeout (60 x 2 s). Log late-load output for post-mortem.

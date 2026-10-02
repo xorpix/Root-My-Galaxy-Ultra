@@ -758,6 +758,7 @@ private fun RootApp(
     var showTargetPicker by remember { mutableStateOf(false) }
     var showRebootSheet by remember { mutableStateOf(false) }
     val isAzhlDevice = remember { AzhlPort.identity.matches(DeviceSnapshot.current()) }
+    val isBzigDevice = remember { BzigPort.identity.matches(DeviceSnapshot.current()) }
     // The app's one undo surface. Held here rather than per page, so a deletion on History and a deletion in
     // the residue dialog use the same one - and so neither has to know where it is drawn.
     val snackbarHostState = remember { SnackbarHostState() }
@@ -4372,35 +4373,39 @@ private fun SettingsPage(
                         },
                     )
                 }
-                SettingsCard(
-                    modifier = Modifier.onGloballyPositioned { coordinates ->
-                        bootSettleMenuTop = with(density) { coordinates.positionInWindow().y.toDp() }
-                    },
-                    icon = Icons.Rounded.HourglassEmpty,
-                    title = stringResource(R.string.settings_boot_settle),
-                    description = stringResource(R.string.settings_boot_settle_summary),
-                    value = BootSettle.label(bootSettleSeconds),
-                    position = SettingsCardPosition.Middle,
-                    onClick = {
-                        clickHaptic(view)
-                        showBootSettleDialog = true
-                    },
-                )
-                SettingsCard(
-                    icon = Icons.Rounded.Timer,
-                    title = stringResource(R.string.settings_run_limits),
-                    description = stringResource(R.string.settings_run_limits_summary),
-                    // No value. Three ceilings listed as numbers beside a row are three numbers to
-                    // read on every pass through Settings, and they answer a question the dialog
-                    // answers properly - which ceiling is which, and what it decides. The row's job
-                    // is to say the settings exist and to open them, and the run plan states the
-                    // ceilings that are actually in force where a run is about to be started.
-                    position = SettingsCardPosition.Middle,
-                    onClick = {
-                        clickHaptic(view)
-                        showRunLimitsDialog = true
-                    },
-                )
+                if (!isBzigDevice) {
+                    SettingsCard(
+                        modifier = Modifier.onGloballyPositioned { coordinates ->
+                            bootSettleMenuTop = with(density) { coordinates.positionInWindow().y.toDp() }
+                        },
+                        icon = Icons.Rounded.HourglassEmpty,
+                        title = stringResource(R.string.settings_boot_settle),
+                        description = stringResource(R.string.settings_boot_settle_summary),
+                        value = BootSettle.label(bootSettleSeconds),
+                        position = SettingsCardPosition.Middle,
+                        onClick = {
+                            clickHaptic(view)
+                            showBootSettleDialog = true
+                        },
+                    )
+                }
+                if (!isBzigDevice) {
+                    SettingsCard(
+                        icon = Icons.Rounded.Timer,
+                        title = stringResource(R.string.settings_run_limits),
+                        description = stringResource(R.string.settings_run_limits_summary),
+                        // No value. Three ceilings listed as numbers beside a row are three numbers to
+                        // read on every pass through Settings, and they answer a question the dialog
+                        // answers properly - which ceiling is which, and what it decides. The row's job
+                        // is to say the settings exist and to open them, and the run plan states the
+                        // ceilings that are actually in force where a run is about to be started.
+                        position = SettingsCardPosition.Middle,
+                        onClick = {
+                            clickHaptic(view)
+                            showRunLimitsDialog = true
+                        },
+                    )
+                }
                 SettingsCard(
                     icon = Icons.Rounded.Schedule,
                     title = stringResource(R.string.run_plan),
@@ -4423,7 +4428,9 @@ private fun SettingsPage(
         )
         if (SettingsSection.Shizuku in openSections) item {
             SettingsSectionBody {
-                SettingsSwitchCard(
+                // Obsolete on BZIG firmware: DirtyFrag forces app transport.
+                if (!isBzigDevice) {
+                    SettingsSwitchCard(
                     // The transport a run is handed to, which is why it sits with the other two
                     // Shizuku decisions rather than under appearance.
                     // A shell, matching the section heading and the app this row is about. It wore the
@@ -4469,7 +4476,8 @@ private fun SettingsPage(
                             }
                         }
                     },
-                )
+                    )
+                }
                 // The row says which state Shizuku is in and offers the one action that is still
                 // useful, because a card whose title is a command has to be a command that will do
                 // something: start it when it is not running, ask for the grant when it is running
@@ -4500,7 +4508,7 @@ private fun SettingsPage(
                             stringResource(R.string.settings_shizuku_state_needs_permission)
                         else -> ""
                     },
-                    position = SettingsCardPosition.Middle,
+                    position = if (isBzigDevice) SettingsCardPosition.Top else SettingsCardPosition.Middle,
                     enabled = shizukuAvailability != ShizukuAvailability.Ready,
                     onClick = {
                         // Asked again here rather than trusting what was drawn: permission can be

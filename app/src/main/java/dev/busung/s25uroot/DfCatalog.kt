@@ -52,6 +52,15 @@ internal object DfCatalog {
     const val NO_RO_FLAG_NAME = "df-noro"
 
     /**
+     * Pre-load module-disable request, read by the kernel module.
+     *
+     * Mirrors the M3Q toggle (an empty `disable` file per module dir, which
+     * is what managers themselves honor) but enforced pre-load in kernel
+     * context, so it needs no grant. Same arming as the wipe flag.
+     */
+    const val DISABLE_FLAG_NAME = "df-disable-modules"
+
+    /**
      * One profile per backend, each staging that backend's own daemon into
      * the native handoff, so manager pairing stays honest per flavour.
      * on purpose: pointing other flavours at one binary would be the
@@ -127,12 +136,20 @@ internal object DfCatalog {
         if (AppPreferences.wipeModuleState(context)) {
             File(target.parentFile, WIPE_FLAG_NAME).writeText("1\n")
             onProgress("DirtyFrag wipe armed before loading (turn the reset switch off again after)")
+        } else {
+            File(target.parentFile, WIPE_FLAG_NAME).delete()
         }
         if (AppPreferences.partitionReadOnlyMode(context)) {
             File(target.parentFile, NO_RO_FLAG_NAME).delete()
             onProgress("Image protection armed pre-load (no grant needed)")
         } else if (!File(target.parentFile, NO_RO_FLAG_NAME).isFile) {
             File(target.parentFile, NO_RO_FLAG_NAME).writeText("1\n")
+        }
+        if (AppPreferences.disableKsuModules(context)) {
+            File(target.parentFile, DISABLE_FLAG_NAME).writeText("1\n")
+            onProgress("Module disable armed before loading")
+        } else {
+            File(target.parentFile, DISABLE_FLAG_NAME).delete()
         }
         return VerifiedPayloads(profile, library, target, PayloadOrigin.Bundled)
     }

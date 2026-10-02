@@ -21,7 +21,7 @@ and execs ksud from a memfd. No Shizuku, no WiFi needed.
   (12048/10920/11168/11168/7176/7624/8104/8176 bytes; selected at runtime
   by `uname`, so OneUI 9 / BZIG takes a per-flavor blob below, not generic)
 - `ko/dirtyfrag-android16-6.12-{kernelsu,kernelsu-next,resukisu}.ko`
-  (10872 bytes each stripped; selected by `select_ko_image()` in `exp.c:352` when
+  (11128 bytes each stripped; selected by `select_ko_image()` in `exp.c:352` when
   `uname` reports android16/6.12 plus matching `flavorId`. Each embeds
   `mkdir -p /data/adb && cat /data/user_de/0/dev.experimental.azhlroot/ksud`
   `> /data/local/tmp/.ksud-stage && <ksud> late-load --package-name <flavor>`
