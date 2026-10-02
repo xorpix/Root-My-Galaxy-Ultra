@@ -78,10 +78,9 @@ object AppUpdater {
     /**
      * Whether [latestVersion], a release tag, is newer than the installed build.
      *
-     * Builds carry a `+ci.<run>.<sha>` or `+local.<sha>` suffix so two installs of the same version
-     * can be told apart, which means a plain string comparison would report the release already
-     * installed as an update and offer it forever. The comparison is therefore on the dotted version
-     * numbers, and it also gets `0.2.10` versus `0.2.9` right, which string order does not.
+     * The comparison is on the dotted version numbers, and it gets `0.2.10`
+     * versus `0.2.9` right, which string order does not. Any `+build` or
+     * `-suffix` metadata is ignored.
      */
     fun isUpdateAvailable(latestVersion: String, currentVersion: String): Boolean {
         if (latestVersion.isEmpty()) return false
@@ -92,7 +91,7 @@ object AppUpdater {
         return compareVersions(latest, current) > 0
     }
 
-    /** `v0.2.65+ci.42.ab12cd3` becomes `0.2.65`; null when there is no dotted number in it. */
+    /** `v0.2.65` becomes `0.2.65`; null when there is no dotted number in it. */
     internal fun versionBase(version: String): String? {
         val stripped = version.trim()
             .removePrefix("v")

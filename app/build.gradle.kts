@@ -21,7 +21,10 @@ fun signingProperty(envName: String, propertyName: String): String? =
 // The base version, and the only place either number is written by hand. A release tag is
 // `v$appVersionBase` and both workflows read this literal out of this file, so it has to stay a
 // plain string here rather than being assembled from somewhere else.
-val appVersionBase = "1.0"
+//
+// Policy: major stays 1; minor grows per supported firmware generation
+// (1.1 = BZIG/OneUI 9); patch grows per fix on one generation (1.1.1, ...).
+val appVersionBase = "1.1"
 
 // An offset under the version code, not a version of its own: the code is this plus the clock, and the
 // only rule is that it may be raised and never lowered - lowering it would put a new build below an
@@ -47,23 +50,8 @@ val appVersionCode =
     appVersionCodeBase +
         (providers.of(BuildClockValueSource::class) {}.get() / 1000L - 1_767_225_600L).toInt()
 
-// Which build this is: the CI run that produced it, or the local commit it was built from. Two
-// builds of the same version are otherwise indistinguishable on the phone, which is what this is
-// for: Settings shows it and every run log starts with it.
-val buildCommit: String? = System.getenv("GITHUB_SHA")
-    ?.trim()
-    ?.take(7)
-    ?.takeIf { it.isNotEmpty() }
-    ?: runCatching {
-        providers.exec {
-            commandLine("git", "rev-parse", "--short=7", "HEAD")
-        }.standardOutput.asText.get().trim().takeIf { it.isNotEmpty() }
-    }.getOrNull()
-val buildLabel = listOfNotNull(
-    System.getenv("GITHUB_RUN_NUMBER")?.takeIf { it.isNotBlank() }?.let { "ci.$it" } ?: "local",
-    buildCommit,
-).joinToString(".")
-val appVersionName = "$appVersionBase-ultra+$buildLabel"
+// The version name is the base version alone: 1.1, 1.1.1, ...
+val appVersionName = appVersionBase
 
 android {
     namespace = "dev.busung.s25uroot"
@@ -85,10 +73,8 @@ android {
         versionCode = appVersionCode
         versionName = appVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        // VERSION_BASE is what the update check compares against a release tag; the build label is
-        // the same string the version name carries, for showing on its own.
+        // VERSION_BASE is what the update check compares against a release tag.
         buildConfigField("String", "VERSION_BASE", "\"$appVersionBase\"")
-        buildConfigField("String", "BUILD_LABEL", "\"$buildLabel\"")
 
         ndk {
             abiFilters += "arm64-v8a"

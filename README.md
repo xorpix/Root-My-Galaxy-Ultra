@@ -50,8 +50,9 @@ $env:JAVA_HOME = "<path to JDK 21>"
 ```
 
 Output: `app/build/outputs/apk/debug/app-debug.apk`. Version reads
-`1.0-ultra+local.<commit>`; the code grows monotonically so newer builds
-install over older ones. Keep your previous APK as backup; `local.properties`
+`1.1`; the code grows monotonically so newer builds
+install over older ones. Version policy: patch up per fix (`1.1.1`, …),
+minor up per new firmware generation (`1.2`, …). Keep your previous APK as backup; `local.properties`
 is gitignored and stays on your machine.
 
 ## First run
@@ -1156,11 +1157,12 @@ carries a version name that says which one it is:
 
 | build | version name | version code |
 |---|---|---|
-| CI | `1.0-ultra+ci.<run number>.<commit>` | base + seconds since 2026-01-01 UTC |
-| local | `1.0-ultra+local.<commit>` | base + seconds since 2026-01-01 UTC |
+| CI | `1.1` | base + seconds since 2026-01-01 UTC |
+| local | `1.1` | base + seconds since 2026-01-01 UTC |
 
 `appVersionBase` in `app/build.gradle.kts` is the only version written by hand. Both workflows
-read that literal out of the file, and a release tag is `v<base>`.
+read that literal out of the file, and a release tag is `v<base>`. Policy: patch per fix,
+minor per firmware generation; the update check orders dotted versions of any length.
 
 The version code is derived from the clock rather than from the CI run number so that it is
 strictly larger on every build anywhere: Android refuses to install a lower version code over a
