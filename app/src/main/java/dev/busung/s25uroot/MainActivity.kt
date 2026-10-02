@@ -758,7 +758,6 @@ private fun RootApp(
     var showTargetPicker by remember { mutableStateOf(false) }
     var showRebootSheet by remember { mutableStateOf(false) }
     val isAzhlDevice = remember { AzhlPort.identity.matches(DeviceSnapshot.current()) }
-    val isBzigDevice = remember { BzigPort.identity.matches(DeviceSnapshot.current()) }
     // The app's one undo surface. Held here rather than per page, so a deletion on History and a deletion in
     // the residue dialog use the same one - and so neither has to know where it is drawn.
     val snackbarHostState = remember { SnackbarHostState() }
@@ -3615,6 +3614,10 @@ private fun SettingsPage(
     val context = LocalContext.current
     val view = LocalView.current
     val scope = rememberCoroutineScope()
+    // Obsolete rows (unsettable settle, unenforced limits, run-transport
+    // Shizuku switch) stay for AZHL firmware and hide on BZIG, where
+    // DirtyFrag neither reads nor honors them.
+    val isBzigDevice = BzigPort.identity.matches(device)
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showFlavorDialog by remember { mutableStateOf(false) }
     var showManagerVersionDialog by remember { mutableStateOf(false) }
