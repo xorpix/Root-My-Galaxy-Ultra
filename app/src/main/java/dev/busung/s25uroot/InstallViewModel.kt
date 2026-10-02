@@ -1484,9 +1484,21 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
             appendLog(app.getString(R.string.log_ro_blocks_script_missing))
             return
         }
+        // Staged to a file: this su splits a multiline -c script
+        // ("unexpected 'do'"), while `sh <file>` runs cleanly.
+        val scriptFile = runCatching {
+            File(app.cacheDir, "ro-blocks.sh").also {
+                it.writeText(script)
+                android.system.Os.chmod(it.absolutePath, 0b111101101)
+            }
+        }.getOrNull()
+        if (scriptFile == null) {
+            appendLog(app.getString(R.string.log_ro_blocks_script_missing))
+            return
+        }
         val result = withContext(Dispatchers.IO) {
             runCatching {
-                val process = ProcessBuilder("su", "-c", script).redirectErrorStream(true).start()
+                val process = ProcessBuilder("su", "-c", "sh ${scriptFile.absolutePath}").redirectErrorStream(true).start()
                 if (!process.waitFor(30L, TimeUnit.SECONDS)) {
                     process.destroyForcibly()
                     null
