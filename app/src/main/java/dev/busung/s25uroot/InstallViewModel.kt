@@ -1505,6 +1505,22 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
             appendLog(app.getString(R.string.log_ro_blocks_successful, count))
         } else {
             appendLog(app.getString(R.string.log_ro_blocks_failed))
+            appendLog("su exit=${result.first} out='${result.second.trim().take(200)}'")
+            val diag = withContext(Dispatchers.IO) {
+                runCatching {
+                    val probe = ProcessBuilder(
+                        "su", "-c",
+                        "ls /dev/block/by-name 2>&1 | head -5; echo ---; ls -d /dev/block/by-name/boot_a 2>&1; echo ---; /system/bin/blockdev --getro /dev/block/by-name/boot_a 2>&1",
+                    ).redirectErrorStream(true).start()
+                    if (!probe.waitFor(30L, TimeUnit.SECONDS)) {
+                        probe.destroyForcibly()
+                        null
+                    } else {
+                        runCatching { probe.inputStream.bufferedReader().readText() }.getOrDefault("")
+                    }
+                }.getOrNull()
+            }
+            if (!diag.isNullOrBlank()) appendLog(diag.trim().take(800))
         }
         protectedDevices = count
         protectedFrom = mutableState.value.log.length
