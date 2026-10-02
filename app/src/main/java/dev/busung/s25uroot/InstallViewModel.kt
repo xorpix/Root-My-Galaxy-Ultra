@@ -1453,7 +1453,7 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
             checkStop = ::stopIfAskedFromOutside,
         )
         dfVerifiedInstall = false
-        when (val outcome = dfRunner.execute(payloads)) {
+        when (val outcome = dfRunner.execute(payloads, expectRoPreload = AppPreferences.partitionReadOnlyMode(app))) {
             is DfOutcome.Verified -> {
                 dfControlReport = outcome.report
                 dfVerifiedInstall = true
@@ -1466,8 +1466,17 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
             }
         }
         // Only with a proven grant (su-verified): protection itself must not
-        // become a second su use on a grantless run.
+        // become a second su use on a grantless run. The su path re-counts
+        // exactly and overwrites the pre-load bookkeeping below when granted.
         if (dfVerifiedInstall && "through su" in dfControlReport) protectPartitionsViaSu()
+        if (dfRunner.roPreloadProtected && !dfVerifiedInstall) {
+            // Exact count unknown without su; granted runs overwrite this with
+            // the precise number. Anything above zero keeps later EROFS
+            // failures attributed to the guard that was actually up.
+            protectedDevices = 1
+            protectedFrom = mutableState.value.log.length
+            AppPreferences.setReadOnlyProtectedDevices(app, kernelBootToken(), 1)
+        }
     }
 
     /**

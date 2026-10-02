@@ -44,11 +44,18 @@ for flavor in kernelsu kernelsu-next resukisu; do
     # 256-byte cmd buffer cannot hold the poll loop; grow it.
     sed -i 's|static char cmd\[256\];|static char cmd[1024];|' "$d/dirtyfrag.c"
     sed -i 's|static char cmd\[1024\];|static char cmd[2048];|' "$d/dirtyfrag.c"
-    # Pre-load module-state wipe for recovery: the app arms a flag file while
-    # its reset switch is on (no root needed for its own files); the module,
-    # already root in kernel context, clears modules before late-load and
-    # removes the flag. Skipped while a backend is already live (reboot first).
-    sed -i 's#"mkdir -p /data/adb#"W=/data/user_de/0/dev.experimental.azhlroot/df-wipe-requested;if [ -f $W ];then if [ -e /sys/module/kernelsu ]||[ -e /sys/module/ksunext ]||[ -e /sys/module/sukisu ]||[ -e /sys/module/resukisu ]||[ -e /sys/module/ksu ];then touch /dev/dfwipeskip;else rm -rf /data/adb/modules/* /data/adb/modules/.[!.]* /data/adb/modules/..?* /data/adb/modules_update/* /data/adb/modules_update/.[!.]* /data/adb/modules_update/..?* 2>/dev/null;touch /dev/dfwipe;rm -f $W;fi;fi;mkdir -p /data/adb#' "$d/dirtyfrag.c"
+    sed -i 's|static char cmd\[2048\];|static char cmd[4096];|' "$d/dirtyfrag.c"
+    # Pre-load image protection + module-state wipe for recovery, in one
+    # insertion (two seds cannot share one anchor: the first would consume the
+    # second's match). Protection runs first: the module sets guarded block
+    # devices read-only itself in kernel context, so the first grantless run
+    # is covered too; same list as set_ro_blocks.sh; opt-out flag managed by
+    # the app (protection defaults on); /dev/dfro marks success. Then the
+    # wipe: armed by the app's flag file while its reset switch is on (no root
+    # needed for its own files); modules only, grants kept; skipped while a
+    # backend is live. Reboot clears the flags, like the su path.
+    sed -i 's#"mkdir -p /data/adb#"rm -f /dev/dfro /dev/dfwipe /dev/dfwipeskip;if [ ! -f /data/user_de/0/dev.experimental.azhlroot/df-noro ];then n=0;for p in boot dtbo init_boot vendor_boot super optics prism vbmeta vbmeta_system;do [ -e /dev/block/by-name/$p ]\&\&/system/bin/blockdev --setro /dev/block/by-name/$p 2>/dev/null\&\&n=$((n+1));[ -e /dev/block/by-name/${p}_a ]\&\&/system/bin/blockdev --setro /dev/block/by-name/${p}_a 2>/dev/null\&\&n=$((n+1));[ -e /dev/block/by-name/${p}_b ]\&\&/system/bin/blockdev --setro /dev/block/by-name/${p}_b 2>/dev/null\&\&n=$((n+1));done;[ $n -gt 0 ]\&\&touch /dev/dfro;fi;W=/data/user_de/0/dev.experimental.azhlroot/df-wipe-requested;if [ -f $W ];then if [ -e /sys/module/kernelsu ]||[ -e /sys/module/ksunext ]||[ -e /sys/module/sukisu ]||[ -e /sys/module/resukisu ]||[ -e /sys/module/ksu ];then touch /dev/dfwipeskip;else rm -rf /data/adb/modules/* /data/adb/modules/.[!.]* /data/adb/modules/..?* /data/adb/modules_update/* /data/adb/modules_update/.[!.]* /data/adb/modules_update/..?* 2>/dev/null;touch /dev/dfwipe;rm -f $W;fi;fi;mkdir -p /data/adb#' "$d/dirtyfrag.c"
+    grep -c "df-noro" "$d/dirtyfrag.c"
     grep -c "df-wipe-requested" "$d/dirtyfrag.c"
     # Late-load hangs after the daemon is up: background it, touch dfm0 when
     # the driver appears, only fall back to wait/exit-code on early exit or

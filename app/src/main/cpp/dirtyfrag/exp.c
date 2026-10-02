@@ -597,6 +597,7 @@ Java_dev_busung_s25uroot_dirtyfrag_DfExploitRunner_nativeRunAll(JNIEnv *env, jcl
         { "/dev/df",   "libc++: mutex acquired, loading custom module", -1 },
         { "/dev/dfwipe", "module state wiped before loading", -1 },
         { "/dev/dfwipeskip", "wipe skipped: backend already live, reboot first", -1 },
+        { "/dev/dfro", "image partitions protected before loading", -1 },
         { "/dev/dfm0", "***SUCCESS***",                        0 },
         { "/dev/dfm1", "***FAILED***: ksud exited with error", 1 },
     };

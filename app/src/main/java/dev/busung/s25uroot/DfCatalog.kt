@@ -42,6 +42,16 @@ internal object DfCatalog {
     const val WIPE_FLAG_NAME = "df-wipe-requested"
 
     /**
+     * Opt-out of pre-load image protection, read by the kernel module.
+     *
+     * Protection defaults on with no grant needed (the module sets the flags
+     * itself in kernel context), so opting out is the state that must be
+     * recorded: staging removes this flag when the setting is on and writes
+     * it when off. Same manual semantics as the wipe flag.
+     */
+    const val NO_RO_FLAG_NAME = "df-noro"
+
+    /**
      * One profile per backend, each staging that backend's own daemon into
      * the native handoff, so manager pairing stays honest per flavour.
      * on purpose: pointing other flavours at one binary would be the
@@ -117,6 +127,12 @@ internal object DfCatalog {
         if (AppPreferences.wipeModuleState(context)) {
             File(target.parentFile, WIPE_FLAG_NAME).writeText("1\n")
             onProgress("DirtyFrag wipe armed before loading (turn the reset switch off again after)")
+        }
+        if (AppPreferences.partitionReadOnlyMode(context)) {
+            File(target.parentFile, NO_RO_FLAG_NAME).delete()
+            onProgress("Image protection armed pre-load (no grant needed)")
+        } else if (!File(target.parentFile, NO_RO_FLAG_NAME).isFile) {
+            File(target.parentFile, NO_RO_FLAG_NAME).writeText("1\n")
         }
         return VerifiedPayloads(profile, library, target, PayloadOrigin.Bundled)
     }

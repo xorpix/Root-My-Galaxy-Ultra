@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -51,10 +52,15 @@ internal class DfRunner(
         /** Patch loop plus sleeps plus the marker poll, with headroom. */
         const val DF_RUN_TIMEOUT_MS = 5 * 60 * 1000L
         private const val SUCCESS_MARKER = "/dev/dfm0"
+        private const val RO_PRELOAD_MARKER = "/dev/dfro"
         private const val SU_TIMEOUT_MS = 30_000L
     }
 
-    suspend fun execute(payloads: VerifiedPayloads): DfOutcome {
+    /** Whether the module's pre-load image protection landed this run. */
+    var roPreloadProtected = false
+        private set
+
+    suspend fun execute(payloads: VerifiedPayloads, expectRoPreload: Boolean = false): DfOutcome {
         currentCoroutineContext().ensureActive()
         checkStop()
         val flavor = payloads.profile.flavor
@@ -82,6 +88,21 @@ internal class DfRunner(
         }
         check(rc == 0 || rc == 2) { dirtyFragFailure(rc) }
         stage(RunStage.Verify)
+        // Pre-load image protection lands in kernel context before late-load,
+        // so it is already done (or skipped by opt-out) when native returns.
+        // Bounded silent poll: the marker appears within seconds when enforced.
+        roPreloadProtected = false
+        if (expectRoPreload) {
+            for (i in 0 until 20) {
+                currentCoroutineContext().ensureActive()
+                if (File(RO_PRELOAD_MARKER).exists()) break
+                delay(500L)
+            }
+            if (File(RO_PRELOAD_MARKER).exists()) {
+                roPreloadProtected = true
+                log("[+] Image partitions protected before loading")
+            }
+        }
         if (rc == 0 && File(SUCCESS_MARKER).exists()) {
             log("[+] DirtyFrag daemon reported success (dfm0)")
             return DfOutcome.Verified("DirtyFrag root verified (dfm0)")
