@@ -43,6 +43,13 @@ for flavor in kernelsu kernelsu-next resukisu; do
         "$UPSTREAM/dirtyfrag.c" > "$d/dirtyfrag.c"
     # 256-byte cmd buffer cannot hold the poll loop; grow it.
     sed -i 's|static char cmd\[256\];|static char cmd[1024];|' "$d/dirtyfrag.c"
+    sed -i 's|static char cmd\[1024\];|static char cmd[2048];|' "$d/dirtyfrag.c"
+    # Pre-load module-state wipe for recovery: the app arms a flag file while
+    # its reset switch is on (no root needed for its own files); the module,
+    # already root in kernel context, clears modules before late-load and
+    # removes the flag. Skipped while a backend is already live (reboot first).
+    sed -i 's#"mkdir -p /data/adb#"W=/data/user_de/0/dev.experimental.azhlroot/df-wipe-requested;if [ -f $W ];then if [ -e /sys/module/kernelsu ]||[ -e /sys/module/ksunext ]||[ -e /sys/module/sukisu ]||[ -e /sys/module/resukisu ]||[ -e /sys/module/ksu ];then touch /dev/dfwipeskip;else rm -rf /data/adb/modules/* /data/adb/modules/.[!.]* /data/adb/modules/..?* /data/adb/modules_update/* /data/adb/modules_update/.[!.]* /data/adb/modules_update/..?* 2>/dev/null;touch /dev/dfwipe;rm -f $W;fi;fi;mkdir -p /data/adb#' "$d/dirtyfrag.c"
+    grep -c "df-wipe-requested" "$d/dirtyfrag.c"
     # Late-load hangs after the daemon is up: background it, touch dfm0 when
     # the driver appears, only fall back to wait/exit-code on early exit or
     # 120 s timeout (60 x 2 s). Log late-load output for post-mortem.

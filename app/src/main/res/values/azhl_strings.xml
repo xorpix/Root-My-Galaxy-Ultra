@@ -12,7 +12,7 @@
     <string name="azhl_settings_ksu_load_summary">Always loads the selected backend during rooting.</string>
     <string name="azhl_partition_read_only_description">Marks boot, vbmeta and related partitions read-only once bootstrap root is verified, until reboot. Flashing tools and some installers stop working while it is on.</string>
     <string name="azhl_wipe_module_state">Reset all root state before loading</string>
-    <string name="azhl_wipe_module_state_description">Recovery only: deletes everything under /data/adb (modules, manager data, staged metamodule copies) before the backend loads, then must be turned off again.</string>
+    <string name="azhl_wipe_module_state_description">Recovery only: deletes everything under /data/adb (modules, manager data, staged metamodule copies) before the backend loads, then must be turned off again. On DirtyFrag runs only module state is cleared before loading — manager data and su grants are kept — and the wipe is skipped while a backend is already live, so reboot first.</string>
     <string name="azhl_wipe_confirm_title">Delete all modules?</string>
     <string name="azhl_wipe_confirm_body">The next run will permanently delete everything under /data/adb, including all modules, Mountify data and manager module state, before loading the backend. Reinstall what you need afterwards, then turn this off again.</string>
 </resources>

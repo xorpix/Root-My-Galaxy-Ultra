@@ -29,6 +29,19 @@ internal object DfCatalog {
     const val DF_LIB_NAME = "libexp.so"
 
     /**
+     * Pre-load wipe request, read by the kernel module before late-load.
+     *
+     * DirtyFrag has no pre-daemon root (no helper socket, su only exists
+     * after the daemon is up), so the app cannot wipe itself: staging writes
+     * this flag next to the staged daemon while the wipe setting is on, and
+     * the module — already root in kernel context — clears module state
+     * before running late-load, then removes the flag. Skipped while a
+     * backend is already live (reboot first). Same manual-off semantics as
+     * the M3Q toggle: while the setting is on, every run arms it again.
+     */
+    const val WIPE_FLAG_NAME = "df-wipe-requested"
+
+    /**
      * One profile per backend, each staging that backend's own daemon into
      * the native handoff, so manager pairing stays honest per flavour.
      * on purpose: pointing other flavours at one binary would be the
@@ -101,6 +114,10 @@ internal object DfCatalog {
         }
         val library = File(context.applicationInfo.nativeLibraryDir, DF_LIB_NAME)
         require(library.isFile && library.canRead()) { "DirtyFrag native library missing from this build" }
+        if (AppPreferences.wipeModuleState(context)) {
+            File(target.parentFile, WIPE_FLAG_NAME).writeText("1\n")
+            onProgress("DirtyFrag wipe armed before loading (turn the reset switch off again after)")
+        }
         return VerifiedPayloads(profile, library, target, PayloadOrigin.Bundled)
     }
 }

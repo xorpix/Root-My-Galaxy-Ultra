@@ -21,7 +21,7 @@ and execs ksud from a memfd. No Shizuku, no WiFi needed.
   (12048/10920/11168/11168/7176/7624/8104/8176 bytes; selected at runtime
   by `uname`, so OneUI 9 / BZIG takes a per-flavor blob below, not generic)
 - `ko/dirtyfrag-android16-6.12-{kernelsu,kernelsu-next,resukisu}.ko`
-  (9848 bytes each stripped; selected by `select_ko_image()` in `exp.c:352` when
+  (10296 bytes each stripped; selected by `select_ko_image()` in `exp.c:352` when
   `uname` reports android16/6.12 plus matching `flavorId`. Each embeds
   `mkdir -p /data/adb && cat /data/user_de/0/dev.experimental.azhlroot/ksud`
   `> /data/local/tmp/.ksud-stage && <ksud> late-load --package-name <flavor>`
@@ -32,7 +32,9 @@ and execs ksud from a memfd. No Shizuku, no WiFi needed.
   (late-load hangs after the daemon is up, so waiting for its exit never
   fires), `touch /dev/dfm1` on 120 s timeout or non-zero exit. Flavor manager
   packages: `me.weishu.kernelsu`, `com.rifsxd.ksunext`,
-  `com.resukisu.resukisu`. Staged ksud comes from
+  `com.resukisu.resukisu`. A `df-wipe-requested` flag next to the staged
+  daemon arms a pre-load module-state wipe (modules only, grants kept;
+  skipped while a backend is live). Staged ksud comes from
   `DfCatalog.stage()` per-flavor `asset://azhl/<flavor>/ksud`.)
   Rebuild with `build-df-variants.sh` (DDK docker, NDK objcopy strip).
 - `../../assets/df/ksud` (6028336 bytes, diabl0w's KernelSU fork build)
