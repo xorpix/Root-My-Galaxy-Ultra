@@ -19,12 +19,12 @@ fun signingProperty(envName: String, propertyName: String): String? =
         ?: keystoreProperties.getProperty(propertyName)?.takeIf { it.isNotBlank() }
 
 // The base version, and the only place either number is written by hand. A release tag is
-// `v$appVersionBase` and both workflows read this literal out of this file, so it has to stay a
+// `$appVersionBase` and both workflows read this literal out of this file, so it has to stay a
 // plain string here rather than being assembled from somewhere else.
 //
 // Policy: major stays 1; minor grows per supported firmware generation
 // (1.1 = BZIG/OneUI 9); patch grows per fix on one generation (1.1.1, ...).
-val appVersionBase = "1.1"
+val appVersionBase = "1.1.1"
 
 // An offset under the version code, not a version of its own: the code is this plus the clock, and the
 // only rule is that it may be raised and never lowered - lowering it would put a new build below an

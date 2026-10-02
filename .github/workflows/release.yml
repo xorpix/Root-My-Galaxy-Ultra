@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag_name:
-        description: Release tag to publish, or leave blank to use the latest v* tag
+        description: Release tag to publish, or leave blank to use the latest numeric tag
         required: false
         type: string
 
@@ -92,10 +92,10 @@ jobs:
           set -euo pipefail
 
           git fetch --tags --force
-          # The base version, not versionName: the built app's version name carries a per-build
-          # suffix, while a release tag is always `v<base>`.
+          # The base version, not versionName: the built app's version name is
+          # the bare base, while a release tag is always `<base>`.
           VERSION_NAME="$(grep -oE 'appVersionBase[[:space:]]*=[[:space:]]*"[^"]+"' app/build.gradle.kts | head -n 1 | cut -d'"' -f2)"
-          EXPECTED_TAG="v$VERSION_NAME"
+          EXPECTED_TAG="$VERSION_NAME"
 
           if [ -n "$INPUT_TAG_NAME" ]; then
             TAG_NAME="$INPUT_TAG_NAME"
@@ -119,7 +119,7 @@ jobs:
           fi
 
           TAG_COMMIT="$(git rev-list -n 1 "$TAG_NAME")"
-          PREVIOUS_TAG="$(git tag --list 'v*' --sort=-v:refname | grep -Fxv "$TAG_NAME" | head -n 1 || true)"
+          PREVIOUS_TAG="$(git tag --list '[0-9]*' --sort=-v:refname | grep -Fxv "$TAG_NAME" | head -n 1 || true)"
 
           {
             echo "tag_name=$TAG_NAME"

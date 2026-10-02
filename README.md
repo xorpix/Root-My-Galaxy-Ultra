@@ -1161,7 +1161,7 @@ carries a version name that says which one it is:
 | local | `1.1` | base + seconds since 2026-01-01 UTC |
 
 `appVersionBase` in `app/build.gradle.kts` is the only version written by hand. Both workflows
-read that literal out of the file, and a release tag is `v<base>`. Policy: patch per fix,
+read that literal out of the file, and a release tag is `<base>`. Policy: patch per fix,
 minor per firmware generation; the update check orders dotted versions of any length.
 
 The version code is derived from the clock rather than from the CI run number so that it is
