@@ -1485,10 +1485,11 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
             return
         }
         // Staged to a file: this su splits a multiline -c script
-        // ("unexpected 'do'"), while `sh <file>` runs cleanly.
+        // ("unexpected 'do'"), while `sh <file>` runs cleanly. Line endings
+        // are normalized: a CRLF asset breaks /system/bin/sh the same way.
         val scriptFile = runCatching {
             File(app.cacheDir, "ro-blocks.sh").also {
-                it.writeText(script)
+                it.writeText(script.replace("\r\n", "\n").replace('\r', '\n'))
                 android.system.Os.chmod(it.absolutePath, 0b111101101)
             }
         }.getOrNull()
