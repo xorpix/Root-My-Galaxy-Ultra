@@ -16,10 +16,10 @@ int main(void) {
         for (unsigned j=0; j<3; ++j)
             assert((azhl_backend_find(azhl_backends[i].id, azhl_backends[j].version_text) != NULL) == (i == j));
     }
-    assert(!azhl_backend_find(NULL, "32653"));
-    assert(!azhl_backend_find("unknown", "32653"));
-    assert(!azhl_backend_find("kernelsu", "032653"));
-    assert(!azhl_backend_find("kernelsu", "32653-extra"));
+    assert(!azhl_backend_find(NULL, "32657"));
+    assert(!azhl_backend_find("unknown", "32657"));
+    assert(!azhl_backend_find("kernelsu", "032657"));
+    assert(!azhl_backend_find("kernelsu", "32657-extra"));
     assert(azhl_disable_valid("0") && azhl_disable_valid("1"));
     assert(!azhl_disable_valid(NULL) && !azhl_disable_valid("2") && !azhl_disable_valid(""));
     return 0;

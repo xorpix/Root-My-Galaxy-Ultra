@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Generate pinned per-backend M3Q helper variants, without compiling or running them.
 
-The original helper is closed source. Two expected-version instructions change
-for updated KernelSU; forks also change the end of execl's argument list. Ending
+The original helper is closed source. Expected-version and UAPI instructions
+change for updated KernelSU; forks also change the end of execl's argument list. Ending
 the list before --package-name lets each fork use its own compiled default.
-The ioctl, version comparison, UAPI=4 and required flag checks remain intact.
+The ioctl layout, comparison branches and required flag checks remain intact.
 """
 import hashlib
 import json
@@ -12,7 +12,8 @@ from pathlib import Path
 import struct
 
 ORIGINAL_SHA256 = '39b018c3648c26fc7e801f6ec7a25018b3ef8544033afadbad4b36dd714d9d59'
-VERSIONS = {'kernelsu': 32653, 'kernelsu-next': 33313, 'resukisu': 35195}
+VERSIONS = {'kernelsu': 32657, 'kernelsu-next': 33319, 'resukisu': 35203}
+UAPI_VERSION = 5
 LIBRARIES = {key: 'libm3qroot_' + key.replace('-', '_') + '.so' for key in VERSIONS}
 
 
@@ -43,7 +44,11 @@ def variant(original, backend):
         raise ValueError('Refusing to patch an unrecognized M3Q helper')
     version = VERSIONS[backend]
     edits = [(0x6c94, mov_w(9, 32636), mov_w(9, version)),
-             (0x6cc8, mov_w(2, 32636), mov_w(2, version))]
+             (0x6cc8, mov_w(2, 32636), mov_w(2, version)),
+             # CMP W6, #4 -> #5; the rejection branch remains unchanged.
+             (0x6ca0, 0x710010DF, 0x710000DF | UAPI_VERSION << 10),
+             # The success message must report the same UAPI that was checked.
+             (0x6cd0, mov_w(4, 4), mov_w(4, UAPI_VERSION))]
     # Original: add x5, x5, #0x7ca ("--package-name"). For forks, x5=NULL
     # terminates execl after --kmi android16-6.12; no package string is spoofed.
     if backend != 'kernelsu':
@@ -71,7 +76,7 @@ def prepare(project):
         data, changes = variant(original, backend)
         name = LIBRARIES[backend]
         (jni / name).write_bytes(data)
-        records[backend] = dict(library=name, driverVersion=VERSIONS[backend],
+        records[backend] = dict(library=name, driverVersion=VERSIONS[backend], uapiVersion=UAPI_VERSION,
                                 size=len(data), sha256=sha(data), changes=changes)
     payload = (assets / 'libm3qpayload.so').read_bytes()
     if sha(payload) != '9ceb86833b9ae5da350dc04bc1a77d992680931973da1e9172b4ddd999b404dc':

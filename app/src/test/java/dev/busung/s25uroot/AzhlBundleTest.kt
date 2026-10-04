@@ -70,7 +70,7 @@ class AzhlBundleTest {
     @Test fun driverReportAndMarkerMustBothConfirmTheChosenBackend() {
         val flavor = KernelSuFlavor.KernelSuNext
         val version = azhlDriverVersion(flavor)
-        val report = "KernelSU control verified version=$version flags=0x5 uapi=4 features=0x3"
+        val report = "KernelSU control verified version=$version flags=0x5 uapi=5 features=0x3"
         val marker = "AZHL_BACKEND_VERIFIED kernelsu-next $version"
         assertEquals(version, verifiedAzhlControl("$report\n$marker", flavor)?.version)
         assertNull(verifiedAzhlControl(report, flavor))
@@ -105,13 +105,13 @@ class AzhlBundleTest {
     @Test fun m3qControlLineVerifiesEachBackendAgainstItsOwnDriver() {
         KernelSuFlavor.entries.forEach { flavor ->
             val version = azhlDriverVersion(flavor)
-            val good = "KernelSU control verified version=$version flags=0x5 uapi=4 features=0x3"
+            val good = "KernelSU control verified version=$version flags=0x5 uapi=5 features=0x3"
             assertEquals(version, verifiedM3qControl("noise\n$good\n", flavor)?.version)
             assertNull(verifiedM3qControl(good.replace(version.toString(), "1"), flavor))
-            assertNull(verifiedM3qControl(good.replace("uapi=4", "uapi=3"), flavor))
+            assertNull(verifiedM3qControl(good.replace("uapi=5", "uapi=4"), flavor))
             assertNull(
                 verifiedM3qControl(
-                    "KernelSU control verified version=$version flags=0x1 uapi=4 features=0x3",
+                    "KernelSU control verified version=$version flags=0x1 uapi=5 features=0x3",
                     flavor,
                 ),
             )

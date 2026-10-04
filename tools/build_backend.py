@@ -5,10 +5,11 @@ tools=pathlib.Path(sys.argv[1]).resolve()
 flavor=sys.argv[2]
 assert flavor in ('kernelsu','kernelsu-next','resukisu')
 repo=tools/flavor
-expected={'kernelsu':('08a3b087e49227c8a6731c5f1114998b5e25255b',32653),'kernelsu-next':('2b31f7185460e99bc3896a639e9073b1c354ee0d',33313),'resukisu':('34210a4dec297cb48ce4bfa1c5ba50a2f7d22641',35195)}[flavor]
+expected={'kernelsu':('cd4af89c43005f33df91ba7cb66e00e67a4d0c1b',32657),'kernelsu-next':('9ba1a51e46d0e4a88ba502a80eda1351a6ce1cd8',33319),'resukisu':('8770c7e324a22895703c4916b8a16520e0b81c79',35203)}[flavor]
 def git(*args):return subprocess.check_output(['git','-C',str(repo),*args],text=True).strip()
 assert git('rev-parse','HEAD')==expected[0]
 assert 30000+int(git('rev-list','--count','HEAD'))+(700 if flavor=='resukisu' else 0)==expected[1]
+assert 'KERNEL_SU_UAPI_VERSION = 5;' in (repo/'uapi/supercall.h').read_text()
 for name in git('ls-files','*Cargo.toml','*Cargo.lock').splitlines():
     if name.startswith('manager/'):continue
     p=repo/name
@@ -33,7 +34,7 @@ config.write_text('[target.aarch64-linux-android]\nlinker = '+json.dumps(str(ndk
  'CXX_aarch64_linux_android':str(ndk/'bin/aarch64-linux-android26-clang++'),
  'AR_aarch64_linux_android':str(ndk/'bin/llvm-ar'),
  'BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android':'--sysroot='+str(ndk/'sysroot')+' -I'+str(ndk/'sysroot/usr/include/aarch64-linux-android')}.items())+'\n')
-env.update(CARGO_HOME=str(tools/'cargo'),RUSTUP_HOME=str(tools/'rustup'),CARGO_BUILD_JOBS='2',LIBCLANG_PATH='/opt/ddk/clang/clang-r536225/lib')
+env.update(CARGO_HOME=str(tools/'cargo'),RUSTUP_HOME=str(tools/'rustup'),CARGO_BUILD_JOBS='2',LIBCLANG_PATH=str(ndk/'lib'),ANDROID_NDK_HOME=str(tools/'android-ndk-r28c'))
 env['PATH']=str(ndk/'bin')+':'+str(tools/'cargo/bin')+':'+env['PATH']
 cargo=[str(tools/'cargo/bin/cargo'),'+nightly-2026-09-25' if flavor=='resukisu' else '+1.98.1']
 subprocess.run(cargo+['build','--release','--locked','--target','aarch64-linux-android','--manifest-path','userspace/ksud/Cargo.toml'],cwd=repo,env=env,check=True)

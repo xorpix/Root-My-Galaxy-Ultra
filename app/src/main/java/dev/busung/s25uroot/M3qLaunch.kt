@@ -9,6 +9,7 @@ internal object M3qLaunch {
     const val DAEMON_PATH = "/data/local/tmp/ksud-m3q-S948NKSS4AZG3-kdp"
     const val DAEMON_STAGE = "/data/local/tmp/.ksud-stage"
     const val LOAD_LOG = "/data/local/tmp/m3q-kernelsu-late-load.log"
+    const val UAPI_VERSION = 5
 
     /** Android sh treats a CR after `set -eu` as another option, even with `sh -c`. */
     fun normalizeShellScript(source: String): String = source
@@ -22,9 +23,9 @@ internal object M3qLaunch {
     }
 
     fun backend(id: String): Backend = when (id) {
-        "kernelsu" -> Backend(id, 32653, "e8ba1af306446bee3867b442159946104a81875ac91d6c72f8c2ef2ac3777413")
-        "kernelsu-next" -> Backend(id, 33313, "06669bc304aff65729be32ceed89f0b797b26ad16e940b3ac87bc127e1125562")
-        "resukisu" -> Backend(id, 35195, "c23418bf313134ef340fa075583fb4a855cda6488834f401fb5ca7bb47a1f1dd")
+        "kernelsu" -> Backend(id, 32657, "278e6404f65bb5526a0bc86b1e6f2780232c1af14724abb2e2b59b4b09ba9a65")
+        "kernelsu-next" -> Backend(id, 33319, "bea92d43112aba62f67791993a8fb7fa1dae887e016cf9135c0320fd8ad6032b")
+        "resukisu" -> Backend(id, 35203, "799d9fa46fe863e1843ce804f9c0304be7409445909d4155f926538248a1b2a1")
         else -> error("Unknown M3Q backend: $id")
     }
 
@@ -63,7 +64,7 @@ internal object M3qLaunch {
     }
 
     fun acceptsControl(id: String, version: Int, flags: Int, uapi: Int): Boolean =
-        version == backend(id).version && (flags and 5) == 5 && uapi == 4
+        version == backend(id).version && (flags and 5) == 5 && uapi == UAPI_VERSION
 
     fun bootClaimNames(bootId: String, bootCount: String): List<String> {
         require(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}").matches(bootId))

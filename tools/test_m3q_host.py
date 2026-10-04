@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 import unittest
 
-from prepare_m3q_helpers import variant, file_offset, VERSIONS, LIBRARIES
+from prepare_m3q_helpers import variant, file_offset, VERSIONS, LIBRARIES, UAPI_VERSION
 
 PROJECT = Path(__file__).resolve().parents[1]
 ASSETS = PROJECT / 'app/src/main/assets'
@@ -24,13 +24,15 @@ class BundleTests(unittest.TestCase):
         for backend, version in VERSIONS.items():
             data, changes = variant(original, backend)
             self.assertEqual(data, (JNI / LIBRARIES[backend]).read_bytes())
-            self.assertEqual(2 if backend == 'kernelsu' else 3, len(changes))
-            allowed = {i for va in (0x6c94, 0x6cc8, 0x7234)
+            self.assertEqual(4 if backend == 'kernelsu' else 5, len(changes))
+            allowed = {i for va in (0x6c94, 0x6cc8, 0x6ca0, 0x6cd0, 0x7234)
                        for i in range(file_offset(original, va), file_offset(original, va) + 4)}
             self.assertTrue(all(a == b or i in allowed for i, (a, b) in enumerate(zip(original, data))))
             for va, reg in ((0x6c94, 9), (0x6cc8, 2)):
                 instruction = struct.unpack_from('<I', data, file_offset(original, va))[0]
                 self.assertEqual(0x52800000 | version << 5 | reg, instruction)
+            self.assertEqual(0x710014DF, struct.unpack_from('<I', data, file_offset(original, 0x6ca0))[0])
+            self.assertEqual(0x528000A4, struct.unpack_from('<I', data, file_offset(original, 0x6cd0))[0])
             if backend != 'kernelsu':
                 self.assertEqual(0xAA1F03E5, struct.unpack_from('<I', data, file_offset(original, 0x7234))[0])
 
@@ -64,12 +66,15 @@ class BundleTests(unittest.TestCase):
 
     def test_runtime_expectations_match_packaged_helpers(self):
         launch = (JAVA / 'M3qLaunch.kt').read_text()
+        self.assertIn(f'const val UAPI_VERSION = {UAPI_VERSION}', launch)
         catalog = (JAVA / 'AzhlCatalog.kt').read_text().split('internal fun azhlDriverVersion', 1)[1]
         enum_names = {'kernelsu': 'KernelSu', 'kernelsu-next': 'KernelSuNext', 'resukisu': 'ReSukiSU'}
+        native = (PROJECT / 'native/azhl/src/azhl_backend.h').read_text()
         for backend, version in VERSIONS.items():
             helper = (JNI / LIBRARIES[backend]).read_bytes()
             self.assertIn(f'"{backend}" -> Backend(id, {version}, "{hashlib.sha256(helper).hexdigest()}")', launch)
             self.assertIn(f'KernelSuFlavor.{enum_names[backend]} -> {version}', catalog)
+            self.assertRegex(native, r'\{"' + re.escape(backend) + r'", "' + str(version) + r'", "[^"]+", ' + str(version) + r'\}')
 
     def test_environment_matches_original_dex_tracefs_branch(self):
         text = (PROJECT / 'tools/host_validation/original-engine-bytecode.txt').read_text()

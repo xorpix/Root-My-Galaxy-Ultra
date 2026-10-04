@@ -60,13 +60,13 @@ A failure or timeout needs a full reboot before another attempt.
 
 ## Backends and manager apps
 
-App **1.1.3** bundles these driver/daemon pairs:
+The current source bundles these driver/daemon pairs:
 
 | Backend | Driver / UAPI | Official manager downloads |
 |---|---|---|
-| KernelSU | `32653 / 4` | [KernelSU releases](https://github.com/tiann/KernelSU/releases) |
-| KernelSU-Next | `33313 / 4` | [KernelSU-Next releases](https://github.com/KernelSU-Next/KernelSU-Next/releases) |
-| ReSukiSU | `35195 / 4` | [ReSukiSU releases](https://github.com/ReSukiSU/ReSukiSU/releases) |
+| KernelSU | `32657 / 5` | [KernelSU releases](https://github.com/tiann/KernelSU/releases) |
+| KernelSU-Next | `33319 / 5` | [KernelSU-Next releases](https://github.com/KernelSU-Next/KernelSU-Next/releases) |
+| ReSukiSU | `35203 / 5` | [ReSukiSU releases](https://github.com/ReSukiSU/ReSukiSU/releases) |
 
 These are pinned upstream development revisions with Samsung compatibility
 changes. [Backend documentation](backends/README.md) contains the exact source
@@ -76,6 +76,12 @@ The app's manager controls open official GitHub downloads, including a selected
 release through **Manager version control**. Complete the download and Android
 installation prompts yourself. Manager APKs are separate from the bundled root
 payloads.
+
+**These pairs require a manager built for UAPI 5.** A release tag such as
+`v4.2.0-rc3` or `v3.4.0` alone does not establish compatibility; check the UAPI
+number shown by the manager. The existing release picker may still offer an
+older UAPI 4 APK. For these development snapshots, use a matching official
+UAPI 5 manager build; see the [backend instructions](backends/README.md#manager-compatibility).
 
 - **Use one backend per boot.** Fully reboot before activating a different one.
   Switching backends may disable existing modules; re-enable compatible modules

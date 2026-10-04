@@ -47,10 +47,11 @@ fun main(args: Array<String>) = runBlocking {
         check(M3qLaunch.environment(10345)["M3Q_APP_UID"] == "10345")
         for (id in listOf("kernelsu", "kernelsu-next", "resukisu")) {
             val version = M3qLaunch.backend(id).version
-            check(M3qLaunch.acceptsControl(id, version, 5, 4))
-            check(!M3qLaunch.acceptsControl(id, version, 1, 4))
-            check(!M3qLaunch.acceptsControl(id, version, 5, 3))
-            check(!M3qLaunch.acceptsControl(id, 1, 5, 4))
+            check(M3qLaunch.acceptsControl(id, version, 5, 5))
+            check(!M3qLaunch.acceptsControl(id, version, 1, 5))
+            check(!M3qLaunch.acceptsControl(id, version, 5, 4))
+            check(!M3qLaunch.acceptsControl(id, version, 5, 6))
+            check(!M3qLaunch.acceptsControl(id, 1, 5, 5))
         }
         var passed = 0
         // Every case uses real runner code, with no Android/kernel/native execution.
@@ -69,6 +70,8 @@ fun main(args: Array<String>) = runBlocking {
             val commands = mutableListOf<List<String>>()
             val stages = mutableListOf<RunStage>()
             var rootStarts = 0
+            var loaded = false
+            var controlQueries = 0
             var claimed = false
             var uncertain = false
             if (scenario == "prior-claim") M3qBootGuard.remember(context, "7")
@@ -90,6 +93,17 @@ fun main(args: Array<String>) = runBlocking {
                         command == "id -u" -> Reply(0, "2000\n")
                         command == "cat /proc/sys/kernel/random/boot_id" -> Reply(0, "$bootId\n")
                         command == "settings get global boot_count" -> Reply(0, "7\n")
+                        command.endsWith(" --ksu-info") -> {
+                            controlQueries++
+                            if (!loaded) {
+                                if (scenario == "existing-driver") Reply(14, "unexpected version\n")
+                                else Reply(13, "KernelSU driver fd unavailable\n")
+                            } else {
+                                val version = if (scenario == "bad-verification") 1 else backend.version
+                                val uapi = if (scenario == "wrong-uapi") 4 else 5
+                                Reply(0, "KernelSU control verified version=$version flags=0x5 uapi=$uapi features=0x3\n")
+                            }
+                        }
                         "ghostlock-boot.log" in command -> if (scenario == "no-receipt-access") Reply(1) else Reply()
                         else -> Reply()
                     }
@@ -101,12 +115,8 @@ fun main(args: Array<String>) = runBlocking {
                     commands.add(argv)
                     check(argv.first() == File(libraries, backend.helperLibrary).path)
                     when {
-                        argv.getOrNull(1) == "--late-load" -> Reply()
-                        argv.getOrNull(1) == "--ksu-info" -> {
-                            val version = if (scenario == "bad-verification") 1 else backend.version
-                            val uapi = if (scenario == "wrong-uapi") 3 else 4
-                            Reply(0, "KernelSU control verified version=$version flags=0x5 uapi=$uapi features=0x3\n")
-                        }
+                        argv.getOrNull(1) == "--late-load" -> { loaded = true; Reply() }
+                        argv.getOrNull(1) == "--ksu-info" -> error("Control query must use the Shizuku shell")
                         "M3Q_TEMP_ROOT_OK" in argv.last() -> Reply(0, "M3Q_TEMP_ROOT_OK\n")
                         argv.last().endsWith("--ksu-info") -> if (scenario == "existing-driver") Reply(14, "unexpected version\n")
                             else Reply(13, "KernelSU driver fd unavailable\n")
@@ -119,7 +129,8 @@ fun main(args: Array<String>) = runBlocking {
             if (success) {
                 check(stages == listOf(RunStage.Exploit, RunStage.KernelSu, RunStage.Verify))
                 check(commands.count { it[1] == "--late-load" } == 1)
-                check(commands.last()[1] == "--ksu-info")
+                check(commands.last()[1] == "--late-load")
+                check(controlQueries == 2)
             }
             if (scenario in listOf("root-failure", "timeout", "prior-claim", "no-receipt-access")) check(commands.isEmpty())
             if (scenario == "existing-driver") check(commands.none { it[1] == "--late-load" })

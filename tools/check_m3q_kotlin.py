@@ -32,7 +32,7 @@ with tempfile.TemporaryDirectory(prefix='m3q-kotlin-') as work:
     controls += next(line for line in shizuku.splitlines() if line.startswith('internal fun shellQuote')) + '\n'
     generated = work / 'ControlSource.kt'
     generated.write_text('package dev.busung.s25uroot\n' + controls)
-    sources = [java / name for name in ('M3qLaunch.kt', 'M3qBootGuard.kt', 'M3qRunner.kt', 'RunLimits.kt')]
+    sources = [java / name for name in ('M3qLaunch.kt', 'M3qBootGuard.kt', 'M3qRunner.kt', 'RunLimits.kt', 'PartitionReadOnly.kt')]
     sources += list(fixtures.glob('*.kt')) + [generated]
     output = work / 'checks.jar'
     command = ['java', '-cp', classpath, 'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler',
