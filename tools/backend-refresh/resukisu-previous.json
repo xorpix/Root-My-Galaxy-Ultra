@@ -1,0 +1,88 @@
+{
+  "schema": 2,
+  "created_utc": "2026-10-04",
+  "app_base_commit": "7be51b5b809818e03420e3b4994d82e8859c6a30",
+  "app_version": "1.1.3",
+  "upstream_repository": "https://github.com/ReSukiSU/ReSukiSU",
+  "upstream_commit": "8770c7e324a22895703c4916b8a16520e0b81c79",
+  "upstream_commit_count": 4503,
+  "previous_upstream_commit": "34210a4dec297cb48ce4bfa1c5ba50a2f7d22641",
+  "driver_version": 35203,
+  "uapi_version": 5,
+  "daemon_version": "4.2.0-rc3-32-g8770c7e3",
+  "driver_version_string": "v4.2.0-rc3-8770c7e3-dirty@ReSukiSU",
+  "companion_patch": {
+    "repository": "https://github.com/rushiranpise/Root-My-Galaxy-Payloads",
+    "commit": "7f1490bf0b65e1cfd1ef9f2f2fb0485dc4186dae",
+    "path": "kernelsu/patches/ReSukiSU-v4.2.0-rc3-samsung-kdp-rkp-defex.patch",
+    "sha256": "6f4be33d5f558865f02e6d0010f40320f540c78f80c999ad6bf0b8f22275b4f4"
+  },
+  "toolchains": {
+    "ddk": "ghcr.io/ylarod/ddk-min:android16-6.12-20260828",
+    "kernel_clang": "clang-r536225",
+    "kernel_rust": "1.82.0",
+    "android_ndk": "r28c",
+    "android_api": 26,
+    "daemon_rust": "nightly-2026-09-25"
+  },
+  "kernel_config": {
+    "CONFIG_KSU": "m",
+    "CONFIG_KSU_SAMSUNG_KDP": "y",
+    "CONFIG_KSU_SAMSUNG_RKP": "y",
+    "CONFIG_KSU_SAMSUNG_DEFEX": "y",
+    "CONFIG_KSU_TRACEPOINT_HOOK": "y",
+    "CONFIG_KSU_MULTI_MANAGER_SUPPORT": "y",
+    "CONFIG_DEBUG_INFO_BTF_MODULES": ""
+  },
+  "outputs": {
+    "ksud": {
+      "size": 4370000,
+      "sha256": "b0cfd6fbec8ca17439767ac1e46219e36f67abe35945c27d3c16166348d2fe53"
+    },
+    "kernelsu.ko": {
+      "size": 426864,
+      "sha256": "20e52c3e485bb72296446482f42d62caf29f5794a9fe101df1b36887cafd8408"
+    },
+    "helper": {
+      "size": 24232,
+      "sha256": "799d9fa46fe863e1843ce804f9c0304be7409445909d4155f926538248a1b2a1"
+    }
+  },
+  "rebased_patch": {
+    "path": "samsung-compat-35203.patch",
+    "size": 63061,
+    "sha256": "6eecb4acb583c9cf6d2d71f77ddf3065764f24165cc6a1b6dd3cd2412c749915"
+  },
+  "validation": {
+    "kernel_build": "passed",
+    "daemon_build": "passed",
+    "apk_build": "not run (user builds locally)",
+    "device_test": "not run",
+    "bundle_tests": "8 passed (6 bundle/helper + 2 driver/daemon)",
+    "kotlin_host_harness": "10 simulated runner scenarios passed; 203 Kotlin files syntax checked",
+    "compat_patch_application": "passed against exact upstream commit; all patched source hashes match",
+    "exploit_and_bridge_files": "unchanged from app base"
+  },
+  "manager_required_uapi": 5,
+  "source_provenance": "Existing complete Samsung compatibility patch rebased onto the pinned UAPI 5 upstream; late-load Rust hunks carried forward with current ScriptWait API.",
+  "patched_source_sha256": {
+    "kernel/Kbuild": "c757006fc4b4f66bc27ad2a47e6c064e6c5c51044035986edb23f87162ed987b",
+    "kernel/Kconfig": "f659bea571a42bb9afbf1057726353ec1b54254168c6b8175fae4d05a0648fe2",
+    "kernel/compat/samsung_defex.c": "d7615f3db9af2d5ba3d5e4580db6732a71a72ee9d29081da62dfdf73f860a148",
+    "kernel/compat/samsung_defex.h": "f50410ca28b421ba61f4bf10aca611f50b2ea150b8d0c508fbeb119194f0e387",
+    "kernel/compat/samsung_kdp.c": "d1f3da9d0a1c5eb85ef5c57808d395e1a32711acd73f42918098f2f2bd94ecc3",
+    "kernel/core/init.c": "0e65c6bad305a5ffb53a669d23e94209a59f259b0fa57b2c5ab10c86e501784c",
+    "kernel/feature/selinux_hide.c": "3428b08ab87e5b392d21516afe2feb6a7b68dac4dd588091ce7a7a08b6cb44b2",
+    "kernel/hook/arm64/patch_memory.c": "4a5c8ad8b5f294ca902267dd9e5a0594eb8e1736c990b3699c09cdec058bfdb6",
+    "kernel/hook/arm64/syscall_hook.c": "bab4067e87564874798d9dc04a97869981ea9ef4bac11369d25abf1b911b3857",
+    "kernel/hook/syscall_hook.h": "219d1481162ee14b5ce8787fd36005766706d045413ca8f58af4ee40a3f61f39",
+    "kernel/hook/syscall_hook_manager.c": "bb83839292ebcaf181f421b325a6c22c6f18041a9133a0d7f3bfc54a93158ecc",
+    "kernel/hook/tp_marker.c": "a197f529ec4af257166a33624b4c4976886b395cdd525706330d670f45dab3e0",
+    "kernel/include/ksu_samsung_kdp.h": "cbf754febc1afc5ba794f8d00ba9106bd6f292bee829e85ee058967a6a09177e",
+    "kernel/policy/app_profile.c": "7a0ef1a6dcbe11825c296d80c6ee6e4c830a0d6a7d4cbd088881a6be74c93026",
+    "kernel/selinux/selinux.c": "8f23643b99938c9c66ea0de1a13dae3ae1e060ff7a88c837555b3aed75d91b38",
+    "userspace/ksud/src/android/late_load/mod.rs": "586afee86c0c06c7899cb3147884c5b4e473d5048c5850ca933a148938cfdb88",
+    "userspace/ksud/src/android/utils.rs": "f52cfe6312c3fe2b44eb36e0b2ff862d51d8868c8cd5eea51a96748fdbee7539",
+    "userspace/ksuinit/src/lib.rs": "8e33b668dd35a23cafde56b00f49d35f832fa0ce7709733791f9e64c037c6ccc"
+  }
+}

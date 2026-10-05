@@ -1,0 +1,11 @@
+test_bzig_and_azhl_share_the_same_verified_backends (__main__.BundleTests.test_bzig_and_azhl_share_the_same_verified_backends) ... ok
+test_catalog_and_installed_daemons_agree (__main__.BundleTests.test_catalog_and_installed_daemons_agree) ... ok
+test_environment_matches_original_dex_tracefs_branch (__main__.BundleTests.test_environment_matches_original_dex_tracefs_branch) ... ok
+test_generator_rejects_changed_and_truncated_originals (__main__.BundleTests.test_generator_rejects_changed_and_truncated_originals) ... ok
+test_helpers_only_change_documented_instructions (__main__.BundleTests.test_helpers_only_change_documented_instructions) ... ok
+test_runtime_expectations_match_packaged_helpers (__main__.BundleTests.test_runtime_expectations_match_packaged_helpers) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.028s
+
+OK

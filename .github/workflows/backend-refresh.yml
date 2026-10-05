@@ -1,0 +1,39 @@
+name: Build matched backend update
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install host build prerequisites
+        run: sudo apt-get update && sudo apt-get install -y build-essential libssl-dev pkg-config python3
+      - name: Provide the standard DDK path
+        run: |
+          mkdir -p "$RUNNER_TEMP/rmgu-backends/ddk-root/opt/ddk"
+          sudo ln -s "$RUNNER_TEMP/rmgu-backends/ddk-root/opt/ddk" /opt/ddk
+      - name: Build and validate the update
+        run: python3 tools/backend-refresh/refresh.py --work "$RUNNER_TEMP/rmgu-backends"
+      - name: Upload the patch and validation logs
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RMGU-matched-backend-update
+          path: ${{ runner.temp }}/rmgu-backends/result/
+          if-no-files-found: error
+      - name: Preserve failed build logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RMGU-backend-build-failure
+          path: ${{ runner.temp }}/rmgu-backends/logs/
+          if-no-files-found: ignore

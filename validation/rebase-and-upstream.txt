@@ -1,0 +1,4 @@
+Official heads checked 2026-10-05; no native compilation performed here.
+kernelsu: 08b2e9e451325ebe506c273cfb0fde17d18f592f, count 2661; patch applies to pristine pin; 17 patched files byte-match reviewed source.
+resukisu: e5423590bec3e24daffa4e9555c9592071319c68, count 4512; patch applies to pristine pin; 20 patched files byte-match reviewed source.
+KernelSU-Next remote HEAD remains 9ba1a51e46d0e4a88ba502a80eda1351a6ce1cd8; existing binary pair retained.
