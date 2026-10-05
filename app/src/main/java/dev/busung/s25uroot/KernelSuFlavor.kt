@@ -79,18 +79,13 @@ enum class KernelSuFlavor(
     ),
     ReSukiSU(
         id = "resukisu",
-        label = "ReSukiSU",
-        managerPackage = "com.resukisu.resukisu",
-        repository = "ReSukiSU/ReSukiSU",
-        // A pre-release, and named as one everywhere below: this project marks every release it has
-        // published as a pre-release, so the newest tag is `v4.2.0-rc3` and there is no `v4.2.0` for a
-        // lookup to resolve. The suffix is part of the release's name rather than a description of it -
-        // the tag, the asset and the version the pairs declare all carry it - so keeping it is what
-        // makes a version named here resolve to the same release the daemon was built from.
+        label = "BakaSU",
+        managerPackage = "org.bakasu.bakasu",
+        repository = "Baka-SU/BakaSU",
+        // Keep the internal id for saved preferences and existing assets.
+        // The old rc3 release APK uses UAPI 4. Use an official UAPI 5 build.
         defaultManagerVersion = "4.2.0-rc3",
-        // The universal APK, unlike the other two flavours' single release file: this project publishes
-        // one per ABI and a manager has to install on whatever phone asks for it.
-        defaultManagerAsset = "ReSukiSU_v4.2.0-rc3_35171-universal-release.apk",
+        defaultManagerAsset = "",
         supportsDynamicManager = true,
         summaryRes = R.string.flavor_resukisu_summary,
     ),
@@ -106,7 +101,8 @@ enum class KernelSuFlavor(
         get() = ManagerRelease(
             flavor = this,
             version = defaultManagerVersion,
-            url = releaseAssetUrl(defaultManagerVersion, defaultManagerAsset),
+            url = if (defaultManagerAsset.isEmpty()) "https://github.com/$repository/actions"
+                else releaseAssetUrl(defaultManagerVersion, defaultManagerAsset),
         )
 
     companion object {

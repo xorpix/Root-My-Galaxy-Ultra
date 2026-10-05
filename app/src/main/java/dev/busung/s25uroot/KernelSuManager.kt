@@ -86,13 +86,16 @@ internal fun identifyManager(packageName: String, label: String): ManagerIdentit
         it.managerPackage.equals(packageName.trim(), ignoreCase = true)
     }
     if (published != null) return ManagerIdentity(published, spoofed = false)
+    if (packageName.trim().equals("com.resukisu.resukisu", ignoreCase = true)) {
+        return ManagerIdentity(KernelSuFlavor.ReSukiSU, spoofed = false)
+    }
 
     val words = label.lowercase().replace('-', ' ').replace('_', ' ')
     return when {
         "next" in words -> ManagerIdentity(KernelSuFlavor.KernelSuNext, spoofed = true)
         // Ahead of the KernelSU test because the two share a substring: `resukisu` contains `su`, and
         // reading this project's manager as KernelSU's would put it in the wrong row.
-        "resukisu" in words || "re suki su" in words ->
+        "bakasu" in words || "baka su" in words || "resukisu" in words || "re suki su" in words ->
             ManagerIdentity(KernelSuFlavor.ReSukiSU, spoofed = true)
         "kernelsu" in words || "kernel su" in words -> ManagerIdentity(KernelSuFlavor.KernelSu, spoofed = true)
         else -> ManagerIdentity(null, spoofed = true)

@@ -1,7 +1,7 @@
 # Root My Galaxy Ultra
 
 Temporary root for the **Samsung Galaxy S26 Ultra SM-S948B (m3q)**, with a choice
-of **KernelSU**, **KernelSU-Next** or **ReSukiSU**. Root is lost after a full
+of **KernelSU**, **KernelSU-Next** or **BakaSU (former ReSukiSU)**. Root is lost after a full
 reboot; activate it again through the app.
 
 [Download the latest release](https://github.com/xorpix/Root-My-Galaxy-Ultra/releases/latest)
@@ -64,9 +64,9 @@ The current source bundles these driver/daemon pairs:
 
 | Backend | Driver / UAPI | Official manager downloads |
 |---|---|---|
-| KernelSU | `32657 / 5` | [KernelSU releases](https://github.com/tiann/KernelSU/releases) |
+| KernelSU | `32661 / 5` | [KernelSU releases](https://github.com/tiann/KernelSU/releases) |
 | KernelSU-Next | `33319 / 5` | [KernelSU-Next releases](https://github.com/KernelSU-Next/KernelSU-Next/releases) |
-| ReSukiSU | `35203 / 5` | [ReSukiSU releases](https://github.com/ReSukiSU/ReSukiSU/releases) |
+| BakaSU | `35212 / 5` | [BakaSU releases](https://github.com/Baka-SU/BakaSU/actions) |
 
 These are pinned upstream development revisions with Samsung compatibility
 changes. [Backend documentation](backends/README.md) contains the exact source
@@ -205,7 +205,7 @@ Android debug key. Installing over an existing APK requires the same signing key
 
 AZHL screenshots from an earlier build; labels may differ in current releases.
 
-<img width="220" alt="Home showing an active ReSukiSU backend" src="docs/screenshots/home.jpg" />
+<img width="220" alt="Home showing an active BakaSU backend" src="docs/screenshots/home.jpg" />
 <img width="220" alt="Settings showing bundled payloads" src="docs/screenshots/settings.jpg" />
 
 ## Credits and source notes
@@ -221,7 +221,7 @@ AZHL screenshots from an earlier build; labels may differ in current releases.
   [helper variant metadata](app/src/main/assets/m3q/helper-variants.json).
 - [diabl0w / DFRoot](https://github.com/diabl0w/DFRoot) — DirtyFrag integration
   for BZIG. See [DirtyFrag provenance and licensing notes](app/src/main/cpp/dirtyfrag/DF_ORIGIN.md).
-- **KernelSU, KernelSU-Next and ReSukiSU contributors** — root backends;
+- **KernelSU, KernelSU-Next and BakaSU contributors** — root backends;
   [source revisions and Samsung patches](backends/README.md).
 
 The application repository carries the [Apache 2.0 license](LICENSE).

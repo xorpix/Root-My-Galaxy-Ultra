@@ -47,6 +47,7 @@
             concern from finding it - see KernelSuManager.
         -->
         <package android:name="com.resukisu.resukisu" />
+        <package android:name="org.bakasu.bakasu" />
         <package android:name="moe.shizuku.manager" />
     </queries>
 

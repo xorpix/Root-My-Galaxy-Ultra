@@ -1,3 +1,0 @@
-PASS: Python py_compile for builder, refresh, stage and tests.
-PASS: workflow YAML and all target/provenance/candidate JSON parse.
-PASS: git diff --check excluding embedded upstream compatibility patch files.

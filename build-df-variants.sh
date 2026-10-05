@@ -25,7 +25,7 @@ flavor_pkg() {
     case "$1" in
         kernelsu)      echo me.weishu.kernelsu ;;
         kernelsu-next) echo com.rifsxd.ksunext ;;
-        resukisu)      echo com.resukisu.resukisu ;;
+        resukisu)      echo org.bakasu.bakasu ;;
         *) echo "unknown flavor $1" >&2; exit 1 ;;
     esac
 }

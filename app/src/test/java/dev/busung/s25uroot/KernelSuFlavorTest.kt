@@ -88,12 +88,11 @@ class KernelSuFlavorTest {
         // ReSukiSU's own, and the one that is not shaped like the other two: it publishes every release
         // as a pre-release, so the version is a name with a suffix in it, and it ships one manager per
         // ABI, so the file the app would hand over is the universal one.
-        assertEquals("com.resukisu.resukisu", KernelSuFlavor.ReSukiSU.managerPackage)
-        assertEquals("ReSukiSU/ReSukiSU", KernelSuFlavor.ReSukiSU.repository)
+        assertEquals("org.bakasu.bakasu", KernelSuFlavor.ReSukiSU.managerPackage)
+        assertEquals("Baka-SU/BakaSU", KernelSuFlavor.ReSukiSU.repository)
         assertEquals("4.2.0-rc3", KernelSuFlavor.ReSukiSU.defaultManagerVersion)
         assertEquals(
-            "https://github.com/ReSukiSU/ReSukiSU/releases/download/v4.2.0-rc3/" +
-                "ReSukiSU_v4.2.0-rc3_35171-universal-release.apk",
+            "https://github.com/Baka-SU/BakaSU/actions",
             KernelSuFlavor.ReSukiSU.defaultManagerRelease.url,
         )
     }
@@ -105,6 +104,11 @@ class KernelSuFlavorTest {
         // appears on the phone. These two facts are the release's own shape: the tag it is published
         // under, and the file inside it.
         for (flavor in KernelSuFlavor.entries) {
+            if (flavor.defaultManagerAsset.isEmpty()) {
+                assertEquals(KernelSuFlavor.ReSukiSU, flavor)
+                assertEquals("https://github.com/Baka-SU/BakaSU/actions", flavor.defaultManagerRelease.url)
+                continue
+            }
             assertTrue(
                 "${flavor.label}: ${flavor.defaultManagerAsset} does not name " +
                     "v${flavor.defaultManagerVersion}",

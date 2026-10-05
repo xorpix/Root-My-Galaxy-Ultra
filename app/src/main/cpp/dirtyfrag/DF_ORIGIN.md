@@ -32,7 +32,7 @@ and execs ksud from a memfd. No Shizuku, no WiFi needed.
   (late-load hangs after the daemon is up, so waiting for its exit never
   fires), `touch /dev/dfm1` on 120 s timeout or non-zero exit. Flavor manager
   packages: `me.weishu.kernelsu`, `com.rifsxd.ksunext`,
-  `com.resukisu.resukisu`. A `df-wipe-requested` flag next to the staged
+  `org.bakasu.bakasu`. A `df-wipe-requested` flag next to the staged
   daemon arms a pre-load module-state wipe (modules only, grants kept;
   skipped while a backend is live). Staged ksud comes from
   `DfCatalog.stage()` per-flavor `asset://azhl/<flavor>/ksud`.)
@@ -78,3 +78,11 @@ daemons from `asset://azhl/<flavor>/ksud`. M3Q/AZHL behavior unchanged.
 First-try = `choose flavor -> run -> Installed` via `dfm0` or native probe, no
 manager grant. The su-grant hold remains only as fallback when neither
 grant-free signal fires.
+
+## BakaSU manager migration (2026-10-05)
+
+The resukisu bridge keeps its filename and size. Only the manager-package
+literal in its non-executable data section changes to `org.bakasu.bakasu`,
+with space padding. The command suffix and executable sections are unchanged.
+The reproducible, input-hash-checked edit is in
+`tools/backend-refresh/stage.py`. This is not a new exploit build.

@@ -35,8 +35,8 @@
       },
       "kernelsu": {
         "url": "asset://azhl/kernelsu/ksud",
-        "size": 5153776,
-        "sha256": "b5ed44c2c0cd30ff69e0599a08900e9c9f68aa8a520851a595d9464aedb02326",
+        "size": 5148952,
+        "sha256": "1814a6cb446de12f998be9545579f8b5459dd6b208fb03c2409d41cc59ce60a1",
         "version": "3.3.0"
       }
     },
@@ -81,7 +81,7 @@
     },
     {
       "payloadId": "df-bzig-resukisu",
-      "displayName": "SM-S948B BZIG / dirtyfrag / ReSukiSU",
+      "displayName": "SM-S948B BZIG / dirtyfrag / BakaSU",
       "models": [
         "SM-S948B"
       ],
@@ -113,8 +113,8 @@
       },
       "kernelsu": {
         "url": "asset://azhl/resukisu/ksud",
-        "size": 4370000,
-        "sha256": "b0cfd6fbec8ca17439767ac1e46219e36f67abe35945c27d3c16166348d2fe53",
+        "size": 4363760,
+        "sha256": "1ad77d38f230e0312562372e3906ea38c800a071992ed86002f6658efc5dab7e",
         "version": "4.2.0-rc3"
       }
     }

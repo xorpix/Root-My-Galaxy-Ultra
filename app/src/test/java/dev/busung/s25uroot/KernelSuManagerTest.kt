@@ -28,6 +28,12 @@ class KernelSuManagerTest {
         val next = identifyManager("com.rifsxd.ksunext", "KernelSU-Next")
         assertEquals(KernelSuFlavor.KernelSuNext, next.flavor)
         assertFalse(next.spoofed)
+
+        val baka = identifyManager("org.bakasu.bakasu", "BakaSU")
+        assertEquals(KernelSuFlavor.ReSukiSU, baka.flavor)
+        assertFalse(baka.spoofed)
+        assertFalse(identifyManager("com.resukisu.resukisu", "ReSukiSU").spoofed)
+        assertEquals(KernelSuFlavor.ReSukiSU, identifyManager("custom.manager", "BakaSU").flavor)
     }
 
     @Test

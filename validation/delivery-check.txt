@@ -1,5 +1,0 @@
-PASS: outer patch applies to app base 5287e5bb112ef33143ba23457c05255e5498cf27.
-PASS: every changed source file matches after application.
-PASS: clean committed build-kit checkout passes verify_inputs.
-PASS: app/src, native/azhl and tools/prepare_m3q_helpers.py unchanged by the source kit.
-Native builds and workflow execution not performed: DDK download blocked by environment.
