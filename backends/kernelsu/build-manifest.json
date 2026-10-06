@@ -1,23 +1,5 @@
 {
   "schema": 2,
-  "created_utc": "2026-10-04",
-  "app_version": "1.1.3",
-  "app_base_commit": "7be51b5b809818e03420e3b4994d82e8859c6a30",
-  "upstream_repository": "https://github.com/tiann/KernelSU",
-  "upstream_commit": "cd4af89c43005f33df91ba7cb66e00e67a4d0c1b",
-  "previous_upstream_commit": "08a3b087e49227c8a6731c5f1114998b5e25255b",
-  "upstream_commit_count": 2657,
-  "driver_version": 32657,
-  "uapi_version": 5,
-  "daemon_version": "3.3.0-56-gcd4af89c",
-  "source_provenance": "Existing complete Samsung compatibility patch rebased onto the pinned UAPI 5 upstream; late-load Rust hunks carried forward with current ScriptWait API.",
-  "companion_patch": {
-    "repository": "https://github.com/rushiranpise/Root-My-Galaxy-Payloads",
-    "commit": "7f1490bf0b65e1cfd1ef9f2f2fb0485dc4186dae",
-    "path": "kernelsu/patches/KernelSU-v3.3.0-samsung-kdp-rkp-defex.patch",
-    "size": 54634,
-    "sha256": "8bea92389e8b9ddcf63de83b776e7baed25636d6c85d07490c9c7016a969fb29"
-  },
   "toolchains": {
     "ddk": "ghcr.io/ylarod/ddk-min:android16-6.12-20260828",
     "kernel_clang": "clang-r536225",
@@ -33,37 +15,49 @@
     "CONFIG_KSU_SAMSUNG_DEFEX": "y",
     "CONFIG_DEBUG_INFO_BTF_MODULES": ""
   },
-  "outputs": {
-    "ksud": {
-      "size": 5153776,
-      "sha256": "b5ed44c2c0cd30ff69e0599a08900e9c9f68aa8a520851a595d9464aedb02326"
-    },
-    "kernelsu.ko": {
-      "size": 390384,
-      "sha256": "6e56ce40553fbc082e6e589f08c0b10991ec6425dc638f7709224d52fbaa5a28"
-    },
-    "helper": {
-      "size": 24232,
-      "sha256": "278e6404f65bb5526a0bc86b1e6f2780232c1af14724abb2e2b59b4b09ba9a65"
-    }
+  "companion_patch": {
+    "repository": "https://github.com/rushiranpise/Root-My-Galaxy-Payloads",
+    "commit": "7f1490bf0b65e1cfd1ef9f2f2fb0485dc4186dae",
+    "path": "kernelsu/patches/KernelSU-v3.3.0-samsung-kdp-rkp-defex.patch",
+    "size": 54634,
+    "sha256": "8bea92389e8b9ddcf63de83b776e7baed25636d6c85d07490c9c7016a969fb29"
   },
-  "rebased_patch": {
-    "path": "samsung-compat-32657.patch",
-    "size": 56164,
-    "sha256": "01022df5451d356ade3462fbc40c425a00fa454adc02d29e38ed63797c9b7335"
-  },
+  "created_utc": "2026-10-05",
+  "app_base_commit": "5287e5bb112ef33143ba23457c05255e5498cf27",
+  "upstream_repository": "https://github.com/tiann/KernelSU",
+  "upstream_commit": "08b2e9e451325ebe506c273cfb0fde17d18f592f",
+  "upstream_commit_count": 2661,
+  "driver_version": 32661,
+  "uapi_version": 5,
+  "manager_required_uapi": 5,
+  "daemon_version": "3.3.0-60-g08b2e9e4",
   "validation": {
     "kernel_build": "passed",
     "daemon_build": "passed",
-    "apk_build": "not run (user builds locally)",
-    "device_test": "not run",
-    "bundle_tests": "8 passed (6 bundle/helper + 2 driver/daemon)",
-    "kotlin_host_harness": "10 simulated runner scenarios passed; 203 Kotlin files syntax checked",
-    "compat_patch_application": "passed against exact upstream commit; all patched source hashes match",
-    "exploit_and_bridge_files": "unchanged from app base",
-    "cargo_ndk_check_clippy_fmt": "passed in order; cargo-ndk 4.1.2, Rust 1.98.1, API 26"
+    "exact_driver_in_daemon": "passed",
+    "apk_build": "not run",
+    "device_test": "not run"
   },
-  "manager_required_uapi": 5,
+  "source_provenance": "Existing Samsung compatibility changes rebased onto pinned upstream.",
+  "outputs": {
+    "ksud": {
+      "size": 5148952,
+      "sha256": "1814a6cb446de12f998be9545579f8b5459dd6b208fb03c2409d41cc59ce60a1"
+    },
+    "kernelsu.ko": {
+      "size": 390384,
+      "sha256": "4def21dd3aade52246c8a8b40e4cb3b4cb2048b18f66b9ef417e0b41d0dc1f61"
+    },
+    "helper": {
+      "size": 24232,
+      "sha256": "284283be62db6a756c6b893f014947b83b1f01c6ff2e716b60370486d838beee"
+    }
+  },
+  "rebased_patch": {
+    "path": "samsung-compat-32661.patch",
+    "size": 56221,
+    "sha256": "315651315cdbd78335f77b9ad0b3795cda0393b7d873c48737dc8a24ad2c9a23"
+  },
   "patched_source_sha256": {
     "kernel/Kbuild": "ad9b2e7b5c25ab2da0fad4e222026e8b3e59889e576b16c238c1db32675a1345",
     "kernel/compat/samsung_defex.c": "d7615f3db9af2d5ba3d5e4580db6732a71a72ee9d29081da62dfdf73f860a148",

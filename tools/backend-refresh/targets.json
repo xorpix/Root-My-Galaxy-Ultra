@@ -1,9 +1,9 @@
 {
-  "schema": 1,
-  "app_base": "5287e5bb112ef33143ba23457c05255e5498cf27",
+  "schema": 2,
+  "app_base": "9c71e2c99caaccb8227c1605111afde886eee284",
   "uapi": 5,
   "checked_date": "2026-10-05",
-  "build_status": "not_built",
+  "build_status": "built",
   "backends": {
     "kernelsu": {
       "repository": "tiann/KernelSU",
@@ -12,8 +12,10 @@
       "version": 32661,
       "daemon_version": "3.3.0-60-g08b2e9e4",
       "rust": "1.98.1",
-      "rebuild": true,
-      "compat_sha256": "315651315cdbd78335f77b9ad0b3795cda0393b7d873c48737dc8a24ad2c9a23"
+      "rebuild": false,
+      "compat_sha256": "315651315cdbd78335f77b9ad0b3795cda0393b7d873c48737dc8a24ad2c9a23",
+      "branch": "main",
+      "version_offset": 30000
     },
     "kernelsu-next": {
       "repository": "KernelSU-Next/KernelSU-Next",
@@ -23,7 +25,9 @@
       "daemon_version": "3.4.0-25-g9ba1a51e",
       "rust": "1.98.1",
       "rebuild": false,
-      "compat_sha256": "070748a6fd12a1951c5cba68f4642d498a1f15818059bc84a146fdfb0ac0397e"
+      "compat_sha256": "070748a6fd12a1951c5cba68f4642d498a1f15818059bc84a146fdfb0ac0397e",
+      "branch": "dev",
+      "version_offset": 30000
     },
     "resukisu": {
       "repository": "Baka-SU/BakaSU",
@@ -32,8 +36,10 @@
       "version": 35212,
       "daemon_version": "4.2.0-rc3-41-ge5423590",
       "rust": "nightly-2026-09-25",
-      "rebuild": true,
-      "compat_sha256": "560ab8c213dce61ae1ec4aae95ac0f5cb0193fa780d2d0692ace39e909597f0f"
+      "rebuild": false,
+      "compat_sha256": "560ab8c213dce61ae1ec4aae95ac0f5cb0193fa780d2d0692ace39e909597f0f",
+      "branch": "main",
+      "version_offset": 30700
     }
   }
 }

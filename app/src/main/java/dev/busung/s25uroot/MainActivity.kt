@@ -4276,7 +4276,7 @@ private fun SettingsPage(
                     title = stringResource(R.string.bundled_payloads_title),
                     description = stringResource(R.string.bundled_payloads_description),
                     value = stringResource(R.string.bundled_payloads_included),
-                    position = SettingsCardPosition.Bottom,
+                    position = SettingsCardPosition.GroupedSingle,
                     onClick = {},
                 )
             }

@@ -100,7 +100,7 @@ class SharedStagingNameTest {
         val staged = shippedSources()
             .filter { it.name != "StagedResidue.kt" }
             .flatMap { source ->
-                val text = source.readText()
+                val text = stagingSourceText(source)
                 STAGING_PATH.findAll(text).map { match ->
                     Staged(source, text.take(match.range.first).count { it == '\n' } + 1, match.value)
                 }.toList()
@@ -145,13 +145,21 @@ class SharedStagingNameTest {
         )
 
         /**
-         * The names the payload owns, so both installs must use them and neither may move them.
+         * Fixed names required by the bundled loaders, which staging code must not rename.
          *
          * The socket is in here for a different reason from the other two: nothing stages it. The
          * payload's su daemon creates it, on whichever install started that daemon, which is what puts it
          * on the shared list - and it is not a name any staging code should be writing.
+         * The M3Q daemon and load log belong to that loader's contract; the other install does not
+         * write them, so they are not added to WRITTEN_BY_THE_OTHER_INSTALL or the shared sweep list.
          */
-        val PAYLOAD_OWNED_NAMES = setOf("ksud-s25u-kdp", ".ksud-stage", PAYLOAD_SOCKET)
+        val PAYLOAD_OWNED_NAMES = setOf(
+            "ksud-s25u-kdp",
+            ".ksud-stage",
+            PAYLOAD_SOCKET,
+            M3qLaunch.DAEMON_PATH.substringAfterLast('/'),
+            M3qLaunch.LOAD_LOG.substringAfterLast('/'),
+        )
 
         /** The one path no staging code creates: the daemon's own socket. */
         const val PAYLOAD_SOCKET = "temp_su.sock"
