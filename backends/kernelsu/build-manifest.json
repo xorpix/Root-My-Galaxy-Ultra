@@ -35,8 +35,9 @@
     "kernel_build": "passed",
     "daemon_build": "passed",
     "exact_driver_in_daemon": "passed",
-    "apk_build": "not run",
-    "device_test": "not run"
+    "apk_build": "passed (GitHub Actions)",
+    "device_test": "not run",
+    "android_unit_tests": "passed (GitHub Actions)"
   },
   "source_provenance": "Existing Samsung compatibility changes rebased onto pinned upstream.",
   "outputs": {
@@ -76,5 +77,6 @@
     "kernel/selinux/selinux.c": "1ea93dd3ecef279a619d830f71f9cde2070568d6a5bdfe6ada1bb684ba4163bf",
     "userspace/ksud/src/late_load.rs": "1fe04b64ed02c231c463ce7be28b4b07541ecdb92c4478b43987be36b689395c",
     "userspace/ksud/src/utils.rs": "5a077fd7b9d5632c1879a7124f81e161cffd1cdb6dab72881778bf9dbabc80f0"
-  }
+  },
+  "app_version": "1.1.6"
 }

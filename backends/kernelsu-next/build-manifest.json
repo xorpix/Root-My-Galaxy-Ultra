@@ -1,15 +1,15 @@
 {
   "schema": 2,
-  "created_utc": "2026-10-04",
-  "app_version": "1.1.3",
-  "app_base_commit": "7be51b5b809818e03420e3b4994d82e8859c6a30",
+  "created_utc": "2026-10-06",
+  "app_version": "1.1.6",
+  "app_base_commit": "7aef46c94488bfcb003504a89f28710404d3cd01",
   "upstream_repository": "https://github.com/KernelSU-Next/KernelSU-Next",
-  "upstream_commit": "9ba1a51e46d0e4a88ba502a80eda1351a6ce1cd8",
-  "previous_upstream_commit": "2b31f7185460e99bc3896a639e9073b1c354ee0d",
-  "upstream_commit_count": 3319,
-  "driver_version": 33319,
+  "upstream_commit": "27f891bfcb2c7d4d399dd2151298f3dec1ae199c",
+  "previous_upstream_commit": "9ba1a51e46d0e4a88ba502a80eda1351a6ce1cd8",
+  "upstream_commit_count": 3321,
+  "driver_version": 33321,
   "uapi_version": 5,
-  "daemon_version": "3.4.0-25-g9ba1a51e",
+  "daemon_version": "3.4.0-27-g27f891bf",
   "source_provenance": "Existing complete Samsung compatibility patch rebased onto the pinned UAPI 5 upstream; late-load Rust hunks carried forward with current ScriptWait API.",
   "companion_patch": {
     "repository": "https://github.com/rushiranpise/Root-My-Galaxy-Payloads",
@@ -35,32 +35,30 @@
   },
   "outputs": {
     "ksud": {
-      "size": 4275064,
-      "sha256": "667ae413cc871b36e6d62dde0f040bb3a0a61734f988b3b0c6b23abd1f07fa43"
+      "size": 4270168,
+      "sha256": "0036e6dc6ed35868c068f1211e34173512cc90f23ada07dad8ecb341cbe2796c"
     },
     "kernelsu.ko": {
       "size": 405736,
-      "sha256": "69f9c5d19069b093a6fa139955dfff560d39caeadb2814f812e25b25076fc9c5"
+      "sha256": "1eba94383cc817ea5b6d4204f3b8b0789535053701d7d77495b1aa1c760735f8"
     },
     "helper": {
       "size": 24232,
-      "sha256": "bea92d43112aba62f67791993a8fb7fa1dae887e016cf9135c0320fd8ad6032b"
+      "sha256": "53c0671c953b24fc40c2e89f1c501297b9afcaaaf70d7d4971e528b5d4d2b552"
     }
   },
   "rebased_patch": {
-    "path": "samsung-compat-33319.patch",
-    "size": 57595,
-    "sha256": "070748a6fd12a1951c5cba68f4642d498a1f15818059bc84a146fdfb0ac0397e"
+    "path": "samsung-compat-33321.patch",
+    "size": 57657,
+    "sha256": "e844cb13e2663ceb80d3e1f9a32fe74946f5010ea31ac4b34e941185f690664c"
   },
   "validation": {
     "kernel_build": "passed",
     "daemon_build": "passed",
-    "apk_build": "not run (user builds locally)",
+    "exact_driver_in_daemon": "passed",
+    "apk_build": "passed (GitHub Actions)",
     "device_test": "not run",
-    "bundle_tests": "8 passed (6 bundle/helper + 2 driver/daemon)",
-    "kotlin_host_harness": "10 simulated runner scenarios passed; 203 Kotlin files syntax checked",
-    "compat_patch_application": "passed against exact upstream commit; all patched source hashes match",
-    "exploit_and_bridge_files": "unchanged from app base"
+    "android_unit_tests": "passed (GitHub Actions)"
   },
   "manager_required_uapi": 5,
   "patched_source_sha256": {

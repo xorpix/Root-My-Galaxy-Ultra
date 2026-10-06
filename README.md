@@ -65,7 +65,7 @@ The current source bundles these driver/daemon pairs:
 | Backend | Driver / UAPI | Official manager downloads |
 |---|---|---|
 | KernelSU | `32661 / 5` | [KernelSU releases](https://github.com/tiann/KernelSU/releases) |
-| KernelSU-Next | `33319 / 5` | [KernelSU-Next releases](https://github.com/KernelSU-Next/KernelSU-Next/releases) |
+| KernelSU-Next | `33321 / 5` | [KernelSU-Next releases](https://github.com/KernelSU-Next/KernelSU-Next/releases) |
 | BakaSU | `35212 / 5` | [BakaSU releases](https://github.com/Baka-SU/BakaSU/actions) |
 
 These are pinned upstream development revisions with Samsung compatibility

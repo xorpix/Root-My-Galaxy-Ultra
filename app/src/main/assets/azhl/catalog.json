@@ -74,8 +74,8 @@
       },
       "kernelsu": {
         "url": "asset://azhl/kernelsu-next/ksud",
-        "size": 4275064,
-        "sha256": "667ae413cc871b36e6d62dde0f040bb3a0a61734f988b3b0c6b23abd1f07fa43",
+        "size": 4270168,
+        "sha256": "0036e6dc6ed35868c068f1211e34173512cc90f23ada07dad8ecb341cbe2796c",
         "version": "3.4.0"
       }
     },

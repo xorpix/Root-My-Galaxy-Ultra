@@ -36,22 +36,22 @@
     },
     "kernelsu-next": {
       "library": "libm3qroot_kernelsu_next.so",
-      "driverVersion": 33319,
+      "driverVersion": 33321,
       "uapiVersion": 5,
       "size": 24232,
-      "sha256": "bea92d43112aba62f67791993a8fb7fa1dae887e016cf9135c0320fd8ad6032b",
+      "sha256": "53c0671c953b24fc40c2e89f1c501297b9afcaaaf70d7d4971e528b5d4d2b552",
       "changes": [
         {
           "virtual_address": "0x6c94",
           "file_offset": 11412,
           "before": "528fef89",
-          "after": "529044e9"
+          "after": "52904529"
         },
         {
           "virtual_address": "0x6cc8",
           "file_offset": 11464,
           "before": "528fef82",
-          "after": "529044e2"
+          "after": "52904522"
         },
         {
           "virtual_address": "0x6ca0",

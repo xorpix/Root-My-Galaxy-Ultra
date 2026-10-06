@@ -1,8 +1,8 @@
 {
   "schema": 2,
-  "app_base": "9c71e2c99caaccb8227c1605111afde886eee284",
+  "app_base": "7aef46c94488bfcb003504a89f28710404d3cd01",
   "uapi": 5,
-  "checked_date": "2026-10-05",
+  "checked_date": "2026-10-06",
   "build_status": "built",
   "backends": {
     "kernelsu": {
@@ -19,13 +19,13 @@
     },
     "kernelsu-next": {
       "repository": "KernelSU-Next/KernelSU-Next",
-      "commit": "9ba1a51e46d0e4a88ba502a80eda1351a6ce1cd8",
-      "commit_count": 3319,
-      "version": 33319,
-      "daemon_version": "3.4.0-25-g9ba1a51e",
+      "commit": "27f891bfcb2c7d4d399dd2151298f3dec1ae199c",
+      "commit_count": 3321,
+      "version": 33321,
+      "daemon_version": "3.4.0-27-g27f891bf",
       "rust": "1.98.1",
       "rebuild": false,
-      "compat_sha256": "070748a6fd12a1951c5cba68f4642d498a1f15818059bc84a146fdfb0ac0397e",
+      "compat_sha256": "e844cb13e2663ceb80d3e1f9a32fe74946f5010ea31ac4b34e941185f690664c",
       "branch": "dev",
       "version_offset": 30000
     },

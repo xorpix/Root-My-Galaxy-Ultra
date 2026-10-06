@@ -36,8 +36,9 @@
     "kernel_build": "passed",
     "daemon_build": "passed",
     "exact_driver_in_daemon": "passed",
-    "apk_build": "not run",
-    "device_test": "not run"
+    "apk_build": "passed (GitHub Actions)",
+    "device_test": "not run",
+    "android_unit_tests": "passed (GitHub Actions)"
   },
   "source_provenance": "Existing Samsung compatibility changes rebased onto pinned upstream.",
   "outputs": {
@@ -80,5 +81,6 @@
     "userspace/ksud/src/android/late_load/mod.rs": "586afee86c0c06c7899cb3147884c5b4e473d5048c5850ca933a148938cfdb88",
     "userspace/ksud/src/android/utils.rs": "f52cfe6312c3fe2b44eb36e0b2ff862d51d8868c8cd5eea51a96748fdbee7539",
     "userspace/ksuinit/src/lib.rs": "8e33b668dd35a23cafde56b00f49d35f832fa0ce7709733791f9e64c037c6ccc"
-  }
+  },
+  "app_version": "1.1.6"
 }
