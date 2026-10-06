@@ -1,93 +1,127 @@
-# October 5 backend update kit
+# Weekly backend builds and releases
 
-**Status: source/build kit; no newly compiled drivers or daemons are included.**
-The local build environment blocked the kernel-toolchain download. Native builds,
-the end-to-end CI workflow and phone validation have not been completed here.
-Installing this kit alone leaves the app's current runtime assets and supported
-devices unchanged. Only a successful build produces the separate runtime patch.
+[Weekly backend release](../../.github/workflows/backend-refresh.yml) checks the
+three official source branches every **Monday at 03:17 UTC**:
 
-Base app commit: `5287e5bb112ef33143ba23457c05255e5498cf27`.
-Do not combine this with the earlier incomplete BakaSU 35207 source patch.
+| Backend | Official source branch | Internal id |
+|---|---|---|
+| KernelSU | `tiann/KernelSU`, `main` | `kernelsu` |
+| KernelSU-Next | `KernelSU-Next/KernelSU-Next`, `dev` | `kernelsu-next` |
+| BakaSU | `Baka-SU/BakaSU`, `main` | `resukisu` |
 
-| Backend | Bundled now | Build target | UAPI | Action |
-|---|---|---|---|---|
-| KernelSU | 32657 | 32661 | 5 | Rebuild driver and daemon together |
-| KernelSU-Next | 33319 | 33319 | 5 | Retain the verified existing pair |
-| ReSukiSU → BakaSU | 35203 | 35212 | 5 | Rebuild both and migrate manager integration |
+When there are new commits, it snapshots those revisions, builds each changed
+kernel driver and daemon as a matched pair, updates the bundled files and helper
+version/hash records, runs the bundle checks and Android unit tests, and builds
+the release APK. Unchanged backends retain their verified binaries. An unchanged
+week uses no native build, creates no commit, and publishes no release.
 
-Revisions and toolchain versions are fixed in `targets.json`. These are the
-official branch heads checked on **2026-10-05**, not a moving “latest” download.
-The script refuses incompatible bases, missing outputs and mixed driver/daemon
-pairs instead of changing runtime version checks ahead of the binaries.
+A fresh job checks the resulting source patch and APK contents, signs the APK
+with your existing release key, and verifies its certificate. It then commits
+the source update to the default branch and creates the next numeric patch tag
+and GitHub release. For example, `1.1.5` becomes `1.1.6`. Existing tags are never
+moved or overwritten. The branch and tag are pushed together without force; if
+the branch advanced during the build, the run stops so your changes are retained.
 
-## Build using GitHub Actions
+The release includes `RootMyGalaxyUltra-VERSION.apk`, `SHA256SUMS`, release notes
+with the upstream revisions, and `apply-matched-backends.patch`. The tag points
+to the actual updated source, including its bundled binaries and provenance.
+These are regular releases. Build results do not claim hardware validation.
 
-1. Apply this kit to the base above and commit the kit files. Push your commit to
-   your repository. The script requires a clean committed checkout.
-2. Open **Actions → Build matched backend update → Run workflow**, selecting
-   that branch. If this is a new workflow, GitHub may require it on your default
-   branch before displaying the manual-run button.
-3. Wait for a successful run and download **RMGU-matched-backend-update**.
-   On failure, download **RMGU-backend-build-failure** and share its logs.
-   There is no usable native update when the workflow fails.
-4. Extract the artifact outside the repo. In the same source revision that ran
-   the workflow, apply its complete patch (adjust the path):
+## One-time setup
 
-   ```powershell
-   git apply --check ..\RMGU-matched-backend-update\apply-matched-backends.patch
-   git apply ..\RMGU-matched-backend-update\apply-matched-backends.patch
-   .\gradlew.bat :app:testDebugUnitTest :app:assembleDebug
-   ```
+Merge the workflow into the default branch. GitHub only runs scheduled workflows
+from that branch. In **Settings → Secrets and variables → Actions**, configure
+these repository secrets (the existing release workflow uses these same names):
 
-5. Review and commit the resulting source/binary changes. Keep `backends/`:
-   it records source provenance and is required by the bundle checker.
+| Secret | Value |
+|---|---|
+| `KEYSTORE_BASE64` | Base64 of the existing release keystore file |
+| `KEYSTORE_PASSWORD` | Keystore password |
+| `KEY_ALIAS` | Alias for the existing release signing key |
+| `KEY_PASSWORD` | Signing key password |
 
-The workflow has read-only repository permissions. It uploads an artifact;
-it does not push commits, publish releases, use signing keys or build an APK.
-Your normal local Android SDK/JDK configuration is still needed for step 4.
+Use the key that signed your previous releases so users can upgrade without
+uninstalling. Do not generate a replacement key for this workflow or commit it.
+The build job uses a disposable key; the real key is used only in the fresh
+signing job. It is not available to upstream kernel/Cargo build commands.
 
-## Local Linux alternative
+PowerShell, to copy the keystore's base64 to the clipboard for the secret editor:
 
-Use an x86-64 Linux host (or suitable WSL environment), a clean committed app
-checkout, Python 3.12+, Git, make, a C/C++ toolchain, OpenSSL development files,
-pkg-config, and network access to GitHub, GHCR, Google, Rust and Cargo sources.
-The work directory must be outside the app checkout and have ample free space.
-It downloads the existing pinned DDK, NDK and Rust toolchains.
-
-Prepare the DDK link once in an environment without an existing `/opt/ddk`:
-
-```sh
-mkdir -p /absolute/work/rmgu-backends/ddk-root/opt/ddk
-sudo ln -s /absolute/work/rmgu-backends/ddk-root/opt/ddk /opt/ddk
-python3 tools/backend-refresh/refresh.py --work /absolute/work/rmgu-backends
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\path\release.p12")) | Set-Clipboard
 ```
 
-Do not overwrite an existing DDK installation. Use a disposable runner instead
-if `/opt/ddk` already points elsewhere. Successful outputs are under `result/`;
-all build logs are under `logs/`. A failed run should be retried with a new work
-directory after the reported problem has been corrected.
+Actions must be enabled and allowed to push the default branch and release tags.
+The publishing job requests `contents: write`. If branch/tag rules require a PR,
+the workflow stops at the push; it does not bypass those rules. No personal
+access token or automatic approval of pull requests is required.
 
-## Included changes
+Open **Actions → Weekly backend release → Run workflow**, select the default
+branch, and leave `publish` checked for a manual run. Uncheck `publish` to build
+an update artifact without the signing secrets, git push, or release. That
+artifact's `apk-input.apk` has a disposable signature and is not the release APK.
+Build-only mode also accepts a non-default branch, so you can test the workflow
+on a pull request branch before merging it. Publishing requires the default branch.
+GitHub may delay scheduled runs; public-repository schedules can be disabled
+after 60 days without repository activity.
 
-- Rebase the existing Samsung compatibility patches onto the pinned official
-  KernelSU and BakaSU sources. KernelSU's four new commits do not alter kernel
-  source; rebuilding still keeps its reported version aligned with its daemon.
-- Carry BakaSU's rename through the manager package, repository and display name.
-  Correct two remaining upstream daemon defaults to `org.bakasu.bakasu`.
-  Retain the internal `resukisu` id and legacy manager recognition.
-- Avoid offering the old UAPI 4 ReSukiSU rc3 APK as BakaSU's default download.
-- Verify the exact compiled kernel module embedded inside each ARM64 daemon;
-  update catalog hashes, generated helper hashes and runtime expectations together.
-- Restore per-backend build provenance that was removed from the public tree.
-- Record SM-S948W / S948WVLU4BZID as a candidate, without adding a root profile.
+## Files to retain
 
-The actual M3Q/GhostLock and DirtyFrag exploit code, timing, retry policy,
-supported firmware identities and module reset policy remain unchanged. The
-BakaSU DirtyFrag bridge receives only a checked manager-package data-string
-replacement; its executable bytes and command logic are preserved.
+Keep `tools/backend-refresh/`, `tools/build_backend.py`, the provisioner scripts,
+the workflow, and **`backends/`** in git. `backends/*/build-manifest.json` and its
+referenced patch identify the binaries currently bundled in the app. They are
+build inputs, not disposable validation output. The three old `*-previous.json`
+files were replaced by these current records; the old fixed `app_base` guard is
+no longer used as a recurring baseline. Each run instead binds to its checked-out
+source commit and verifies its current records and asset/helper hashes.
 
-## Device report
+The restored 32661/33319/35212 records came from successful Actions run
+[37351291263](https://github.com/xorpix/Root-My-Galaxy-Ultra/actions/runs/37351291263).
+Their daemon/helper hashes match the binaries committed in version 1.1.5.
+Download wrapper patches, old `changed-sources/`, and downloaded validation
+folders can be removed after application. Do not remove the retained kit or
+its checksum-pinned compatibility patches.
 
-See `docs/device-candidates/SM-S948W-BZID.md`. The report establishes identity,
-not backend compatibility. Its kernel is a different vendor build from the
-supported SM-S948B/BZIG build. Do not lift the model check based on this report.
+## What stops an automatic release
+
+The existing Samsung compatibility patch must apply to the selected upstream
+revision. The pipeline does not invent a rebase if it stops applying. UAPI 5,
+upstream version calculation, complete source history, and the helper's existing
+version encoding must also remain compatible. A new UAPI requires review of the
+app, helper, and control-channel contracts before automation can accept it.
+
+All changed native builds must succeed before any app bundle is staged. The
+exact built driver must be recoverable from its daemon. Catalogs, JNI copies,
+helper hashes and runtime versions must agree; tests and the APK build must pass.
+Firmware/routing, exploit files and bridge binaries remain unchanged. This does
+not add firmware/device support, port an exploit, add SUSFS, or retune root attempts.
+
+Failed build logs and test reports are uploaded to the workflow run. If signing
+or publication fails, the source patch and any verified signed APK are preserved
+as an unpublished artifact. Nothing becomes a published release before the APK
+and signature checks pass. If the branch/tag push succeeds but GitHub release
+publication then fails, finish the draft release or run the existing **Release
+Build** workflow at that version; do not move the tag or force-reset the branch.
+A bot push intentionally does not trigger the separate CI/back-merge workflows.
+Dispatch **Back-merge** separately if you want to bring this update into `dev`.
+
+After installing an updated APK, fully reboot and activate root to load its
+bundled driver. Updating a manager APK alone does not replace the running driver.
+
+## Local inspection
+
+From a clean, committed checkout:
+
+```sh
+python3 tools/test_m3q_host.py BundleTests
+python3 tools/test_backend_bundle.py
+python3 tools/backend-refresh/test_refresh.py
+python3 tools/backend-refresh/probe.py --output /tmp/upstream-heads.json
+python3 tools/backend-refresh/refresh.py --work /tmp/rmgu-build --snapshot /tmp/upstream-heads.json --discover-only
+```
+
+`--discover-only` clones changed sources and checks the UAPI/version rules and
+patch application without provisioning compilers or building. Use a fresh work
+directory for each run. Omit that flag to build the matched update on a Linux
+machine with the pinned DDK/NDK prerequisites; add `--release` to prepare a patch
+version bump and release metadata. The workflow provisions these dependencies.

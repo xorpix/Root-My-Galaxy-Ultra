@@ -1,39 +1,195 @@
-name: Build matched backend update
+name: Weekly backend release
 
 on:
+  schedule:
+    # Mondays, 03:17 UTC. Avoid the busy top of the hour.
+    - cron: '17 3 * * 1'
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Sign and publish the validated APK (false produces a build artifact only)
+        type: boolean
+        default: true
+        required: true
 
 permissions:
   contents: read
 
+concurrency:
+  group: weekly-backend-release
+  cancel-in-progress: false
+
 jobs:
-  build:
+  probe:
+    # A branch can be checked manually in build-only mode; releases use the default branch.
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || (github.event_name == 'workflow_dispatch' && !inputs.publish)
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 10
+    outputs:
+      changed: ${{ steps.probe.outputs.changed }}
+      base: ${{ steps.probe.outputs.base }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Check the current bundle and automation guards
+        run: |
+          python3 tools/test_m3q_host.py BundleTests
+          python3 tools/test_backend_bundle.py
+          python3 tools/backend-refresh/test_refresh.py
+      - name: Snapshot the official upstream branches
+        id: probe
+        run: python3 tools/backend-refresh/probe.py --output "$RUNNER_TEMP/upstream-heads.json"
+      - name: Check release configuration before spending build time
+        if: steps.probe.outputs.changed == 'true' && (github.event_name == 'schedule' || inputs.publish)
+        env:
+          HAS_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' }}
+          HAS_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD != '' }}
+          HAS_ALIAS: ${{ secrets.KEY_ALIAS != '' }}
+          HAS_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD != '' }}
+        run: |
+          set -euo pipefail
+          for CHECK in HAS_KEYSTORE HAS_STORE_PASSWORD HAS_ALIAS HAS_KEY_PASSWORD; do
+            if [ "${!CHECK}" != true ]; then
+              echo '::error::Set KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS and KEY_PASSWORD in repository Actions secrets. Use the existing release key.'
+              exit 1
+            fi
+          done
+      - name: Pass the exact upstream snapshot to the build
+        if: steps.probe.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-snapshot-${{ github.run_id }}
+          path: ${{ runner.temp }}/upstream-heads.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Report an unchanged bundle
+        if: steps.probe.outputs.changed == 'false'
+        run: echo 'No new upstream commits; no builds, version bump or release needed.' >> "$GITHUB_STEP_SUMMARY"
+
+  build:
+    needs: probe
+    if: needs.probe.outputs.changed == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.probe.outputs.base }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: backend-snapshot-${{ github.run_id }}
+          path: ${{ runner.temp }}/snapshot
       - name: Install host build prerequisites
         run: sudo apt-get update && sudo apt-get install -y build-essential libssl-dev pkg-config python3
       - name: Provide the standard DDK path
         run: |
           mkdir -p "$RUNNER_TEMP/rmgu-backends/ddk-root/opt/ddk"
           sudo ln -s "$RUNNER_TEMP/rmgu-backends/ddk-root/opt/ddk" /opt/ddk
-      - name: Build and validate the update
-        run: python3 tools/backend-refresh/refresh.py --work "$RUNNER_TEMP/rmgu-backends"
-      - name: Upload the patch and validation logs
-        if: success()
+      - name: Build and validate matched drivers and daemons
+        run: python3 tools/backend-refresh/refresh.py --work "$RUNNER_TEMP/rmgu-backends" --snapshot "$RUNNER_TEMP/snapshot/upstream-heads.json" --release
+      - name: Set up JDK 25 (matches the Gradle daemon criteria)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-37.0 build-tools;36.0.0 cmake;3.22.1'
+          accept-android-sdk-licenses: true
+      - name: Reuse the exact NDK already provisioned for the daemons
+        run: |
+          mkdir -p "$ANDROID_HOME/ndk"
+          if [ ! -d "$ANDROID_HOME/ndk/28.2.13676358" ]; then
+            ln -s "$RUNNER_TEMP/rmgu-backends/android-ndk-r28c" "$ANDROID_HOME/ndk/28.2.13676358"
+          fi
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Create a disposable build key
+        # Backend build scripts never receive the real release key. The APK is re-signed below.
+        run: |
+          keytool -genkeypair -storetype PKCS12 -keystore "$RUNNER_TEMP/build-only.p12" \
+            -storepass build-only -keypass build-only -alias build-only -keyalg RSA \
+            -keysize 2048 -validity 2 -dname 'CN=Build verification only'
+      - name: Run Android unit tests and build the release APK
+        working-directory: ${{ runner.temp }}/rmgu-backends/source
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/build-only.p12
+          KEYSTORE_TYPE: PKCS12
+          KEYSTORE_PASSWORD: build-only
+          KEY_ALIAS: build-only
+          KEY_PASSWORD: build-only
+        run: ./gradlew :app:testDebugUnitTest :app:assembleRelease --no-daemon --no-configuration-cache
+      - name: Check the APK bundle and finalize provenance
+        run: python3 tools/backend-refresh/release.py finish-build --work "$RUNNER_TEMP/rmgu-backends"
+      - name: Upload the verified source update and APK for signing
         uses: actions/upload-artifact@v4
         with:
-          name: RMGU-matched-backend-update
+          name: RMGU-matched-backend-update-${{ github.run_id }}
           path: ${{ runner.temp }}/rmgu-backends/result/
           if-no-files-found: error
-      - name: Preserve failed build logs
+          retention-days: 30
+      - name: Preserve build failures
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: RMGU-backend-build-failure
-          path: ${{ runner.temp }}/rmgu-backends/logs/
+          name: RMGU-backend-build-failure-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/rmgu-backends/logs/
+            ${{ runner.temp }}/rmgu-backends/source/app/build/reports/tests/
           if-no-files-found: ignore
+          retention-days: 14
+
+  publish:
+    needs: [probe, build]
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && (github.event_name == 'schedule' || inputs.publish)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      # Fresh runner and trusted base scripts: no upstream build commands run with signing secrets.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.probe.outputs.base }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: RMGU-matched-backend-update-${{ github.run_id }}
+          path: ${{ runner.temp }}/result
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'build-tools;36.0.0'
+          accept-android-sdk-licenses: true
+      - name: Verify source/APK consistency and sign with the release key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: python3 tools/backend-refresh/release.py sign --result "$RUNNER_TEMP/result"
+      - name: Publish the source commit, tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_BRANCH: ${{ github.event.repository.default_branch }}
+        run: python3 tools/backend-refresh/release.py publish --result "$RUNNER_TEMP/result" --branch "$TARGET_BRANCH"
+      - name: Preserve signed artifacts if publishing fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RMGU-unpublished-release-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/result/RootMyGalaxyUltra-*.apk
+            ${{ runner.temp }}/result/SHA256SUMS
+            ${{ runner.temp }}/result/release*.json
+            ${{ runner.temp }}/result/release-notes.md
+            ${{ runner.temp }}/result/apply-matched-backends.patch
+          if-no-files-found: ignore
+          retention-days: 30

@@ -5,10 +5,14 @@ tools=pathlib.Path(sys.argv[1]).resolve()
 flavor=sys.argv[2]
 assert flavor in ('kernelsu','kernelsu-next','resukisu')
 repo=tools/flavor
-expected={'kernelsu':('08b2e9e451325ebe506c273cfb0fde17d18f592f',32661),'kernelsu-next':('9ba1a51e46d0e4a88ba502a80eda1351a6ce1cd8',33319),'resukisu':('e5423590bec3e24daffa4e9555c9592071319c68',35212)}[flavor]
+plan=json.loads((tools/'targets.json').read_text())
+target=plan['backends'][flavor]
+expected=(target['commit'],target['version'])
 def git(*args):return subprocess.check_output(['git','-C',str(repo),*args],text=True).strip()
 assert git('rev-parse','HEAD')==expected[0]
-assert 30000+int(git('rev-list','--count','HEAD'))+(700 if flavor=='resukisu' else 0)==expected[1]
+assert int(git('rev-list','--count','HEAD'))==target['commit_count']
+assert target['version_offset']+target['commit_count']==expected[1]
+assert plan['uapi']==5, 'A new UAPI requires a reviewed app/helper update'
 assert 'KERNEL_SU_UAPI_VERSION = 5;' in (repo/'uapi/supercall.h').read_text()
 for name in git('ls-files','*Cargo.toml','*Cargo.lock').splitlines():
     if name.startswith('manager/'):continue
@@ -36,7 +40,7 @@ config.write_text('[target.aarch64-linux-android]\nlinker = '+json.dumps(str(ndk
  'BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android':'--sysroot='+str(ndk/'sysroot')+' -I'+str(ndk/'sysroot/usr/include/aarch64-linux-android')}.items())+'\n')
 env.update(CARGO_HOME=str(tools/'cargo'),RUSTUP_HOME=str(tools/'rustup'),CARGO_BUILD_JOBS='2',LIBCLANG_PATH=str(ndk/'lib'),ANDROID_NDK_HOME=str(tools/'android-ndk-r28c'))
 env['PATH']=str(ndk/'bin')+':'+str(tools/'cargo/bin')+':'+env['PATH']
-cargo=[str(tools/'cargo/bin/cargo'),'+nightly-2026-09-25' if flavor=='resukisu' else '+1.98.1']
+cargo=[str(tools/'cargo/bin/cargo'),'+'+target['rust']]
 if flavor=='kernelsu':
     for step in ('check','clippy'):
         extra=['--','-D','warnings'] if step=='clippy' else []

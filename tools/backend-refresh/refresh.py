@@ -1,22 +1,19 @@
 #!/usr/bin/env python3
-"""Build a complete update in a separate checkout; never replace live assets early."""
+"""Build changed, snapshot-pinned upstreams, then stage one complete validated update."""
 import argparse
+from datetime import datetime, timezone
 import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
 import urllib.request
 
-HERE = Path(__file__).resolve().parent
-PROJECT = HERE.parents[1]
-CONFIG = json.loads((HERE / 'targets.json').read_text())
-
-
-def capture(args, cwd=None):
-    return subprocess.check_output(list(map(str, args)), cwd=cwd, text=True).strip()
+from common import HERE, PROJECT, app_version, baseline, capture, load_config, next_version, write_json
+from probe import probe
 
 
 def run(args, log, cwd=None, env=None):
@@ -29,32 +26,66 @@ def run(args, log, cwd=None, env=None):
         raise RuntimeError(f'Command failed ({result.returncode}); see {log}')
 
 
-def verify_inputs(project):
-    # A previous partial 35207 patch must not be silently combined with this kit.
-    if capture(['git', 'status', '--porcelain'], project):
-        raise RuntimeError('Commit the build-kit changes first; a clean source checkout is required.')
-    subprocess.run(['git', 'diff', '--exit-code', CONFIG['app_base'], '--',
-                    'app/src', 'native/azhl', 'tools/prepare_m3q_helpers.py'],
-                   cwd=project, check=True, stdout=subprocess.DEVNULL)
-    for name, target in CONFIG['backends'].items():
-        patch = (HERE / f'{name}-compat.patch').read_bytes()
-        if hashlib.sha256(patch).hexdigest() != target['compat_sha256']:
-            raise ValueError(f'Compatibility patch checksum mismatch: {name}')
+def verify_upstream(repo, name, target):
+    if capture(['git', 'rev-parse', '--is-shallow-repository'], repo) != 'false':
+        raise ValueError('Complete upstream history is required for version calculation')
+    header = (repo / 'uapi/supercall.h').read_text()
+    if not re.search(r'KERNEL_SU_UAPI_VERSION\s*=\s*5\s*;', header):
+        raise ValueError(f'{name}: new UAPI requires a reviewed helper/control-channel update')
+    kbuild = (repo / 'kernel/Kbuild').read_text()
+    formula = (r'expr 30000 \+ \$\(KSU_LOCAL_VERSION\) \+ 700' if name == 'resukisu'
+               else r'expr 30000 \+ \$\(KSU_GIT_VERSION\)')
+    build_rs = (repo / 'userspace/ksud/build.rs').read_text()
+    code = '30000 + 700 + version_code' if name == 'resukisu' else '30000 + version_code'
+    if not re.search(formula, kbuild) or code not in build_rs:
+        raise ValueError(f'{name}: upstream version calculation changed; manual review required')
+    count = int(capture(['git', 'rev-list', '--count', 'HEAD'], repo))
+    version = target['version_offset'] + count
+    if not 0 < version <= 65535:
+        raise ValueError('New driver version no longer fits the reviewed helper')
+    describe = capture(['git', 'describe', '--tags', '--always'], repo).removeprefix('v')
+    if not re.fullmatch(r'[0-9A-Za-z.+-]+', describe):
+        raise ValueError('Unexpected upstream version name')
+    return count, version, describe
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--work', required=True, type=Path)
-    args = parser.parse_args()
-    work = args.work.resolve()
-    if work == PROJECT or PROJECT in work.parents:
-        raise ValueError('Use a work directory outside the app checkout.')
-    verify_inputs(PROJECT)
-    work.mkdir(parents=True, exist_ok=True)
+def discover(project, work, snapshot):
+    config = load_config(project / 'tools/backend-refresh/targets.json')
+    baseline(project, config)
+    base = capture(['git', 'rev-parse', 'HEAD'], project)
+    if (snapshot.get('schema') != 1 or snapshot['app_base'] != base
+            or set(snapshot['heads']) != set(config['backends'])):
+        raise ValueError('Snapshot does not belong to this clean source revision')
+    config.update(app_base=base, checked_date=datetime.now(timezone.utc).date().isoformat(),
+                  build_status='not_built')
     logs = work / 'logs'
-    logs.mkdir(exist_ok=True)
-    if (work / 'source').exists() or (work / 'result').exists():
-        raise ValueError('Use a new work directory; source/result already exists.')
+    logs.mkdir(parents=True, exist_ok=True)
+    for name, target in config['backends'].items():
+        sha = snapshot['heads'][name]
+        if not re.fullmatch(r'[0-9a-f]{40}', sha):
+            raise ValueError('Expected a full commit SHA in snapshot')
+        target['rebuild'] = sha != target['commit']
+        if not target['rebuild']:
+            continue
+        repo = work / name
+        if repo.exists():
+            raise ValueError('Use a new work directory for source clones')
+        run(['git', 'clone', 'https://github.com/' + target['repository'] + '.git', repo],
+            logs / f'{name}-clone.log')
+        run(['git', 'checkout', '--detach', sha], logs / f'{name}-checkout.log', repo)
+        # Refuse a rewritten history or an accidental rollback.
+        subprocess.run(['git', 'merge-base', '--is-ancestor', target['commit'], sha], cwd=repo, check=True)
+        count, version, describe = verify_upstream(repo, name, target)
+        if version <= target['version']:
+            raise ValueError('Upstream version must increase when the pinned commit changes')
+        target.update(commit=sha, commit_count=count, version=version, daemon_version=describe)
+        run(['git', 'apply', '--check', HERE / f'{name}-compat.patch'],
+            logs / f'{name}-patch-check.log', repo)
+    write_json(work / 'targets.json', config)
+    return config
+
+
+def provision(work, config, logs):
     run([sys.executable, PROJECT / 'tools/provision_ddk.py', work], logs / 'ddk.log')
     run([sys.executable, PROJECT / 'tools/provision_android.py', work, '--ndk-only'], logs / 'ndk.log')
     rustup = work / 'rustup-init'
@@ -72,61 +103,100 @@ def main():
     env['PATH'] = str(work / 'cargo/bin') + os.pathsep + env['PATH']
     run([rustup, '-y', '--no-modify-path', '--profile', 'minimal', '--default-toolchain', 'none'],
         logs / 'rustup.log', env=env)
-    for toolchain in ('1.98.1', 'nightly-2026-09-25'):
+    toolchains = {'1.98.1'} | {t['rust'] for t in config['backends'].values() if t['rebuild']}
+    for toolchain in sorted(toolchains):
         run([work / 'cargo/bin/rustup', 'toolchain', 'install', toolchain, '--profile', 'minimal',
              '--component', 'clippy,rustfmt', '--target', 'aarch64-linux-android'],
             logs / f'rust-{toolchain}.log', env=env)
     run([work / 'cargo/bin/cargo', '+1.98.1', 'install', 'cargo-ndk', '--version', '4.1.2', '--locked'],
         logs / 'cargo-ndk.log', env=env)
 
-    for name, target in CONFIG['backends'].items():
-        if not target['rebuild']:
-            continue
-        repo = work / name
-        if repo.exists():
-            raise ValueError(f'Use a new work directory; {repo} already exists.')
-        run(['git', 'clone', 'https://github.com/' + target['repository'] + '.git', repo],
-            logs / f'{name}-clone.log')
-        run(['git', 'checkout', '--detach', target['commit']], logs / f'{name}-checkout.log', repo)
-        if int(capture(['git', 'rev-list', '--count', 'HEAD'], repo)) != target['commit_count']:
-            raise ValueError(f'Unexpected commit count: {name}')
-        patch = HERE / f'{name}-compat.patch'
-        run(['git', 'apply', '--check', patch], logs / f'{name}-patch-check.log', repo)
-        run(['git', 'apply', patch], logs / f'{name}-patch.log', repo)
-        run([sys.executable, PROJECT / 'tools/build_backend.py', work, name],
-            logs / f'{name}-build.log')
 
-    # Only after BOTH required native builds succeed do we create the new app bundle.
+def package_result(source, work):
+    result = work / 'result'
+    result.mkdir(exist_ok=True)
+    # Include added provenance files while preserving deleted superseded patches.
+    subprocess.run(['git', 'add', '-N', '--', '.'], cwd=source, check=True)
+    subprocess.run(['git', 'diff', '--check', '--', '.', ':(exclude)backends/**/*.patch',
+                    ':(exclude)tools/backend-refresh/*-compat.patch'], cwd=source, check=True)
+    patch = subprocess.check_output(['git', 'diff', '--no-renames', '--binary', '--full-index'], cwd=source)
+    subprocess.run(['git', 'apply', '--check', '-'], input=patch, cwd=PROJECT, check=True)
+    (result / 'apply-matched-backends.patch').write_bytes(patch)
+    shutil.copytree(source / 'backends', result / 'backends', dirs_exist_ok=True)
+    shutil.copytree(work / 'logs', result / 'validation', dirs_exist_ok=True)
+    (result / 'README.txt').write_text(
+        'Matched native pairs and bundle checks passed. See validation/ for build results.\n'
+        'Apply only to the source revision recorded in release.json/targets.json.\n'
+        'git apply --check apply-matched-backends.patch\n'
+        'git apply apply-matched-backends.patch\n'
+        'Keep tools/backend-refresh and backends/ in git for future builds.\n'
+        'Use a UAPI 5 manager. Fully reboot after APK installation before activation.\n'
+        'These automated checks are not hardware testing or new firmware support.\n')
+
+
+def prepare_release(source, work, config):
+    old = app_version(source)
+    version = next_version(old, capture(['git', 'tag', '--list'], source).splitlines())
+    path = source / 'app/build.gradle.kts'
+    path.write_text(path.read_text().replace(f'val appVersionBase = "{old}"', f'val appVersionBase = "{version}"'))
+    changed = [n for n, t in config['backends'].items() if t['rebuild']]
+    write_json(work / 'result/release.json', {'schema': 1, 'base_commit': config['app_base'],
+                'version': version, 'changed': changed, 'targets': config})
+    rows = [f'Weekly backend update — {version}', '',
+            'Rebuilt the changed backends from pinned official source commits, with the existing',
+            'Samsung compatibility changes. Each daemon embeds its matching driver.', '',
+            '| Backend | Driver / UAPI | Upstream commit | Daemon |', '|---|---|---|---|']
+    for name, t in config['backends'].items():
+        label = {'kernelsu': 'KernelSU', 'kernelsu-next': 'KernelSU-Next', 'resukisu': 'BakaSU'}[name]
+        status = 'updated' if name in changed else 'unchanged'
+        rows.append(f'| {label} ({status}) | {t["version"]} / 5 | '
+                    f'[{t["commit"][:8]}](https://github.com/{t["repository"]}/commit/{t["commit"]}) | '
+                    f'{t["daemon_version"]} |')
+    rows += ['', 'The release APK uses the repository release key and the existing app package.',
+             'Use a UAPI 5 manager. Fully reboot after installation, then activate root to load',
+             'the new driver. Updating the manager alone does not load it.', '',
+             'Firmware support and exploit/bridge files are unchanged. Build, unit, bundle and',
+             'signature checks are automated; this release has not been tested on a phone.', '']
+    (work / 'result/release-notes.md').write_text('\n'.join(rows))
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--work', required=True, type=Path)
+    parser.add_argument('--snapshot', type=Path)
+    parser.add_argument('--discover-only', action='store_true')
+    parser.add_argument('--release', action='store_true')
+    args = parser.parse_args()
+    work = args.work.resolve()
+    if work == PROJECT or PROJECT in work.parents:
+        raise ValueError('Use a new work directory outside the app checkout')
+    if (work / 'source').exists() or (work / 'result').exists():
+        raise ValueError('Use a new work directory; source/result already exists')
+    snapshot = json.loads(args.snapshot.read_text()) if args.snapshot else probe(PROJECT)
+    config = discover(PROJECT, work, snapshot)
+    changed = [n for n, t in config['backends'].items() if t['rebuild']]
+    if args.discover_only or not changed:
+        print('Pinned changes:', ', '.join(changed) or 'none; no build or release needed')
+        return
+    logs = work / 'logs'
+    provision(work, config, logs)
+    for name in changed:
+        repo = work / name
+        run(['git', 'apply', HERE / f'{name}-compat.patch'], logs / f'{name}-patch.log', repo)
+        run([sys.executable, PROJECT / 'tools/build_backend.py', work, name], logs / f'{name}-build.log')
     source = work / 'source'
     run(['git', 'clone', '--no-hardlinks', PROJECT, source], logs / 'app-clone.log')
-    run(['git', 'checkout', '--detach', capture(['git', 'rev-parse', 'HEAD'], PROJECT)],
-        logs / 'app-checkout.log', source)
+    run(['git', 'checkout', '--detach', config['app_base']], logs / 'app-checkout.log', source)
     run([sys.executable, HERE / 'stage.py', source, work], logs / 'stage.log')
     run([sys.executable, 'tools/test_m3q_host.py', 'BundleTests'], logs / 'bundle-tests.log', source)
     run([sys.executable, 'tools/test_backend_bundle.py'], logs / 'backend-tests.log', source)
     run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-I', 'native/azhl/src',
          'native/azhl/tests/policy.c', '-o', work / 'policy-check'], logs / 'policy-build.log', source)
     run([work / 'policy-check'], logs / 'policy-test.log', source)
-    run(['git', 'add', '-N', 'backends'], logs / 'index-new-files.log', source)
-    # Embedded upstream patches contain intentional context-line whitespace.
-    run(['git', 'diff', '--check', '--', '.', ':(exclude)backends/**/*.patch'],
-        logs / 'diff-check.log', source)
-    patch = subprocess.check_output(['git', 'diff', '--binary', '--full-index'], cwd=source)
-    # Validate the actual deliverable against the build-kit checkout.
-    subprocess.run(['git', 'apply', '--check', '-'], input=patch, cwd=PROJECT, check=True)
-    result = work / 'result'
-    result.mkdir()
-    (result / 'apply-matched-backends.patch').write_bytes(patch)
-    shutil.copytree(source / 'backends', result / 'backends')
-    shutil.copytree(logs, result / 'validation')
-    (result / 'README.txt').write_text(
-        'Native builds and bundle checks passed. No phone test or APK build was performed.\n'
-        'Apply to the build-kit source checkout used for this workflow:\n'
-        'git apply --check apply-matched-backends.patch\n'
-        'git apply apply-matched-backends.patch\n'
-        'Then build your APK normally. Use a UAPI 5 manager, fully reboot and activate.\n'
-        'KernelSU-Next binaries are unchanged. SM-S948W/BZID is not enabled.\n')
-    print(f'Validated update: {result}', flush=True)
+    if args.release:
+        prepare_release(source, work, config)
+    package_result(source, work)
+    print(f'Validated update: {work / "result"}', flush=True)
 
 
 if __name__ == '__main__':

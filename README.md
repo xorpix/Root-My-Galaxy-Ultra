@@ -130,6 +130,15 @@ version/build code, firmware, selected backend, last successful stage and whethe
 the phone froze or rebooted. **Logs** contains the app's general diagnostic log.
 Review exported logs for personal information before posting them publicly.
 
+## Automatic backend updates
+
+The [weekly build workflow](tools/backend-refresh/README.md) checks official KernelSU,
+KernelSU-Next and BakaSU commits every Monday at 03:17 UTC. When sources change,
+it builds matched drivers/daemons, runs validation, signs the APK with the existing
+release key and publishes the next patch release. Unchanged weeks are skipped.
+Keep the build kit and `backends/` provenance records in git; the linked guide
+covers signing secrets, manual runs and failure recovery.
+
 ## Build from source
 
 Use the repository root — the directory containing `gradlew.bat` and
