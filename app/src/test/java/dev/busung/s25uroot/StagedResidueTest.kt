@@ -269,13 +269,21 @@ class StagedResidueTest {
     }
 
     @Test
+    fun `the earlier loader boot receipt is never swept`() {
+        val receipt = "/data/local/tmp/ghostlock-boot.log"
+        assertFalse(StagedResidue.catalog.any { it.path == receipt })
+        assertFalse(StagingSweep.removable(otherInstallPresent = false).any { it.path == receipt })
+        assertFalse(StagingSweep.removable(otherInstallPresent = true).any { it.path == receipt })
+    }
+
+    @Test
     fun `every path the app stages is in the catalog`() {
         val sources = sourceFiles()
         assertTrue("no sources were found; the scan is looking at the wrong directory", sources.isNotEmpty())
         val staged = sources
             .filter { it.name != "StagedResidue.kt" }
             .flatMap { source ->
-                STAGING_PATH.findAll(source.readText()).map { match -> match.value }.toList()
+                STAGING_PATH.findAll(stagingSourceText(source)).map { match -> match.value }.toList()
             }
             .distinct()
         assertTrue("the scan found no staged paths at all", staged.isNotEmpty())

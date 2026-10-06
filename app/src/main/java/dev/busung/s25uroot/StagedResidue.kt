@@ -336,6 +336,8 @@ internal object StagedResidue {
         StagedPath("/data/local/tmp/ksud-s25u-kdp", ResidueRole.Daemon),
         StagedPath("/data/local/tmp/.ksud-stage", ResidueRole.Daemon),
         StagedPath("/data/local/tmp/temp_su.sock", ResidueRole.Socket),
+        StagedPath(M3qLaunch.DAEMON_PATH, ResidueRole.Daemon),
+        StagedPath(M3qLaunch.LOAD_LOG, ResidueRole.Log),
         StagedPath("/data/local/tmp/rmgnext-helper", ResidueRole.Helper),
         StagedPath("/data/local/tmp/rmgnext-shizuku-payload", ResidueRole.Payload),
         StagedPath("/data/local/tmp/rmgnext-shizuku-exploit.log", ResidueRole.Log),
