@@ -460,11 +460,16 @@ index f60c2fd09c57a08f51cf7753b749780fdb2a07a3..b6f54c1aedb126b56e866ca028960adc
  
  #if defined(__x86_64__) && !defined(CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER)
  #include <asm/cpufeature.h>
-@@ -91,6 +98,7 @@ module_param_named(bundled, ksu_bundled, bool, 0);
+@@ -91,11 +98,12 @@ module_param_named(bundled, ksu_bundled, bool, 0);
  
  int __init kernelsu_init(void)
  {
 +	int ret;
+ #ifdef KSU_MANAGER_PACKAGE
+ 	pr_info("welcome to KernelSU version " __stringify(KERNEL_SU_VERSION) ", package name " KSU_MANAGER_PACKAGE "\n");
+ #else
+ 	pr_info("welcome to KernelSU version " __stringify(KERNEL_SU_VERSION) "\n");
+ #endif
  #if defined(__x86_64__) && !defined(CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER)
      // If the kernel has the hardening patch, X86_FEATURE_INDIRECT_SAFE must be set
      if (!boot_cpu_has(X86_FEATURE_INDIRECT_SAFE)) {
