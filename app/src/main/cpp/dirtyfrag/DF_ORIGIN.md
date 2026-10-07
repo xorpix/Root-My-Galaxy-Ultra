@@ -71,9 +71,10 @@ license). Upstream credits the underlying ideas to lspromise, DFReroot
 ## Roadmap (DF-2)
 
 Done: `DfRunner` (IpSec setup, JNI, 120 s marker poll, native-probe grant-free
-verify, su-verified fallback), `DfCatalog` closed bundles for SM-S948B /
-S948BXXS4BZIG and SM-S948W / S948WVLU4BZID, Shizuku preconditions bypassed for
-these exact identities, per-flavor
+verify, su-verified fallback), `DfCatalog` closed payload bundles with recorded
+SM-S948B / S948BXXS4BZIG and SM-S948W / S948WVLU4BZID profiles plus runtime
+profiles for eligible S26 Ultra regional/carrier variants. Shizuku preconditions
+are bypassed for the DirtyFrag route, with per-flavor
 daemons from `asset://azhl/<flavor>/ksud`. M3Q/AZHL behavior unchanged.
 
 First-try = `choose flavor -> run -> Installed` via `dfm0` or native probe, no
@@ -85,6 +86,19 @@ its Android 16 / Linux 6.12 kernel family and 4 KB pages were recorded in the
 supplied inventory. No native code or binary changed for this profile. Hardware
 validation of its backend loading remains pending; see
 `docs/device-candidates/SM-S948W-BZID.md` at the repository root.
+
+## S26 Ultra family profiles
+
+`DfPort` recognizes regional SM-S948 names and the SC-53G/SCG37 carrier aliases,
+with Samsung/m3q, ARM64/aarch64, 4 KB pages, API 36+ and an android16 / Linux 6.12
+kernel. The exact AZHL identity selects its existing GhostLock route.
+`DfCatalog.forDevice()` derives additional profiles from the checked bundled
+backend templates, binds them to the observed full identity and generates
+stable IDs from that identity. Staging reconstructs the current APK-owned
+profile and compares every field before writing a daemon. Caches and retries
+retain their exact firmware requirements. Model recognition and kernel-family
+matching do not establish vulnerability or vendor ABI compatibility; hardware
+validation remains required. See `docs/S26-ULTRA-SUPPORT.md` at the repo root.
 
 ## BakaSU manager migration (2026-10-05)
 

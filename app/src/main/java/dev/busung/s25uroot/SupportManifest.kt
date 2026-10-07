@@ -112,8 +112,8 @@ data class TargetProfile(
     fun matches(snapshot: DeviceSnapshot): Boolean =
         matchesDevice(snapshot) && matchesKernelVersion(snapshot) &&
             (firmware?.matches(snapshot) ?: true) &&
-            (!AzhlPort.isTargetDevice(snapshot) || firmware == AzhlPort.identity ||
-                (firmware != null && firmware in DfPort.firmwares.values))
+            (!DfPort.isTargetDevice(snapshot) || firmware == AzhlPort.identity ||
+                (firmware != null && DfPort.supports(firmware) && DfCatalog.isDfPayload(this)))
 
     /** Unique across sources, unlike [profileId], which two sources may both offer. */
     val selectionId: String

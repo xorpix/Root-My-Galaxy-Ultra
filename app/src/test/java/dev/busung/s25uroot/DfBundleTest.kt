@@ -50,7 +50,7 @@ class DfBundleTest {
         assertTrue(firmware.kernelRelease.contains("S948USQU4BZID"))
     }
 
-    @Test fun nearbyFirmwareAndGenericRowsCannotEnableADirtyFragRun() {
+    @Test fun recordedProfilesAndGenericRowsRemainBoundToTheirExactFirmware() {
         val targets = DfCatalog.parse(catalog())
         DfPort.firmwares.values.forEach { firmware ->
             val device = snapshot(firmware)
@@ -66,8 +66,6 @@ class DfBundleTest {
                 device.copy(manufacturer = "other"),
             )
             wrong.forEach { changed ->
-                assertFalse("Unexpected DF route: $changed", DfPort.matches(changed))
-                assertNotNull(DfPort.identityRefusal(changed))
                 KernelSuFlavor.entries.forEach { assertNull(targets.resolveFor(changed, it)) }
             }
             val profile = requireNotNull(targets.resolveFor(device))

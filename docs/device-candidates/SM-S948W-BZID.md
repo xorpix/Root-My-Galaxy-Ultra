@@ -40,8 +40,10 @@ vendor kernel ABI or backend loading has already been verified.
 
 The install path uses DirtyFrag directly, without Shizuku or the AZHL boot-settle
 floor. Settings and recovery hide the same inapplicable controls as on BZIG.
-Nearby firmware versions, other regional models and different kernel releases
-remain outside the registered profiles.
+The recorded BZID profile keeps its existing ID. Other S26 Ultra regional models
+and firmware builds now receive their own runtime profiles when their detected
+identity meets the shared [family support rules](../S26-ULTRA-SUPPORT.md).
+Other kernel families and page sizes remain outside this payload bundle.
 
 ## Device validation
 

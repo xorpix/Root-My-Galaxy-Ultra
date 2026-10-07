@@ -667,7 +667,7 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         val initialRefusal = if (!AppPreferences.hasKernelsuFlavorChoice(app)) {
             app.getString(R.string.backend_choice_required)
         } else {
-            // Only the recorded AZHL and DirtyFrag identities pass.
+            // The known AZHL port and kernel-compatible S26 Ultra DirtyFrag devices pass.
             val snapshot = DeviceSnapshot.current()
             if (AzhlPort.identity.matches(snapshot) || DfPort.matches(snapshot)) null
             else "${AzhlPort.identityRefusal(snapshot)}\n${DfPort.identityRefusal(snapshot)}"

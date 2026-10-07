@@ -4,8 +4,9 @@ import android.content.Context
 import android.system.Os
 import java.io.File
 import java.security.MessageDigest
+import org.json.JSONArray
 
-/** A closed, firmware-specific bundle for the DirtyFrag family. Remote feeds and caches cannot replace these bytes. */
+/** Closed DirtyFrag payloads, with profiles bound to eligible S26 Ultra devices at runtime. */
 internal object DfCatalog {
     const val SOURCE = "bundled-df"
     val route = ExploitRoutePolicy(attempts = 1, p0OffsetCache = false, prefersShellTransport = false)
@@ -100,13 +101,43 @@ internal object DfCatalog {
     fun isDfPayload(profile: TargetProfile): Boolean =
         profile.exploit.url == DF_NATIVE_URL
 
-    fun load(context: Context): List<TargetProfile> =
-        context.assets.open("df/catalog.json").use { parse(it.readBytes()) }
+    /** Regional builds share verified payload bytes, while recording their own exact identity. */
+    fun forDevice(bytes: ByteArray, snapshot: DeviceSnapshot): List<TargetProfile> {
+        val bundled = parse(bytes)
+        val firmware = DfPort.firmwareFor(snapshot) ?: return bundled
+        if (bundled.any { it.firmware == firmware }) return bundled
+        val identity = JSONArray(listOf(firmware.model, firmware.device, firmware.incremental,
+            firmware.kernelRelease, firmware.sdk, firmware.abi, firmware.pageSize)).toString()
+        val identityHash = MessageDigest.getInstance("SHA-256")
+            .digest(identity.toByteArray(Charsets.UTF_8)).toHex()
+        val templates = bundled.filter { it.firmware == DfPort.firmwares.getValue("bzig") }
+        return bundled + templates.map { profile ->
+            profile.copy(
+                profileId = "df-s26-$identityHash-${profile.flavor.id}",
+                displayName = "${firmware.model} / ${firmware.incremental} / DirtyFrag / ${profile.flavor.label}",
+                models = setOf(firmware.model),
+                kernelVersions = setOf(firmware.kernelRelease),
+                firmware = firmware,
+                sourceLabel = "S26 Ultra bundled payloads — kernel family matched, hardware testing required",
+            )
+        }
+    }
+
+    fun load(context: Context, snapshot: DeviceSnapshot = DeviceSnapshot.current()): List<TargetProfile> =
+        context.assets.open("df/catalog.json").use { forDevice(it.readBytes(), snapshot) }
+
+    /** Recheck current firmware and the entire APK-owned profile before writing the staged daemon. */
+    fun requireCurrent(bytes: ByteArray, snapshot: DeviceSnapshot, profile: TargetProfile): TargetProfile =
+        requireNotNull(forDevice(bytes, snapshot).singleOrNull { it == profile && it.matches(snapshot) }) {
+            "The selected payload is not the current DirtyFrag bundle for this device. Select a bundled backend."
+        }
 
     fun stage(context: Context, profile: TargetProfile, onProgress: (String) -> Unit): VerifiedPayloads {
-        require(load(context).singleOrNull { it == profile } == profile) {
-            "The selected payload is not the current DirtyFrag bundle. Select a bundled backend."
+        val snapshot = DeviceSnapshot.current()
+        context.assets.open("df/catalog.json").use {
+            requireCurrent(it.readBytes(), snapshot, profile)
         }
+        onProgress("DirtyFrag target ${snapshot.model} / ${snapshot.incremental}; kernel ${snapshot.kernelRelease}")
         val dest = File(context.createDeviceProtectedStorageContext().getFilesDir().getParentFile(), "ksud")
         check(dest.parentFile.isDirectory || dest.parentFile.mkdirs())
         val daemonArtifact = profile.kernelSu

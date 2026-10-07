@@ -189,7 +189,8 @@ data class LoadedCatalog(
 )
 
 class PayloadRepository(private val context: Context) {
-    fun loadCatalog(): LoadedCatalog = LoadedCatalog(AzhlCatalog.load(context) + DfCatalog.load(context), emptyList())
+    fun loadCatalog(snapshot: DeviceSnapshot = DeviceSnapshot.current()): LoadedCatalog =
+        LoadedCatalog(AzhlCatalog.load(context) + DfCatalog.load(context, snapshot), emptyList())
 
     private fun loadRemoteCatalog(): LoadedCatalog {
         val sources = AppPreferences.payloadSources(context).enabledSources()
@@ -225,14 +226,14 @@ class PayloadRepository(private val context: Context) {
         return LoadedCatalog(targets, failures)
     }
 
-    fun loadTargets(): List<TargetProfile> = loadCatalog().targets
+    fun loadTargets(snapshot: DeviceSnapshot = DeviceSnapshot.current()): List<TargetProfile> = loadCatalog(snapshot).targets
 
     /** Resolves a compatible payload for the backend selected when the run began. */
     fun resolveTarget(
         snapshot: DeviceSnapshot,
         flavor: KernelSuFlavor = AppPreferences.kernelsuFlavor(context),
     ): TargetProfile {
-        val catalog = loadTargets()
+        val catalog = loadTargets(snapshot)
         val resolved = catalog.resolveFor(snapshot, flavor)
             ?: error(noProfileReason(snapshot, catalog, flavor))
         // This is the payload the run about to start will load, so its KernelSU version is the one the
