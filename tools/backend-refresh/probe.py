@@ -11,7 +11,7 @@ from common import PROJECT, baseline, capture, load_config, write_json
 
 def probe(project, resolve=None):
     config = load_config(project / 'tools/backend-refresh/targets.json')
-    baseline(project, config)
+    manifests = baseline(project, config)
     heads = {}
     for name, target in config['backends'].items():
         url = 'https://github.com/' + target['repository'] + '.git'
@@ -23,7 +23,15 @@ def probe(project, resolve=None):
         heads[name] = fields[0]
     return {'schema': 1, 'app_base': capture(['git', 'rev-parse', 'HEAD'], project),
             'created_utc': datetime.now(timezone.utc).isoformat(), 'heads': heads,
-            'changed': [n for n, sha in heads.items() if sha != config['backends'][n]['commit']]}
+            'changed': [n for n, sha in heads.items()
+                        if needs_rebuild(config['backends'][n], sha, manifests[n])]}
+
+
+def needs_rebuild(target, upstream_sha, manifest):
+    # A reviewed Samsung patch update needs a native rebuild even if upstream
+    # has not moved. Do not silently keep the binaries built with the old patch.
+    return (upstream_sha != target['commit']
+            or target['compat_sha256'] != manifest['rebased_patch']['sha256'])
 
 
 def main():

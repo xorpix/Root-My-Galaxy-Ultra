@@ -20,6 +20,22 @@ PROJECT = common.PROJECT
 def clone_source(directory):
     source = Path(directory) / 'source'
     subprocess.run(['git', 'clone', '--quiet', '--shared', str(PROJECT), str(source)], check=True)
+    # Source-only release fixtures use the patches that produced their bundled
+    # binaries. A pending reviewed template update needs a real native rebuild.
+    config = common.load_config(source / 'tools/backend-refresh/targets.json')
+    manifests = common.baseline(source)
+    for name, target in config['backends'].items():
+        provenance = manifests[name]['rebased_patch']
+        (source / 'tools/backend-refresh' / f'{name}-compat.patch').write_bytes(
+            (source / 'backends' / name / provenance['path']).read_bytes())
+        target['compat_sha256'] = provenance['sha256']
+    common.write_json(source / 'tools/backend-refresh/targets.json', config)
+    if common.capture(['git', 'status', '--porcelain'], source):
+        subprocess.run(['git', 'config', 'user.email', 'validation@example.invalid'], cwd=source, check=True)
+        subprocess.run(['git', 'config', 'user.name', 'Local Validation'], cwd=source, check=True)
+        subprocess.run(['git', 'add', 'tools/backend-refresh'], cwd=source, check=True)
+        subprocess.run(['git', 'commit', '--quiet', '-m', 'Align source-only fixture with built patches'],
+                       cwd=source, check=True)
     return source
 
 
@@ -30,6 +46,22 @@ def plan_for(source):
 
 
 class RefreshTests(unittest.TestCase):
+    def snapshot(self, changed_heads=(), changed_patches=()):
+        config = common.load_config()
+        manifests = common.baseline(PROJECT)
+        for name, target in config['backends'].items():
+            target['compat_sha256'] = manifests[name]['rebased_patch']['sha256']
+            if name in changed_patches:
+                target['compat_sha256'] = 'f' * 64
+        replies = {'https://github.com/' + t['repository'] + '.git':
+                   ('a' * 40 if name in changed_heads else t['commit'])
+                   for name, t in config['backends'].items()}
+        # Isolate rebuild policy; the independent provenance tests validate the
+        # actual bundle and checksummed template files.
+        with patch.object(probe, 'load_config', return_value=config), \
+                patch.object(probe, 'baseline', return_value=manifests):
+            return probe.probe(PROJECT, lambda url, ref: replies[url] + '\t' + ref)
+
     def test_complete_current_provenance_matches_runtime(self):
         manifests = common.baseline(PROJECT)
         for name, target in common.load_config()['backends'].items():
@@ -38,19 +70,36 @@ class RefreshTests(unittest.TestCase):
             stage.verify_pair(daemon, module, target)
 
     def test_no_changes_skips_all_backends(self):
-        config = common.load_config()
-        replies = {'https://github.com/' + t['repository'] + '.git': t['commit']
-                   for t in config['backends'].values()}
-        snapshot = probe.probe(PROJECT, lambda url, ref: replies[url] + '\t' + ref)
+        snapshot = self.snapshot()
         self.assertEqual([], snapshot['changed'])
 
     def test_one_changed_backend_is_detected(self):
-        config = common.load_config()
-        replies = {'https://github.com/' + t['repository'] + '.git': t['commit']
-                   for t in config['backends'].values()}
-        replies['https://github.com/KernelSU-Next/KernelSU-Next.git'] = 'a' * 40
-        snapshot = probe.probe(PROJECT, lambda url, ref: replies[url] + '\t' + ref)
+        snapshot = self.snapshot(changed_heads=['kernelsu-next'])
         self.assertEqual(['kernelsu-next'], snapshot['changed'])
+
+    def test_reviewed_patch_update_rebuilds_without_an_upstream_change(self):
+        snapshot = self.snapshot(changed_patches=['kernelsu'])
+        self.assertEqual(['kernelsu'], snapshot['changed'])
+        self.assertEqual(common.load_config()['backends']['kernelsu']['commit'],
+                         snapshot['heads']['kernelsu'])
+
+    def test_changed_patch_cannot_reuse_old_native_assets(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = clone_source(directory)
+            config = plan_for(source)
+            path = source / 'tools/backend-refresh/kernelsu-compat.patch'
+            path.write_bytes(path.read_bytes() + b'\n')
+            config['backends']['kernelsu']['compat_sha256'] = common.record(path.read_bytes())['sha256']
+            common.write_json(source / 'tools/backend-refresh/targets.json', config)
+            subprocess.run(['git', 'config', 'user.email', 'validation@example.invalid'], cwd=source, check=True)
+            subprocess.run(['git', 'config', 'user.name', 'Local Validation'], cwd=source, check=True)
+            subprocess.run(['git', 'add', 'tools/backend-refresh'], cwd=source, check=True)
+            subprocess.run(['git', 'commit', '--quiet', '-m', 'Reviewed patch update fixture'], cwd=source, check=True)
+            config = plan_for(source)
+            before = (source / common.ASSETS / 'azhl/kernelsu/ksud').read_bytes()
+            with self.assertRaisesRegex(ValueError, 'requires a native rebuild'):
+                stage.main(source, Path(directory), config)
+            self.assertEqual(before, (source / common.ASSETS / 'azhl/kernelsu/ksud').read_bytes())
 
     def test_version_skips_existing_and_later_numeric_tags(self):
         self.assertEqual('1.1.9', common.next_version('1.1.5', ['1.1.6', 'v1.1.8', 'ci-1.1.99']))
@@ -142,15 +191,15 @@ class RefreshTests(unittest.TestCase):
             config = plan_for(source)
             stage.main(source, work, config)
             refresh.prepare_release(source, work, config)
-            refresh.package_result(source, work)
+            publisher = root / 'publisher'
+            subprocess.run(['git', 'clone', '--quiet', '--shared', str(source), str(publisher)], check=True)
+            with patch.object(refresh, 'PROJECT', publisher):
+                refresh.package_result(source, work)
             result = work / 'result'
             (result / 'apk-input.apk').write_bytes(b'APK validation is mocked for this source-only fixture')
             info = release.metadata(result)
             info.update(apk_input=common.record((result / 'apk-input.apk').read_bytes()), apk_version_code=123)
             common.write_json(result / 'release.json', info)
-            publisher_root = root / 'publisher'
-            publisher_root.mkdir()
-            publisher = clone_source(publisher_root)
             with patch.object(release, 'PROJECT', publisher), patch.object(release, 'verify_apk', return_value=123):
                 checked = release.apply_checked_update(result)
             self.assertEqual(info['version'], checked['version'])

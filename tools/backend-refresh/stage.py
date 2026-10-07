@@ -62,8 +62,10 @@ def source_patch(repo, original_patch):
     subprocess.run(['git', '-C', str(repo), 'add', '-N', '--', *paths], check=True)
     scope = ['kernel', 'userspace', 'Cargo.toml', 'Cargo.lock',
              ':(exclude)userspace/ksud/bin/**']
-    patch = git(repo, 'diff', '--binary', '--full-index', '--', *scope)
-    changed = git(repo, 'diff', '--name-only', '--', *scope).decode().splitlines()
+    # Three-way application stages its result. Include staged AND unstaged edits,
+    # including later Cargo formatting, when recording the actual built source.
+    patch = git(repo, 'diff', 'HEAD', '--binary', '--full-index', '--', *scope)
+    changed = git(repo, 'diff', 'HEAD', '--name-only', '--', *scope).decode().splitlines()
     hashes = {name: record((repo / name).read_bytes())['sha256'] for name in changed}
     if b'diff --git a/uapi/' in patch:
         raise ValueError('Unexpected UAPI override')
@@ -106,6 +108,8 @@ def main(project, work, config=None):
         if not target['rebuild']:
             if target['commit'] != previous[name]['upstream_commit']:
                 raise ValueError('A changed revision cannot reuse an old daemon')
+            if target['compat_sha256'] != previous[name]['rebased_patch']['sha256']:
+                raise ValueError('A changed compatibility patch requires a native rebuild')
             daemon = (project / ASSETS / 'azhl' / name / 'ksud').read_bytes()
             module = extract_driver(daemon, previous[name]['outputs']['kernelsu.ko'])
             verify_pair(daemon, module, target)

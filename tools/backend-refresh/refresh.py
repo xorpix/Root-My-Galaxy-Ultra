@@ -13,7 +13,8 @@ import sys
 import urllib.request
 
 from common import HERE, PROJECT, app_version, baseline, capture, load_config, next_version, write_json
-from probe import probe
+from probe import needs_rebuild, probe
+import patching
 
 
 def run(args, log, cwd=None, env=None):
@@ -51,7 +52,7 @@ def verify_upstream(repo, name, target):
 
 def discover(project, work, snapshot):
     config = load_config(project / 'tools/backend-refresh/targets.json')
-    baseline(project, config)
+    manifests = baseline(project, config)
     base = capture(['git', 'rev-parse', 'HEAD'], project)
     if (snapshot.get('schema') != 1 or snapshot['app_base'] != base
             or set(snapshot['heads']) != set(config['backends'])):
@@ -64,7 +65,8 @@ def discover(project, work, snapshot):
         sha = snapshot['heads'][name]
         if not re.fullmatch(r'[0-9a-f]{40}', sha):
             raise ValueError('Expected a full commit SHA in snapshot')
-        target['rebuild'] = sha != target['commit']
+        source_changed = sha != target['commit']
+        target['rebuild'] = needs_rebuild(target, sha, manifests[name])
         if not target['rebuild']:
             continue
         repo = work / name
@@ -76,11 +78,15 @@ def discover(project, work, snapshot):
         # Refuse a rewritten history or an accidental rollback.
         subprocess.run(['git', 'merge-base', '--is-ancestor', target['commit'], sha], cwd=repo, check=True)
         count, version, describe = verify_upstream(repo, name, target)
-        if version <= target['version']:
+        if source_changed and version <= target['version']:
             raise ValueError('Upstream version must increase when the pinned commit changes')
+        if not source_changed and (count, version, describe) != (
+                target['commit_count'], target['version'], target['daemon_version']):
+            raise ValueError('Patch-only rebuild must retain the pinned upstream version')
         target.update(commit=sha, commit_count=count, version=version, daemon_version=describe)
-        run(['git', 'apply', '--check', HERE / f'{name}-compat.patch'],
-            logs / f'{name}-patch-check.log', repo)
+        method = patching.check(repo, HERE / f'{name}-compat.patch',
+                                logs / f'{name}-patch-check.log')
+        print(f'{name}: compatibility check passed ({method})', flush=True)
     write_json(work / 'targets.json', config)
     return config
 
@@ -182,7 +188,8 @@ def main():
     provision(work, config, logs)
     for name in changed:
         repo = work / name
-        run(['git', 'apply', HERE / f'{name}-compat.patch'], logs / f'{name}-patch.log', repo)
+        method = patching.apply(repo, HERE / f'{name}-compat.patch', logs / f'{name}-patch.log')
+        print(f'{name}: compatibility applied ({method})', flush=True)
         run([sys.executable, PROJECT / 'tools/build_backend.py', work, name], logs / f'{name}-build.log')
     source = work / 'source'
     run(['git', 'clone', '--no-hardlinks', PROJECT, source], logs / 'app-clone.log')

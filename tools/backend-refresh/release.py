@@ -86,7 +86,7 @@ def apply_checked_update(result):
     info = metadata(result)
     if capture(['git', 'rev-parse', 'HEAD'], PROJECT) != info['base_commit']:
         raise ValueError('Artifact was built from a different source revision')
-    old_config = load_config()
+    old_config = load_config(PROJECT / 'tools/backend-refresh/targets.json')
     old = baseline(PROJECT, old_config)
     fixed = [Path('README.md'), Path('app/build.gradle.kts'), Path('tools/prepare_m3q_helpers.py'),
              JAVA / 'AzhlCatalog.kt', JAVA / 'M3qLaunch.kt', Path('native/azhl/src/azhl_backend.h'),
@@ -114,7 +114,7 @@ def apply_checked_update(result):
     spec.loader.exec_module(helpers)
     subprocess.run(['git', 'apply', '--check', '-'], input=patch, cwd=PROJECT, check=True)
     subprocess.run(['git', 'apply', '-'], input=patch, cwd=PROJECT, check=True)
-    config = load_config()
+    config = load_config(PROJECT / 'tools/backend-refresh/targets.json')
     targets = info['targets']['backends']
     for name, target in targets.items():
         for key in ('repository', 'branch', 'commit', 'commit_count', 'version', 'rust', 'daemon_version'):

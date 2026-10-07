@@ -443,7 +443,7 @@ index 0000000000000000000000000000000000000000..2104f2e9a82be77e46603bec3c4292dc
 +#endif
 +}
 diff --git a/kernel/core/init.c b/kernel/core/init.c
-index 260a96cba739806bbcd057b0f3ce235e7493722f..141599687c7aef58ed1675386e2fc05204e0aa05 100644
+index 260a96cba739806bbcd057b0f3ce235e7493722f..3774e7b6ed82361a04c0550c7efda038938f8b75 100644
 --- a/kernel/core/init.c
 +++ b/kernel/core/init.c
 @@ -25,6 +25,13 @@
@@ -460,15 +460,7 @@ index 260a96cba739806bbcd057b0f3ce235e7493722f..141599687c7aef58ed1675386e2fc052
  
  #if defined(__x86_64__) && !defined(CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER)
  #include <asm/cpufeature.h>
-@@ -91,6 +98,7 @@ module_param_named(bundled, ksu_bundled, bool, 0);
- 
- int __init kernelsu_init(void)
- {
-+	int ret;
- #ifdef KSU_MANAGER_PACKAGE
- 	pr_info("welcome to KernelSU version " __stringify(KERNEL_SU_VERSION) ", package name " KSU_MANAGER_PACKAGE "\n");
- #else
-@@ -131,13 +139,28 @@ int __init kernelsu_init(void)
+@@ -131,13 +138,35 @@ int __init kernelsu_init(void)
  		pr_alert("shell is allowed at init!");
  	}
  
@@ -476,10 +468,14 @@ index 260a96cba739806bbcd057b0f3ce235e7493722f..141599687c7aef58ed1675386e2fc052
 +	pr_info("Samsung KDP credential reference handling enabled\n");
 +#endif
 +
-+	ksu_init_symbol_resolver();
-+	ret = ksu_samsung_kdp_init();
-+	if (ret)
-+		return ret;
++	{
++		int ret;
++
++		ksu_init_symbol_resolver();
++		ret = ksu_samsung_kdp_init();
++		if (ret)
++			return ret;
++	}
 +
  	ksu_cred = prepare_creds();
  	if (!ksu_cred) {
@@ -489,16 +485,19 @@ index 260a96cba739806bbcd057b0f3ce235e7493722f..141599687c7aef58ed1675386e2fc052
  	}
  
 -	ksu_init_symbol_resolver();
-+	ret = ksu_samsung_defex_init();
-+	if (ret) {
-+		ksu_put_cred(ksu_cred);
-+		ksu_samsung_kdp_exit();
-+		return ret;
++	{
++		int ret = ksu_samsung_defex_init();
++
++		if (ret) {
++			ksu_put_cred(ksu_cred);
++			ksu_samsung_kdp_exit();
++			return ret;
++		}
 +	}
  	ksu_syscall_hook_init();
  
  	ksu_feature_init();
-@@ -171,6 +194,10 @@ int __init kernelsu_init(void)
+@@ -171,6 +200,10 @@ int __init kernelsu_init(void)
  		ksu_file_wrapper_init();
  
  		ksu_boot_completed = true;
@@ -509,7 +508,7 @@ index 260a96cba739806bbcd057b0f3ce235e7493722f..141599687c7aef58ed1675386e2fc052
  		track_throne(false);
  
  		if (!getenforce()) {
-@@ -228,7 +255,9 @@ void __exit kernelsu_exit(void)
+@@ -228,7 +261,9 @@ void __exit kernelsu_exit(void)
  
  	ksu_feature_exit();
  
