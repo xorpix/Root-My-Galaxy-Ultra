@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "app_base": "340af19a52af6b13faa2518cecb665830092f8d5",
+  "app_base": "50168cc261c949b966cca03aaa27cfed11cefb79",
   "uapi": 5,
   "checked_date": "2026-10-07",
   "build_status": "built",
@@ -31,10 +31,10 @@
     },
     "resukisu": {
       "repository": "Baka-SU/BakaSU",
-      "commit": "bede8a4d28ef86526688de251ebf47ca0adc2b5d",
-      "commit_count": 4516,
-      "version": 35216,
-      "daemon_version": "4.2.0-rc3-45-gbede8a4d",
+      "commit": "c9246641b9eee8b9986050e8bf1832f88da880c2",
+      "commit_count": 4517,
+      "version": 35217,
+      "daemon_version": "4.2.0-rc3-46-gc9246641",
       "rust": "nightly-2026-09-25",
       "rebuild": false,
       "compat_sha256": "38920ca76030161f07a0d3b4380927d66deb167d221dc7093925d024a8c1d6c3",

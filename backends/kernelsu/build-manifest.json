@@ -23,7 +23,7 @@
     "sha256": "8bea92389e8b9ddcf63de83b776e7baed25636d6c85d07490c9c7016a969fb29"
   },
   "created_utc": "2026-10-07",
-  "app_base_commit": "340af19a52af6b13faa2518cecb665830092f8d5",
+  "app_base_commit": "50168cc261c949b966cca03aaa27cfed11cefb79",
   "upstream_repository": "https://github.com/tiann/KernelSU",
   "upstream_commit": "e7b071100754b55e28be6930f9967d99adb4a385",
   "upstream_commit_count": 2665,
@@ -43,11 +43,11 @@
   "outputs": {
     "ksud": {
       "size": 5148568,
-      "sha256": "39be899d446261b06860cf18bc3fc294184959241a01faa6b4717a915f8015f4"
+      "sha256": "e014a36bd5eb7b601b3d9778742c5c6464aff5d60ffa79c2af91f669783cbdd7"
     },
     "kernelsu.ko": {
       "size": 389856,
-      "sha256": "9d29ed1af526a84203f0dd793aa6051a42dddb1e4bcfa24943010fe899ab723b"
+      "sha256": "bf5c46828b264cb98cd32182071acd7a52d584e3b56a99aa3921721674c7f7e4"
     },
     "helper": {
       "size": 24232,
@@ -56,15 +56,15 @@
   },
   "rebased_patch": {
     "path": "samsung-compat-32665.patch",
-    "size": 56285,
-    "sha256": "7391c401ffb8d3ad072764f06204d41f040e8da41e6cb1e48eca9dddbc130fee"
+    "size": 55977,
+    "sha256": "d12852cddef059c2803ef837428ff746f7f3e54fa6e8a493666d75a06708bda4"
   },
   "patched_source_sha256": {
     "kernel/Kbuild": "cb7deea68f6197bd6aaa39c105eddf344461904b8b6871b44054ec52eea4b656",
     "kernel/compat/samsung_defex.c": "d7615f3db9af2d5ba3d5e4580db6732a71a72ee9d29081da62dfdf73f860a148",
     "kernel/compat/samsung_defex.h": "f50410ca28b421ba61f4bf10aca611f50b2ea150b8d0c508fbeb119194f0e387",
     "kernel/compat/samsung_kdp.c": "d1f3da9d0a1c5eb85ef5c57808d395e1a32711acd73f42918098f2f2bd94ecc3",
-    "kernel/core/init.c": "bb143339c759318a92b2beb00cd71cf4afc4cad243b53976675d32a67505ffc8",
+    "kernel/core/init.c": "ddfb4b4359d0205c31e37737064d91a5d6e224b5e6e76f6a61e076ffd2a0855b",
     "kernel/feature/selinux_hide.c": "adc8e8381245307169dab00399985b92779f5fc3c53101fb065d5bc56ad45d7c",
     "kernel/feature/sucompat.c": "72a0e47d4d3db65a4e8eac5921fd306a31ece5272eebc9ee0013b992d74f8da4",
     "kernel/hook/arm64/patch_memory.c": "a6260251b4d370edb5ec26bd7cfcbbdca72f709f90908f3169243a39cade943a",
@@ -78,6 +78,6 @@
     "userspace/ksud/src/late_load.rs": "1fe04b64ed02c231c463ce7be28b4b07541ecdb92c4478b43987be36b689395c",
     "userspace/ksud/src/utils.rs": "5a077fd7b9d5632c1879a7124f81e161cffd1cdb6dab72881778bf9dbabc80f0"
   },
-  "app_version": "1.1.7",
-  "previous_upstream_commit": "08b2e9e451325ebe506c273cfb0fde17d18f592f"
+  "app_version": "1.1.8",
+  "previous_upstream_commit": "e7b071100754b55e28be6930f9967d99adb4a385"
 }

@@ -75,7 +75,7 @@ The current source bundles these driver/daemon pairs:
 |---|---|---|
 | KernelSU | `32665 / 5` | [Manager APK (ZIP)](https://nightly.link/tiann/KernelSU/actions/runs/37518122292/manager.zip) · [Official build](https://github.com/tiann/KernelSU/actions/runs/37518122292) |
 | KernelSU-Next | `33323 / 5` | [Manager APK (ZIP)](https://nightly.link/KernelSU-Next/KernelSU-Next/actions/runs/37513294225/manager.zip) · [Official build](https://github.com/KernelSU-Next/KernelSU-Next/actions/runs/37513294225) |
-| BakaSU | `35216 / 5` | [Manager APKs (ZIP)](https://nightly.link/Baka-SU/BakaSU/actions/runs/37544361704/Manager-release.zip) · [Official build](https://github.com/Baka-SU/BakaSU/actions/runs/37544361704) |
+| BakaSU | `35217 / 5` | [Manager APKs (ZIP)](https://nightly.link/Baka-SU/BakaSU/actions/runs/37544361704/Manager-release.zip) · [Official build](https://github.com/Baka-SU/BakaSU/actions/runs/37544361704) |
 
 Download the ZIP, extract it, and install the APK. For BakaSU on a Samsung phone,
 choose `BakaSU_v4.2.0-rc3_35216-arm64-v8a-release.apk` from the archive.

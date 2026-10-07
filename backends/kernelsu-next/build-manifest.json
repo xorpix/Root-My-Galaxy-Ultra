@@ -1,11 +1,11 @@
 {
   "schema": 2,
   "created_utc": "2026-10-07",
-  "app_version": "1.1.7",
-  "app_base_commit": "340af19a52af6b13faa2518cecb665830092f8d5",
+  "app_version": "1.1.8",
+  "app_base_commit": "50168cc261c949b966cca03aaa27cfed11cefb79",
   "upstream_repository": "https://github.com/KernelSU-Next/KernelSU-Next",
   "upstream_commit": "3daa57876983f64755b85adaf8acb69c2b09af3a",
-  "previous_upstream_commit": "27f891bfcb2c7d4d399dd2151298f3dec1ae199c",
+  "previous_upstream_commit": "3daa57876983f64755b85adaf8acb69c2b09af3a",
   "upstream_commit_count": 3323,
   "driver_version": 33323,
   "uapi_version": 5,
@@ -36,11 +36,11 @@
   "outputs": {
     "ksud": {
       "size": 4269400,
-      "sha256": "f4010d217b483c933c067f9e7e04833c9300c3097e81e48206e459ee43f23af5"
+      "sha256": "dd464d6151b93932c55c4ff468980814bd5c4c48a9892af52e4f629596702d3e"
     },
     "kernelsu.ko": {
       "size": 400480,
-      "sha256": "31da6ecc701fd20efe0c5ab096a122c7e230985f2b60502fe87947c4801bc05d"
+      "sha256": "cafda855ffc349428dd434a9238fa79f06d854345b162989502a4015c967dee0"
     },
     "helper": {
       "size": 24232,
@@ -49,8 +49,8 @@
   },
   "rebased_patch": {
     "path": "samsung-compat-33323.patch",
-    "size": 57593,
-    "sha256": "77edebf6a0450a0d81dabdedea482361fd823268ede4e034e5b739c3f7be4335"
+    "size": 57370,
+    "sha256": "72261b232665a0b1556e11daab71ec9f6bda80929636eb47f9a899e8d3970d5f"
   },
   "validation": {
     "kernel_build": "passed",
@@ -67,7 +67,7 @@
     "kernel/compat/samsung_defex.c": "d7615f3db9af2d5ba3d5e4580db6732a71a72ee9d29081da62dfdf73f860a148",
     "kernel/compat/samsung_defex.h": "f50410ca28b421ba61f4bf10aca611f50b2ea150b8d0c508fbeb119194f0e387",
     "kernel/compat/samsung_kdp.c": "d1f3da9d0a1c5eb85ef5c57808d395e1a32711acd73f42918098f2f2bd94ecc3",
-    "kernel/core/init.c": "ce38c88066e8086bd3790f3aa414c5d428d849095b549507ead35f9f1d3446ed",
+    "kernel/core/init.c": "6e2899865e50b7f2e8027cb3d4c6f72bb4ea36a25b7721a8e3d428ad81ac6dff",
     "kernel/feature/selinux_hide.c": "adc8e8381245307169dab00399985b92779f5fc3c53101fb065d5bc56ad45d7c",
     "kernel/feature/sucompat.c": "f6717f876f755cc87099f329517de8a81a805d86b87ac79a9c421a747804651b",
     "kernel/hook/arm64/patch_memory.c": "60ee1c229a085b8bcf71d4400d652b5dddd0a8e967308d473c68b86a946c0276",

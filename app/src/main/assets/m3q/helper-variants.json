@@ -75,22 +75,22 @@
     },
     "resukisu": {
       "library": "libm3qroot_resukisu.so",
-      "driverVersion": 35216,
+      "driverVersion": 35217,
       "uapiVersion": 5,
       "size": 24232,
-      "sha256": "b3cf6e6cc0f4be7a9c5149d6bb1d1ab5022e8c799c3b03a872ce698cb5ea9b4a",
+      "sha256": "506210b460b48a5793811bfe9b781582cc858965c2c1ae84c8b8efe9f207470c",
       "changes": [
         {
           "virtual_address": "0x6c94",
           "file_offset": 11412,
           "before": "528fef89",
-          "after": "52913209"
+          "after": "52913229"
         },
         {
           "virtual_address": "0x6cc8",
           "file_offset": 11464,
           "before": "528fef82",
-          "after": "52913202"
+          "after": "52913222"
         },
         {
           "virtual_address": "0x6ca0",
