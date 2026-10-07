@@ -667,10 +667,10 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         val initialRefusal = if (!AppPreferences.hasKernelsuFlavorChoice(app)) {
             app.getString(R.string.backend_choice_required)
         } else {
-            // Either supported firmware family passes; a device on neither gets both requirements.
+            // Only the recorded AZHL and DirtyFrag identities pass.
             val snapshot = DeviceSnapshot.current()
-            if (AzhlPort.identity.matches(snapshot) || BzigPort.identity.matches(snapshot)) null
-            else "${AzhlPort.identityRefusal(snapshot)}\n${BzigPort.identityRefusal(snapshot)}"
+            if (AzhlPort.identity.matches(snapshot) || DfPort.matches(snapshot)) null
+            else "${AzhlPort.identityRefusal(snapshot)}\n${DfPort.identityRefusal(snapshot)}"
         }
         if (initialRefusal != null) {
             discoveryJob?.cancel()
@@ -724,7 +724,7 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         // question is.
         // The device family decides the exploit before anything gates on it: DirtyFrag
         // runs with no Shizuku at all, so the Shizuku requirements below do not apply to it.
-        val dfDevice = BzigPort.identity.matches(DeviceSnapshot.current())
+        val dfDevice = DfPort.matches(DeviceSnapshot.current())
         if (shouldHoldForShizuku(
                 unattended = unattended,
                 requested = AppPreferences.shizukuMode(app),
@@ -795,7 +795,7 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
             var stagingSwept = false
             try {
                 activeStage = RunStage.Target
-                setPhase(InstallPhase.Checking, if (dfDevice) "Checking the bundled BZIG profile" else "Checking the bundled AZHL profile")
+                setPhase(InstallPhase.Checking, if (dfDevice) "Checking the bundled DirtyFrag profile" else "Checking the bundled AZHL profile")
                 require(dfDevice || (!withoutShizuku && AppPreferences.shizukuMode(app))) {
                     "This AZHL build requires Shizuku started through wireless debugging (shell UID 2000)."
                 }
@@ -942,7 +942,7 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                 if (!runUsesDirtyFrag) awaitBootSettle(maxOf(180, AppPreferences.bootSettleSeconds(app)))
 
                 activeStage = RunStage.Download
-                setPhase(InstallPhase.Downloading, if (runUsesDirtyFrag) "Verifying bundled BZIG payloads" else "Verifying bundled AZHL payloads")
+                setPhase(InstallPhase.Downloading, if (runUsesDirtyFrag) "Verifying bundled DirtyFrag payloads" else "Verifying bundled AZHL payloads")
                 val payloads = if (runUsesDirtyFrag) DfCatalog.stage(app, profile) { appendLog("[*] $it") } else repository.download(profile) { appendLog("[*] $it") }
 
                 // Before the exploit, because the record exists for the runs that fail during it: a

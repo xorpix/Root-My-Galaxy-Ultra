@@ -1,6 +1,6 @@
 # Root My Galaxy Ultra
 
-Temporary root for the **Samsung Galaxy S26 Ultra SM-S948B (m3q)**, with a choice
+Temporary root for the **Samsung Galaxy S26 Ultra SM-S948B and SM-S948W (m3q)**, with a choice
 of **KernelSU**, **KernelSU-Next** or **BakaSU (former ReSukiSU)**. Root is lost after a full
 reboot; activate it again through the app.
 
@@ -14,19 +14,26 @@ reboot; activate it again through the app.
 
 ## Supported firmware
 
-Support is limited to these exact builds on **SM-S948B / m3q**, with
+Support is limited to these exact builds on **m3q**, with
 `arm64-v8a` and **4 KB pages**.
 
-| Firmware | Android | Root method | Shizuku required for rooting |
-|---|---|---|---|
-| `S948BXXS4AZHL` | Android 16 / API 36 | M3Q / GhostLock | Yes, running as shell through wireless debugging |
-| `S948BXXS4BZIG` | Android 17 / API 37, One UI 9 | DirtyFrag | No |
+| Model | Firmware | Android | Root method | Shizuku required for rooting |
+|---|---|---|---|---|
+| SM-S948B | `S948BXXS4AZHL` | Android 16 / API 36 | M3Q / GhostLock | Yes, running as shell through wireless debugging |
+| SM-S948B | `S948BXXS4BZIG` | Android 17 / API 37, One UI 9 | DirtyFrag | No |
+| SM-S948W | `S948WVLU4BZID` | Android 17 / API 37, One UI 9 | DirtyFrag (experimental port; device test pending) | No |
+
+The Canadian SM-S948W profile uses the existing Android 16 / Linux 6.12 DirtyFrag
+helper and matched backend payloads. Its exact identity comes from the supplied
+[device inventory](docs/device-candidates/SM-S948W-BZID.md); successful rooting on
+this variant has not yet been verified. DFRoot compatibility is a useful basis
+for the port, but does not by itself verify RMGU's backend loading on this phone.
 
 The app selects the method from the firmware profile. Other models or firmware
 builds are not supported just because their kernel version looks similar.
 Exact kernel releases and device checks are recorded in the
 [AZHL catalog](app/src/main/assets/azhl/catalog.json) and
-[BZIG catalog](app/src/main/assets/df/catalog.json).
+[DirtyFrag catalog](app/src/main/assets/df/catalog.json).
 
 ## Getting started
 
@@ -49,7 +56,7 @@ after boot** before launching the payload; a longer configured settle time
 still applies. It prevents another app-level M3Q launch in the same boot.
 After a failure, perform a full reboot before trying again.
 
-### BZIG — DirtyFrag
+### BZIG / BZID — DirtyFrag
 
 Start from a full reboot, choose the backend and start the root run from Home.
 **Shizuku and wireless debugging are not needed for this root method**, and
@@ -112,7 +119,7 @@ Useful controls in Settings:
 | Setting | Purpose |
 |---|---|
 | Disable KSU modules | Start with modules disabled when investigating a module problem. |
-| Reset all root state before loading | Destructive recovery option. AZHL clears the contents of `/data/adb`; BZIG clears installed and pending modules. Leave it off for normal rooting. |
+| Reset all root state before loading | Destructive recovery option. AZHL clears the contents of `/data/adb`; DirtyFrag clears installed and pending modules. Leave it off for normal rooting. |
 | Protect image partitions | Enabled by default. Requests read-only protection for image partitions after root; it can block image flashing and boot-patching operations. |
 | Recovery Management | Module reload and framework/reboot actions for an already rooted session. A framework restart does not replace the full reboot required for a fresh attempt or backend change. |
 | Root on boot | Optional automation. Establish a working manual setup first; Android background-service restrictions and transport availability can prevent automatic startup. |
@@ -237,7 +244,7 @@ AZHL screenshots from an earlier build; labels may differ in current releases.
   [third-party notices](native/azhl/NOTICE) and
   [helper variant metadata](app/src/main/assets/m3q/helper-variants.json).
 - [diabl0w / DFRoot](https://github.com/diabl0w/DFRoot) — DirtyFrag integration
-  for BZIG. See [DirtyFrag provenance and licensing notes](app/src/main/cpp/dirtyfrag/DF_ORIGIN.md).
+  for BZIG/BZID. See [DirtyFrag provenance and licensing notes](app/src/main/cpp/dirtyfrag/DF_ORIGIN.md).
 - **KernelSU, KernelSU-Next and BakaSU contributors** — root backends;
   [source revisions and Samsung patches](backends/README.md).
 

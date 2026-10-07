@@ -61,7 +61,7 @@ internal object DfCatalog {
     const val DISABLE_FLAG_NAME = "df-disable-modules"
 
     /**
-     * One profile per backend, each staging that backend's own daemon into
+     * One profile per firmware and backend, each staging that backend's own daemon into
      * the native handoff, so manager pairing stays honest per flavour.
      * on purpose: pointing other flavours at one binary would be the
      * flavour mix-up the profile model exists to prevent. The vendored diabl0w
@@ -70,18 +70,26 @@ internal object DfCatalog {
      */
     fun parse(bytes: ByteArray): List<TargetProfile> {
         val manifest = SupportManifest.parse(bytes)
-        require(manifest.ignored.isEmpty() && manifest.targets.size == KernelSuFlavor.entries.size)
+        val expectedIds = DfPort.firmwares.keys.flatMap { firmwareId ->
+            KernelSuFlavor.entries.map { "df-$firmwareId-${it.id}" }
+        }.toSet()
+        require(
+            manifest.ignored.isEmpty() && manifest.targets.size == expectedIds.size &&
+                manifest.targets.map { it.profileId }.toSet() == expectedIds,
+        ) { "The DirtyFrag bundle must contain every registered firmware/backend exactly once" }
         return manifest.targets.map { profile ->
-            require(profile.profileId == "df-bzig-${profile.flavor.id}")
-            require(profile.firmware == BzigPort.identity)
-            require(profile.models == setOf(BzigPort.identity.model))
-            require(profile.kernelVersions == setOf(BzigPort.identity.kernelRelease))
+            val firmware = requireNotNull(DfPort.firmwares.entries.singleOrNull { it.value == profile.firmware }) {
+                "Unrecognized bundled DirtyFrag firmware"
+            }
+            require(profile.profileId == "df-${firmware.key}-${profile.flavor.id}")
+            require(profile.models == setOf(firmware.value.model))
+            require(profile.kernelVersions == setOf(firmware.value.kernelRelease))
             require(profile.kernelSu.url == "asset://azhl/${profile.flavor.id}/ksud")
             require(profile.exploit.url == DF_NATIVE_URL)
             require(profile.kernelSu.sha256 != null && profile.kernelSu.size > 0)
             require(profile.kernelSuVersion == azhlReleaseVersion(profile.flavor))
             require(profile.routePolicy == route && !profile.requiresFreshP0Session)
-            profile.copy(sourceId = SOURCE, sourceLabel = "BZIG bundled payloads — hardware testing required")
+            profile.copy(sourceId = SOURCE, sourceLabel = "${firmware.key.uppercase()} bundled payloads — hardware testing required")
         }
     }
 
@@ -97,7 +105,7 @@ internal object DfCatalog {
 
     fun stage(context: Context, profile: TargetProfile, onProgress: (String) -> Unit): VerifiedPayloads {
         require(load(context).singleOrNull { it == profile } == profile) {
-            "The selected payload is not the current BZIG bundle. Select a bundled backend."
+            "The selected payload is not the current DirtyFrag bundle. Select a bundled backend."
         }
         val dest = File(context.createDeviceProtectedStorageContext().getFilesDir().getParentFile(), "ksud")
         check(dest.parentFile.isDirectory || dest.parentFile.mkdirs())

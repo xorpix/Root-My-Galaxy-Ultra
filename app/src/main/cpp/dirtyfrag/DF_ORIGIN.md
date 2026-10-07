@@ -19,7 +19,7 @@ and execs ksud from a memfd. No Shizuku, no WiFi needed.
   `hmac_sha256.h`, `reporter.h`, `splicehelper.c` (built, not shipped)
 - `ko/dirtyfrag-android{12-5.10,13-5.10,13-5.15,14-5.15,14-6.1,15-6.6,16-6.12,17-6.18}.ko`
   (12048/10920/11168/11168/7176/7624/8104/8176 bytes; selected at runtime
-  by `uname`, so OneUI 9 / BZIG takes a per-flavor blob below, not generic)
+  by `uname`, so OneUI 9 / BZIG and BZID take a per-flavor blob below, not generic)
 - `ko/dirtyfrag-android16-6.12-{kernelsu,kernelsu-next,resukisu}.ko`
   (11128 bytes each stripped; selected by `select_ko_image()` in `exp.c:352` when
   `uname` reports android16/6.12 plus matching `flavorId`. Each embeds
@@ -71,13 +71,20 @@ license). Upstream credits the underlying ideas to lspromise, DFReroot
 ## Roadmap (DF-2)
 
 Done: `DfRunner` (IpSec setup, JNI, 120 s marker poll, native-probe grant-free
-verify, su-verified fallback), `DfCatalog` closed BZIG bundle for
-S948BXXS4BZIG, Shizuku preconditions bypassed for this family only, per-flavor
+verify, su-verified fallback), `DfCatalog` closed bundles for SM-S948B /
+S948BXXS4BZIG and SM-S948W / S948WVLU4BZID, Shizuku preconditions bypassed for
+these exact identities, per-flavor
 daemons from `asset://azhl/<flavor>/ksud`. M3Q/AZHL behavior unchanged.
 
 First-try = `choose flavor -> run -> Installed` via `dfm0` or native probe, no
 manager grant. The su-grant hold remains only as fallback when neither
 grant-free signal fires.
+
+The Canadian BZID profile reuses the same native helper and per-flavor bridges;
+its Android 16 / Linux 6.12 kernel family and 4 KB pages were recorded in the
+supplied inventory. No native code or binary changed for this profile. Hardware
+validation of its backend loading remains pending; see
+`docs/device-candidates/SM-S948W-BZID.md` at the repository root.
 
 ## BakaSU manager migration (2026-10-05)
 
