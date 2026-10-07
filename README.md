@@ -62,11 +62,19 @@ A failure or timeout needs a full reboot before another attempt.
 
 The current source bundles these driver/daemon pairs:
 
-| Backend | Driver / UAPI | Official manager downloads |
+| Backend | Driver / UAPI | Verified UAPI 5 manager downloads |
 |---|---|---|
-| KernelSU | `32665 / 5` | [KernelSU releases](https://github.com/tiann/KernelSU/releases) |
-| KernelSU-Next | `33323 / 5` | [KernelSU-Next releases](https://github.com/KernelSU-Next/KernelSU-Next/releases) |
-| BakaSU | `35216 / 5` | [BakaSU releases](https://github.com/Baka-SU/BakaSU/actions) |
+| KernelSU | `32665 / 5` | [Manager APK (ZIP)](https://nightly.link/tiann/KernelSU/actions/runs/37518122292/manager.zip) · [Official build](https://github.com/tiann/KernelSU/actions/runs/37518122292) |
+| KernelSU-Next | `33323 / 5` | [Manager APK (ZIP)](https://nightly.link/KernelSU-Next/KernelSU-Next/actions/runs/37513294225/manager.zip) · [Official build](https://github.com/KernelSU-Next/KernelSU-Next/actions/runs/37513294225) |
+| BakaSU | `35216 / 5` | [Manager APKs (ZIP)](https://nightly.link/Baka-SU/BakaSU/actions/runs/37544361704/Manager-release.zip) · [Official build](https://github.com/Baka-SU/BakaSU/actions/runs/37544361704) |
+
+Download the ZIP, extract it, and install the APK. For BakaSU on a Samsung phone,
+choose `BakaSU_v4.2.0-rc3_35216-arm64-v8a-release.apk` from the archive.
+These are official upstream development builds verified to use UAPI 5.
+The download links use [nightly.link](https://nightly.link/)
+to retrieve the original GitHub artifacts without a GitHub login; **Official build**
+opens their upstream source and artifact records. The pinned artifacts are
+currently retained until **4 January 2027**.
 
 These are pinned upstream development revisions with Samsung compatibility
 changes. [Backend documentation](backends/README.md) contains the exact source
@@ -79,9 +87,9 @@ payloads.
 
 **These pairs require a manager built for UAPI 5.** A release tag such as
 `v4.2.0-rc3` or `v3.4.0` alone does not establish compatibility; check the UAPI
-number shown by the manager. The existing release picker may still offer an
-older UAPI 4 APK. For these development snapshots, use a matching official
-UAPI 5 manager build; see the [backend instructions](backends/README.md#manager-compatibility).
+number shown by the manager. The existing release picker may still offer a
+manager with an older UAPI. Use the verified UAPI 5 manager downloads in the
+table above for these development snapshots.
 
 - **Use one backend per boot.** Fully reboot before activating a different one.
   Switching backends may disable existing modules; re-enable compatible modules
