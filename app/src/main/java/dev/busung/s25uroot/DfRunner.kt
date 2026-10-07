@@ -14,7 +14,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
 /**
- * DirtyFrag exploit runner (diabl0w/DFRoot family, OneUI 9 BZIG).
+ * DirtyFrag exploit runner (diabl0w/DFRoot family, eligible S26 Ultra kernels).
  *
  * Phase 1 only: run the exploit and prove the daemon reported success. This
  * runner never holds root, never touches Shizuku, and never executes anything

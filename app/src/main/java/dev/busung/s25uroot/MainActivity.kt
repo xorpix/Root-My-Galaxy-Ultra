@@ -1148,7 +1148,12 @@ private fun RootApp(
                 DialogDimAmount(0.34f)
                 Text(stringResource(R.string.azhl_install_confirm_title, kernelsuFlavor.label))
             },
-            text = { Text(stringResource(if (isAzhlDevice) R.string.azhl_install_confirm_body_azhl else R.string.azhl_install_confirm_body, kernelsuFlavor.label)) },
+            text = {
+                Text(
+                    if (isAzhlDevice) stringResource(R.string.azhl_install_confirm_body_azhl, kernelsuFlavor.label)
+                    else stringResource(R.string.azhl_install_confirm_body, kernelsuFlavor.label, device.model, device.incremental),
+                )
+            },
             confirmButton = {
                 FilledTonalButton(onClick = {
                     clickHaptic(view)
@@ -3615,9 +3620,9 @@ private fun SettingsPage(
     val view = LocalView.current
     val scope = rememberCoroutineScope()
     // Obsolete rows (unsettable settle, unenforced limits, run-transport
-    // Shizuku switch) stay for AZHL firmware and hide on BZIG, where
+    // Shizuku switch) stay for AZHL firmware and hide on DirtyFrag firmware, where
     // DirtyFrag neither reads nor honors them.
-    val isBzigDevice = BzigPort.identity.matches(device)
+    val isDfDevice = DfPort.matches(device)
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showFlavorDialog by remember { mutableStateOf(false) }
     var showManagerVersionDialog by remember { mutableStateOf(false) }
@@ -4376,7 +4381,7 @@ private fun SettingsPage(
                         },
                     )
                 }
-                if (!isBzigDevice) {
+                if (!isDfDevice) {
                     SettingsCard(
                         modifier = Modifier.onGloballyPositioned { coordinates ->
                             bootSettleMenuTop = with(density) { coordinates.positionInWindow().y.toDp() }
@@ -4392,7 +4397,7 @@ private fun SettingsPage(
                         },
                     )
                 }
-                if (!isBzigDevice) {
+                if (!isDfDevice) {
                     SettingsCard(
                         icon = Icons.Rounded.Timer,
                         title = stringResource(R.string.settings_run_limits),
@@ -4431,8 +4436,8 @@ private fun SettingsPage(
         )
         if (SettingsSection.Shizuku in openSections) item {
             SettingsSectionBody {
-                // Obsolete on BZIG firmware: DirtyFrag forces app transport.
-                if (!isBzigDevice) {
+                // Obsolete on DirtyFrag firmware: DirtyFrag forces app transport.
+                if (!isDfDevice) {
                     SettingsSwitchCard(
                     // The transport a run is handed to, which is why it sits with the other two
                     // Shizuku decisions rather than under appearance.
@@ -4511,7 +4516,7 @@ private fun SettingsPage(
                             stringResource(R.string.settings_shizuku_state_needs_permission)
                         else -> ""
                     },
-                    position = if (isBzigDevice) SettingsCardPosition.Top else SettingsCardPosition.Middle,
+                    position = if (isDfDevice) SettingsCardPosition.Top else SettingsCardPosition.Middle,
                     enabled = shizukuAvailability != ShizukuAvailability.Ready,
                     onClick = {
                         // Asked again here rather than trusting what was drawn: permission can be

@@ -1,7 +1,8 @@
 {
   "schema_version": 1,
-  "assessment": "candidate_only",
-  "runtime_support_enabled": false,
+  "assessment": "experimental_support_enabled",
+  "runtime_support_enabled": true,
+  "hardware_validation": "not_run",
   "source_report_type": "rmgu-s26-device-inventory",
   "collected_at_utc": "2026-10-05T14:32:49.1934085Z",
   "app_source_reviewed": "5287e5bb112ef33143ba23457c05255e5498cf27",

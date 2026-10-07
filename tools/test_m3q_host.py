@@ -55,13 +55,15 @@ class BundleTests(unittest.TestCase):
             self.assertEqual((ASSETS / 'azhl' / profile['flavor'] / 'ksud').read_bytes(), daemon.read_bytes())
         self.assertEqual((ASSETS / 'm3q/libm3qpayload.so').read_bytes(), (JNI / 'libm3qpayload.so').read_bytes())
 
-    def test_bzig_and_azhl_share_the_same_verified_backends(self):
+    def test_dirtyfrag_variants_and_azhl_share_the_same_verified_backends(self):
         azhl = json.loads((ASSETS / 'azhl/catalog.json').read_text())['payloads']
-        bzig = json.loads((ASSETS / 'df/catalog.json').read_text())['payloads']
+        dirtyfrag = json.loads((ASSETS / 'df/catalog.json').read_text())['payloads']
         expected = {profile['flavor']: profile['kernelsu'] for profile in azhl}
-        self.assertEqual(set(VERSIONS), {profile['flavor'] for profile in bzig})
-        self.assertEqual(len(VERSIONS), len(bzig))
-        for profile in bzig:
+        firmwares = {'S948BXXS4BZIG', 'S948WVLU4BZID'}
+        self.assertEqual(len(VERSIONS) * len(firmwares), len(dirtyfrag))
+        self.assertEqual({(firmware, flavor) for firmware in firmwares for flavor in VERSIONS},
+                         {(p['firmware']['incremental'], p['flavor']) for p in dirtyfrag})
+        for profile in dirtyfrag:
             self.assertEqual(expected[profile['flavor']], profile['kernelsu'])
 
     def test_runtime_expectations_match_packaged_helpers(self):

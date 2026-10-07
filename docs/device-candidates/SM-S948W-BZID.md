@@ -1,6 +1,6 @@
-# SM-S948W / BZID candidate review
+# SM-S948W / BZID experimental port
 
-**Status: identity recorded; root support is not enabled.**
+**Status: experimental runtime support enabled; hardware validation pending.**
 
 The supplied inventory was collected on 2026-10-05 against app source
 `5287e5bb112ef33143ba23457c05255e5498cf27`. It explicitly reports
@@ -27,7 +27,31 @@ The inventory contains no matching kernel configuration, BTF type information,
 module ABI evidence or successful hardware test. It cannot establish that the
 existing Samsung backend patches and loading path work on this vendor kernel.
 
-## Next evidence
+## Runtime support
+
+`DfPort` and the bundled DirtyFrag catalog now register this exact model,
+incremental, full kernel release, SDK, ABI and page size for all three backends.
+The existing native helper selects its Android 16 / Linux 6.12 bridge from
+`uname` and the selected backend. It resolves userspace patch locations from ELF
+data at runtime; no BZIG-specific exploit offset or new native blob is used here.
+The backend daemons remain the same hash-verified Android 16 / 6.12 builds used
+by BZIG. This enables a test of the Canadian build without asserting that its
+vendor kernel ABI or backend loading has already been verified.
+
+The install path uses DirtyFrag directly, without Shizuku or the AZHL boot-settle
+floor. Settings and recovery hide the same inapplicable controls as on BZIG.
+The recorded BZID profile keeps its existing ID. Other S26 Ultra regional models
+and firmware builds now receive their own runtime profiles when their detected
+identity meets the shared [family support rules](../S26-ULTRA-SUPPORT.md).
+Other kernel families and page sizes remain outside this payload bundle.
+
+## Device validation
+
+Start with a full reboot, choose one backend and run from Home. Export the run
+history, confirm the selected backend and UAPI 5 in its matching manager, and
+check a superuser shell before enabling modules or root-on-boot. Record any
+backend-load failure with its run log. Fully reboot before testing another
+backend or retrying a failed attempt.
 
 If readable through the tester's existing authorized ADB connection, collect:
 
@@ -39,6 +63,5 @@ adb pull /sys/kernel/btf/vmlinux SM-S948W-BZID-vmlinux.btf
 These are read-only copies; they do not root or change the phone. If either is
 unavailable or denied, retain that error rather than attempting to bypass it.
 Matching vendor kernel build artifacts can supply missing configuration/ABI
-information. The result still needs comparison and testing on this exact
-model/build before a runtime support profile is added. No success, safe-load
-or Knox-preservation claim follows from this inventory.
+information if the first hardware test exposes a loading problem. No success,
+safe-load or Knox-preservation claim follows from the inventory or the profile.

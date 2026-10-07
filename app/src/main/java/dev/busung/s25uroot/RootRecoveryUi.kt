@@ -160,10 +160,10 @@ internal fun RootRecoverySection(
     // No explanatory paragraph of its own: the rows say what they do, and the dialog says what each
     // one costs. What is left is the list itself, in the same shape as the groups above it.
     // ReloadModules can never succeed (refused on all paths) and is hidden on
-    // BZIG firmware, where even the refusal dialog would be noise.
+    // DirtyFrag firmware, where even the refusal dialog would be noise.
     val tools = remember {
         RecoveryTool.entries.filterNot {
-            BzigPort.identity.matches(DeviceSnapshot.current()) && it == RecoveryTool.ReloadModules
+            DfPort.matches(DeviceSnapshot.current()) && it == RecoveryTool.ReloadModules
         }
     }
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {

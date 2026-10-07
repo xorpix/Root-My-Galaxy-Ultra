@@ -28,14 +28,18 @@ import androidx.compose.ui.window.DialogProperties
 internal fun BackendChoiceDialog(onChoose: (KernelSuFlavor) -> Unit) {
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     val selected = KernelSuFlavor.fromId(selectedId)
-    val isAzhlDevice = remember { AzhlPort.identity.matches(DeviceSnapshot.current()) }
+    val device = remember { DeviceSnapshot.current() }
+    val isAzhlDevice = AzhlPort.identity.matches(device)
     AlertDialog(
         onDismissRequest = {},
         properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
         title = { Text(stringResource(R.string.backend_choice_title)) },
         text = {
             Column {
-                Text(stringResource(if (isAzhlDevice) R.string.backend_choice_explanation_azhl else R.string.backend_choice_explanation))
+                Text(
+                    if (isAzhlDevice) stringResource(R.string.backend_choice_explanation_azhl)
+                    else stringResource(R.string.backend_choice_explanation, device.model, device.incremental),
+                )
                 Column(Modifier.selectableGroup()) {
                     KernelSuFlavor.entries.forEach { flavor ->
                         Row(

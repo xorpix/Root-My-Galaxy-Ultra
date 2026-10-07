@@ -1,6 +1,6 @@
 # Root My Galaxy Ultra
 
-Temporary root for the **Samsung Galaxy S26 Ultra SM-S948B (m3q)**, with a choice
+Temporary root for **Samsung Galaxy S26 Ultra (m3q) regional and carrier variants**, with a choice
 of **KernelSU**, **KernelSU-Next** or **BakaSU (former ReSukiSU)**. Root is lost after a full
 reboot; activate it again through the app.
 
@@ -12,26 +12,35 @@ reboot; activate it again through the app.
 > Begin from a full reboot and reboot again after a failed or uncertain attempt.
 > Keep a backup of important data.
 
-## Supported firmware
+## Device and kernel support
 
-Support is limited to these exact builds on **SM-S948B / m3q**, with
-`arm64-v8a` and **4 KB pages**.
+The app recognizes regional `SM-S948` models, including dual-SIM names, and the
+Japanese carrier models `SC-53G` and `SCG37`. All routes require **m3q**,
+`arm64-v8a`, an `aarch64` kernel and **4 KB pages**.
 
-| Firmware | Android | Root method | Shizuku required for rooting |
+| Model / build | Kernel requirement | Root method | Shizuku required for rooting |
 |---|---|---|---|
-| `S948BXXS4AZHL` | Android 16 / API 36 | M3Q / GhostLock | Yes, running as shell through wireless debugging |
-| `S948BXXS4BZIG` | Android 17 / API 37, One UI 9 | DirtyFrag | No |
+| SM-S948B / `S948BXXS4AZHL`, Android 16 / API 36 | Exact recorded AZHL kernel | M3Q / GhostLock | Yes, running as shell through wireless debugging |
+| S26 Ultra regional and carrier variants, Android API 36 or newer | `android16` / Linux `6.12` GKI family | DirtyFrag (experimental family support) | No |
 
-The app selects the method from the firmware profile. Other models or firmware
-builds are not supported just because their kernel version looks similar.
-Exact kernel releases and device checks are recorded in the
+DirtyFrag selects the shared helper and matched backend payloads by kernel family.
+It automatically creates profiles containing the phone's actual model, firmware,
+full kernel release, SDK, ABI and page size; a firmware whitelist is not required.
+The recorded BZIG and Canadian BZID entries keep their existing profile IDs.
+
+**Recognition is not a hardware-test result.** Patched firmware can block
+DirtyFrag, and a compatible kernel family does not by itself verify Samsung
+backend loading. Other kernel families and 16 KB pages need matching native
+payloads before they can be enabled. See the
+[S26 Ultra support rules and validation](docs/S26-ULTRA-SUPPORT.md).
+Recorded identities and artifact checksums are in the
 [AZHL catalog](app/src/main/assets/azhl/catalog.json) and
-[BZIG catalog](app/src/main/assets/df/catalog.json).
+[DirtyFrag catalog](app/src/main/assets/df/catalog.json).
 
 ## Getting started
 
 1. Install the APK from this repository's releases and open it.
-2. Check the model and firmware shown on Home against the table above.
+2. Check the model and kernel shown on Home against the support requirements above.
 3. Choose a backend under **Settings → Root Management → KernelSU flavour**.
 4. Follow the instructions for your firmware below.
 5. Open the matching manager and confirm it reports the backend as working.
@@ -49,7 +58,7 @@ after boot** before launching the payload; a longer configured settle time
 still applies. It prevents another app-level M3Q launch in the same boot.
 After a failure, perform a full reboot before trying again.
 
-### BZIG — DirtyFrag
+### S26 Ultra variants — DirtyFrag
 
 Start from a full reboot, choose the backend and start the root run from Home.
 **Shizuku and wireless debugging are not needed for this root method**, and
@@ -112,7 +121,7 @@ Useful controls in Settings:
 | Setting | Purpose |
 |---|---|
 | Disable KSU modules | Start with modules disabled when investigating a module problem. |
-| Reset all root state before loading | Destructive recovery option. AZHL clears the contents of `/data/adb`; BZIG clears installed and pending modules. Leave it off for normal rooting. |
+| Reset all root state before loading | Destructive recovery option. AZHL clears the contents of `/data/adb`; DirtyFrag clears installed and pending modules. Leave it off for normal rooting. |
 | Protect image partitions | Enabled by default. Requests read-only protection for image partitions after root; it can block image flashing and boot-patching operations. |
 | Recovery Management | Module reload and framework/reboot actions for an already rooted session. A framework restart does not replace the full reboot required for a fresh attempt or backend change. |
 | Root on boot | Optional automation. Establish a working manual setup first; Android background-service restrictions and transport availability can prevent automatic startup. |
@@ -126,7 +135,7 @@ that feature.
 
 | Symptom | What to check |
 |---|---|
-| Unsupported device or firmware | Compare the full firmware identifier with the supported table. A nearby build number is not a match. |
+| Unsupported device or kernel | Check the S26 Ultra model/codename, kernel family, ABI and page size. AZHL/GhostLock still requires its exact recorded build. |
 | Failed attempt, freeze or reboot | Fully reboot before trying again. Keep the failed run log; repeated retries in one boot are not a recovery method. |
 | Root works, but a module does not | Check the module's requirements and its manager logs. Successful root does not confirm that every module or injection framework has initialized. |
 | Manager works, but this app's root actions fail | Grant this app superuser permission in the selected manager. |
@@ -237,7 +246,7 @@ AZHL screenshots from an earlier build; labels may differ in current releases.
   [third-party notices](native/azhl/NOTICE) and
   [helper variant metadata](app/src/main/assets/m3q/helper-variants.json).
 - [diabl0w / DFRoot](https://github.com/diabl0w/DFRoot) — DirtyFrag integration
-  for BZIG. See [DirtyFrag provenance and licensing notes](app/src/main/cpp/dirtyfrag/DF_ORIGIN.md).
+  for eligible S26 Ultra variants. See [DirtyFrag provenance and licensing notes](app/src/main/cpp/dirtyfrag/DF_ORIGIN.md).
 - **KernelSU, KernelSU-Next and BakaSU contributors** — root backends;
   [source revisions and Samsung patches](backends/README.md).
 
