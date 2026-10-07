@@ -9,11 +9,24 @@ three official source branches every **Monday at 03:17 UTC**:
 | KernelSU-Next | `KernelSU-Next/KernelSU-Next`, `dev` | `kernelsu-next` |
 | BakaSU | `Baka-SU/BakaSU`, `main` | `resukisu` |
 
-When there are new commits, it snapshots those revisions, builds each changed
+When there are new commits or reviewed Samsung patch updates, it snapshots those revisions, builds each changed
 kernel driver and daemon as a matched pair, updates the bundled files and helper
 version/hash records, runs the bundle checks and Android unit tests, and builds
 the release APK. Unchanged backends retain their verified binaries. An unchanged
 week uses no native build, creates no commit, and publishes no release.
+Updating a compatibility patch rebuilds its driver/daemon pair even when the
+upstream revision and native version stay the same.
+
+[Daily backend compatibility](../../.github/workflows/backend-compatibility.yml)
+checks at **02:43 UTC every day**, before Monday's weekly run. It validates the current bundle, snapshots
+the same upstream branches, and checks changed sources against the same
+UAPI/version and Samsung patch rules used by the weekly build. It does not
+download toolchains, execute upstream build scripts, sign an APK or publish.
+A default-branch failure opens one bot-owned issue with a link to the run and
+logs. Further failures update that issue; a successful check closes it. The
+notification job needs `issues: write`, but the check job has read-only access.
+GitHub scheduling delays still apply; this is early warning, not a guarantee
+that an upstream update cannot arrive immediately before the weekly build.
 
 A fresh job checks the resulting source patch and APK contents, signs the APK
 with your existing release key, and verifies its certificate. It then commits
@@ -62,6 +75,10 @@ an update artifact without the signing secrets, git push, or release. That
 artifact's `apk-input.apk` has a disposable signature and is not the release APK.
 Build-only mode also accepts a non-default branch, so you can test the workflow
 on a pull request branch before merging it. Publishing requires the default branch.
+Repository pull requests that change the backend kit automatically run the
+compatibility check and the build-only weekly workflow. Changed backends are
+compiled and the Android tests/APK build run with a disposable key. These PR
+runs do not create compatibility alert issues or publish releases.
 GitHub may delay scheduled runs; public-repository schedules can be disabled
 after 60 days without repository activity.
 
@@ -85,7 +102,13 @@ its checksum-pinned compatibility patches.
 ## What stops an automatic release
 
 The existing Samsung compatibility patch must apply to the selected upstream
-revision. The pipeline does not invent a rebase if it stops applying. UAPI 5,
+revision directly or through a conflict-free Git three-way merge using the
+original source blobs. Samsung initialization variables are scoped inside the
+Samsung setup blocks, so upstream edits to the startup banner do not invalidate
+those changes. Three-way checks use a private Git index; missing base blobs and
+conflicts stop before source is changed. There is no whitespace/fuzz relaxation
+or automatic conflict resolution. The complete merged source patch is retained
+as build provenance and becomes the next build's reviewed template. UAPI 5,
 upstream version calculation, complete source history, and the helper's existing
 version encoding must also remain compatible. A new UAPI requires review of the
 app, helper, and control-channel contracts before automation can accept it.
@@ -116,6 +139,8 @@ From a clean, committed checkout:
 python3 tools/test_m3q_host.py BundleTests
 python3 tools/test_backend_bundle.py
 python3 tools/backend-refresh/test_refresh.py
+python3 tools/backend-refresh/test_patching.py
+python3 tools/backend-refresh/test_notify.py
 python3 tools/backend-refresh/probe.py --output /tmp/upstream-heads.json
 python3 tools/backend-refresh/refresh.py --work /tmp/rmgu-build --snapshot /tmp/upstream-heads.json --discover-only
 ```

@@ -1,0 +1,77 @@
+name: Daily backend compatibility
+
+on:
+  schedule:
+    # Runs before the Monday 03:17 UTC release check.
+    - cron: '43 2 * * *'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/backend-compatibility.yml'
+      - '.github/workflows/backend-refresh.yml'
+      - 'tools/backend-refresh/**'
+      - 'backends/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-compatibility-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check bundle and automation guards
+        run: |
+          python3 tools/test_m3q_host.py BundleTests
+          python3 tools/test_backend_bundle.py
+          python3 tools/backend-refresh/test_refresh.py
+          python3 tools/backend-refresh/test_patching.py
+          python3 tools/backend-refresh/test_notify.py
+      - name: Snapshot official upstream branches
+        run: python3 tools/backend-refresh/probe.py --output "$RUNNER_TEMP/upstream-heads.json"
+      - name: Check changed sources without building
+        run: python3 tools/backend-refresh/refresh.py --work "$RUNNER_TEMP/backend-check" --snapshot "$RUNNER_TEMP/upstream-heads.json" --discover-only
+      - name: Retain the snapshot and compatibility logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-compatibility-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/upstream-heads.json
+            ${{ runner.temp }}/backend-check/targets.json
+            ${{ runner.temp }}/backend-check/logs/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Report the check result
+        if: always()
+        env:
+          CHECK_RESULT: ${{ job.status }}
+        run: |
+          echo "Backend compatibility: $CHECK_RESULT. See the job logs and compatibility artifact for the pinned revisions and patch checks." >> "$GITHUB_STEP_SUMMARY"
+
+  notify:
+    needs: check
+    # Only trusted default-branch runs may create/update the single alert issue.
+    if: always() && github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && (needs.check.result == 'success' || needs.check.result == 'failure')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Open, update or resolve the compatibility alert
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECK_RESULT: ${{ needs.check.result }}
+        run: python3 tools/backend-refresh/notify.py --repository "$GITHUB_REPOSITORY" --run "$GITHUB_RUN_ID" --result "$CHECK_RESULT"

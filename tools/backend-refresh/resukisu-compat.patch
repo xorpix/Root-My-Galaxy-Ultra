@@ -445,7 +445,7 @@ index 0000000000000000000000000000000000000000..2104f2e9a82be77e46603bec3c4292dc
 +#endif
 +}
 diff --git a/kernel/core/init.c b/kernel/core/init.c
-index 15e34108c03a54955bcc4afb8477c8484ca7c723..c1fe295f4797f44bb1472a582533a4dcd1833419 100644
+index 15e34108c03a54955bcc4afb8477c8484ca7c723..e6149109bf1d00e46d2e83d905d777b2c11b8a73 100644
 --- a/kernel/core/init.c
 +++ b/kernel/core/init.c
 @@ -36,6 +36,8 @@
@@ -457,26 +457,21 @@ index 15e34108c03a54955bcc4afb8477c8484ca7c723..c1fe295f4797f44bb1472a582533a4dc
  
  #ifdef CONFIG_ARM64
  #include "compat/apatch_conflict.h"
-@@ -168,6 +170,8 @@ MODULE_PARM_DESC(block_modules, "Comma-separated preset module names to acknowle
- 
- int __init kernelsu_init(void)
- {
-+    int ret;
-+
-     // clang-format off
-     
-     // ddk in x86-64 doesn't have generated/compile.h
-@@ -226,13 +230,30 @@ int __init kernelsu_init(void)
+@@ -226,13 +228,37 @@ int __init kernelsu_init(void)
      ksu_start_apatch_conflict_check();
  #endif
  
 +    // The symbol resolver first: the Samsung layers below resolve every symbol they need through it,
 +    // and they have to be in place before anything else starts calling into the kernel on this
 +    // device's behalf.
-+    ksu_init_symbol_resolver();
-+    ret = ksu_samsung_kdp_init();
-+    if (ret)
-+        return ret;
++    {
++        int ret;
++
++        ksu_init_symbol_resolver();
++        ret = ksu_samsung_kdp_init();
++        if (ret)
++            return ret;
++    }
 +
      ksu_cred = prepare_creds();
      if (!ksu_cred) {
@@ -488,17 +483,20 @@ index 15e34108c03a54955bcc4afb8477c8484ca7c723..c1fe295f4797f44bb1472a582533a4dc
 -    ksu_init_symbol_resolver();
 +    // DEFEX before any hook is installed: it decides whether this process may touch a file at all,
 +    // and a hook that runs after it has already refused is a hook that never sees the call.
-+    ret = ksu_samsung_defex_init();
-+    if (ret) {
-+        put_cred(ksu_cred);
-+        ksu_samsung_kdp_exit();
-+        return ret;
++    {
++        int ret = ksu_samsung_defex_init();
++
++        if (ret) {
++            put_cred(ksu_cred);
++            ksu_samsung_kdp_exit();
++            return ret;
++        }
 +    }
 +
      ksu_selinux_init();
      ksu_feature_init();
      ksu_sulog_init();
-@@ -322,7 +343,10 @@ void __exit kernelsu_exit(void)
+@@ -322,7 +348,10 @@ void __exit kernelsu_exit(void)
      ksu_feature_exit();
      ksu_module_load_filter_hook_exit();
  

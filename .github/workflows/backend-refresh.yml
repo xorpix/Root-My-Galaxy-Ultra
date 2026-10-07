@@ -11,18 +11,27 @@ on:
         type: boolean
         default: true
         required: true
+  pull_request:
+    paths:
+      - '.github/workflows/backend-refresh.yml'
+      - '.github/workflows/backend-compatibility.yml'
+      - 'tools/backend-refresh/**'
+      - 'tools/build_backend.py'
+      - 'tools/provision_*.py'
+      - 'tools/test_backend_bundle.py'
+      - 'backends/**'
 
 permissions:
   contents: read
 
 concurrency:
-  group: weekly-backend-release
-  cancel-in-progress: false
+  group: weekly-backend-release-${{ github.event.pull_request.number || 'release' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   probe:
-    # A branch can be checked manually in build-only mode; releases use the default branch.
-    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || (github.event_name == 'workflow_dispatch' && !inputs.publish)
+    # Repository PRs build without publishing; releases use the default branch.
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || (github.event_name == 'workflow_dispatch' && !inputs.publish) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
@@ -38,6 +47,8 @@ jobs:
           python3 tools/test_m3q_host.py BundleTests
           python3 tools/test_backend_bundle.py
           python3 tools/backend-refresh/test_refresh.py
+          python3 tools/backend-refresh/test_patching.py
+          python3 tools/backend-refresh/test_notify.py
       - name: Snapshot the official upstream branches
         id: probe
         run: python3 tools/backend-refresh/probe.py --output "$RUNNER_TEMP/upstream-heads.json"
@@ -66,7 +77,7 @@ jobs:
           retention-days: 7
       - name: Report an unchanged bundle
         if: steps.probe.outputs.changed == 'false'
-        run: echo 'No new upstream commits; no builds, version bump or release needed.' >> "$GITHUB_STEP_SUMMARY"
+        run: echo 'Upstream commits and Samsung patches match the current bundle; no build or release needed.' >> "$GITHUB_STEP_SUMMARY"
 
   build:
     needs: probe
