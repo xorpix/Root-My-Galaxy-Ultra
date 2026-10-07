@@ -2,7 +2,8 @@ name: Daily backend compatibility
 
 on:
   schedule:
-    - cron: '43 4 * * *'
+    # Runs before the Monday 03:17 UTC release check.
+    - cron: '43 2 * * *'
   workflow_dispatch:
   pull_request:
     paths:

@@ -18,7 +18,7 @@ Updating a compatibility patch rebuilds its driver/daemon pair even when the
 upstream revision and native version stay the same.
 
 [Daily backend compatibility](../../.github/workflows/backend-compatibility.yml)
-checks at **04:43 UTC every day**. It validates the current bundle, snapshots
+checks at **02:43 UTC every day**, before Monday's weekly run. It validates the current bundle, snapshots
 the same upstream branches, and checks changed sources against the same
 UAPI/version and Samsung patch rules used by the weekly build. It does not
 download toolchains, execute upstream build scripts, sign an APK or publish.
