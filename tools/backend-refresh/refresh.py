@@ -75,8 +75,27 @@ def discover(project, work, snapshot):
         run(['git', 'clone', 'https://github.com/' + target['repository'] + '.git', repo],
             logs / f'{name}-clone.log')
         run(['git', 'checkout', '--detach', sha], logs / f'{name}-checkout.log', repo)
-        # Refuse a rewritten history or an accidental rollback.
-        subprocess.run(['git', 'merge-base', '--is-ancestor', target['commit'], sha], cwd=repo, check=True)
+        # Refuse a rewritten history or an accidental rollback - cleanly. 'git merge-base
+        # --is-ancestor' returns 1 for "not an ancestor" (a normal result, not an error) and
+        # the pinned base can be gone entirely after an upstream rebase (exit 128), so
+        # check=True would crash on both instead of reporting a verdict.
+        prev = target['commit']
+        present = subprocess.run(['git', 'cat-file', '-e', prev + '^{commit}'],
+                                 cwd=repo, stderr=subprocess.DEVNULL).returncode == 0
+        if not present:
+            raise ValueError(
+                f'{name}: pinned base {prev} is no longer reachable upstream (history '
+                f'rebased); re-pin {name} in targets.json to a current commit and '
+                f're-validate {name}-compat.patch')
+        ancestor = subprocess.run(['git', 'merge-base', '--is-ancestor', prev, sha],
+                                  cwd=repo).returncode
+        if ancestor == 1:
+            raise ValueError(
+                f'{name}: new head {sha} is not a descendant of pinned base {prev} '
+                f'(upstream rollback or rewritten history); manual review required')
+        if ancestor != 0:
+            raise RuntimeError(
+                f'{name}: git merge-base failed comparing {prev}..{sha} (exit {ancestor})')
         count, version, describe = verify_upstream(repo, name, target)
         if source_changed and version <= target['version']:
             raise ValueError('Upstream version must increase when the pinned commit changes')
