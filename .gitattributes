@@ -1,3 +1,6 @@
 # Android shell assets must remain executable text after a Windows checkout.
 *.sh text eol=lf
+# Compatibility patches are hashed byte-for-byte by the backend pipeline;
+# a CRLF checkout breaks every checksum on Windows.
+*.patch text eol=lf
 /gradlew text eol=lf
