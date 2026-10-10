@@ -202,7 +202,7 @@ def main(project, work, config=None):
     # Profiles/routing and every exploit/bridge file must be byte-for-byte preserved.
     for family in ('azhl', 'df'):
         relative = ASSETS / family / 'catalog.json'
-        before = json.loads(git(project, 'show', f'{base}:{relative}'))
+        before = json.loads(git(project, 'show', f'{base}:{relative.as_posix()}'))
         after = json.loads((project / relative).read_text())
         for old, new in zip(before['payloads'], after['payloads'], strict=True):
             old.pop('kernelsu')

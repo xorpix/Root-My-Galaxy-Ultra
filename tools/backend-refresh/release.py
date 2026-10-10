@@ -6,6 +6,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import sys
 from pathlib import Path
 import re
 import shutil
@@ -93,7 +94,7 @@ def apply_checked_update(result):
              ASSETS / 'azhl/catalog.json', ASSETS / 'df/catalog.json',
              ASSETS / 'm3q/helper-variants.json', Path('tools/backend-refresh/targets.json'),
              Path('backends/README.md')]
-    allowed = set(map(str, fixed))
+    allowed = {p.as_posix() if isinstance(p, Path) else p for p in fixed}
     for name in old:
         allowed.update([str(ASSETS / 'azhl' / name / 'ksud'),
                         str(JNI / ('libm3qksud_' + name.replace('-', '_') + '.so')),
@@ -145,7 +146,7 @@ def apply_checked_update(result):
             raise ValueError('Helper artifact differs from the trusted version-only generation')
     for family in ('azhl', 'df'):
         path = ASSETS / family / 'catalog.json'
-        before = json.loads(capture(['git', 'show', f'HEAD:{path}'], PROJECT))
+        before = json.loads(capture(['git', 'show', f'HEAD:{path.as_posix()}'], PROJECT))
         after = json.loads((PROJECT / path).read_text())
         for a, b in zip(before['payloads'], after['payloads'], strict=True):
             for item in (a, b):
@@ -154,7 +155,7 @@ def apply_checked_update(result):
         if before != after:
             raise ValueError('Artifact modifies firmware/routing or catalog identity')
     baseline(PROJECT, clean=False)
-    subprocess.run(['python3', 'tools/test_backend_bundle.py'], cwd=PROJECT, check=True)
+    subprocess.run([sys.executable, 'tools/test_backend_bundle.py'], cwd=PROJECT, check=True)
     if record((result / 'apk-input.apk').read_bytes()) != info['apk_input']:
         raise ValueError('APK artifact hash mismatch')
     if verify_apk(result / 'apk-input.apk', PROJECT, info) != info['apk_version_code']:
