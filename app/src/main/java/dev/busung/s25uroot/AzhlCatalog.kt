@@ -107,9 +107,9 @@ internal fun azhlReleaseVersion(flavor: KernelSuFlavor): String = when (flavor) 
 }
 
 internal fun azhlDriverVersion(flavor: KernelSuFlavor): Int = when (flavor) {
-    KernelSuFlavor.KernelSu -> 32665
-    KernelSuFlavor.KernelSuNext -> 33323
-    KernelSuFlavor.ReSukiSU -> 35217
+    KernelSuFlavor.KernelSu -> 32673
+    KernelSuFlavor.KernelSuNext -> 33337
+    KernelSuFlavor.ReSukiSU -> 35223
 }
 
 internal fun azhlEnvironment(flavor: KernelSuFlavor, disableModules: Boolean): Array<String> = arrayOf(
