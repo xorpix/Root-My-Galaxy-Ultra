@@ -24,7 +24,7 @@ fun signingProperty(envName: String, propertyName: String): String? =
 //
 // Policy: major stays 1; minor grows per supported firmware generation
 // (1.1 = BZIG/OneUI 9); patch grows per fix on one generation (1.1.1, ...).
-val appVersionBase = "1.1.8"
+val appVersionBase = "1.2.0"
 
 // An offset under the version code, not a version of its own: the code is this plus the clock, and the
 // only rule is that it may be raised and never lowered - lowering it would put a new build below an
