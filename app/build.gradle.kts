@@ -150,6 +150,7 @@ android {
         jniLibs.useLegacyPackaging = true
         // Runtime verification pins the extracted executable bytes.
         jniLibs.keepDebugSymbols += "**/libm3q*.so"
+        jniLibs.keepDebugSymbols += "**/librmgususfs*.so"
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
 }
