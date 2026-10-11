@@ -608,6 +608,50 @@ object AppPreferences {
             .apply()
     }
 
+    private const val SUSFS_AUTO_ENABLE = "susfs_auto_enable"
+    private const val SUSFS_STATE = "susfs_state"
+    private const val SUSFS_VERSION = "susfs_version"
+    private const val SUSFS_BOOT_TOKEN = "susfs_boot_token"
+    private const val SUSFS_GRANT_NOTICE = "susfs_grant_notice_shown"
+
+    /** Automatic SusFS activation after rooting. Off unless turned on. */
+    fun susfsAutoEnable(context: Context): Boolean =
+        prefs(context).getBoolean(SUSFS_AUTO_ENABLE, false)
+
+    fun setSusfsAutoEnable(context: Context, enabled: Boolean) {
+        prefs(context).edit()
+            .putBoolean(SUSFS_AUTO_ENABLE, enabled)
+            .apply()
+    }
+
+    /** Last SusFS activation result: "active" or anything else means not proven. */
+    fun susfsState(context: Context): String =
+        prefs(context).getString(SUSFS_STATE, "").orEmpty()
+
+    fun recordSusfsActivation(context: Context, state: String, version: String, bootToken: String?) {
+        prefs(context).edit()
+            .putString(SUSFS_STATE, state)
+            .putString(SUSFS_VERSION, version)
+            .putString(SUSFS_BOOT_TOKEN, bootToken)
+            .apply()
+    }
+
+    fun susfsVersion(context: Context): String =
+        prefs(context).getString(SUSFS_VERSION, "").orEmpty()
+
+    fun susfsBootToken(context: Context): String? =
+        prefs(context).getString(SUSFS_BOOT_TOKEN, null)?.trim()?.takeIf(String::isNotBlank)
+
+    /** One-time notice that SusFS needs this app to hold a su grant. Shown once, ever. */
+    fun susfsGrantNoticeShown(context: Context): Boolean =
+        prefs(context).getBoolean(SUSFS_GRANT_NOTICE, false)
+
+    fun setSusfsGrantNoticeShown(context: Context) {
+        prefs(context).edit()
+            .putBoolean(SUSFS_GRANT_NOTICE, true)
+            .apply()
+    }
+
     /**
      * Whether a wireless-debugging pairing has ever succeeded.
      *

@@ -176,6 +176,10 @@ class InstallActivity : ComponentActivity() {
                     onRunWithoutShizuku = { installViewModel.runHeldRunWithoutShizuku(selectionId) },
                     onDismiss = installViewModel::dismissTransportPrompt,
                 )
+                SusfsGrantNoticeDialog(
+                    show = installState.susfsGrantNotice,
+                    onDismiss = installViewModel::dismissSusfsGrantNotice,
+                )
                 val running = followed
                 if (handedOverRun && running == null) {
                     // The wait before the first read lands, and the last frame before the record takes over.
@@ -1094,6 +1098,27 @@ private fun installPhaseDetail(installState: InstallUiState): String =
  * A start that failed stays here with its reason rather than closing: the other answer is still open,
  * and a second ask is exactly what a route that was not up yet needs.
  */
+@Composable
+private fun SusfsGrantNoticeDialog(
+    show: Boolean,
+    onDismiss: () -> Unit,
+) {
+    if (!show) return
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("SusFS needs root permission") },
+        text = {
+            Text(
+                "SusFS can only start once this app itself holds root. " +
+                    "Grant it su in the manager — SusFS will enable on the next run.",
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Got it") }
+        },
+    )
+}
+
 @Composable
 private fun ShizukuHoldDialog(
     prompt: TransportPrompt?,

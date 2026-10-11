@@ -91,6 +91,8 @@ data class InstallUiState(
      * it is, and the run that follows either goes through Shizuku or says it is not to.
      */
     val transportPrompt: TransportPrompt? = null,
+    /** One-time notice that SusFS needs this app to hold a su grant. Shown once, ever. */
+    val susfsGrantNotice: Boolean = false,
 ) {
     /**
      * Whether a run is under way, which is not the same question as whether the app is working.
@@ -977,6 +979,7 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                 activeStage = RunStage.Verify
                 setPhase(InstallPhase.LoadingKernelSu, "Verifying the selected backend")
                 installKernelSu(payloads)
+                activateSusfsIfEnabled()
 
                 // While the run still holds the root it just obtained: the permission below cannot be
                 // given any other way on the device, and the Shizuku start is what makes the next run
@@ -1706,6 +1709,35 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         refreshed.forEach { packageName ->
             appendLog(app.getString(R.string.log_manager_refreshed, packageName))
         }
+    }
+
+    /**
+     * Automatic SusFS activation after a verified backend load. Best-effort
+     * and silent: without root (no grant yet) it logs one line and leaves the
+     * switch armed; a SusFS failure never fails the root install that
+     * succeeded. Attended runs and boot runs share this path. A first
+     * grantless run raises the one-time grant notice instead (attended only).
+     */
+    private suspend fun activateSusfsIfEnabled() {
+        if (!AppPreferences.susfsAutoEnable(app)) return
+        val outcome = runCatching { SusfsRuntime.activate(app) }.getOrElse {
+            appendLog("SusFS did not start (${it.message ?: it.javaClass.simpleName}); root is unaffected")
+            return
+        }
+        SusfsRuntime.recordActivation(app, outcome.status)
+        if (outcome.status.state == SusfsState.Active) {
+            appendLog("SusFS active ${outcome.status.version}; hiding stays until reboot")
+        } else {
+            appendLog("SusFS did not start (${outcome.status.detail}); root is unaffected")
+            if (outcome.needsGrant && !runIsUnattended && !AppPreferences.susfsGrantNoticeShown(app)) {
+                AppPreferences.setSusfsGrantNoticeShown(app)
+                mutableState.value = mutableState.value.copy(susfsGrantNotice = true)
+            }
+        }
+    }
+
+    fun dismissSusfsGrantNotice() {
+        mutableState.value = mutableState.value.copy(susfsGrantNotice = false)
     }
 
     private suspend fun installKernelSu(payloads: VerifiedPayloads) {

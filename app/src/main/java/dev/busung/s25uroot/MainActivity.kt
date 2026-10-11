@@ -4950,6 +4950,7 @@ private fun SettingsPage(
                         showAutoRootSettleDialog = true
                     },
                 )
+                SusfsSection()
             }
         }
 
@@ -7767,7 +7768,7 @@ internal fun SettingsCard(
 }
 
 @Composable
-private fun SettingsSwitchCard(
+internal fun SettingsSwitchCard(
     icon: ImageVector,
     title: String,
     description: String,
