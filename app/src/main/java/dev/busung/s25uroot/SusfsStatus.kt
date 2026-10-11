@@ -1,7 +1,6 @@
 package dev.busung.s25uroot
 
 import org.json.JSONObject
-import java.util.Locale
 
 internal enum class SusfsState { Active, Partial, Absent, Unavailable }
 
@@ -62,13 +61,44 @@ internal fun parseSusfsStatus(output: String, exitCode: Int): SusfsStatus = runC
     SusfsStatus(SusfsState.Unavailable, detail = "The status helper did not return a valid report (exit $exitCode).", report = output)
 }
 
+/** Which SusFS bundle, if any, serves this device. */
+internal sealed interface SusfsTarget {
+    /** Exact profile match. */
+    data class Known(val variantDir: String, val label: String) : SusfsTarget
+    /**
+     * S26-family 6.12 GKI kernel without a recorded profile: attempt with the
+     * shared module bytes, verified by feature presence afterwards and never
+     * assumed. A refused load is an ordinary failed run, not a brick.
+     */
+    data class FamilyFallback(val runningRelease: String) : SusfsTarget
+    /** Not attempted. */
+    data class Unsupported(val reason: String) : SusfsTarget
+}
+
+private val knownSusfsReleases = mapOf(
+    "6.12.69-android16-6-pb4d3caf-abogkiS948BXXS4BZIG-4k" to ("bzig" to "BZIG"),
+    "6.12.69-android16-6-pee899be-abogkiS948USQU4BZID-4k" to ("bzid" to "BZID"),
+)
+private val susfsFamilyModel =
+    Regex("SM-S948[A-Z0-9]{1,2}(?:/DS)?|SC-53G|SCG37", RegexOption.IGNORE_CASE)
+private val susfsFamilyKernel = Regex("6\\.12\\.\\d+-android16-\\d+(?:-\\S+)?")
+
 /** Firmware compatibility is independent of root backend selection. */
-internal fun susfsCompatibilityIssue(device: DeviceSnapshot, targetRelease: String): String? = when {
-    !device.manufacturer.equals("samsung", ignoreCase = true) ||
-        device.model.uppercase(Locale.ROOT).removeSuffix("/DS") != "SM-S948B" ->
-        "This module is built for SM-S948B on BZIG."
-    device.machine != "aarch64" || device.abi != "arm64-v8a" || device.pageSize != 4096L ->
-        "This module requires an ARM64 kernel with 4 KB pages."
-    device.kernelRelease != targetRelease -> "Kernel ${device.kernelRelease} does not match the bundled BZIG module."
-    else -> null
+internal fun susfsTargetFor(device: DeviceSnapshot): SusfsTarget {
+    if (!device.manufacturer.equals("samsung", ignoreCase = true)) {
+        return SusfsTarget.Unsupported("SusFS is built for Samsung devices.")
+    }
+    if (!susfsFamilyModel.matches(device.model) && device.device != "m3q") {
+        return SusfsTarget.Unsupported("SusFS is built for the Samsung Galaxy S26 Ultra family.")
+    }
+    if (device.machine != "aarch64" || device.abi != "arm64-v8a" || device.pageSize != 4096L) {
+        return SusfsTarget.Unsupported("SusFS requires an ARM64 kernel with 4 KB pages.")
+    }
+    knownSusfsReleases[device.kernelRelease]?.let { (dir, label) ->
+        return SusfsTarget.Known(dir, label)
+    }
+    if (susfsFamilyKernel.matches(device.kernelRelease)) {
+        return SusfsTarget.FamilyFallback(device.kernelRelease)
+    }
+    return SusfsTarget.Unsupported("Kernel ${device.kernelRelease} has no SusFS profile yet.")
 }

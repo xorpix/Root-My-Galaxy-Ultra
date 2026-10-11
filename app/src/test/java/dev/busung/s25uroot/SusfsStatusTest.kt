@@ -54,13 +54,17 @@ class SusfsStatusTest {
         assertEquals(SusfsState.Partial, parseSusfsStatus(live().put("version", "").toString(), 0).state)
         assertEquals(SusfsState.Partial, parseSusfsStatus(live().put("version", "garbage").toString(), 0).state)
     }
-    private fun device() = DeviceSnapshot("samsung", "SM-S948B", "m3q", "bzig-kernel", "version", "aarch64", "BZIG", "fp", "17", 37, "arm64-v8a", 4096)
-    @Test fun exactFirmwareAndArchitectureAreRequired() {
-        assertNull(susfsCompatibilityIssue(device(), "bzig-kernel"))
-        assertNotNull(susfsCompatibilityIssue(device().copy(kernelRelease = "different"), "bzig-kernel"))
-        assertNotNull(susfsCompatibilityIssue(device().copy(pageSize = 16384), "bzig-kernel"))
-        assertNotNull(susfsCompatibilityIssue(device().copy(abi = "x86_64"), "bzig-kernel"))
-        assertNotNull(susfsCompatibilityIssue(device().copy(model = "SM-S948W"), "bzig-kernel"))
-        assertNull(susfsCompatibilityIssue(device().copy(model = "SM-S948B/DS"), "bzig-kernel"))
+    private fun device() = DeviceSnapshot("samsung", "SM-S948B", "m3q", "6.12.69-android16-6-pb4d3caf-abogkiS948BXXS4BZIG-4k", "version", "aarch64", "BZIG", "fp", "17", 37, "arm64-v8a", 4096)
+    private fun bzid() = device().copy(model = "SM-S948W", incremental = "S948WVLU4BZID", kernelRelease = "6.12.69-android16-6-pee899be-abogkiS948USQU4BZID-4k")
+    @Test fun variantSelection() {
+        assertEquals(SusfsTarget.Known("bzig", "BZIG"), susfsTargetFor(device()))
+        assertEquals(SusfsTarget.Known("bzid", "BZID"), susfsTargetFor(bzid()))
+        assertEquals(SusfsTarget.Known("bzig", "BZIG"), susfsTargetFor(device().copy(model = "SM-S948B/DS")))
+        assertTrue(susfsTargetFor(device().copy(kernelRelease = "6.12.70-android16-6-xyz")) is SusfsTarget.FamilyFallback)
+        assertTrue(susfsTargetFor(device().copy(model = "SM-S918B", device = "dm1q")) is SusfsTarget.Unsupported)
+        assertTrue(susfsTargetFor(device().copy(pageSize = 16384)) is SusfsTarget.Unsupported)
+        assertTrue(susfsTargetFor(device().copy(abi = "x86_64")) is SusfsTarget.Unsupported)
+        assertTrue(susfsTargetFor(device().copy(manufacturer = "google")) is SusfsTarget.Unsupported)
+        assertTrue(susfsTargetFor(device().copy(kernelRelease = "5.15.0-android13")) is SusfsTarget.Unsupported)
     }
 }

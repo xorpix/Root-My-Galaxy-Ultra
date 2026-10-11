@@ -34,7 +34,9 @@ private fun rowState(context: android.content.Context): SusfsRow {
 internal fun SusfsSection() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val compatibility = remember { SusfsRuntime.compatibilityIssue(context) }
+    val target = remember { susfsTargetFor(DeviceSnapshot.current()) }
+    val compatibility = (target as? SusfsTarget.Unsupported)?.reason
+    val untested = (target as? SusfsTarget.FamilyFallback)?.runningRelease
     var busy by remember { mutableStateOf(false) }
     var row by remember { mutableStateOf(rowState(context)) }
     var autoEnabled by remember { mutableStateOf(AppPreferences.susfsAutoEnable(context)) }
@@ -96,7 +98,8 @@ internal fun SusfsSection() {
         title = "SusFS status",
         description = "Last activation result on this device. No live checks run from here.",
         value = row.value,
-        notice = compatibility,
+        notice = compatibility
+            ?: untested?.let { "Untested kernel — attempt only, verified by feature check." },
         position = SettingsCardPosition.Bottom,
         busy = busy,
         enabled = false,
