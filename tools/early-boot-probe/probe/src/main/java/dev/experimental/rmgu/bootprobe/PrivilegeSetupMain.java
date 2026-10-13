@@ -135,8 +135,7 @@ public final class PrivilegeSetupMain {
             if(current.st_ino!=metadata.st_ino||current.st_dev!=metadata.st_dev||!Arrays.equals(readStore(),original))throw new IOException("Package Manager changed the registry during setup; original was not replaced");
             // Stage is already complete, parsed, owned, labelled, and fsynced. No direct truncating writes.
             Os.rename(stage.getPath(),STORE);committed=true;
-            FileDescriptor directory=Os.open("/data/system",OsConstants.O_RDONLY|OsConstants.O_DIRECTORY,0);
-            try{Os.fsync(directory);}finally{Os.close(directory);}
+            syncDirectory(new File("/data/system"));
             verifyMetadata(new File(STORE),metadata,label);
             if(!Arrays.equals(readStore(),patched))throw new IOException("Registry changed after commit; inspect before repeating");
         }finally{if(stage.exists())stage.delete();}
@@ -151,8 +150,8 @@ public final class PrivilegeSetupMain {
         syncDirectory(file.getParentFile());
     }
     private static void syncDirectory(File directory)throws Exception {
-        FileDescriptor fd=Os.open(directory.getPath(),OsConstants.O_RDONLY|OsConstants.O_DIRECTORY|OsConstants.O_NOFOLLOW,0);
-        try{Os.fsync(fd);}finally{Os.close(fd);}
+        FileDescriptor fd=Os.open(directory.getPath(),OsConstants.O_RDONLY|OsConstants.O_NOFOLLOW,0);
+        try{if(!OsConstants.S_ISDIR(Os.fstat(fd).st_mode))throw new IOException("Expected a directory for fsync");Os.fsync(fd);}finally{Os.close(fd);}
     }
     private static void verifyMetadata(File file,StructStat original,byte[] label)throws Exception {
         StructStat stat=Os.lstat(file.getPath());

@@ -65,4 +65,14 @@ public class PackageTrustTest {
     @Test public void unexpectedSystemUidIsRefused()throws Exception {PackageTrust t=new PackageTrust(fixture(true));t.user.attr("userId").integer(1001);try{new PackageTrust(t.doc.encode());fail();}catch(IOException expected){} }
     @Test public void rawInputBytesAreNeverModifiedByTransformation()throws Exception {byte[] b=fixture(true),copy=b.clone();new PackageTrust(b).add(OWN);assertArrayEquals(copy,b);}
     @Test public void removingAbsentKeyDoesNotChangeBytes()throws Exception {byte[] b=fixture(true);assertArrayEquals(b,new PackageTrust(b).remove(OWN));}
+    @Test public void binaryCertificateKeysUseExistingPmsIndexes()throws Exception {
+        AbxDocument d=AbxDocument.decode(fixture(true));
+        for(AbxDocument.Element p:d.root.children("package"))for(AbxDocument.Element s:p.children("sigs"))for(AbxDocument.Element c:s.children("cert")) {
+            AbxDocument.Token key=null;for(AbxDocument.Token t:c.attributes)if(t.name.equals("key"))key=t;
+            if(key!=null){c.attributes.remove(key);c.attributes.add(new AbxDocument.Token(15,AbxDocument.BYTES_HEX,"key",AbxDocument.unhex(key.text().toLowerCase(Locale.ROOT))));}
+        }
+        PackageTrust before=new PackageTrust(d.encode()),after=new PackageTrust(before.add(OWN));
+        assertEquals(before.table,after.table);assertEquals(2,after.ownedCount(OWN));assertEquals(AbxDocument.BYTES_HEX,after.doc.root.children("package").get(1).children("sigs").get(0).children("cert").get(0).attr("key").type);
+    }
+    @Test public void controllerDeclaredCountMismatchIsRefused()throws Exception {AbxDocument d=AbxDocument.decode(fixture(true));d.root.children("package").get(1).children("sigs").get(0).attr("count").integer(0);refused(d.encode(),OWN);}
 }

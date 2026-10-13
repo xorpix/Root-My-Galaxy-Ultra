@@ -43,7 +43,7 @@ final class PackageTrust {
         List<AbxDocument.Element> matches=new ArrayList<>();for(AbxDocument.Element p:doc.root.children("package"))if(HelperProtocol.CONTROLLER.equals(p.text("name")))matches.add(p);
         AbxDocument.Element controller=one(matches),signatures=one(controller.children("sigs"));
         List<AbxDocument.Element> current=signatures.children("cert");
-        if(current.size()!=1||!cert.equals(key(current.get(0))))throw new IOException("Installed controller signing certificate does not match");
+        if(current.size()!=1||signatures.attr("count").integer()!=1||!cert.equals(key(current.get(0))))throw new IOException("Installed controller signing certificate does not match");
         int index=current.get(0).attr("index").integer();
         if(index<0||index>=table.size()||!cert.equals(table.get(index)))throw new IOException("Controller certificate cannot be safely referenced");
         if(table.indexOf(cert)!=index)index=table.indexOf(cert);
