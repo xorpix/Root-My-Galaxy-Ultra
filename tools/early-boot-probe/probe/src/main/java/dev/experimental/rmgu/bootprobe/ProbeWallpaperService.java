@@ -37,6 +37,7 @@ public final class ProbeWallpaperService extends WallpaperService {
         }
 
         private void draw(SurfaceHolder holder) {
+            if (!holder.getSurface().isValid()) return;
             Canvas canvas = null;
             try {
                 canvas = holder.lockCanvas();

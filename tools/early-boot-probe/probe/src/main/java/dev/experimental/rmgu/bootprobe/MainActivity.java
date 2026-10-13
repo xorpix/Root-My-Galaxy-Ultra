@@ -7,7 +7,6 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.view.WindowInsets;
 import android.widget.*;
 import java.io.File;
@@ -55,7 +54,7 @@ public final class MainActivity extends Activity {
             try { startActivityForResult(intent, SAVE_REPORT); }
             catch (ActivityNotFoundException error) { message("No document picker is available. Use Share report instead."); }
         }));
-        button(content, "Wallpaper settings", () -> launch(new Intent(Settings.ACTION_WALLPAPER_SETTINGS)));
+        button(content, "Wallpaper settings", () -> launch(new Intent(Intent.ACTION_SET_WALLPAPER)));
         addText(content, "Latest observations", 19, true);
         status = addText(content, "Loading…", 14, false);
         status.setTypeface(Typeface.MONOSPACE);
