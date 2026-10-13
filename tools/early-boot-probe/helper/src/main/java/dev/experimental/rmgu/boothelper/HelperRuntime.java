@@ -85,10 +85,10 @@ final class HelperRuntime {
     private static void poll(Context context) {
         try {
             long now=SystemClock.elapsedRealtime();
+            if(now-start>=90_000){sampler.cancel(false);write(base("sampling_finished",now).put("ipsec_in_flight",busy.get()));return;}
             JSONObject frame=snapshot(context);
             String state=frame.optString("init.svc.bootanim")+"/"+frame.optString("service.bootanim.exit")+"/"+frame.optString("sys.boot_completed")+"/"+frame.opt("user_unlocked");
             if(!state.equals(lastState)||now-lastWrite>=1000){write(base("boot_snapshot",now).put("snapshot",frame));lastState=state;lastWrite=now;}
-            if(now-start>=90_000){write(base("sampling_finished",now).put("ipsec_in_flight",busy.get()));sampler.cancel(false);return;}
             if(!ready&&attempts<25&&now>=nextCheck&&busy.compareAndSet(false,true)) {
                 nextCheck=now+(now-start<5000?250:1000);
                 int attempt=++attempts;

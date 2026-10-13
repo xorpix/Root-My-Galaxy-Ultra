@@ -34,14 +34,21 @@ dependencies {
     testImplementation("org.json:json:20250517")
 }
 
-// Always embed the matching release helper, signed by this run's same diagnostic key.
-android.sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/helperAssets"))
-val stagePrivilegedHelper by tasks.registering(Copy::class) {
-    dependsOn(":helper:assembleRelease")
-    from(project(":helper").layout.buildDirectory.file("outputs/apk/release/helper-release.apk"))
-    into(layout.buildDirectory.dir("generated/helperAssets"))
-    rename { "privileged-helper.apk" }
+// Generated assets use the variant API so Gradle carries their producer dependency.
+abstract class StagePrivilegedHelper : DefaultTask() {
+    @get:InputFile abstract val helperApk: RegularFileProperty
+    @get:OutputDirectory abstract val outputDirectory: DirectoryProperty
+    @TaskAction fun stage() {
+        val destination = outputDirectory.get().asFile
+        destination.mkdirs()
+        helperApk.get().asFile.copyTo(destination.resolve("privileged-helper.apk"), overwrite = true)
+    }
 }
-tasks.matching { it.name == "mergeReleaseAssets" || it.name == "mergeDebugAssets" }.configureEach {
-    dependsOn(stagePrivilegedHelper)
+val stagePrivilegedHelper by tasks.registering(StagePrivilegedHelper::class) {
+    dependsOn(":helper:assembleRelease")
+    helperApk.set(project(":helper").layout.buildDirectory.file("outputs/apk/release/helper-release.apk"))
+    outputDirectory.set(layout.buildDirectory.dir("generated/helperAssets"))
+}
+androidComponents.onVariants { variant ->
+    variant.sources.assets?.addGeneratedSourceDirectory(stagePrivilegedHelper, StagePrivilegedHelper::outputDirectory)
 }
