@@ -29,7 +29,10 @@ def main():
     permission='dev.experimental.rmgu.bootprobe.permission.HELPER'
     c=verify(args.apk,'dev.experimental.rmgu.bootprobe',{'android.permission.REQUEST_INSTALL_PACKAGES',permission})
     assert 'sharedUserId' not in c[2] and 'ProbeAccessibilityService' not in c[2]
-    assert 'signature' in c[2] or '0x2' in c[2]
+    level=[line for line in c[2].splitlines() if 'android:protectionLevel(' in line]
+    assert len(level)==1,level
+    encoded=re.search(r'0x([0-9a-fA-F]+)\s*$',level[0].rsplit('=',1)[-1])
+    assert encoded and int(encoded[1],16)==2,level
     with zipfile.ZipFile(args.apk) as z:
         names=set(z.namelist());assert 'assets/privileged-helper.apk' in names
         assert not any(n.endswith(('.ko','.jks','.p12')) for n in names)
