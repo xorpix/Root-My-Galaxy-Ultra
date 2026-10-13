@@ -56,7 +56,7 @@ final class ProbeReport {
                 : !propertiesReadable
                 ? "INCONCLUSIVE: the boot-animation property was unavailable to this app."
                 : "EARLY WINDOW NOT DEMONSTRATED in these observations.";
-        String summary = "RMGU Early Boot Probe 0.1.0\n"
+        String summary = "RMGU Early Boot Probe 0.1.1\n"
                 + "Device: " + device + "\nBoot identity: " + boot + "\n\n"
                 + conclusion + "\n\n"
                 + "First real wallpaper engine: " + time(realEngineMs) + "\n"
@@ -68,6 +68,7 @@ final class ProbeReport {
                 + "Empty property values mean absent or inaccessible; they are never treated as zero.\n"
                 + "Property intervals are recorded explicitly. Wallpaper previews cannot qualify.\n"
                 + "This build has no rooting payload, property writes, boot delay, or automatic restart.\n"
+                + "The optional existing-root helper only selects the wallpaper before reboot; boot sampling does not use it.\n"
                 + "Temporary IPsec resources are closed without applying a transform to any network socket.\n";
         return summary + "\n--- RAW OBSERVATIONS (JSONL) ---\n" + records;
     }

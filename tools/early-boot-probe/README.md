@@ -1,4 +1,4 @@
-# RMGU Early Boot Probe 0.1.0
+# RMGU Early Boot Probe 0.1.1
 
 A separate diagnostic app for the first autoroot-on-boot timing experiment. It installs as
 `dev.experimental.rmgu.bootprobe`, beside RMGU. It contains no root exploit, backend, SusFS binary,
@@ -6,17 +6,30 @@ boot-animation delay, system-UID installation, or automatic restart.
 
 ## Phone test
 
-1. Install `RMGU-Early-Boot-Probe-0.1.0.apk` and open **RMGU Boot Probe** once.
+1. Uninstall the previous **RMGU Boot Probe** diagnostic app (export any observations first).
+   Install `RMGU-Early-Boot-Probe-0.1.1.apk` and open it once. This build uses a separate disposable
+   signing key, so it cannot update over 0.1.0. The main RMGU app is a separate package.
 2. If RMGU autoroot is enabled, turn it off for this baseline test.
 3. Tap **Select test wallpaper** and apply the temporary dark-gradient live wallpaper.
-   Choose Home and lock screens together if Samsung offers that choice. This replaces your current
-   wallpaper selection; you can choose your regular wallpaper again after the test.
+   Choose Home and lock screens together if Samsung offers that choice. The app tries the direct
+   preview first, then the general live-wallpaper chooser. If neither is available, use
+   **Apply with existing root**: run root in RMGU for the current boot, grant **RMGU Boot Probe**
+   root access in the backend's manager, and tap **Apply** in the probe's dialog. This fallback
+   requires Android 14 or later and the phone's primary user. It runs a one-shot helper from the
+   installed diagnostic APK, selects the probe on both screens through Android's wallpaper manager,
+   verifies both selections, and exits. It never edits package trust or SELinux policy. Confirm
+   **Home** and **Lock** both show **test wallpaper selected** before rebooting. This replaces your
+   current wallpaper selection; choose your regular wallpaper again after the test.
 4. Perform a **full reboot**, not an Android soft restart. Leave the phone locked for about 90 seconds.
    Do not open RMGU or run root during that interval.
 5. Unlock, open the probe, and tap **Share report** or **Save report**. Send the text report for review.
 6. Choose your regular wallpaper in **Wallpaper settings**. The diagnostic app can then be uninstalled.
 
-This app does not require root, Shizuku, wireless ADB, a notification permission, or a storage permission.
+Normal picker selection and all boot observations need no root. Existing root is used only for the
+optional one-time wallpaper-selection fallback; it does not provide root after reboot. The fallback's
+short-lived process switches from root to Android's system UID to use the framework's system context;
+the installed app, wallpaper service, and boot receiver keep their ordinary app UID. It accepts no
+arbitrary component or command. There is no Shizuku, wireless ADB, notification, or storage permission.
 Reports stay in device-protected app storage until you explicitly export them. The five most recent
 identified boots are retained; each file is capped at approximately 2 MiB.
 

@@ -28,6 +28,8 @@ def main():
     badging = run("aapt2", "dump", "badging", args.apk)
     if "package: name='dev.experimental.rmgu.bootprobe'" not in badging:
         raise SystemExit("Unexpected package identity")
+    if "versionCode='2'" not in badging or "versionName='0.1.1'" not in badging:
+        raise SystemExit("Unexpected diagnostic version")
     if "application-debuggable" in badging:
         raise SystemExit("Diagnostic release APK must not be debuggable")
     permissions = {line.split("name='")[1].split("'")[0]
@@ -48,10 +50,10 @@ def main():
         if any(name.endswith((".ko", ".p12", ".jks", ".apk")) for name in names):
             raise SystemExit("Unexpected payload or signing material in diagnostic APK")
     args.output.mkdir(parents=True, exist_ok=True)
-    destination = args.output / "RMGU-Early-Boot-Probe-0.1.0.apk"
+    destination = args.output / "RMGU-Early-Boot-Probe-0.1.1.apk"
     shutil.copyfile(args.apk, destination)
     digest = hashlib.sha256(destination.read_bytes()).hexdigest()
-    (args.output / "RMGU-Early-Boot-Probe-0.1.0.apk.sha256").write_text(f"{digest}  {destination.name}\n")
+    (args.output / "RMGU-Early-Boot-Probe-0.1.1.apk.sha256").write_text(f"{digest}  {destination.name}\n")
     (args.output / "apk-validation.txt").write_text(signature + "\n" + badging + "\n" + manifest)
     print(f"Verified {destination.name}: {digest}")
 

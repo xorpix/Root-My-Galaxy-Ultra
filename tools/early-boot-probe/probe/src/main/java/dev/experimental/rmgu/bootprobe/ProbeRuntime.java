@@ -86,7 +86,7 @@ final class ProbeRuntime {
         store = new ProbeStore(context);
         JSONObject info = base("process_started", SystemClock.elapsedRealtime(), System.currentTimeMillis());
         info.put("model", Build.MODEL).put("fingerprint", Build.FINGERPRINT)
-                .put("sdk", Build.VERSION.SDK_INT).put("probe_version", "0.1.0")
+                .put("sdk", Build.VERSION.SDK_INT).put("probe_version", "0.1.1")
                 .put("storage", "device_protected");
         write(info);
     }
