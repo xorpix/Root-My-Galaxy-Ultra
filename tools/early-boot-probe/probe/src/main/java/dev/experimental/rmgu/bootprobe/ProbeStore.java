@@ -17,17 +17,7 @@ final class ProbeStore {
 
     ProbeStore(Context context) {
         Context de = context.createDeviceProtectedStorageContext();
-        String key = null;
-        try {
-            String id = TextFiles.read(new File("/proc/sys/kernel/random/boot_id")).trim();
-            if (id.matches("[0-9a-f-]{36}")) key = "kernel-" + id;
-        } catch (Exception ignored) { /* Stock Samsung may deny this read. */ }
-        if (key == null) {
-            try {
-                int count = Settings.Global.getInt(de.getContentResolver(), Settings.Global.BOOT_COUNT, -1);
-                if (count >= 0) key = "count-" + count;
-            } catch (RuntimeException ignored) { /* Keep a distinct unidentified segment. */ }
-        }
+        String key = detectBootKey(de);
         // Never merge different boots using an estimated wall-clock time.
         if (key == null) key = "unidentified-" + UUID.randomUUID();
         bootKey = key;
@@ -46,6 +36,22 @@ final class ProbeStore {
                 if (++retained > 4) entry.delete();
             }
         }
+    }
+
+    static String detectBootKey(Context context) {
+        Context de = context.createDeviceProtectedStorageContext();
+        String key = null;
+        try {
+            String id = TextFiles.read(new File("/proc/sys/kernel/random/boot_id")).trim();
+            if (id.matches("[0-9a-f-]{36}")) key = "kernel-" + id;
+        } catch (Exception ignored) { /* Stock Samsung may deny this read. */ }
+        if (key == null) {
+            try {
+                int count = Settings.Global.getInt(de.getContentResolver(), Settings.Global.BOOT_COUNT, -1);
+                if (count >= 0) key = "count-" + count;
+            } catch (RuntimeException ignored) { /* Keep a distinct unidentified segment. */ }
+        }
+        return key;
     }
 
     void append(JSONObject event) throws Exception {

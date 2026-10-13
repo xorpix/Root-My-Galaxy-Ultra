@@ -31,10 +31,10 @@ final class ProbeRuntime {
         return thread;
     });
     private static final AtomicBoolean started = new AtomicBoolean();
-    private static final AtomicBoolean realEngine = new AtomicBoolean();
+    private static final AtomicBoolean accessibilityConnected = new AtomicBoolean();
     private static final AtomicBoolean ipsecBusy = new AtomicBoolean();
     private static volatile boolean ipsecReady;
-    private static volatile boolean readyWithRealEngine;
+    private static volatile boolean readyWhileConnected;
     private static volatile boolean finished;
     private static ProbeStore store;
     private static int attempts;
@@ -53,18 +53,20 @@ final class ProbeRuntime {
         timeline.execute(() -> {
             try {
                 initialize(de);
-                JSONObject event = base(name, elapsed, wall);
+                JSONObject event = base(name, elapsed, wall).put("snapshot", snapshot(de));
                 if (details != null) event.put("details", details);
                 write(event);
             } catch (Exception error) { Log.e(TAG, "Record failed", error); }
         });
     }
 
-    static void engine(Context context, boolean preview) {
-        if (!preview) realEngine.set(true);
-        try { event(context, "wallpaper_engine_created", new JSONObject().put("preview", preview)); }
-        catch (Exception error) { Log.e(TAG, "Engine record failed", error); }
+    static void accessibilityConnection(Context context, boolean connected, String reason) {
+        accessibilityConnected.set(connected);
+        if (connected) start(context, reason);
+        else event(context, reason);
     }
+
+    static boolean isAccessibilityConnected() { return accessibilityConnected.get(); }
 
     static void start(Context context, String reason) {
         event(context, reason);
@@ -86,7 +88,7 @@ final class ProbeRuntime {
         store = new ProbeStore(context);
         JSONObject info = base("process_started", SystemClock.elapsedRealtime(), System.currentTimeMillis());
         info.put("model", Build.MODEL).put("fingerprint", Build.FINGERPRINT)
-                .put("sdk", Build.VERSION.SDK_INT).put("probe_version", "0.1.1")
+                .put("sdk", Build.VERSION.SDK_INT).put("probe_version", ProbeReport.VERSION)
                 .put("storage", "device_protected");
         write(info);
     }
@@ -99,6 +101,7 @@ final class ProbeRuntime {
 
     static JSONObject snapshot(Context context) throws Exception {
         long begin = SystemClock.elapsedRealtime();
+        boolean connectedAtStart = accessibilityConnected.get();
         String[] props;
         String readError = "";
         try { props = NativeProperties.read(); }
@@ -111,8 +114,7 @@ final class ProbeRuntime {
                 .put("property_read_end_ms", SystemClock.elapsedRealtime())
                 .put("init.svc.bootanim", props[0]).put("service.bootanim.exit", props[1])
                 .put("sys.boot_completed", props[2])
-                .put("classification", BootEvidence.classify(props[0], props[1], props[2]).name())
-                .put("real_wallpaper_engine_seen", realEngine.get());
+                .put("classification", BootEvidence.classify(props[0], props[1], props[2]).name());
         if (!readError.isEmpty()) result.put("property_error", readError);
         try {
             UserManager manager = context.getSystemService(UserManager.class);
@@ -120,7 +122,8 @@ final class ProbeRuntime {
         } catch (RuntimeException error) {
             result.put("user_unlocked", JSONObject.NULL).put("user_state_error", error.getClass().getSimpleName());
         }
-        return result;
+        // Do not attribute a readiness observation to a service that disconnected during the read.
+        return result.put("accessibility_service_connected", connectedAtStart && accessibilityConnected.get());
     }
 
     private static void poll(Context context) {
@@ -129,7 +132,7 @@ final class ProbeRuntime {
             JSONObject frame = snapshot(context);
             String state = frame.optString("init.svc.bootanim") + "/" + frame.optString("service.bootanim.exit")
                     + "/" + frame.optString("sys.boot_completed") + "/" + frame.opt("user_unlocked")
-                    + "/" + frame.optBoolean("real_wallpaper_engine_seen");
+                    + "/" + frame.optBoolean("accessibility_service_connected");
             if (!state.equals(lastState) || now - lastHeartbeat >= 1000) {
                 write(base("boot_snapshot", now, System.currentTimeMillis()).put("snapshot", frame));
                 lastState = state;
@@ -142,7 +145,7 @@ final class ProbeRuntime {
                 if (sampler != null) sampler.cancel(false);
                 return;
             }
-            if ((!ipsecReady || (realEngine.get() && !readyWithRealEngine))
+            if ((!ipsecReady || (accessibilityConnected.get() && !readyWhileConnected))
                     && attempts < MAX_IPSEC_ATTEMPTS && now >= nextAttempt
                     && ipsecBusy.compareAndSet(false, true)) {
                 int attempt = ++attempts;
@@ -158,8 +161,8 @@ final class ProbeRuntime {
             JSONObject result = IpsecReadiness.check(context);
             ipsecReady = result.optBoolean("ready");
             JSONObject frame = result.optJSONObject("snapshot_when_ready");
-            if (ipsecReady && frame != null && frame.optBoolean("real_wallpaper_engine_seen"))
-                readyWithRealEngine = true;
+            if (ipsecReady && frame != null && frame.optBoolean("accessibility_service_connected"))
+                readyWhileConnected = true;
             long now = SystemClock.elapsedRealtime();
             timeline.execute(() -> {
                 try {
@@ -179,7 +182,7 @@ final class ProbeRuntime {
 
     static void readReport(Context context, java.util.function.Consumer<String> callback) {
         timeline.execute(() -> {
-            try { callback.accept(ProbeReport.build(ProbeStore.readLatest(context))); }
+            try { callback.accept(ProbeReport.build(ProbeStore.readLatest(context), ProbeStore.detectBootKey(context))); }
             catch (Exception error) { callback.accept("Could not read report: " + error.getMessage()); }
         });
     }

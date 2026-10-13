@@ -1,80 +1,80 @@
-# RMGU Early Boot Probe 0.1.1
+# RMGU Early Boot Probe 0.2.0
 
-A separate diagnostic app for the first autoroot-on-boot timing experiment. It installs as
-`dev.experimental.rmgu.bootprobe`, beside RMGU. It contains no root exploit, backend, SusFS binary,
-boot-animation delay, system-UID installation, or automatic restart.
+A standalone diagnostic for the accessibility startup route on Samsung. It checks
+whether a user-enabled, Direct Boot-aware accessibility service connects while the
+original boot animation is still running, and whether normal IPsec setup works then.
+It does not root the phone or hold the animation.
 
-## Phone test
+## Install and test
 
-1. Uninstall the previous **RMGU Boot Probe** diagnostic app (export any observations first).
-   Install `RMGU-Early-Boot-Probe-0.1.1.apk` and open it once. This build uses a separate disposable
-   signing key, so it cannot update over 0.1.0. The main RMGU app is a separate package.
-2. If RMGU autoroot is enabled, turn it off for this baseline test.
-3. Tap **Select test wallpaper** and apply the temporary dark-gradient live wallpaper.
-   Choose Home and lock screens together if Samsung offers that choice. The app tries the direct
-   preview first, then the general live-wallpaper chooser. If neither is available, use
-   **Apply with existing root**: run root in RMGU for the current boot, grant **RMGU Boot Probe**
-   root access in the backend's manager, and tap **Apply** in the probe's dialog. This fallback
-   requires Android 14 or later and the phone's primary user. It runs a one-shot helper from the
-   installed diagnostic APK, selects the probe on both screens through Android's wallpaper manager,
-   verifies both selections, and exits. It never edits package trust or SELinux policy. Confirm
-   **Home** and **Lock** both show **test wallpaper selected** before rebooting. This replaces your
-   current wallpaper selection; choose your regular wallpaper again after the test.
-4. Perform a **full reboot**, not an Android soft restart. Leave the phone locked for about 90 seconds.
-   Do not open RMGU or run root during that interval.
-5. Unlock, open the probe, and tap **Share report** or **Save report**. Send the text report for review.
-6. Choose your regular wallpaper in **Wallpaper settings**. The diagnostic app can then be uninstalled.
+1. Uninstall the previous **RMGU Boot Probe** if installed. Each diagnostic CI build
+   uses a disposable test signing key, so it cannot reliably update an older build.
+   Keep the main Root My Galaxy Ultra app installed.
+2. Install `RMGU-Early-Boot-Probe-0.2.0.apk` and open it once.
+3. Tap **Open accessibility settings**, then **Installed apps → RMGU Boot Probe**,
+   and enable it. Menu wording can vary with One UI.
+4. If Android blocks enabling it, open **App info** from the probe and use the
+   three-dot menu to **Allow restricted settings**, if that option is offered.
+   Return to Accessibility and enable the service yourself.
+5. Return to the probe. It should say **Service connected**. Tap **Refresh
+   observations** if the connection is still pending.
+6. Turn off RMGU's **Root on boot** for this baseline test. Fully restart the phone;
+   do not use a soft/userspace restart. Leave it locked for at least 90 seconds.
+7. Unlock, open the probe, and use **Share report** or **Save report**.
+8. Turn off the probe in Accessibility after collecting the report.
 
-Normal picker selection and all boot observations need no root. Existing root is used only for the
-optional one-time wallpaper-selection fallback; it does not provide root after reboot. The fallback's
-short-lived process switches from root to Android's system UID to use the framework's system context;
-the installed app, wallpaper service, and boot receiver keep their ordinary app UID. It accepts no
-arbitrary component or command. There is no Shizuku, wireless ADB, notification, or storage permission.
-Reports stay in device-protected app storage until you explicitly export them. The five most recent
-identified boots are retained; each file is capped at approximately 2 MiB.
+No wallpaper selection, root approval, ADB, or Shizuku is needed. If an older probe
+changed your wallpaper, restore your usual wallpaper before this test.
 
-## What it measures
+## What it records
 
-- Timestamped wallpaper-service creation, real/preview engine creation, surface creation, and boot broadcasts.
-- Monotonic elapsed time since kernel boot, plus wall time for correlating records.
-- Public NDK reads of `init.svc.bootanim`, `service.bootanim.exit`, and `sys.boot_completed`.
-- Whether the Android user is unlocked.
-- IPsec service access, UDP encapsulation socket allocation, SPI allocation, and loopback transform creation,
-  matching the normal API setup used before RMGU's DirtyFrag exploit. No exploit or page-cache modification
-  runs, no transform is applied to a network socket, and every temporary resource is closed.
+- Service creation, accessibility connection/disconnection, and boot broadcasts.
+- Kernel elapsed time, process segment, boot identity, model, and build fingerprint.
+- `init.svc.bootanim`, `service.bootanim.exit`, `sys.boot_completed`, and lock state.
+- The result and duration of ordinary temporary IPsec socket/SPI/transform setup.
 
-Property sampling runs off the main thread every 250 ms for at most 90 seconds. State changes and
-one-second heartbeats are persisted. IPsec tests run on a separate worker, never overlap, stop after
-successful setup with a real engine, and allow at most 20 attempts separated by at least two seconds.
-There is no wake lock. Wallpaper drawing happens immediately; this version does not test holding
-the animation or rooting while it runs.
+Sampling begins when the accessibility service connects, or from a boot broadcast
+as a late baseline. It samples for up to 90 seconds per process, polls boot state
+every 250 ms, and records state changes plus one-second heartbeats. IPsec checks
+are serialized, at most 20, two seconds apart; they stop after success while
+connected. A binder call already in flight can finish after the sampling deadline;
+this is marked in the report. Opening the activity only reads existing observations.
 
-## Interpretation and limits
+The service subscribes to no accessibility events and declares no screen retrieval,
+gesture, key filtering, touch exploration, or fingerprint gesture capabilities.
+It does not act as an accessibility aid. Android controls enabling and disabling it.
+Its callbacks return promptly; storage and IPsec work run on worker threads.
 
-**Candidate window observed** requires successful IPsec setup while the user is locked, a real
-wallpaper engine is known, and all three properties report `running`, `0`, and `0`. A wallpaper-picker
-preview, missing user state, an exit request, or completed boot cannot satisfy that condition.
+All observations use device-protected storage, available before the first unlock.
+There is no network upload, root command, native root payload, boot property write,
+boot delay, foreground service, wake lock, or automatic restart. IPsec resources are
+closed, and no transform is applied to any network socket.
 
-**Possible window** means the animation service reported `running` at IPsec readiness, but some
-other boot properties were unavailable. Empty values are absent or inaccessible, never assumed to be zero.
-Polling records intervals, not exact visible animation frames. Android's property access and Samsung's
-wallpaper behaviour can make a run inconclusive. An IPsec-ready observation does not prove DirtyFrag
-will succeed at that point or that modules can finish initialization in the same boot.
+## Reading the result
 
-The kernel boot ID is used if readable; otherwise Android's boot count is used. If both are unavailable,
-the process receives a unique unidentified segment instead of merging logs using estimated wall time.
-Each process segment has a separate identifier, so a framework restart remains visible within a kernel boot.
+A **candidate window** requires IPsec success, a connection recorded in the same
+process segment, explicit locked state, and all three signals: animation `running`,
+exit `0`, and boot-completed `0`. Unknown values cannot qualify. A service starting
+early without early IPsec success is reported separately. Earlier observed exit
+signals prevent a later/restarted animation from qualifying as the original window.
+
+Reports from a different identified boot are marked as historical. If the current
+boot identity cannot be read, that limit is stated explicitly. The raw JSONL includes
+property-read intervals and partial/truncated trailing records do not erase earlier
+evidence. Report summaries give a conservative span between observed pre-exit
+samples; they do not infer that the entire rooting procedure will fit in that span.
+
+A candidate result is not proof of successful root, Samsung's exact visible screen
+state, or module/Zygisk initialization. Those require separate device validation.
 
 ## Build
 
-From the repository root, with JDK 25 and the Android SDK/NDK installed:
+Use the **Early boot diagnostic probe** workflow on this experimental branch, or:
 
 ```sh
-./gradlew -p tools/early-boot-probe :probe:testDebugUnitTest :probe:lintRelease :probe:assembleRelease --no-daemon
+./gradlew -p tools/early-boot-probe :probe:testDebugUnitTest :probe:lintRelease :probe:assembleRelease
 ```
 
-This standalone Gradle project does not configure or rebuild the main RMGU app. Its release variant is
-not debuggable and uses a disposable diagnostic signing key, not the RMGU production key. Future builds
-from a different machine may require uninstalling this diagnostic app first; export observations before
-doing so. The branch workflow builds only this project and uploads a diagnostic artifact, without
-publishing a release or changing main.
+The APK has the separate package `dev.experimental.rmgu.bootprobe`, is not debuggable,
+and does not use the RMGU release key. The workflow verifies its signature, alignment,
+identity, permissions, accessibility configuration, and native library inventory.

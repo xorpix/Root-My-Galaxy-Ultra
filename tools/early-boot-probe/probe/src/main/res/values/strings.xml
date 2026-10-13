@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="wallpaper_description">Temporary diagnostic wallpaper. Records boot timing and IPsec readiness. Does not root the phone or delay boot.</string>
-    <string name="wallpaper_name">RMGU Boot Probe</string>
+    <string name="accessibility_description">Records when Android starts this service after reboot and checks IPsec readiness. Does not read screen content, control gestures, root the phone, or delay boot. Enable for the reboot test, then turn it off when finished.</string>
+    <string name="accessibility_summary">Boot timing and IPsec diagnostic</string>
 </resources>

@@ -20,15 +20,15 @@ public class BootEvidenceTest {
     @Test public void stoppedServiceCannotQualify() {
         assertEquals(BootEvidence.Window.EXITING_OR_FINISHED, BootEvidence.classify("stopped", "0", "0"));
     }
-    @Test public void wallpaperPickerPreviewCannotQualify() {
-        assertFalse(BootEvidence.candidate(true, false, true, BootEvidence.Window.EARLY));
+    @Test public void disconnectedServiceCannotQualify() {
+        assertFalse(BootEvidence.candidate(false, true, true, BootEvidence.Window.EARLY));
     }
     @Test public void unlockedOrUnreadyOrUncertainCannotQualify() {
-        assertFalse(BootEvidence.candidate(false, true, true, BootEvidence.Window.EARLY));
-        assertFalse(BootEvidence.candidate(false, false, false, BootEvidence.Window.EARLY));
-        assertFalse(BootEvidence.candidate(false, false, true, BootEvidence.Window.RUNNING_UNCERTAIN));
+        assertFalse(BootEvidence.candidate(true, false, true, BootEvidence.Window.EARLY));
+        assertFalse(BootEvidence.candidate(true, true, false, BootEvidence.Window.EARLY));
+        assertFalse(BootEvidence.candidate(true, true, true, BootEvidence.Window.RUNNING_UNCERTAIN));
     }
-    @Test public void onlyLockedNonPreviewReadyEarlyObservationQualifies() {
-        assertTrue(BootEvidence.candidate(false, false, true, BootEvidence.Window.EARLY));
+    @Test public void onlyConnectedLockedReadyEarlyObservationQualifies() {
+        assertTrue(BootEvidence.candidate(true, true, true, BootEvidence.Window.EARLY));
     }
 }

@@ -28,7 +28,7 @@ def main():
     badging = run("aapt2", "dump", "badging", args.apk)
     if "package: name='dev.experimental.rmgu.bootprobe'" not in badging:
         raise SystemExit("Unexpected package identity")
-    if "versionCode='2'" not in badging or "versionName='0.1.1'" not in badging:
+    if "versionCode='3'" not in badging or "versionName='0.2.0'" not in badging:
         raise SystemExit("Unexpected diagnostic version")
     if "application-debuggable" in badging:
         raise SystemExit("Diagnostic release APK must not be debuggable")
@@ -39,9 +39,21 @@ def main():
     manifest = run("aapt2", "dump", "xmltree", args.apk, "--file", "AndroidManifest.xml")
     if "android.uid.system" in manifest or "sharedUserId" in manifest:
         raise SystemExit("Diagnostic probe must not use a shared/system UID")
-    for expected in ["ProbeWallpaperService", "ProbeBootReceiver", "LOCKED_BOOT_COMPLETED", "directBootAware"]:
+    for expected in ["ProbeAccessibilityService", "ProbeBootReceiver", "LOCKED_BOOT_COMPLETED", "directBootAware"]:
         if expected not in manifest:
             raise SystemExit(f"Missing manifest component: {expected}")
+    if "BIND_ACCESSIBILITY_SERVICE" not in manifest or "android.accessibilityservice" not in manifest:
+        raise SystemExit("Missing protected accessibility binding")
+    if "BIND_WALLPAPER" in manifest or "ProbeWallpaperService" in manifest:
+        raise SystemExit("Wallpaper component must not be present")
+    accessibility = run("aapt2", "dump", "xmltree", args.apk, "--file", "res/xml/probe_accessibility.xml")
+    for capability in ["canRetrieveWindowContent", "canPerformGestures", "canRequestFilterKeyEvents",
+                       "canRequestTouchExplorationMode", "canRequestFingerprintGestures", "isAccessibilityTool"]:
+        lines = [line for line in accessibility.splitlines() if capability in line]
+        if len(lines) != 1 or "0xffffffff" in lines[0] or "0x0" not in lines[0]:
+            raise SystemExit(f"Accessibility capability must be false: {capability}")
+    if "accessibilityEventTypes" in accessibility or "accessibilityFlags" in accessibility:
+        raise SystemExit("Probe must not subscribe to accessibility events or request flags")
     with zipfile.ZipFile(args.apk) as archive:
         names = set(archive.namelist())
         libs = {name for name in names if name.startswith("lib/") and name.endswith(".so")}
@@ -50,11 +62,11 @@ def main():
         if any(name.endswith((".ko", ".p12", ".jks", ".apk")) for name in names):
             raise SystemExit("Unexpected payload or signing material in diagnostic APK")
     args.output.mkdir(parents=True, exist_ok=True)
-    destination = args.output / "RMGU-Early-Boot-Probe-0.1.1.apk"
+    destination = args.output / "RMGU-Early-Boot-Probe-0.2.0.apk"
     shutil.copyfile(args.apk, destination)
     digest = hashlib.sha256(destination.read_bytes()).hexdigest()
-    (args.output / "RMGU-Early-Boot-Probe-0.1.1.apk.sha256").write_text(f"{digest}  {destination.name}\n")
-    (args.output / "apk-validation.txt").write_text(signature + "\n" + badging + "\n" + manifest)
+    (args.output / "RMGU-Early-Boot-Probe-0.2.0.apk.sha256").write_text(f"{digest}  {destination.name}\n")
+    (args.output / "apk-validation.txt").write_text(signature + "\n" + badging + "\n" + manifest + "\n" + accessibility)
     print(f"Verified {destination.name}: {digest}")
 
 

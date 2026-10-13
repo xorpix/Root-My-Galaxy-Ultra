@@ -2,10 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-feature android:name="android.software.live_wallpaper" android:required="true" />
-    <queries>
-        <intent><action android:name="android.service.wallpaper.WallpaperService" /></intent>
-    </queries>
     <application
         android:label="RMGU Boot Probe"
         android:icon="@drawable/probe_icon"
@@ -19,17 +15,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <service android:name=".ProbeWallpaperService"
-            android:label="RMGU Boot Probe — temporary wallpaper"
-            android:description="@string/wallpaper_description"
+        <service android:name=".ProbeAccessibilityService"
+            android:label="RMGU Boot Probe"
+            android:description="@string/accessibility_description"
             android:exported="true"
             android:directBootAware="true"
-            android:permission="android.permission.BIND_WALLPAPER">
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
-                <action android:name="android.service.wallpaper.WallpaperService" />
+                <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>
-            <meta-data android:name="android.service.wallpaper"
-                android:resource="@xml/probe_wallpaper" />
+            <meta-data android:name="android.accessibilityservice"
+                android:resource="@xml/probe_accessibility" />
         </service>
         <receiver android:name=".ProbeBootReceiver" android:exported="false"
             android:directBootAware="true">

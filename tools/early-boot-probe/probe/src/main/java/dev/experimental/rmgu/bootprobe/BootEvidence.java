@@ -14,8 +14,8 @@ final class BootEvidence {
         return Window.RUNNING_UNCERTAIN;
     }
 
-    static boolean candidate(boolean preview, boolean userUnlocked, boolean ipsecReady,
+    static boolean candidate(boolean connected, boolean userLocked, boolean ipsecReady,
             Window window) {
-        return !preview && !userUnlocked && ipsecReady && window == Window.EARLY;
+        return connected && userLocked && ipsecReady && window == Window.EARLY;
     }
 }

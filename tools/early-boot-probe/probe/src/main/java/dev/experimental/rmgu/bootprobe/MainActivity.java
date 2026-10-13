@@ -1,40 +1,36 @@
 package dev.experimental.rmgu.bootprobe;
 
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.app.WallpaperInfo;
-import android.app.WallpaperManager;
+import android.accessibilityservice.AccessibilityServiceInfo;
 import android.content.*;
+import android.content.pm.ServiceInfo;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Build;
-import android.os.Process;
 import android.provider.Settings;
 import android.view.WindowInsets;
+import android.view.WindowInsetsController;
+import android.view.accessibility.AccessibilityManager;
 import android.widget.*;
 import java.io.File;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 public final class MainActivity extends Activity {
     private static final int SAVE_REPORT = 31;
     private static final java.util.concurrent.ExecutorService exports = Executors.newSingleThreadExecutor();
     private TextView status;
     private TextView selection;
-    private Button rootApply;
-    private boolean applying;
 
     @Override public void onCreate(Bundle saved) {
         super.onCreate(saved);
         ScrollView scroll = new ScrollView(this);
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
-        content.setBackgroundColor(Color.rgb(245, 247, 250));
+        scroll.setBackgroundColor(Color.rgb(245, 247, 250));
         int pad = dp(22);
         content.setPadding(pad, pad, pad, pad);
         scroll.addView(content);
@@ -44,29 +40,36 @@ public final class MainActivity extends Activity {
             return insets;
         });
         addText(content, "RMGU Boot Probe", 27, true);
-        addText(content, "Diagnostic prototype · 0.1.1", 14, false);
-        addText(content, "Check whether Android starts our component while Samsung's boot animation is still running. This app records timing and tests IPsec readiness; it does not root or delay boot.", 16, false);
-        addText(content, "1. Select the temporary test wallpaper.\n2. Fully reboot the phone.\n3. Leave it locked for about 90 seconds.\n4. Unlock, open this app, and share the report.", 16, false);
-        addText(content, "The test temporarily replaces your wallpaper with a simple dark gradient. Choose your regular wallpaper again when finished. If RMGU autoroot is enabled, turn it off for this baseline test.", 14, false);
-        addText(content, "If Samsung's wallpaper picker is unavailable, use Apply with existing root. Run root in RMGU first and allow RMGU Boot Probe in your root manager. This is only needed once to select the wallpaper.", 14, false);
-        button(content, "Select test wallpaper", this::selectWallpaper);
-        rootApply = button(content, "Apply with existing root", this::confirmRootApply);
-        selection = addText(content, "Checking wallpaper selection…", 14, false);
-        selection.setTextIsSelectable(true);
+        addText(content, "Accessibility test · " + ProbeReport.VERSION, 14, false);
+        addText(content, "Find out whether Android can start our service while Samsung’s original boot animation is still running. The probe records timing and checks IPsec readiness. It does not root the phone or delay boot.", 16, false);
+        selection = addText(content, "Checking service…", 15, true);
+        button(content, "Open accessibility settings", this::accessibilitySettings);
+        addText(content, "Choose Installed apps → RMGU Boot Probe and enable it. The probe does not read your screen or control gestures.", 14, false);
+        addText(content, "If Android blocks the switch, open App info below, use its ⋮ menu to allow restricted settings if offered, then return to Accessibility.", 14, false);
+        button(content, "Open app info", () -> launch(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                Uri.fromParts("package", getPackageName(), null))));
+        addText(content, "Run the test", 19, true);
+        addText(content, "1. Enable the service and return here to check its status.\n2. Turn off RMGU’s Root on boot for this test.\n3. Fully restart the phone, then leave it locked for 90 seconds.\n4. Unlock, open this app, and share the report.", 16, false);
+        addText(content, "Your wallpaper stays as it is. Opening this screen does not start a test. After sharing the report, turn off the probe in Accessibility.", 14, false);
         button(content, "Refresh observations", this::refresh);
         button(content, "Share report", this::share);
         button(content, "Save report", () -> withReport(report -> {
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT).setType("text/plain")
-                    .addCategory(Intent.CATEGORY_OPENABLE).putExtra(Intent.EXTRA_TITLE, "RMGU-early-boot-report.txt");
+                    .addCategory(Intent.CATEGORY_OPENABLE).putExtra(Intent.EXTRA_TITLE, "RMGU-accessibility-boot-report.txt");
             try { startActivityForResult(intent, SAVE_REPORT); }
             catch (ActivityNotFoundException error) { message("No document picker is available. Use Share report instead."); }
         }));
-        button(content, "Wallpaper settings", this::wallpaperSettings);
         addText(content, "Latest observations", 19, true);
         status = addText(content, "Loading…", 14, false);
         status.setTypeface(Typeface.MONOSPACE);
         status.setTextIsSelectable(true);
         setContentView(scroll);
+        WindowInsetsController controller = getWindow().getInsetsController();
+        if (controller != null) {
+            int appearance = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                    | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+            controller.setSystemBarsAppearance(appearance, appearance);
+        }
     }
 
     @Override protected void onResume() { super.onResume(); refresh(); }
@@ -78,112 +81,36 @@ public final class MainActivity extends Activity {
         }));
     }
 
-    private ComponentName probeComponent() {
-        return new ComponentName(this, ProbeWallpaperService.class);
-    }
-
     private void refreshSelection() {
-        if (applying) return;
         try {
-            WallpaperManager manager = WallpaperManager.getInstance(this);
-            WallpaperInfo home = manager.getWallpaperInfo();
-            boolean homeSelected = home != null && probeComponent().equals(home.getComponent());
-            String text = "Home: " + (homeSelected ? "test wallpaper selected" : "test wallpaper not selected");
-            if (Build.VERSION.SDK_INT >= 34) {
-                WallpaperInfo lock = manager.getWallpaperInfo(WallpaperManager.FLAG_LOCK);
-                boolean lockSelected = WallpaperSelectionState.lockSelected(homeSelected,
-                        lock != null && probeComponent().equals(lock.getComponent()), lock != null,
-                        manager.getWallpaperId(WallpaperManager.FLAG_LOCK));
-                text += "\nLock: " + (lockSelected ? "test wallpaper selected" : "test wallpaper not selected")
-                        + (lockSelected && lock == null ? " (uses Home wallpaper)" : "");
+            AccessibilityManager manager = getSystemService(AccessibilityManager.class);
+            ComponentName expected = new ComponentName(this, ProbeAccessibilityService.class);
+            boolean enabled = false;
+            String configured = Settings.Secure.getString(getContentResolver(),
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+            if (configured != null) for (String component : configured.split(":"))
+                if (expected.equals(ComponentName.unflattenFromString(component))) enabled = true;
+            if (manager != null) for (AccessibilityServiceInfo info :
+                    manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)) {
+                if (info.getResolveInfo() == null) continue;
+                ServiceInfo service = info.getResolveInfo().serviceInfo;
+                if (service != null && expected.equals(new ComponentName(service.packageName, service.name)))
+                    enabled = true;
             }
-            selection.setText(text);
+            selection.setText(ProbeRuntime.isAccessibilityConnected()
+                    ? "Service connected — ready for a full reboot test."
+                    : enabled ? "Service enabled; waiting for its connection. Tap Refresh in a moment."
+                    : "Service is off — enable RMGU Boot Probe in Accessibility.");
         } catch (RuntimeException error) {
-            selection.setText("Could not check wallpaper selection: " + error.getClass().getSimpleName());
+            selection.setText("Could not check service state. Check RMGU Boot Probe in Accessibility.");
         }
     }
 
-    private boolean tryLaunch(Intent intent) {
-        try { startActivity(intent); return true; }
-        catch (ActivityNotFoundException | SecurityException error) { return false; }
-    }
-
-    private void selectWallpaper() {
-        if (tryLaunch(new Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
-                .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, probeComponent()))) return;
-        if (tryLaunch(new Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER))) {
-            message("Choose RMGU Boot Probe — temporary wallpaper, then apply it to both screens.");
-            return;
+    private void accessibilitySettings() {
+        try { startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); }
+        catch (ActivityNotFoundException | SecurityException error) {
+            message("Open Settings → Accessibility → Installed apps → RMGU Boot Probe.");
         }
-        confirmRootApply();
-    }
-
-    private void wallpaperSettings() {
-        if (tryLaunch(new Intent(Intent.ACTION_SET_WALLPAPER))) return;
-        if (tryLaunch(new Intent(Settings.ACTION_SETTINGS))) {
-            message("Open Wallpaper and style to choose your regular wallpaper.");
-            return;
-        }
-        message("Open Wallpaper and style from the phone's Settings app.");
-    }
-
-    private void confirmRootApply() {
-        if (applying) return;
-        new AlertDialog.Builder(this).setTitle("Apply test wallpaper using existing root?")
-                .setMessage("This temporarily replaces both your home and lock wallpapers with the test gradient. Run root in RMGU first, then allow RMGU Boot Probe in your root manager. The helper uses root only to select the wallpaper and then exits. After a full reboot, the timing test runs without root. Choose your regular wallpaper in Settings when finished.")
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Apply", (dialog, which) -> applyWithRoot()).show();
-    }
-
-    private void applyWithRoot() {
-        if (Process.myUid() / 100_000 != 0) {
-            message("The root selection helper supports the phone's primary user only. Use the system picker for other users.");
-            return;
-        }
-        applying = true;
-        rootApply.setEnabled(false);
-        selection.setText("Applying test wallpaper… Allow RMGU Boot Probe in your root manager if prompted.");
-        final String apkPath = getApplicationInfo().sourceDir;
-        final File cache = createDeviceProtectedStorageContext().getCacheDir();
-        exports.execute(() -> {
-            java.lang.Process child = null;
-            File log = null;
-            boolean success = false;
-            String detail;
-            try {
-                log = File.createTempFile("wallpaper-activation-", ".txt", cache);
-                child = new ProcessBuilder("su", "-c", RootWallpaperCommand.forApk(apkPath))
-                        .redirectErrorStream(true).redirectOutput(log).start();
-                if (!child.waitFor(60, TimeUnit.SECONDS)) {
-                    child.destroyForcibly();
-                    throw new IllegalStateException("Root approval or wallpaper activation timed out. Check the root manager.");
-                }
-                detail = TextFiles.read(log);
-                success = child.exitValue() == 0 && detail.contains("RMGU_WALLPAPER_APPLIED_BOTH");
-                if (!success && detail.isBlank()) detail = "Root access was denied or unavailable. Run root in RMGU and allow this app in your root manager.";
-            } catch (Exception error) {
-                detail = error.getClass().getSimpleName() + ": " + error.getMessage()
-                        + "\nRun root in RMGU and allow RMGU Boot Probe in your root manager.";
-            } finally {
-                if (child != null && child.isAlive()) child.destroyForcibly();
-                if (log != null) log.delete();
-            }
-            final boolean applied = success;
-            final String output = detail.length() > 8000 ? detail.substring(0, 8000) : detail;
-            runOnUiThread(() -> {
-                if (isDestroyed()) return;
-                applying = false;
-                rootApply.setEnabled(true);
-                refreshSelection();
-                if (applied) message("Both test wallpapers are selected. Turn RMGU autoroot off, fully reboot, and leave the phone locked for 90 seconds.");
-                else new AlertDialog.Builder(this).setTitle("Wallpaper was not verified on both screens")
-                        .setMessage(output).setPositiveButton("OK", null)
-                        .setNeutralButton("Copy details", (dialog, which) -> {
-                            ClipboardManager clipboard = getSystemService(ClipboardManager.class);
-                            clipboard.setPrimaryClip(ClipData.newPlainText("Wallpaper activation", output));
-                        }).show();
-            });
-        });
     }
 
     private void withReport(java.util.function.Consumer<String> consumer) {
