@@ -33,7 +33,7 @@ jobs:
           accept-android-sdk-licenses: true
       - uses: gradle/actions/setup-gradle@v4
       - name: Test, lint, and build the standalone diagnostic APK
-        run: ./gradlew -p tools/early-boot-probe :probe:testDebugUnitTest :probe:lintRelease :probe:assembleRelease --no-daemon --no-configuration-cache
+        run: ./gradlew -p tools/early-boot-probe :probe:testDebugUnitTest :probe:lintRelease :helper:lintRelease :probe:assembleRelease --no-daemon --no-configuration-cache
       - name: Verify and stage the diagnostic APK
         run: |
           python3 tools/early-boot-probe/verify_apk.py \
@@ -55,5 +55,6 @@ jobs:
           path: |
             tools/early-boot-probe/probe/build/reports/
             tools/early-boot-probe/probe/build/test-results/
+            tools/early-boot-probe/helper/build/reports/
           if-no-files-found: ignore
           retention-days: 30

@@ -1,80 +1,114 @@
-# RMGU Early Boot Probe 0.2.0
+# RMGU Privileged Boot Probe 0.3.0
 
-A standalone diagnostic for the accessibility startup route on Samsung. It checks
-whether a user-enabled, Direct Boot-aware accessibility service connects while the
-original boot animation is still running, and whether normal IPsec setup works then.
-It does not root the phone or hold the animation.
+A separate diagnostic experiment for a helper hosted inside `system_server` as UID
+1000. It tests whether an approved Direct Boot-aware `ConditionProviderService`
+can run early enough for normal IPsec setup during the original Samsung animation.
+The helper does not run an exploit, load a root backend, hold the animation, change
+DND mode, read notifications, or restart Android.
 
-## Install and test
+## One-time setup and reboot test
 
-1. Uninstall the previous **RMGU Boot Probe** if installed. Each diagnostic CI build
-   uses a disposable test signing key, so it cannot reliably update an older build.
-   Keep the main Root My Galaxy Ultra app installed.
-2. Install `RMGU-Early-Boot-Probe-0.2.0.apk` and open it once.
-3. Tap **Open accessibility settings**, then **Installed apps → RMGU Boot Probe**,
-   and enable it. Menu wording can vary with One UI.
-4. If Android blocks enabling it, open **App info** from the probe and use the
-   three-dot menu to **Allow restricted settings**, if that option is offered.
-   Return to Accessibility and enable the service yourself.
-5. Return to the probe. It should say **Service connected**. Tap **Refresh
-   observations** if the connection is still pending.
-6. Turn off RMGU's **Root on boot** for this baseline test. Fully restart the phone;
-   do not use a soft/userspace restart. Leave it locked for at least 90 seconds.
-7. Unlock, open the probe, and use **Share report** or **Save report**.
-8. Turn off the probe in Accessibility after collecting the report.
+1. Disable the 0.2.0 accessibility probe and uninstall the old **RMGU Boot Probe**.
+   Keep the main RMGU app. Install `RMGU-Privileged-Boot-Probe-0.3.0.apk`.
+2. Root normally with RMGU. Open the probe and allow its request in the root manager.
+3. Tap **Inspect setup (read-only, root)**. If it reports a refusal, share the setup
+   report rather than attempting to modify the file manually.
+4. Tap **Prepare helper certificate**, review the displayed action, and confirm.
+   Close other app installers first. Preparation changes Android's system-UID
+   certificate history in `/data/system/packages.xml`. A malformed registry can
+   prevent Android starting. The backup still requires a working root environment
+   to restore; it is not a guarantee of recovery from a failed cold boot.
+5. If preparation succeeds, promptly perform a **full reboot**. A soft/userspace
+   restart is outside this diagnostic's test flow. No automatic reboot is issued.
+6. Open the probe and tap **Install embedded helper**. Allow installation from this
+   app if Android asks, return, then tap the button again. Complete Android's
+   installation prompt. The helper is embedded and signed by the same diagnostic
+   key as the controller; download or root access is not needed for this step.
+7. Tap **Activate startup hook**. The controller checks UID 1000, its matching
+   signer/version, and the helper confirms that its process is `system_server`.
+   Activation approves only this helper's condition-provider binding. It does not
+   enable Do Not Disturb or create any rules. This legacy API is deprecated and may
+   be restricted by an OEM; failure is reported rather than bypassed.
+8. Turn off RMGU's **Root on boot**. Fully reboot again, leave the phone locked for
+   at least 90 seconds, then unlock and **Share report**.
 
-No wallpaper selection, root approval, ADB, or Shizuku is needed. If an older probe
-changed your wallpaper, restore your usual wallpaper before this test.
+The controller uses the same package as 0.2.0; signing keys are disposable per CI
+run, so uninstall the old controller before installing a different build. The
+helper has the separate package `dev.experimental.rmgu.boothelper` and no launcher.
+Use the controller to manage it. Preserve this controller APK until cleanup is
+finished, as it contains the matching signer and helper.
 
-## What it records
+## Cleanup
 
-- Service creation, accessibility connection/disconnection, and boot broadcasts.
-- Kernel elapsed time, process segment, boot identity, model, and build fingerprint.
-- `init.svc.bootanim`, `service.bootanim.exit`, `sys.boot_completed`, and lock state.
-- The result and duration of ordinary temporary IPsec socket/SPI/transform setup.
+Tap **Disable startup hook**. Root normally with RMGU again, then tap **Remove helper
+setup**. It uninstalls only this helper, re-reads the current registry, removes
+only its recorded diagnostic certificate entries, and preserves other apps and
+signatures. Fully reboot to clear the framework's cached trust. Backups and signer
+receipts remain in the diagnostic directory for recovery; they are not automatically
+restored over a newer package database. A later build can replace the signer record
+only after the old setup is absent and cleanup has been followed by a full reboot.
 
-Sampling begins when the accessibility service connects, or from a boot broadcast
-as a late baseline. It samples for up to 90 seconds per process, polls boot state
-every 250 ms, and records state changes plus one-second heartbeats. IPsec checks
-are serialized, at most 20, two seconds apart; they stop after success while
-connected. A binder call already in flight can finish after the sampling deadline;
-this is marked in the report. Opening the activity only reads existing observations.
+## Setup implementation and limits
 
-The service subscribes to no accessibility events and declares no screen retrieval,
-gesture, key filtering, touch exploration, or fingerprint gesture capabilities.
-It does not act as an accessibility aid. Android controls enabling and disabling it.
-Its callbacks return promptly; storage and IPsec work run on worker threads.
+The shared-UID technique follows the publicly described RMG-Next/DFReroot method:
+`android.uid.system` plus process `system`, with two certificate-history references
+carrying the shared-UID capability. This prototype has its own Java implementation;
+it does not include upstream unlicensed injector code.
 
-All observations use device-protected storage, available before the first unlock.
-There is no network upload, root command, native root payload, boot property write,
-boot delay, foreground service, wake lock, or automatic restart. IPsec resources are
-closed, and no transform is applied to any network socket.
+The setup entry runs through the installed controller APK as `app_process` under
+existing root. It accepts only inspect, prepare, and remove operations on fixed
+paths and fixed package identities. This is administrative setup, not an early-root
+exploit. The controller's signing certificate must already be recorded by Package
+Manager, and the embedded helper must match its signer and declared identity.
 
-## Reading the result
+This prototype supports only ABX v0 registries that re-encode byte-for-byte before
+mutation. Unsupported text/XML formats, token types, malformed counts, duplicate
+history blocks, missing controller certificates, and unexpected file ownership
+are refused. Existing numeric wire types and bit patterns are preserved. Added
+certificates are index-only references to the already installed controller signer,
+so they do not introduce new entries into the global certificate table. Foreign
+signatures and all data outside the target history are checked after transformation.
+Android's own XML parser validates the original and staged documents as well.
 
-A **candidate window** requires IPsec success, a connection recorded in the same
-process segment, explicit locked state, and all three signals: animation `running`,
-exit `0`, and boot-completed `0`. Unknown values cannot qualify. A service starting
-early without early IPsec success is reported separately. Earlier observed exit
-signals prevent a later/restarted animation from qualifying as the original window.
+A unique backup and staged file are fully written, fsynced, and checked before an
+atomic rename. Original owner, group, mode, and SELinux label are copied and
+verified. The file is never truncated in place. Detected package-manager writes
+abort before the rename; this is not a shared lock with Package Manager, so avoid
+concurrent installs and reboot promptly. A commit followed by a verification error
+is explicitly marked as committed: inspect it before repeating or rebooting.
 
-Reports from a different identified boot are marked as historical. If the current
-boot identity cannot be read, that limit is stated explicitly. The raw JSONL includes
-property-read intervals and partial/truncated trailing records do not erase earlier
-evidence. Report summaries give a conservative span between observed pre-exit
-samples; they do not infer that the entire rooting procedure will fit in that span.
+The helper is Java-only and has no custom native library or root command path.
+Its callbacks enqueue bounded diagnostics, then return. Workers read properties
+through the framework, record boot identity/UID/process/timing, and exercise only
+ordinary IPsec allocation/setup. Resources are closed without applying a transform
+to a network socket. Up to 25 serialized checks are attempted, initially every
+250 ms, then every second, until success. Boot sampling has a 90-second deadline;
+CPU sleep or an in-flight binder call can defer completion. There is no wake lock.
+Observations are capped at 200 kB and retained in a system-owned diagnostic folder.
+Only the matching controller can retrieve reports or change this helper's binding
+through the signature-protected provider. Resolving that provider does not start
+sampling; only the condition-service callback does.
 
-A candidate result is not proof of successful root, Samsung's exact visible screen
-state, or module/Zygisk initialization. Those require separate device validation.
+A candidate requires UID 1000, process `system_server`, an actual startup callback,
+explicit locked state, successful IPsec setup, and readable pre-exit animation
+signals. Empty properties remain unknown. Reports from previous or mixed boots
+cannot claim a current window, and an earlier exit blocks later animation cycles.
+IPsec's first observed success does not establish when it first became available.
+The test does not prove that the full root sequence or module startup fits in the
+observed window. Samsung's actual startup order and helper installation remain
+hardware tests.
 
-## Build
+## Build and provenance
 
-Use the **Early boot diagnostic probe** workflow on this experimental branch, or:
+Use the **Early boot diagnostic probe** workflow on the experimental branch. The
+controller build depends on the release helper and embeds that exact APK. The
+workflow tests the codec/trust transformations, report qualification, and command
+validation; lints both APKs; verifies signatures, version, permissions, process,
+protected components, and that the privileged helper has no native/root setup code.
+Both APKs are signed using this run's same disposable diagnostic key and do not use
+the production RMGU release key.
 
-```sh
-./gradlew -p tools/early-boot-probe :probe:testDebugUnitTest :probe:lintRelease :probe:assembleRelease
-```
-
-The APK has the separate package `dev.experimental.rmgu.bootprobe`, is not debuggable,
-and does not use the RMGU release key. The workflow verifies its signature, alignment,
-identity, permissions, accessibility configuration, and native library inventory.
+Primary implementation references:
+- RMG-Next commit `a2eab34a6efdfe09c34c5232cd1b67255607bb15` (manifest and setup behavior).
+- AOSP ABX v0 `BinaryXmlSerializer` / `FastDataOutput` protocol.
+- AOSP `ManagedServices.readXml` and condition-provider binding.

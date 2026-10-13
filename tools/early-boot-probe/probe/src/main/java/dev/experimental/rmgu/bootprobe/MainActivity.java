@@ -1,187 +1,134 @@
 package dev.experimental.rmgu.bootprobe;
 
-import android.app.Activity;
-import android.accessibilityservice.AccessibilityServiceInfo;
+import android.app.*;
 import android.content.*;
-import android.content.pm.ServiceInfo;
-import android.graphics.Color;
-import android.graphics.Typeface;
+import android.content.pm.*;
+import android.graphics.*;
 import android.net.Uri;
-import android.os.Bundle;
+import android.os.*;
 import android.provider.Settings;
-import android.view.WindowInsets;
-import android.view.WindowInsetsController;
-import android.view.accessibility.AccessibilityManager;
+import android.view.*;
 import android.widget.*;
-import java.io.File;
-import java.io.OutputStream;
+import dev.experimental.rmgu.bootprobe.shared.*;
+import org.json.JSONObject;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.UUID;
-import java.util.concurrent.Executors;
+import java.util.*;
+import java.util.concurrent.*;
 
 public final class MainActivity extends Activity {
-    private static final int SAVE_REPORT = 31;
-    private static final java.util.concurrent.ExecutorService exports = Executors.newSingleThreadExecutor();
-    private TextView status;
-    private TextView selection;
-
-    @Override public void onCreate(Bundle saved) {
+    private final ExecutorService worker=Executors.newSingleThreadExecutor();
+    private TextView standing,observations,setup;
+    private final List<Button> actions=new ArrayList<>();
+    private boolean busy;
+    @Override public void onCreate(Bundle saved){
         super.onCreate(saved);
-        ScrollView scroll = new ScrollView(this);
-        LinearLayout content = new LinearLayout(this);
-        content.setOrientation(LinearLayout.VERTICAL);
-        scroll.setBackgroundColor(Color.rgb(245, 247, 250));
-        int pad = dp(22);
-        content.setPadding(pad, pad, pad, pad);
-        scroll.addView(content);
-        scroll.setOnApplyWindowInsetsListener((view, insets) -> {
-            android.graphics.Insets bars = insets.getInsets(WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
-            scroll.setPadding(bars.left, bars.top, bars.right, bars.bottom);
-            return insets;
-        });
-        addText(content, "RMGU Boot Probe", 27, true);
-        addText(content, "Accessibility test · " + ProbeReport.VERSION, 14, false);
-        addText(content, "Find out whether Android can start our service while Samsung’s original boot animation is still running. The probe records timing and checks IPsec readiness. It does not root the phone or delay boot.", 16, false);
-        selection = addText(content, "Checking service…", 15, true);
-        button(content, "Open accessibility settings", this::accessibilitySettings);
-        addText(content, "Choose Installed apps → RMGU Boot Probe and enable it. The probe does not read your screen or control gestures.", 14, false);
-        addText(content, "If Android blocks the switch, open App info below, use its ⋮ menu to allow restricted settings if offered, then return to Accessibility.", 14, false);
-        button(content, "Open app info", () -> launch(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                Uri.fromParts("package", getPackageName(), null))));
-        addText(content, "Run the test", 19, true);
-        addText(content, "1. Enable the service and return here to check its status.\n2. Turn off RMGU’s Root on boot for this test.\n3. Fully restart the phone, then leave it locked for 90 seconds.\n4. Unlock, open this app, and share the report.", 16, false);
-        addText(content, "Your wallpaper stays as it is. Opening this screen does not start a test. After sharing the report, turn off the probe in Accessibility.", 14, false);
-        button(content, "Refresh observations", this::refresh);
-        button(content, "Share report", this::share);
-        button(content, "Save report", () -> withReport(report -> {
-            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT).setType("text/plain")
-                    .addCategory(Intent.CATEGORY_OPENABLE).putExtra(Intent.EXTRA_TITLE, "RMGU-accessibility-boot-report.txt");
-            try { startActivityForResult(intent, SAVE_REPORT); }
-            catch (ActivityNotFoundException error) { message("No document picker is available. Use Share report instead."); }
-        }));
-        addText(content, "Latest observations", 19, true);
-        status = addText(content, "Loading…", 14, false);
-        status.setTypeface(Typeface.MONOSPACE);
-        status.setTextIsSelectable(true);
-        setContentView(scroll);
-        WindowInsetsController controller = getWindow().getInsetsController();
-        if (controller != null) {
-            int appearance = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-                    | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
-            controller.setSystemBarsAppearance(appearance, appearance);
-        }
+        ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(Color.rgb(245,247,250));
+        LinearLayout body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(22),dp(22),dp(22),dp(22));scroll.addView(body);
+        scroll.setOnApplyWindowInsetsListener((v,i)->{Insets b=i.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());scroll.setPadding(b.left,b.top,b.right,b.bottom);return i;});
+        text(body,"RMGU Boot Probe",27,true);text(body,"Privileged helper test · "+HelperProtocol.VERSION,14,false);
+        text(body,"Test whether a helper inside Android’s system process can start before Samsung’s original boot animation exits. It records boot timing and tests IPsec; it does not run the root payload or hold the animation.",16,false);
+        standing=text(body,"Checking helper…",15,true);
+        text(body,"One-time setup",19,true);
+        text(body,"1. Disable the previous accessibility probe. Root the phone normally in RMGU.\n2. Inspect the setup, then prepare the helper certificate.\n3. Fully reboot, install the embedded helper, and activate its startup hook.\n4. Keep RMGU Root on boot off. Fully reboot again and leave it locked for 90 seconds.\n5. Unlock and share the report.",15,false);
+        text(body,"Preparation changes Android’s package-signature trust using existing root. An incorrect package-registry change can prevent Android from starting. This build checks the file, keeps verified backups, and refuses unsupported layouts. Avoid app installations during preparation and reboot promptly afterwards.",14,false);
+        button(body,"Inspect setup (read-only, root)",()->root("inspect"));
+        button(body,"Prepare helper certificate",()->new AlertDialog.Builder(this).setTitle("Prepare the privileged helper?")
+                .setMessage("This adds only the embedded diagnostic helper’s certificate to Android’s system-UID trust. It modifies packages.xml and keeps a verified backup. A full reboot is required before installing the helper. Existing root access is required; this action does not reboot automatically.")
+                .setNegativeButton("Cancel",null).setPositiveButton("Prepare",(d,w)->root("prepare")).show());
+        button(body,"Install embedded helper",this::install);
+        button(body,"Activate startup hook",()->operation("activate"));
+        button(body,"Refresh observations",this::refresh);
+        button(body,"Share report",this::share);
+        text(body,"Cleanup",19,true);
+        text(body,"When the test is finished, disable the startup hook. To remove the helper and its added certificate, root with RMGU again, use Remove helper setup, then fully reboot.",14,false);
+        button(body,"Disable startup hook",()->operation("deactivate"));
+        button(body,"Remove helper setup",()->new AlertDialog.Builder(this).setTitle("Remove the diagnostic helper?")
+                .setMessage("Uses existing root to uninstall this helper and remove its recorded certificate from system-UID history. Other signatures and installed apps are preserved. Fully reboot afterwards to clear Android’s cached trust.")
+                .setNegativeButton("Cancel",null).setPositiveButton("Remove",(d,w)->root("remove")).show());
+        text(body,"Setup result",19,true);setup=text(body,"No setup action yet.",13,false);setup.setTextIsSelectable(true);
+        text(body,"Boot observations",19,true);observations=text(body,"Loading…",13,false);observations.setTypeface(Typeface.MONOSPACE);observations.setTextIsSelectable(true);
+        setContentView(scroll);WindowInsetsController c=getWindow().getInsetsController();if(c!=null){int a=WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS|WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;c.setSystemBarsAppearance(a,a);}
     }
-
-    @Override protected void onResume() { super.onResume(); refresh(); }
-
-    private void refresh() {
-        refreshSelection();
-        ProbeRuntime.readReport(this, report -> runOnUiThread(() -> {
-            if (!isDestroyed()) status.setText(ProbeReport.summary(report));
-        }));
+    @Override protected void onResume(){super.onResume();refresh();}
+    private String signer()throws Exception {
+        Signature[] signatures=getPackageManager().getPackageInfo(getPackageName(),PackageManager.GET_SIGNING_CERTIFICATES).signingInfo.getApkContentsSigners();
+        if(signatures.length!=1)throw new IllegalStateException("Exactly one diagnostic signing certificate is required");return signatures[0].toCharsString().toLowerCase(Locale.ROOT);
     }
-
-    private void refreshSelection() {
-        try {
-            AccessibilityManager manager = getSystemService(AccessibilityManager.class);
-            ComponentName expected = new ComponentName(this, ProbeAccessibilityService.class);
-            boolean enabled = false;
-            String configured = Settings.Secure.getString(getContentResolver(),
-                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
-            if (configured != null) for (String component : configured.split(":"))
-                if (expected.equals(ComponentName.unflattenFromString(component))) enabled = true;
-            if (manager != null) for (AccessibilityServiceInfo info :
-                    manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)) {
-                if (info.getResolveInfo() == null) continue;
-                ServiceInfo service = info.getResolveInfo().serviceInfo;
-                if (service != null && expected.equals(new ComponentName(service.packageName, service.name)))
-                    enabled = true;
-            }
-            selection.setText(ProbeRuntime.isAccessibilityConnected()
-                    ? "Service connected — ready for a full reboot test."
-                    : enabled ? "Service enabled; waiting for its connection. Tap Refresh in a moment."
-                    : "Service is off — enable RMGU Boot Probe in Accessibility.");
-        } catch (RuntimeException error) {
-            selection.setText("Could not check service state. Check RMGU Boot Probe in Accessibility.");
-        }
-    }
-
-    private void accessibilitySettings() {
-        try { startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); }
-        catch (ActivityNotFoundException | SecurityException error) {
-            message("Open Settings → Accessibility → Installed apps → RMGU Boot Probe.");
-        }
-    }
-
-    private void withReport(java.util.function.Consumer<String> consumer) {
-        ProbeRuntime.readReport(this, report -> runOnUiThread(() -> {
-            if (isDestroyed()) return;
-            status.setText(ProbeReport.summary(report));
-            if (!report.contains("--- RAW OBSERVATIONS")) { message("There is no report to export yet."); return; }
-            consumer.accept(report);
-        }));
-    }
-
-    private void share() {
-        withReport(report -> exports.execute(() -> {
+    private void setBusy(boolean value){busy=value;for(Button b:actions)b.setEnabled(!value);}
+    private void root(String mode){
+        if(busy)return;setBusy(true);setup.setText("Waiting for root approval and "+mode+"…");
+        worker.execute(()->{
+            File log=null;java.lang.Process child=null;String output;
             try {
-                File dir = new File(createDeviceProtectedStorageContext().getCacheDir(), "reports");
-                if (!dir.isDirectory() && !dir.mkdirs()) throw new IllegalStateException("Cannot create export");
-                File[] old = dir.listFiles();
-                if (old != null) for (File file : old)
-                    if (file.lastModified() < System.currentTimeMillis() - 86_400_000L) file.delete();
-                String name = "report-" + UUID.randomUUID() + ".txt";
-                TextFiles.write(new File(dir, name), report);
-                Uri uri = new Uri.Builder().scheme("content").authority(ReportProvider.AUTHORITY)
-                        .appendPath("reports").appendPath(name).build();
-                Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain")
-                        .putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                send.setClipData(ClipData.newUri(getContentResolver(), "Boot diagnostic report", uri));
-                runOnUiThread(() -> launch(Intent.createChooser(send, "Share boot report")));
-            } catch (Exception error) { runOnUiThread(() -> message("Export failed: " + error.getMessage())); }
-        }));
+                if(android.os.Process.myUid() / 100_000!=0)throw new IllegalStateException("Use the phone’s primary user for this diagnostic");
+                verifyEmbedded();
+                if(mode.equals("remove")){try{call("deactivate");}catch(Exception ignored){/* Uninstall also stops the binding. */}}
+                log=File.createTempFile("root-setup-",".txt",createDeviceProtectedStorageContext().getCacheDir());
+                child=new ProcessBuilder("su","-c",SetupCommand.command(getApplicationInfo().sourceDir,mode,signer())).redirectErrorStream(true).redirectOutput(log).start();
+                if(!child.waitFor(120,TimeUnit.SECONDS)){child.destroyForcibly();throw new IOException("Setup timed out. Inspect before repeating; an in-flight filesystem operation must not be assumed undone.");}
+                output=TextFiles.read(log);
+                int position=output.lastIndexOf("RMGU_SETUP_RESULT ");
+                if(position>=0){JSONObject result=new JSONObject(output.substring(position+"RMGU_SETUP_RESULT ".length()).trim());
+                    if(mode.equals("prepare")&&(result.optBoolean("ok")||result.optBoolean("committed")))createDeviceProtectedStorageContext().getSharedPreferences("helper-setup",MODE_PRIVATE).edit().putString("prepared_boot",result.optString("boot_key")).commit();
+                }
+            }catch(Exception error){output=error.getClass().getSimpleName()+": "+error.getMessage();}
+            finally{if(child!=null&&child.isAlive())child.destroyForcibly();if(log!=null)log.delete();}
+            try{TextFiles.write(new File(createDeviceProtectedStorageContext().getFilesDir(),"setup-result.txt"),output);}catch(IOException ignored){}
+            String message=output;runOnUiThread(()->{if(isDestroyed())return;setBusy(false);setup.setText(message);refresh();});
+        });
     }
-
-    @Override protected void onActivityResult(int request, int result, Intent data) {
-        super.onActivityResult(request, result, data);
-        if (request != SAVE_REPORT || result != RESULT_OK || data == null || data.getData() == null) return;
-        Uri uri = data.getData();
-        // Re-read after the picker returns; activity recreation cannot lose the report body.
-        ProbeRuntime.readReport(this, report -> exports.execute(() -> {
-            try (OutputStream out = getContentResolver().openOutputStream(uri)) {
-                if (out == null) throw new IllegalStateException("Cannot open destination");
-                out.write(report.getBytes(StandardCharsets.UTF_8));
-                runOnUiThread(() -> message("Report saved."));
-            } catch (Exception error) { runOnUiThread(() -> message("Save failed: " + error.getMessage())); }
-        }));
+    private File verifyEmbedded()throws Exception {
+        File file=HelperApkProvider.staged(this);
+        try(InputStream in=getAssets().open("privileged-helper.apk");FileOutputStream out=new FileOutputStream(file)){in.transferTo(out);}
+        PackageInfo info=getPackageManager().getPackageArchiveInfo(file.getPath(),PackageManager.GET_SIGNING_CERTIFICATES);
+        if(info==null||!HelperProtocol.HELPER.equals(info.packageName)||info.getLongVersionCode()!=HelperProtocol.VERSION_CODE||!"android.uid.system".equals(info.sharedUserId)||info.signingInfo==null)throw new IOException("Embedded helper identity is invalid");
+        Signature[] certs=info.signingInfo.getApkContentsSigners();if(certs.length!=1||!certs[0].toCharsString().equalsIgnoreCase(signer()))throw new IOException("Controller/helper signing certificates differ");
+        return file;
     }
-
-    private TextView addText(LinearLayout parent, String text, int size, boolean bold) {
-        TextView view = new TextView(this);
-        view.setText(text);
-        view.setTextSize(size);
-        view.setTextColor(Color.rgb(23, 38, 53));
-        if (bold) view.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-        params.bottomMargin = dp(15);
-        parent.addView(view, params);
-        return view;
+    private void install(){
+        if(busy)return;
+        if(!getPackageManager().canRequestPackageInstalls()){new AlertDialog.Builder(this).setTitle("Allow helper installation")
+                .setMessage("Allow this probe to install its embedded helper, then return and tap Install embedded helper again.")
+                .setPositiveButton("Open setting",(d,w)->launch(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:"+getPackageName())))).setNegativeButton("Cancel",null).show();return;}
+        setBusy(true);worker.execute(()->{
+            try{
+                String prepared=createDeviceProtectedStorageContext().getSharedPreferences("helper-setup",MODE_PRIVATE).getString("prepared_boot","");
+                if(prepared.isEmpty()||prepared.equals("unknown")||ProbeStore.detectBootKey(this)==null||prepared.equals(ProbeStore.detectBootKey(this)))throw new IllegalStateException("Prepare the certificate, then perform a full reboot before installing the helper");
+                verifyEmbedded();Uri uri=Uri.parse("content://"+HelperApkProvider.AUTHORITY+"/helper.apk");
+                Intent intent=new Intent(Intent.ACTION_VIEW).setDataAndType(uri,"application/vnd.android.package-archive").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                intent.setClipData(ClipData.newUri(getContentResolver(),"Embedded diagnostic helper",uri));
+                runOnUiThread(()->{if(!isDestroyed()){setBusy(false);launch(intent);}});
+            }catch(Exception error){runOnUiThread(()->{if(!isDestroyed()){setBusy(false);setup.setText(error.getMessage());}});}
+        });
     }
-
-    private Button button(LinearLayout parent, String text, Runnable action) {
-        Button button = new Button(this);
-        button.setText(text);
-        button.setAllCaps(false);
-        button.setOnClickListener(view -> action.run());
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-        params.bottomMargin = dp(8);
-        parent.addView(button, params);
-        return button;
+    private Bundle call(String method)throws Exception {
+        PackageInfo info=getPackageManager().getPackageInfo(HelperProtocol.HELPER,0);
+        if(info.applicationInfo==null||info.applicationInfo.uid!=1000||info.getLongVersionCode()!=HelperProtocol.VERSION_CODE||getPackageManager().checkSignatures(getPackageName(),HelperProtocol.HELPER)!=PackageManager.SIGNATURE_MATCH)throw new IOException("Matching system-UID helper is not installed");
+        Bundle result=getContentResolver().call(Uri.parse("content://"+HelperProtocol.AUTHORITY),method,null,null);
+        if(result==null)throw new IOException("Helper returned no response");if(result.containsKey("error"))throw new IOException(result.getString("error"));return result;
     }
-    private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
-    private void launch(Intent intent) {
-        try { startActivity(intent); }
-        catch (ActivityNotFoundException | SecurityException error) { message("This action is unavailable on this phone."); }
+    private void operation(String method){if(busy)return;setBusy(true);worker.execute(()->{String result;try{result=call(method).getString("status");}catch(Exception error){result=error.getMessage();}String finalResult=result;runOnUiThread(()->{if(!isDestroyed()){setBusy(false);setup.setText(finalResult);refresh();}});});}
+    private void refresh(){
+        if(busy)return;
+        worker.execute(()->{String state,report;try{state=call("status").getString("status");report=call("report").getString("report");}catch(Exception error){state="Helper unavailable: "+error.getMessage();report="Complete the one-time setup to collect privileged startup observations.";}
+            String a=state,b=report;runOnUiThread(()->{if(!isDestroyed()){standing.setText(a);int raw=b.indexOf("\n--- RAW OBSERVATIONS");observations.setText(raw<0?b:b.substring(0,raw));}});
+        });
     }
-    private void message(String text) { Toast.makeText(this, text, Toast.LENGTH_LONG).show(); }
+    private void share(){if(busy)return;setBusy(true);worker.execute(()->{
+        try{
+            String report;try{report=call("report").getString("report");}catch(Exception error){report="Helper report unavailable: "+error.getMessage();}
+            File setupFile=new File(createDeviceProtectedStorageContext().getFilesDir(),"setup-result.txt");
+            if(setupFile.isFile())report+="\n\n--- LAST SETUP RESULT ---\n"+TextFiles.read(setupFile);
+            File dir=new File(createDeviceProtectedStorageContext().getCacheDir(),"reports");if(!dir.isDirectory()&&!dir.mkdirs())throw new IOException("Cannot create export");
+            String name="report-"+UUID.randomUUID()+".txt";TextFiles.write(new File(dir,name),report);
+            Uri uri=Uri.parse("content://"+ReportProvider.AUTHORITY+"/reports/"+name);
+            Intent send=new Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_STREAM,uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);send.setClipData(ClipData.newUri(getContentResolver(),"Privileged boot report",uri));
+            runOnUiThread(()->{if(!isDestroyed()){setBusy(false);launch(Intent.createChooser(send,"Share boot report"));}});
+        }catch(Exception error){runOnUiThread(()->{if(!isDestroyed()){setBusy(false);setup.setText("Export failed: "+error.getMessage());}});}
+    });}
+    private void launch(Intent intent){try{startActivity(intent);}catch(ActivityNotFoundException|SecurityException error){setup.setText("Android could not open this action: "+error.getMessage());}}
+    private TextView text(LinearLayout parent,String content,int size,boolean bold){TextView v=new TextView(this);v.setText(content);v.setTextSize(size);v.setTextColor(Color.rgb(23,38,53));if(bold)v.setTypeface(Typeface.DEFAULT,Typeface.BOLD);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.bottomMargin=dp(14);parent.addView(v,p);return v;}
+    private void button(LinearLayout parent,String label,Runnable action){Button b=new Button(this);b.setText(label);b.setAllCaps(false);b.setOnClickListener(v->action.run());LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2);p.bottomMargin=dp(8);parent.addView(b,p);actions.add(b);}
+    private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}
 }

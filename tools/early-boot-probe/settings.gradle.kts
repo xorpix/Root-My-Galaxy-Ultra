@@ -6,4 +6,4 @@ dependencyResolutionManagement {
     repositories { google(); mavenCentral() }
 }
 rootProject.name = "RMGUEarlyBootProbe"
-include(":probe")
+include(":probe", ":helper")

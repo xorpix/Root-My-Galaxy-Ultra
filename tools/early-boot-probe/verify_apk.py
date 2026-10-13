@@ -1,91 +1,55 @@
 #!/usr/bin/env python3
-"""Check the separate diagnostic APK's identity, signature, permissions, and native contents."""
-import argparse
-import hashlib
-import os
-import re
+"""Verify a paired, diagnostic-only controller/helper build, including their shared signer."""
+import argparse,hashlib,os,re,shutil,subprocess,tempfile,zipfile
 from pathlib import Path
-import shutil
-import subprocess
-import zipfile
-
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("apk", type=Path)
-    parser.add_argument("--output", type=Path, required=True)
-    args = parser.parse_args()
-    sdk = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
-    if not sdk:
-        raise SystemExit("ANDROID_HOME or ANDROID_SDK_ROOT is required")
-    build_tools = Path(sdk) / "build-tools" / "36.0.0"
-
-    def run(tool, *argv):
-        result = subprocess.run([str(build_tools / tool), *map(str, argv)],
-                                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        if result.returncode:
-            raise SystemExit(f"{tool} failed: {result.stdout}")
-        return result.stdout
-
-    signature = run("apksigner", "verify", "--verbose", args.apk)
-    run("zipalign", "-c", "-P", "16", "4", args.apk)
-    badging = run("aapt2", "dump", "badging", args.apk)
-    if "package: name='dev.experimental.rmgu.bootprobe'" not in badging:
-        raise SystemExit("Unexpected package identity")
-    if "versionCode='3'" not in badging or "versionName='0.2.0'" not in badging:
-        raise SystemExit("Unexpected diagnostic version")
-    if "application-debuggable" in badging:
-        raise SystemExit("Diagnostic release APK must not be debuggable")
-    permissions = {line.split("name='")[1].split("'")[0]
-                   for line in badging.splitlines() if line.startswith("uses-permission:")}
-    if permissions != {"android.permission.INTERNET", "android.permission.RECEIVE_BOOT_COMPLETED"}:
-        raise SystemExit(f"Unexpected permissions: {sorted(permissions)}")
-    manifest = run("aapt2", "dump", "xmltree", args.apk, "--file", "AndroidManifest.xml")
-    if "android.uid.system" in manifest or "sharedUserId" in manifest:
-        raise SystemExit("Diagnostic probe must not use a shared/system UID")
-    for expected in ["ProbeAccessibilityService", "ProbeBootReceiver", "LOCKED_BOOT_COMPLETED", "directBootAware"]:
-        if expected not in manifest:
-            raise SystemExit(f"Missing manifest component: {expected}")
-    if "BIND_ACCESSIBILITY_SERVICE" not in manifest or "android.accessibilityservice" not in manifest:
-        raise SystemExit("Missing protected accessibility binding")
-    if "BIND_WALLPAPER" in manifest or "ProbeWallpaperService" in manifest:
-        raise SystemExit("Wallpaper component must not be present")
-    # AAPT2 may shorten res/xml/probe_accessibility.xml to a path such as res/a.xml.
-    # Resolve the compiled resource table rather than assuming its archive filename.
-    resources = run("aapt2", "dump", "resources", args.apk)
-    entries = re.split(r"(?m)(?=^\s*resource 0x[0-9a-fA-F]+ )", resources)
-    matches = [entry for entry in entries if re.search(r"\bxml/probe_accessibility\b", entry)]
-    if len(matches) != 1:
-        raise SystemExit("Cannot uniquely resolve the compiled accessibility metadata resource")
-    resource_id = re.search(r"resource (0x[0-9a-fA-F]+)", matches[0])
-    resource_path = re.search(r"\(file\)\s+(\S+)", matches[0])
-    if not resource_id or not resource_path or "@" + resource_id[1] not in manifest:
-        raise SystemExit("Accessibility metadata resource is not referenced by the manifest")
-    accessibility = run("aapt2", "dump", "xmltree", args.apk, "--file", resource_path[1])
-    if "E: accessibility-service" not in accessibility:
-        raise SystemExit("Manifest metadata must reference an accessibility-service definition")
-    for capability in ["canRetrieveWindowContent", "canPerformGestures", "canRequestFilterKeyEvents",
-                       "canRequestTouchExplorationMode", "canRequestFingerprintGestures", "isAccessibilityTool"]:
-        lines = [line for line in accessibility.splitlines() if capability in line]
-        if len(lines) != 1 or "0xffffffff" in lines[0] or "0x0" not in lines[0]:
-            raise SystemExit(f"Accessibility capability must be false: {capability}")
-    if "accessibilityEventTypes" in accessibility or "accessibilityFlags" in accessibility:
-        raise SystemExit("Probe must not subscribe to accessibility events or request flags")
-    with zipfile.ZipFile(args.apk) as archive:
-        names = set(archive.namelist())
-        libs = {name for name in names if name.startswith("lib/") and name.endswith(".so")}
-        if libs != {"lib/arm64-v8a/libbootprobe.so", "lib/x86_64/libbootprobe.so"}:
-            raise SystemExit(f"Unexpected native libraries: {sorted(libs)}")
-        if any(name.endswith((".ko", ".p12", ".jks", ".apk")) for name in names):
-            raise SystemExit("Unexpected payload or signing material in diagnostic APK")
-    args.output.mkdir(parents=True, exist_ok=True)
-    destination = args.output / "RMGU-Early-Boot-Probe-0.2.0.apk"
-    shutil.copyfile(args.apk, destination)
-    digest = hashlib.sha256(destination.read_bytes()).hexdigest()
-    (args.output / "RMGU-Early-Boot-Probe-0.2.0.apk.sha256").write_text(f"{digest}  {destination.name}\n")
-    (args.output / "apk-validation.txt").write_text(signature + "\n" + badging + "\n" + manifest + "\n" + accessibility)
-    print(f"Verified {destination.name}: {digest}")
-
-
-if __name__ == "__main__":
-    main()
+    p=argparse.ArgumentParser();p.add_argument('apk',type=Path);p.add_argument('--output',type=Path,required=True);args=p.parse_args()
+    sdk=os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT')
+    if not sdk:raise SystemExit('Android SDK is required')
+    tools=Path(sdk)/'build-tools'/'36.0.0'
+    def run(tool,*argv):
+        r=subprocess.run([str(tools/tool),*map(str,argv)],text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+        if r.returncode:raise SystemExit(r.stdout)
+        return r.stdout
+    def verify(apk,package,expected_permissions):
+        sig=run('apksigner','verify','--verbose','--print-certs',apk)
+        run('zipalign','-c','-P','16','4',apk)
+        badge=run('aapt2','dump','badging',apk)
+        assert "package: name='"+package+"'" in badge
+        assert "versionCode='4'" in badge and "versionName='0.3.0'" in badge
+        assert 'application-debuggable' not in badge
+        permissions={line.split("name='")[1].split("'")[0] for line in badge.splitlines() if line.startswith('uses-permission:')}
+        assert permissions==expected_permissions,permissions
+        manifest=run('aapt2','dump','xmltree',apk,'--file','AndroidManifest.xml')
+        cert=re.search(r'Signer #1 certificate SHA-256 digest: (\S+)',sig)
+        assert cert,'Signing certificate digest missing'
+        assert 'Signer #2 certificate SHA-256 digest' not in sig,'Multiple signers'
+        return sig,badge,manifest,cert[1]
+    permission='dev.experimental.rmgu.bootprobe.permission.HELPER'
+    c=verify(args.apk,'dev.experimental.rmgu.bootprobe',{'android.permission.REQUEST_INSTALL_PACKAGES',permission})
+    assert 'sharedUserId' not in c[2] and 'ProbeAccessibilityService' not in c[2]
+    assert 'signature' in c[2] or '0x2' in c[2]
+    with zipfile.ZipFile(args.apk) as z:
+        names=set(z.namelist());assert 'assets/privileged-helper.apk' in names
+        assert not any(n.endswith(('.ko','.jks','.p12')) for n in names)
+        assert {n for n in names if n.endswith('.apk')}=={'assets/privileged-helper.apk'}
+        helper=z.read('assets/privileged-helper.apk')
+    args.output.mkdir(parents=True,exist_ok=True)
+    helper_path=args.output/'RMGU-Privileged-Boot-Helper-0.3.0.apk';helper_path.write_bytes(helper)
+    h=verify(helper_path,'dev.experimental.rmgu.boothelper',{'android.permission.INTERNET','android.permission.ACCESS_NOTIFICATION_POLICY'})
+    assert c[3]==h[3],'Controller/helper signing certificates differ'
+    for token in ('android.uid.system','EarlyConditionService','BIND_CONDITION_PROVIDER_SERVICE','HelperProvider',permission,'directBootAware'):
+        assert token in h[2],token
+    assert '"system"' in h[2],'Helper must be hosted in the system process'
+    with zipfile.ZipFile(helper_path) as z:
+        names=set(z.namelist())
+        assert not any(n.endswith(('.so','.ko','.apk','.jks','.p12')) for n in names),'Privileged helper must be Java-only'
+        dex=b''.join(z.read(n) for n in names if n.endswith('.dex'))
+        for forbidden in (b'Ljava/lang/ProcessBuilder;',b'PrivilegeSetupMain',b'NativeProperties',b'AbxDocument'):
+            assert forbidden not in dex,forbidden
+    controller=args.output/'RMGU-Privileged-Boot-Probe-0.3.0.apk';shutil.copyfile(args.apk,controller)
+    for apk in (controller,helper_path):
+        digest=hashlib.sha256(apk.read_bytes()).hexdigest();(args.output/(apk.name+'.sha256')).write_text(digest+'  '+apk.name+'\n');print('Verified',apk.name,digest)
+    (args.output/'apk-validation.txt').write_text('\n'.join(c[:3])+ '\n--- HELPER ---\n'+'\n'.join(h[:3]))
+if __name__=='__main__':main()
