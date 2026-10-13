@@ -57,7 +57,7 @@ Each process segment has a separate identifier, so a framework restart remains v
 From the repository root, with JDK 25 and the Android SDK/NDK installed:
 
 ```sh
-./gradlew -p tools/early-boot-probe :probe:testReleaseUnitTest :probe:lintRelease :probe:assembleRelease --no-daemon
+./gradlew -p tools/early-boot-probe :probe:testDebugUnitTest :probe:lintRelease :probe:assembleRelease --no-daemon
 ```
 
 This standalone Gradle project does not configure or rebuild the main RMGU app. Its release variant is
