@@ -91,8 +91,11 @@ public final class MainActivity extends Activity {
             String text = "Home: " + (homeSelected ? "test wallpaper selected" : "test wallpaper not selected");
             if (Build.VERSION.SDK_INT >= 34) {
                 WallpaperInfo lock = manager.getWallpaperInfo(WallpaperManager.FLAG_LOCK);
-                boolean lockSelected = lock != null && probeComponent().equals(lock.getComponent());
-                text += "\nLock: " + (lockSelected ? "test wallpaper selected" : "test wallpaper not selected");
+                boolean lockSelected = WallpaperSelectionState.lockSelected(homeSelected,
+                        lock != null && probeComponent().equals(lock.getComponent()), lock != null,
+                        manager.getWallpaperId(WallpaperManager.FLAG_LOCK));
+                text += "\nLock: " + (lockSelected ? "test wallpaper selected" : "test wallpaper not selected")
+                        + (lockSelected && lock == null ? " (uses Home wallpaper)" : "");
             }
             selection.setText(text);
         } catch (RuntimeException error) {

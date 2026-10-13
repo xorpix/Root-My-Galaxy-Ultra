@@ -40,8 +40,11 @@ public final class WallpaperRootMain {
             WallpaperInfo home = manager.getWallpaperInfo(WallpaperManager.FLAG_SYSTEM);
             WallpaperInfo lock = manager.getWallpaperInfo(WallpaperManager.FLAG_LOCK);
             boolean homeSelected = home != null && component.equals(home.getComponent());
-            boolean lockSelected = lock != null && component.equals(lock.getComponent());
-            System.out.println("Home selected: " + homeSelected + "; lock selected: " + lockSelected);
+            int lockId = manager.getWallpaperId(WallpaperManager.FLAG_LOCK);
+            boolean lockSelected = WallpaperSelectionState.lockSelected(homeSelected,
+                    lock != null && component.equals(lock.getComponent()), lock != null, lockId);
+            System.out.println("Home selected: " + homeSelected + "; lock selected: " + lockSelected
+                    + "; separate lock wallpaper ID: " + lockId);
             if (!homeSelected || !lockSelected)
                 throw new IllegalStateException("Selection was not confirmed on both screens. Check Wallpaper and style.");
             System.out.println("RMGU_WALLPAPER_APPLIED_BOTH");
