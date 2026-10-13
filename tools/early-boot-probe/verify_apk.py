@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -20,8 +21,11 @@ def main():
     build_tools = Path(sdk) / "build-tools" / "36.0.0"
 
     def run(tool, *argv):
-        return subprocess.run([str(build_tools / tool), *map(str, argv)], check=True,
-                              text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout
+        result = subprocess.run([str(build_tools / tool), *map(str, argv)],
+                                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        if result.returncode:
+            raise SystemExit(f"{tool} failed: {result.stdout}")
+        return result.stdout
 
     signature = run("apksigner", "verify", "--verbose", args.apk)
     run("zipalign", "-c", "-P", "16", "4", args.apk)
@@ -46,7 +50,20 @@ def main():
         raise SystemExit("Missing protected accessibility binding")
     if "BIND_WALLPAPER" in manifest or "ProbeWallpaperService" in manifest:
         raise SystemExit("Wallpaper component must not be present")
-    accessibility = run("aapt2", "dump", "xmltree", args.apk, "--file", "res/xml/probe_accessibility.xml")
+    # AAPT2 may shorten res/xml/probe_accessibility.xml to a path such as res/a.xml.
+    # Resolve the compiled resource table rather than assuming its archive filename.
+    resources = run("aapt2", "dump", "resources", args.apk)
+    entries = re.split(r"(?m)(?=^\s*resource 0x[0-9a-fA-F]+ )", resources)
+    matches = [entry for entry in entries if re.search(r"\bxml/probe_accessibility\b", entry)]
+    if len(matches) != 1:
+        raise SystemExit("Cannot uniquely resolve the compiled accessibility metadata resource")
+    resource_id = re.search(r"resource (0x[0-9a-fA-F]+)", matches[0])
+    resource_path = re.search(r"\(file\)\s+(\S+)", matches[0])
+    if not resource_id or not resource_path or "@" + resource_id[1] not in manifest:
+        raise SystemExit("Accessibility metadata resource is not referenced by the manifest")
+    accessibility = run("aapt2", "dump", "xmltree", args.apk, "--file", resource_path[1])
+    if "E: accessibility-service" not in accessibility:
+        raise SystemExit("Manifest metadata must reference an accessibility-service definition")
     for capability in ["canRetrieveWindowContent", "canPerformGestures", "canRequestFilterKeyEvents",
                        "canRequestTouchExplorationMode", "canRequestFingerprintGestures", "isAccessibilityTool"]:
         lines = [line for line in accessibility.splitlines() if capability in line]
