@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""Check the separate diagnostic APK's identity, signature, permissions, and native contents."""
+import argparse
+import hashlib
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import zipfile
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("apk", type=Path)
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    sdk = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
+    if not sdk:
+        raise SystemExit("ANDROID_HOME or ANDROID_SDK_ROOT is required")
+    build_tools = Path(sdk) / "build-tools" / "36.0.0"
+
+    def run(tool, *argv):
+        return subprocess.run([str(build_tools / tool), *map(str, argv)], check=True,
+                              text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout
+
+    signature = run("apksigner", "verify", "--verbose", args.apk)
+    run("zipalign", "-c", "-P", "16", "4", args.apk)
+    badging = run("aapt2", "dump", "badging", args.apk)
+    if "package: name='dev.experimental.rmgu.bootprobe'" not in badging:
+        raise SystemExit("Unexpected package identity")
+    if "application-debuggable" in badging:
+        raise SystemExit("Diagnostic release APK must not be debuggable")
+    permissions = {line.split("name='")[1].split("'")[0]
+                   for line in badging.splitlines() if line.startswith("uses-permission:")}
+    if permissions != {"android.permission.INTERNET", "android.permission.RECEIVE_BOOT_COMPLETED"}:
+        raise SystemExit(f"Unexpected permissions: {sorted(permissions)}")
+    manifest = run("aapt2", "dump", "xmltree", args.apk, "--file", "AndroidManifest.xml")
+    if "android.uid.system" in manifest or "sharedUserId" in manifest:
+        raise SystemExit("Diagnostic probe must not use a shared/system UID")
+    for expected in ["ProbeWallpaperService", "ProbeBootReceiver", "LOCKED_BOOT_COMPLETED", "directBootAware"]:
+        if expected not in manifest:
+            raise SystemExit(f"Missing manifest component: {expected}")
+    with zipfile.ZipFile(args.apk) as archive:
+        names = set(archive.namelist())
+        libs = {name for name in names if name.startswith("lib/") and name.endswith(".so")}
+        if libs != {"lib/arm64-v8a/libbootprobe.so", "lib/x86_64/libbootprobe.so"}:
+            raise SystemExit(f"Unexpected native libraries: {sorted(libs)}")
+        if any(name.endswith((".ko", ".p12", ".jks", ".apk")) for name in names):
+            raise SystemExit("Unexpected payload or signing material in diagnostic APK")
+    args.output.mkdir(parents=True, exist_ok=True)
+    destination = args.output / "RMGU-Early-Boot-Probe-0.1.0.apk"
+    shutil.copyfile(args.apk, destination)
+    digest = hashlib.sha256(destination.read_bytes()).hexdigest()
+    (args.output / "RMGU-Early-Boot-Probe-0.1.0.apk.sha256").write_text(f"{digest}  {destination.name}\n")
+    (args.output / "apk-validation.txt").write_text(signature + "\n" + badging + "\n" + manifest)
+    print(f"Verified {destination.name}: {digest}")
+
+
+if __name__ == "__main__":
+    main()

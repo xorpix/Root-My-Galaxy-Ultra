@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="wallpaper_description">Temporary diagnostic wallpaper. Records boot timing and IPsec readiness. Does not root the phone or delay boot.</string>
+    <string name="wallpaper_name">RMGU Boot Probe</string>
+</resources>

@@ -1,0 +1,59 @@
+name: Early boot diagnostic probe
+
+on:
+  push:
+    branches: ['codex/early-boot-probe-*']
+    paths:
+      - 'tools/early-boot-probe/**'
+      - '.github/workflows/early-boot-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: early-boot-probe-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-37.0 build-tools;36.0.0 cmake;3.22.1 ndk;28.2.13676358'
+          accept-android-sdk-licenses: true
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Test, lint, and build the standalone diagnostic APK
+        run: ./gradlew -p tools/early-boot-probe :probe:testReleaseUnitTest :probe:lintRelease :probe:assembleRelease --no-daemon --no-configuration-cache
+      - name: Verify and stage the diagnostic APK
+        run: |
+          python3 tools/early-boot-probe/verify_apk.py \
+            tools/early-boot-probe/probe/build/outputs/apk/release/probe-release.apk \
+            --output "$RUNNER_TEMP/boot-probe-result"
+          cp tools/early-boot-probe/README.md "$RUNNER_TEMP/boot-probe-result/README.md"
+          git rev-parse HEAD > "$RUNNER_TEMP/boot-probe-result/source-commit.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RMGU-Early-Boot-Probe-${{ github.run_id }}
+          path: ${{ runner.temp }}/boot-probe-result/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Preserve validation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RMGU-Early-Boot-Probe-checks-${{ github.run_id }}
+          path: |
+            tools/early-boot-probe/probe/build/reports/
+            tools/early-boot-probe/probe/build/test-results/
+          if-no-files-found: ignore
+          retention-days: 30
