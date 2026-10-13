@@ -12,7 +12,6 @@ import android.widget.*;
 import java.io.File;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 
@@ -88,7 +87,7 @@ public final class MainActivity extends Activity {
                 if (old != null) for (File file : old)
                     if (file.lastModified() < System.currentTimeMillis() - 86_400_000L) file.delete();
                 String name = "report-" + UUID.randomUUID() + ".txt";
-                Files.writeString(new File(dir, name).toPath(), report, StandardCharsets.UTF_8);
+                TextFiles.write(new File(dir, name), report);
                 Uri uri = new Uri.Builder().scheme("content").authority(ReportProvider.AUTHORITY)
                         .appendPath("reports").appendPath(name).build();
                 Intent send = new Intent(Intent.ACTION_SEND).setType("text/plain")

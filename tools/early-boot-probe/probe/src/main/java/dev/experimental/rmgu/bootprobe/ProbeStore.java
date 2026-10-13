@@ -1,12 +1,10 @@
 package dev.experimental.rmgu.bootprobe;
 
 import android.content.Context;
-import android.os.SystemClock;
 import android.provider.Settings;
 import org.json.JSONObject;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.UUID;
@@ -21,7 +19,7 @@ final class ProbeStore {
         Context de = context.createDeviceProtectedStorageContext();
         String key = null;
         try {
-            String id = Files.readString(new File("/proc/sys/kernel/random/boot_id").toPath()).trim();
+            String id = TextFiles.read(new File("/proc/sys/kernel/random/boot_id")).trim();
             if (id.matches("[0-9a-f-]{36}")) key = "kernel-" + id;
         } catch (Exception ignored) { /* Stock Samsung may deny this read. */ }
         if (key == null) {
@@ -63,6 +61,6 @@ final class ProbeStore {
         if (!name.matches("boot-[a-z0-9-]+\\.jsonl")) return "";
         File file = new File(new File(de.getFilesDir(), "boot-observations"), name);
         if (!file.isFile() || file.length() > MAX_BYTES + 8192) return "";
-        return Files.readString(file.toPath(), StandardCharsets.UTF_8);
+        return TextFiles.read(file);
     }
 }
