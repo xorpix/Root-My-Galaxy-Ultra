@@ -867,7 +867,8 @@ Hold Power and Volume Down together for 7 seconds to restart it from there.</str
     <string name="d2_verified">DMC AT flag was read back as set</string>
     <string name="d2_unconfirmed">DMC AT flag is unconfirmed</string>
     <string name="d2_flags">Lock %1$d · Maintenance %2$d · AT %3$d\nObserved %4$d seconds ago in this Android session</string>
-    <string name="d2_setup_steps">One-time setup: root the phone normally, prepare the certificate, fully reboot, install the embedded helper, then activate it and enable this switch.</string>
+    <string name="d2_setup_steps">One-time setup: root the phone normally, prepare the certificate, fully reboot, install the embedded helper, fully reboot again, then activate it and enable this switch.</string>
+    <string name="d2_update_steps">Update the embedded helper, fully reboot, then activate it and check status. Existing certificate preparation does not need to be repeated.</string>
     <string name="d2_prepare">Prepare helper certificate (root)</string>
     <string name="d2_prepare_confirm">This changes Android’s package-signature trust so the signed D2 helper can join the system UID. Other APKs signed with RMGU’s key could also join that UID. An incorrect registry change can prevent Android from starting. RMGU validates the format, preserves other entries and keeps verified backups. Avoid app installations during preparation and fully reboot immediately afterward. Continue with existing root access?</string>
     <string name="d2_enable_confirm">Allow the helper to set only the DMC AT flag now and at boot? The remaining vault bytes are preserved and every write is read back. Turning this off stops future writes; it does not clear the current flag. Samsung normally resets it during the next full boot.</string>

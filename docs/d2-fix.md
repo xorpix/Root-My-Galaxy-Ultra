@@ -21,7 +21,8 @@ does not establish compatibility with every firmware or guarantee recovery.
    the provided button or the power menu.
 4. Reopen RMGU and choose **Install embedded helper**. Complete Android's APK
    installation prompt. The helper is embedded; no third-party download is used.
-5. Choose **Activate helper for boot**, then enable the D2 switch. Check that the
+5. **Fully reboot again** after installing the helper. Choose **Activate helper for boot**,
+   then enable the D2 switch. Check that the
    status reports an actual current-session AT=1 reading.
 6. To test independence from root, turn **Root on boot** off, fully reboot, leave
    the screen lock enabled, and check the D2 reading again without rooting.
@@ -43,10 +44,15 @@ next full boot. Root and autoroot settings remain independent.
   This matches the measured VaultKeeper access context. The companion is Java
   only, non-debuggable, has no native payload, and requests only the boot receiver
   permission. It has no launcher entry.
-- The only exported controls are fixed status, read-only refresh, switch and
-  activation operations. They require a signature permission and additionally
+- The only exported controls are an explicit bound service for fixed status,
+  read-only refresh and switch operations, plus the activation activity. They require a signature permission and additionally
   check the exact controller UID/package and signing certificate. No shell,
   arbitrary file, property, vault name, record number or byte-offset API exists.
+  Each Messenger request checks the framework-provided sender UID, has a short
+  deadline, and enabling also requires the running source/version to match the
+  controller. Control work runs off the system main thread. The app unbinds after
+  its query or cancellation; there is no permanent or foreground control service.
+  Read-only refresh does not set the activation flag or change the saved switch.
 - Boot work uses the private system-data settings file and `LOCKED_BOOT_COMPLETED`,
   `BOOT_COMPLETED` and package-replacement delivery. Explicit activation clears
   the new package's stopped state. Force-stopping or disabling the helper can
@@ -90,6 +96,16 @@ change offers **Update embedded helper**; after installation, **fully reboot** t
 load its new code into Android's system process. The app distinguishes an update
 that still needs installation from one installed but waiting for reboot. A
 main-app-only rebuild does not force an unnecessary helper update.
+
+The original provider transport could become unreachable after a full reboot:
+Android's system-provider startup skips sideloaded APKs in the `system` process.
+The bound service avoids that provider path. An unavailable connection now preserves
+the installed helper identity so updating and activating remain accessible, without
+reporting an unconfirmed switch or AT reading as verified. Updating from either
+earlier D2 test needs **Update embedded helper**, a full reboot and activation.
+Certificate preparation does not need to be repeated. The app does not bind newly
+installed helper code until a full reboot; this avoids loading a new component
+from Android's old cached APK. First installations also require that reboot.
 
 When updating from the first D2 test APK, old app-directory preferences are
 deliberately not imported: a failed preference commit could still have changed

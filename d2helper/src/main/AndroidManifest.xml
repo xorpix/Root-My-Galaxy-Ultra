@@ -7,8 +7,7 @@
         android:theme="@android:style/Theme.NoDisplay">
         <meta-data android:name="dev.experimental.azhlroot.d2helper.source"
             android:value="${d2SourceSha256}" />
-        <provider android:name=".D2Provider"
-            android:authorities="dev.experimental.azhlroot.d2helper.control"
+        <service android:name=".D2ControlService"
             android:exported="true" android:directBootAware="true"
             android:permission="dev.experimental.azhlroot.permission.CONTROL_D2_HELPER" />
         <activity android:name=".ActivateActivity" android:exported="true"

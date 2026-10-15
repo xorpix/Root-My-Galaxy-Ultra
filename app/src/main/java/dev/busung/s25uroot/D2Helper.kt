@@ -5,13 +5,14 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Bundle
+import android.os.SystemClock
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import dev.busung.s25uroot.d2.setup.SetupCommand
 import dev.experimental.rmgu.d2.D2Protocol
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -20,6 +21,7 @@ import java.security.MessageDigest
 
 internal data class D2Status(
     val installed: Boolean = false,
+    val identityVerified: Boolean = false,
     val controllable: Boolean = false,
     val needsUpdate: Boolean = false,
     val needsReboot: Boolean = false,
@@ -39,7 +41,6 @@ internal data class D2SetupResult(val ok: Boolean, val committed: Boolean, val d
 
 /** The companion is authenticated before any IPC, including read-only status requests. */
 internal object D2Helper {
-    private val uri = Uri.parse("content://${D2Protocol.AUTHORITY}")
     private fun preferences(context: Context) = context.createDeviceProtectedStorageContext()
         .getSharedPreferences("d2_setup", Context.MODE_PRIVATE)
 
@@ -60,37 +61,49 @@ internal object D2Helper {
 
     private fun hex(bytes: ByteArray) = bytes.joinToString("") { "%02x".format(it.toInt() and 255) }
 
-    private fun status(context: Context, method: String, enabled: Boolean? = null): D2Status {
+    private data class Installed(val status: D2Status, val source: String = "", val version: Int = 0, val stopped: Boolean = false)
+
+    private fun installed(context: Context): Installed {
         val pm = context.packageManager
         val info = try {
             pm.getPackageInfo(D2Protocol.HELPER, PackageManager.GET_SIGNING_CERTIFICATES or PackageManager.GET_META_DATA)
-        } catch (_: PackageManager.NameNotFoundException) { return D2Status() }
+        } catch (_: PackageManager.NameNotFoundException) { return Installed(D2Status()) }
         val app = requireNotNull(info.applicationInfo)
         if (app.uid != 1000 || app.processName != "system" ||
             app.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0 ||
             pm.checkSignatures(context.packageName, D2Protocol.HELPER) != PackageManager.SIGNATURE_MATCH
-        ) return D2Status(installed = true, detail = "Helper identity is not supported; no control request was sent")
+        ) return Installed(D2Status(installed = true, detail = "Helper identity is not supported; no control request was sent"))
         val expected = metadata(context)
-        // First inspect the protocol. An older matching helper may be disabled, but cannot be newly enabled.
-        val reply = context.contentResolver.call(uri, "status", null, null)
-            ?: error("Helper did not return a status")
-        require(reply.getInt("api") == D2Protocol.API && reply.getInt("uid") == 1000) {
-            "Unsupported helper protocol or UID"
+        val source = expected.getString("source")
+        val version = expected.getInt("version")
+        val needsUpdate = app.metaData?.getString(D2Protocol.SOURCE_METADATA) != source || info.longVersionCode != version.toLong()
+        // Do not instantiate a newly added component from the system process's old cached APK.
+        val needsReboot = !needsUpdate && (helperInstallPending(context, source) ||
+            info.lastUpdateTime > System.currentTimeMillis() - SystemClock.elapsedRealtime() + 2000)
+        return Installed(D2Status(installed = true, identityVerified = true, needsUpdate = needsUpdate,
+            needsReboot = needsReboot), source, version, app.flags and ApplicationInfo.FLAG_STOPPED != 0)
+    }
+
+    private suspend fun status(installed: Installed, client: D2ControlClient, method: String, enabled: Boolean? = null): D2Status {
+        suspend fun call(operation: String, value: Boolean? = null): Bundle {
+            val result = client.call(operation, installed.source, installed.version, value)
+            require(result.getInt("api") == D2Protocol.API && result.getInt("uid") == 1000) {
+                "Unsupported helper protocol or UID"
+            }
+            result.getString("error")?.let { error(it) }
+            return result
         }
-        val needsUpdate = app.metaData?.getString(D2Protocol.SOURCE_METADATA) != expected.getString("source") ||
-            info.longVersionCode != expected.getLong("version")
-        val needsReboot = !needsUpdate && (reply.getString("source") != expected.getString("source") ||
-            reply.getInt("version") != expected.getInt("version"))
-        require(method != "configure" || enabled != true || (!needsUpdate && !needsReboot)) {
+        val reply = call("status")
+        val needsReboot = reply.getString("source") != installed.source || reply.getInt("version") != installed.version
+        require(method != "configure" || enabled != true || !needsReboot) {
             "Install the matching helper and fully reboot before enabling D2"
         }
-        val result = if (method == "status") reply else context.contentResolver.call(
-            uri, method, null, enabled?.let { Bundle().apply { putBoolean("enabled", it) } },
-        ) ?: error("Helper did not return a result")
+        val result = if (method == "status" || (needsReboot && !(method == "configure" && enabled == false))) reply
+            else call(method, enabled)
         val timeout = result.getBoolean("timed_out")
-        return D2Status(
-            installed = true, controllable = true, needsUpdate = needsUpdate, needsReboot = needsReboot,
-            activated = result.getBoolean("activated") && app.flags and ApplicationInfo.FLAG_STOPPED == 0,
+        return installed.status.copy(
+            controllable = true, needsReboot = needsReboot,
+            activated = result.getBoolean("activated") && !installed.stopped,
             enabled = result.getBoolean("enabled"), busy = result.getBoolean("busy"),
             current = result.getBoolean("current"), verified = result.getBoolean("verified") && !timeout,
             lock = result.getInt("lock", -1), maintenance = result.getInt("maintenance", -1),
@@ -101,15 +114,38 @@ internal object D2Helper {
 
     suspend fun query(context: Context, refresh: Boolean = false, enabled: Boolean? = null): D2Status =
         withContext(Dispatchers.IO) {
-            var result = status(context, if (enabled != null) "configure" else if (refresh) "refresh" else "status", enabled)
-            // The provider returns immediately; secure-service calls run on the companion's bounded worker.
-            repeat(9) {
-                if (!result.busy) return@withContext result
-                delay(1000)
-                result = status(context, "status")
+            val installed = installed(context)
+            val base = installed.status
+            if (!base.identityVerified || base.needsUpdate || base.needsReboot) {
+                check(enabled == null) { "Update the embedded helper and fully reboot before changing D2" }
+                return@withContext base
             }
-            result
+            try {
+                D2ControlClient.use(context) { client ->
+                    var result = status(installed, client, if (enabled != null) "configure" else if (refresh) "refresh" else "status", enabled)
+                    // IPC never waits for a Samsung vault call; that work has its own bounded worker.
+                    repeat(9) {
+                        if (!result.busy || result.needsReboot) return@use result
+                        delay(1000)
+                        result = status(installed, client, "status")
+                    }
+                    result
+                }
+            } catch (error: CancellationException) { throw error }
+            catch (error: Exception) {
+                if (enabled != null) throw error
+                // Retain the authenticated installed identity so Update/Activate remain reachable.
+                base.copy(detail = error.message ?: "D2 control connection is unavailable")
+            }
         }
+
+    private fun helperInstallPending(context: Context, source: String): Boolean {
+        val p = preferences(context)
+        if (p.getString("helper_source", null) != source) return false
+        val boot = kernelBootToken()
+        return if (boot != null) p.getString("helper_boot", null) == boot else
+            Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1) == p.getInt("helper_count", -2)
+    }
 
     suspend fun installer(context: Context): Intent = withContext(Dispatchers.IO) {
         val expected = metadata(context)
@@ -131,13 +167,23 @@ internal object D2Helper {
             app.metaData?.getString(D2Protocol.SOURCE_METADATA) == expected.getString("source") &&
             archive.signingInfo?.apkContentsSigners?.singleOrNull()?.toByteArray()?.contentEquals(currentSigner(context)) == true
         ) { "Embedded helper identity check failed" }
+        check(preferences(context).edit().putString("helper_source", expected.getString("source"))
+            .putString("helper_boot", kernelBootToken()).putInt("helper_count", Settings.Global.getInt(
+                context.contentResolver, Settings.Global.BOOT_COUNT, -1,
+            )).commit()) { "The helper reboot marker could not be saved; installation was not started" }
         Intent(Intent.ACTION_VIEW).setDataAndType(
             FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", apk),
             "application/vnd.android.package-archive",
         ).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
 
-    fun activation() = Intent().setComponent(ComponentName(D2Protocol.HELPER, D2Protocol.ACTIVATION))
+    suspend fun activation(context: Context): Intent = withContext(Dispatchers.IO) {
+        val status = installed(context).status
+        check(status.identityVerified && !status.needsUpdate && !status.needsReboot && !rebootPending(context)) {
+            "Update the embedded helper and fully reboot before activating D2"
+        }
+        Intent().setComponent(ComponentName(D2Protocol.HELPER, D2Protocol.ACTIVATION))
+    }
 
     /** A successful preparation is remembered until a different kernel boot, including after an app restart. */
     fun rebootPending(context: Context): Boolean = runCatching {

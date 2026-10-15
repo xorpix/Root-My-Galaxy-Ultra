@@ -172,7 +172,7 @@ def verify(apk, project=ROOT, signatures=True):
         require(requested == {'android.permission.RECEIVE_BOOT_COMPLETED'}, 'Unexpected helper permissions')
         components = [n for n in app['children'] if n['name'] in ('activity', 'activity-alias', 'service', 'receiver', 'provider')]
         names = {attribute(n, 'name'): n for n in components}
-        expected = {NAMESPACE + '.' + n for n in ('D2Provider', 'ActivateActivity', 'D2BootReceiver')}
+        expected = {NAMESPACE + '.' + n for n in ('D2ControlService', 'ActivateActivity', 'D2BootReceiver')}
         require(set(names) == expected and len(components) == 3, 'Unexpected helper components')
         for name, node in names.items():
             if name.endswith('D2BootReceiver'):
@@ -182,7 +182,9 @@ def verify(apk, project=ROOT, signatures=True):
             else:
                 require(attribute(node, 'exported') is True and attribute(node, 'permission') == PERMISSION, 'Unprotected exported companion component')
                 require(not children(node, 'intent-filter'), 'Control components must be explicit-only')
-        require(attribute(names[NAMESPACE + '.D2Provider'], 'authorities') == HELPER + '.control', 'Unexpected control authority')
+        control = names[NAMESPACE + '.D2ControlService']
+        require(control['name'] == 'service' and attribute(control, 'directBootAware') is True,
+                'Control must use a direct-boot aware bound service, not a system-process provider')
         if signatures:
             sdk = os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT')
             require(bool(sdk), 'Android SDK is required to verify APK signatures')

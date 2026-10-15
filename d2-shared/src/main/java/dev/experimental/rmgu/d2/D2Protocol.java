@@ -6,7 +6,9 @@ public final class D2Protocol {
     public static final int API = 1;
     public static final String CONTROLLER = "dev.experimental.azhlroot";
     public static final String HELPER = CONTROLLER + ".d2helper";
-    public static final String AUTHORITY = HELPER + ".control";
+    public static final String SERVICE = "dev.experimental.rmgu.d2helper.D2ControlService";
+    public static final int REQUEST = 1;
+    public static final int RESPONSE = 2;
     public static final String PERMISSION = CONTROLLER + ".permission.CONTROL_D2_HELPER";
     public static final String ACTIVATION = "dev.experimental.rmgu.d2helper.ActivateActivity";
     public static final String ASSET = "d2/helper.apk";

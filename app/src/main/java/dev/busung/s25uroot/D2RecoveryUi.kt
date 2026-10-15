@@ -125,9 +125,9 @@ internal fun D2RecoverySection() {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 val reading = when {
                     !status.installed -> R.string.d2_not_installed
-                    !status.controllable -> R.string.d2_unavailable
                     status.needsUpdate -> R.string.d2_update_required
                     status.needsReboot -> R.string.d2_helper_reboot
+                    !status.controllable -> R.string.d2_unavailable
                     !status.activated -> R.string.d2_activation_needed
                     !status.current -> R.string.d2_not_checked
                     status.verified -> R.string.d2_verified
@@ -152,10 +152,14 @@ internal fun D2RecoverySection() {
                         }
                     }) { Text(stringResource(R.string.d2_reboot)) }
                 }
-                if (!status.controllable || status.needsUpdate) {
-                    Text(stringResource(R.string.d2_setup_steps), style = MaterialTheme.typography.bodyMedium)
-                    TextButton(enabled = !running && !pendingReboot, onClick = { confirming = "prepare" }) {
-                        Text(stringResource(R.string.d2_prepare))
+                if ((!status.controllable || status.needsUpdate) && !status.needsReboot) {
+                    if (!status.installed) {
+                        Text(stringResource(R.string.d2_setup_steps), style = MaterialTheme.typography.bodyMedium)
+                        TextButton(enabled = !running && !pendingReboot, onClick = { confirming = "prepare" }) {
+                            Text(stringResource(R.string.d2_prepare))
+                        }
+                    } else if (status.identityVerified) {
+                        Text(stringResource(R.string.d2_update_steps), style = MaterialTheme.typography.bodyMedium)
                     }
                     FilledTonalButton(enabled = !running && !pendingReboot, onClick = {
                         running = true
@@ -166,10 +170,14 @@ internal fun D2RecoverySection() {
                         }
                     }) { Text(stringResource(if (status.installed) R.string.d2_update else R.string.d2_install)) }
                 }
-                if (status.installed && status.controllable && !status.needsUpdate && !status.needsReboot) {
+                if (status.identityVerified && !status.needsUpdate && !status.needsReboot && !pendingReboot) {
                     TextButton(enabled = !running, onClick = {
-                        try { activate.launch(D2Helper.activation()) }
-                        catch (error: Exception) { message = error.message ?: context.getString(R.string.d2_activation_failed) }
+                        running = true
+                        scope.launch {
+                            try { activate.launch(D2Helper.activation(context)) }
+                            catch (error: Exception) { message = error.message ?: context.getString(R.string.d2_activation_failed) }
+                            finally { running = false }
+                        }
                     }) { Text(stringResource(R.string.d2_activate)) }
                 }
                 TextButton(enabled = !running, onClick = { refresh() }) { Text(stringResource(R.string.d2_check)) }
