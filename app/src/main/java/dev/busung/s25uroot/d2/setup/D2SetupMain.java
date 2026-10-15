@@ -7,7 +7,6 @@ import org.json.JSONObject;
 import org.xmlpull.v1.XmlPullParser;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.security.cert.CertificateFactory;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -23,8 +22,8 @@ public final class D2SetupMain {
         java.nio.channels.FileLock lock=null;
         try {
             if(Process.myUid()!=0)throw new SecurityException("Existing root access is required");
-            if(args.length!=2||!List.of("inspect","prepare","remove").contains(args[0]))throw new IllegalArgumentException("Invalid fixed setup operation");
-            if(!args[0].equals("inspect")) {
+            if(args.length!=2||!List.of("prepare","remove").contains(args[0]))throw new IllegalArgumentException("Invalid fixed setup operation");
+            {
                 ensureDirectories();
                 FileDescriptor fd=Os.open(new File(SETUP,"setup.lock").getPath(),OsConstants.O_CREAT|OsConstants.O_WRONLY|OsConstants.O_NOFOLLOW,0600);
                 guard=new FileOutputStream(fd);
@@ -41,14 +40,8 @@ public final class D2SetupMain {
             byte[] label=Os.getxattr(STORE,"security.selinux");
             if(label.length==0)throw new IOException("Package-registry SELinux label is unavailable");
             frameworkParse(original);
-            result.put("operation",args[0]).put("packages",trust.packages).put("format","ABX v0")
-                    .put("owner",metadata.st_uid+":"+metadata.st_gid).put("mode",Integer.toOctalString(metadata.st_mode&0777))
-                    .put("certificate_sha256",digest(der)).put("boot_key",bootKey()).put("trusted_references",trust.ownedCount(key));
-            if(args[0].equals("inspect")) {
-                File recorded=new File(SETUP,"signer.hex");
-                result.put("status","Read-only preflight passed. No system file was changed.")
-                        .put("can_prepare",!recorded.exists()||new String(read(recorded,22000),StandardCharsets.US_ASCII).trim().equals(key));
-            }else if(args[0].equals("prepare")) {
+            result.put("boot_key",bootKey());
+            if(args[0].equals("prepare")) {
                 if(bootKey().equals("unknown"))throw new IOException("Kernel boot identity is unavailable; preparation was not attempted");
                 ensureDirectories();
                 File recorded=new File(SETUP,"signer.hex");
@@ -173,7 +166,7 @@ public final class D2SetupMain {
             Os.rename(stage.getPath(),STORE);committed=true;
             syncDirectory(new File("/data/system"));
             verifyMetadata(new File(STORE),metadata,label);
-            if(!Arrays.equals(readStore(),patched))throw new IOException("Registry changed after commit; inspect before repeating");
+            if(!Arrays.equals(readStore(),patched))throw new IOException("Registry changed after commit; restart before repeating");
         }finally{if(stage.exists())stage.delete();}
     }
     private static void writeNew(File file,byte[] bytes,StructStat metadata,byte[] label)throws Exception {
@@ -193,6 +186,5 @@ public final class D2SetupMain {
         StructStat stat=Os.lstat(file.getPath());
         if(!OsConstants.S_ISREG(stat.st_mode)||stat.st_uid!=original.st_uid||stat.st_gid!=original.st_gid||(stat.st_mode&0777)!=(original.st_mode&0777)||!Arrays.equals(Os.getxattr(file.getPath(),"security.selinux"),label))throw new IOException("Owner/mode/SELinux metadata verification failed");
     }
-    private static String digest(byte[] bytes)throws Exception{return AbxDocument.hex(MessageDigest.getInstance("SHA-256").digest(bytes));}
     private static String bootKey(){try{return "kernel-"+new String(read(new File("/proc/sys/kernel/random/boot_id"),100),StandardCharsets.US_ASCII).trim();}catch(Exception ignored){return "unknown";}}
 }

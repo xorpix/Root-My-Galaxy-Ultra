@@ -31,9 +31,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
-/** The switch belongs to the helper; the launcher never persists a second, potentially divergent copy. */
+/** The helper owns the switch; verification refreshes automatically when settings are opened. */
 @Composable
 internal fun D2RecoverySection() {
     val context = LocalContext.current
@@ -42,6 +43,7 @@ internal fun D2RecoverySection() {
     var status by remember { mutableStateOf(D2Status()) }
     var running by remember { mutableStateOf(false) }
     var pendingReboot by remember { mutableStateOf(D2Helper.rebootPending(context)) }
+    var prepared by remember { mutableStateOf(D2Helper.prepared(context)) }
     var confirming by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
 
@@ -50,14 +52,20 @@ internal fun D2RecoverySection() {
         running = true
         scope.launch {
             try { status = D2Helper.query(context, refresh = enabled == null, enabled = enabled) }
-            catch (error: Exception) { message = error.message ?: context.getString(R.string.d2_unavailable) }
-            finally { pendingReboot = D2Helper.rebootPending(context); running = false }
+            catch (error: CancellationException) { throw error }
+            catch (_: Exception) {
+                status = status.copy(controllable = false, current = false, verified = false)
+                message = context.getString(if (enabled == null) R.string.d2_unavailable else R.string.d2_toggle_failed)
+            } finally {
+                pendingReboot = D2Helper.rebootPending(context)
+                prepared = D2Helper.prepared(context)
+                running = false
+            }
         }
     }
     val installer = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { refresh() }
     val activate = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        if (it.resultCode != Activity.RESULT_OK) message = it.data?.getStringExtra("error")
-            ?: context.getString(R.string.d2_activation_failed)
+        if (it.resultCode != Activity.RESULT_OK) message = context.getString(R.string.d2_activation_failed)
         refresh()
     }
     DisposableEffect(lifecycle) {
@@ -73,26 +81,34 @@ internal fun D2RecoverySection() {
             try {
                 if (mode == "remove" && status.controllable) D2Helper.query(context, enabled = false)
                 val result = D2Helper.setup(context, mode)
-                message = result.detail + if (result.committed && !result.ok) "\n\n" + context.getString(R.string.d2_commit_uncertain) else ""
+                message = context.getString(when {
+                    result.rootRequired -> R.string.d2_root_required
+                    result.committed && !result.ok -> R.string.d2_commit_uncertain
+                    result.ok && mode == "prepare" -> R.string.d2_prepared
+                    result.ok -> R.string.d2_removed
+                    mode == "prepare" -> R.string.d2_setup_failed
+                    else -> R.string.d2_remove_failed
+                })
                 status = D2Helper.query(context)
-            } catch (error: Exception) { message = error.message ?: context.getString(R.string.d2_unavailable) }
-            finally { pendingReboot = D2Helper.rebootPending(context); running = false }
+            } catch (error: CancellationException) { throw error }
+            catch (_: Exception) {
+                message = context.getString(if (mode == "prepare") R.string.d2_setup_failed else R.string.d2_remove_failed)
+            } finally {
+                pendingReboot = D2Helper.rebootPending(context)
+                prepared = D2Helper.prepared(context)
+                running = false
+            }
         }
     }
 
     confirming?.let { action ->
-        val description = when (action) {
-            "prepare" -> R.string.d2_prepare_confirm
-            "remove" -> R.string.d2_remove_confirm
-            else -> R.string.d2_enable_confirm
-        }
         AlertDialog(
             onDismissRequest = { confirming = null },
             title = { Text(stringResource(R.string.d2_title)) },
-            text = { Text(stringResource(description)) },
+            text = { Text(stringResource(if (action == "prepare") R.string.d2_prepare_confirm else R.string.d2_remove_confirm)) },
             confirmButton = { TextButton(onClick = {
                 confirming = null
-                if (action == "enable") refresh(true) else setup(action)
+                setup(action)
             }) { Text(stringResource(R.string.d2_continue)) } },
             dismissButton = { TextButton(onClick = { confirming = null }) { Text(stringResource(R.string.action_cancel)) } },
         )
@@ -112,10 +128,10 @@ internal fun D2RecoverySection() {
             title = stringResource(R.string.d2_title),
             description = stringResource(R.string.d2_summary),
             checked = status.enabled,
-            enabled = !running && status.controllable &&
+            enabled = !running && !pendingReboot && status.controllable &&
                 (status.enabled || (!status.needsUpdate && !status.needsReboot && status.activated)),
             position = SettingsCardPosition.Top,
-            onCheckedChange = { enabled -> if (enabled) confirming = "enable" else refresh(false) },
+            onCheckedChange = { refresh(it) },
         )
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -124,26 +140,20 @@ internal fun D2RecoverySection() {
         ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 val reading = when {
+                    running -> R.string.d2_working
+                    pendingReboot || status.needsReboot -> R.string.d2_helper_reboot
+                    !status.installed && prepared -> R.string.d2_install_needed
                     !status.installed -> R.string.d2_not_installed
                     status.needsUpdate -> R.string.d2_update_required
-                    status.needsReboot -> R.string.d2_helper_reboot
                     !status.controllable -> R.string.d2_unavailable
                     !status.activated -> R.string.d2_activation_needed
-                    !status.current -> R.string.d2_not_checked
-                    status.verified -> R.string.d2_verified
+                    !status.enabled -> R.string.d2_ready
+                    status.current && status.verified -> R.string.d2_verified
                     else -> R.string.d2_unconfirmed
                 }
                 Text(stringResource(reading), style = MaterialTheme.typography.titleSmall)
-                if (status.current && status.lock >= 0) Text(
-                    stringResource(R.string.d2_flags, status.lock, status.maintenance, status.at, status.ageMs / 1000),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                if (status.detail.isNotBlank()) Text(status.detail, style = MaterialTheme.typography.bodySmall)
-                Text(stringResource(R.string.d2_limit), style = MaterialTheme.typography.bodySmall)
                 if (running) LoadingIndicator()
                 if (pendingReboot || status.needsReboot) {
-                    Text(stringResource(if (pendingReboot) R.string.d2_reboot_required else R.string.d2_helper_reboot),
-                        color = MaterialTheme.colorScheme.error)
                     FilledTonalButton(enabled = !running, onClick = {
                         running = true
                         scope.launch {
@@ -151,38 +161,41 @@ internal fun D2RecoverySection() {
                             finally { running = false }
                         }
                     }) { Text(stringResource(R.string.d2_reboot)) }
-                }
-                if ((!status.controllable || status.needsUpdate) && !status.needsReboot) {
-                    if (!status.installed) {
-                        Text(stringResource(R.string.d2_setup_steps), style = MaterialTheme.typography.bodyMedium)
-                        TextButton(enabled = !running && !pendingReboot, onClick = { confirming = "prepare" }) {
-                            Text(stringResource(R.string.d2_prepare))
-                        }
-                    } else if (status.identityVerified) {
-                        Text(stringResource(R.string.d2_update_steps), style = MaterialTheme.typography.bodyMedium)
+                } else if (!status.installed) {
+                    Text(stringResource(if (prepared) R.string.d2_install_steps else R.string.d2_setup_steps),
+                        style = MaterialTheme.typography.bodyMedium)
+                    if (!prepared) FilledTonalButton(enabled = !running, onClick = { confirming = "prepare" }) {
+                        Text(stringResource(R.string.d2_prepare))
                     }
-                    FilledTonalButton(enabled = !running && !pendingReboot, onClick = {
+                }
+                if (!pendingReboot && !status.needsReboot &&
+                    ((!status.installed && prepared) || status.needsUpdate || (status.installed && !status.controllable))) {
+                    FilledTonalButton(enabled = !running, onClick = {
                         running = true
                         scope.launch {
                             try { installer.launch(D2Helper.installer(context)) }
-                            catch (error: Exception) { message = error.message ?: context.getString(R.string.d2_install_failed) }
+                            catch (error: CancellationException) { throw error }
+                            catch (_: Exception) { message = context.getString(R.string.d2_install_failed) }
                             finally { running = false }
                         }
                     }) { Text(stringResource(if (status.installed) R.string.d2_update else R.string.d2_install)) }
                 }
-                if (status.identityVerified && !status.needsUpdate && !status.needsReboot && !pendingReboot) {
-                    TextButton(enabled = !running, onClick = {
+                if (status.identityVerified && !status.needsUpdate && !status.needsReboot && !pendingReboot && !status.activated) {
+                    FilledTonalButton(enabled = !running, onClick = {
                         running = true
                         scope.launch {
                             try { activate.launch(D2Helper.activation(context)) }
-                            catch (error: Exception) { message = error.message ?: context.getString(R.string.d2_activation_failed) }
+                            catch (error: CancellationException) { throw error }
+                            catch (_: Exception) { message = context.getString(R.string.d2_activation_failed) }
                             finally { running = false }
                         }
                     }) { Text(stringResource(R.string.d2_activate)) }
                 }
-                TextButton(enabled = !running, onClick = { refresh() }) { Text(stringResource(R.string.d2_check)) }
-                TextButton(enabled = !running, onClick = { setup("inspect") }) { Text(stringResource(R.string.d2_inspect)) }
-                TextButton(enabled = !running, onClick = { confirming = "remove" }) { Text(stringResource(R.string.d2_remove)) }
+                if ((status.installed || prepared) && !pendingReboot && !status.needsReboot) {
+                    TextButton(enabled = !running, onClick = { confirming = "remove" }) {
+                        Text(stringResource(R.string.d2_remove))
+                    }
+                }
             }
         }
     }

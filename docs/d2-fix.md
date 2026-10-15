@@ -1,4 +1,4 @@
-# D2 fix: keep Odin reachable
+# Keep Odin reachable
 
 This optional setting implements the DMC AT-flag workaround described by
 [polygraphene/DFReroot](https://github.com/polygraphene/DFReroot/blob/main/D2_Error.md)
@@ -13,26 +13,25 @@ does not establish compatibility with every firmware or guarantee recovery.
 
 ## Setup and use
 
-1. Open **Advanced settings → Recovery → D2 fix · Keep Odin reachable**.
-2. Root normally and grant RMGU root access in the manager. Optionally run
-   **Inspect setup** first; it reads the registry without changing it.
-3. Read the preparation confirmation and choose **Prepare helper certificate**.
-   Avoid app installations during this step. **Fully reboot immediately** using
-   the provided button or the power menu.
-4. Reopen RMGU and choose **Install embedded helper**. Complete Android's APK
-   installation prompt. The helper is embedded; no third-party download is used.
-5. **Fully reboot again** after installing the helper. Choose **Activate helper for boot**,
-   then enable the D2 switch. Check that the
-   status reports an actual current-session AT=1 reading.
-6. To test independence from root, turn **Root on boot** off, fully reboot, leave
-   the screen lock enabled, and check the D2 reading again without rooting.
-   Confirm real Download Mode access separately on the test phone.
+1. Open **Advanced settings → Recovery → Keep Odin reachable**.
+2. With root active and RMGU granted root access, choose **Set up helper**.
+   Read the one-time system-permissions explanation, continue, and **restart
+   immediately** when prompted. Avoid app installations during this preparation.
+3. Return to the same setting, choose **Install helper** and complete Android’s
+   installation prompt. The signed **RMGU Odin Helper** is included in the app.
+4. **Restart again**, choose **Finish setup** if shown, then turn on the switch.
+5. The app checks automatically when the settings screen opens. **On · active**
+   means the helper is enabled and the AT flag was verified in this Android
+   session. An unavailable or unconfirmed state is shown in plain language.
+6. To check independence from root, turn **Root on boot** off, fully restart,
+   keep the screen lock enabled and reopen settings without activating root.
+   Confirm actual Download Mode access separately on the test phone.
 
-An enabled switch records intent. The status separately shows the observed
-flags, the observation's age, an unconfirmed/timeout condition, and whether the
-reading belongs to this Android session. Old observations cannot report current
-verification after a framework or full restart. A successful flag read-back does
-not prove that a particular bootloader will accept Odin.
+Setup, install, update and restart controls appear only when relevant. The
+public settings have no manual **Check status**, **Inspect setup**, raw flag
+values, observation timestamps or technical diagnostic messages. The helper
+still validates records and verifies writes internally. A saved switch alone
+never produces an active/verified status.
 
 Turning the switch off stops future writes. It deliberately does not clear AT or
 change the screen lock/maintenance flags. Samsung normally clears AT during the
@@ -54,10 +53,10 @@ next full boot. Root and autoroot settings remain independent.
   its query or cancellation; there is no permanent or foreground control service.
   Read-only refresh does not set the activation flag or change the saved switch.
 - Boot work uses the private system-data settings file and `LOCKED_BOOT_COMPLETED`,
-  `BOOT_COMPLETED` and package-replacement delivery. Explicit activation clears
+  `BOOT_COMPLETED` and package-replacement delivery. **Finish setup** clears
   the new package's stopped state. Force-stopping or disabling the helper can
-  prevent future boot delivery; activate it again after doing so.
-- The switch and activation are stored in the helper's fixed
+  prevent future boot delivery; finish setup again after doing so.
+- The switch and setup completion are stored in the helper's fixed
   `/data/system/rmgu-d2-settings.bin` file, with system ownership, private mode,
   atomic replacement, file/directory sync and exact read-back. This avoids app-data
   preference writes that the system process can be denied even with UID 1000.
@@ -92,7 +91,7 @@ promptly and check installation rather than assuming a receipt guarantees trust.
 Receipts and backups are kept in `/data/system/rmgu-d2-setup`. The helper's signing
 trust persists across reboots; it is not a one-boot certificate. The embedded APK
 is checked for package, signature, digest, version and source identity. A source
-change offers **Update embedded helper**; after installation, **fully reboot** to
+change offers **Update helper**; after installation, **fully reboot** to
 load its new code into Android's system process. The app distinguishes an update
 that still needs installation from one installed but waiting for reboot. A
 main-app-only rebuild does not force an unnecessary helper update.
@@ -101,8 +100,9 @@ The original provider transport could become unreachable after a full reboot:
 Android's system-provider startup skips sideloaded APKs in the `system` process.
 The bound service avoids that provider path. An unavailable connection now preserves
 the installed helper identity so updating and activating remain accessible, without
-reporting an unconfirmed switch or AT reading as verified. Updating from either
-earlier D2 test needs **Update embedded helper**, a full reboot and activation.
+reporting an unconfirmed switch or AT reading as verified. Updating from an earlier D2 test needs **Update helper**, a full restart and
+**Finish setup** if prompted. The helper’s display name is now **RMGU Odin Helper**;
+its package and signing identity stay the same.
 Certificate preparation does not need to be repeated. The app does not bind newly
 installed helper code until a full reboot; this avoids loading a new component
 from Android's old cached APK. First installations also require that reboot.
@@ -113,7 +113,7 @@ its in-memory value. Update the embedded helper, fully reboot, activate it again
 and explicitly enable the switch. Existing certificate preparation remains valid;
 it does not need to be repeated just to update this helper.
 
-Use **Remove helper and owned trust** with existing root, then fully reboot. It
+Use **Remove helper** with existing root, then fully reboot. It
 uninstalls the companion before editing a freshly read registry. It removes only
 the recorded signer's history references, retaining trust if another system-UID
 app needs it. Without an ownership receipt it removes the matching helper and
@@ -122,16 +122,20 @@ over the current one. Removal also deletes only the fixed, metadata-validated
 helper settings file and its atomic-write siblings. Verified backups are retained
 for manual recovery.
 
-## Validation limits
+## Validation and limits
+
+The maintainer confirmed successful operation in phone testing, including full
+reboots and Download Mode access on SM-S948B. This is not a compatibility claim
+for every Samsung model or firmware.
 
 Host tests exercise byte preservation, unknown records, cancellation, concurrent
 changes, uncertain writes and exact read-back, plus ABX/certificate-table
-validation and scoped cleanup. Builds check the actual nested APK's signature,
+validation and scoped cleanup. Builds check the actual nested APK’s signature,
 source fingerprint, manifest, direct-boot receiver and permission surface.
 Weekly releases rebuild/sign the helper in the fresh signing job and align and
 sign the outer APK afterward; no disposable helper key is shipped.
 
-**Phone validation remains required.** Very early boot failures before Android
-can deliver a broadcast and the brief reset/reapply interval remain uncovered.
-There is no boot-animation hold or claim of guaranteed unbricking. No new firmware
-root support, backend update or SusFS behavior is introduced by this feature.
+Very early boot failures before Android can deliver a broadcast and the brief
+reset/reapply interval remain uncovered. A verified AT flag does not guarantee
+recovery from every failure. No new firmware root support, backend update or
+SusFS behavior is introduced by this feature.

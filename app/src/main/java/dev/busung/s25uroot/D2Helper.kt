@@ -30,14 +30,9 @@ internal data class D2Status(
     val busy: Boolean = false,
     val current: Boolean = false,
     val verified: Boolean = false,
-    val lock: Int = -1,
-    val maintenance: Int = -1,
-    val at: Int = -1,
-    val ageMs: Long = -1,
-    val detail: String = "",
 )
 
-internal data class D2SetupResult(val ok: Boolean, val committed: Boolean, val detail: String)
+internal data class D2SetupResult(val ok: Boolean, val committed: Boolean, val rootRequired: Boolean = false)
 
 /** The companion is authenticated before any IPC, including read-only status requests. */
 internal object D2Helper {
@@ -72,7 +67,7 @@ internal object D2Helper {
         if (app.uid != 1000 || app.processName != "system" ||
             app.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0 ||
             pm.checkSignatures(context.packageName, D2Protocol.HELPER) != PackageManager.SIGNATURE_MATCH
-        ) return Installed(D2Status(installed = true, detail = "Helper identity is not supported; no control request was sent"))
+        ) return Installed(D2Status(installed = true))
         val expected = metadata(context)
         val source = expected.getString("source")
         val version = expected.getInt("version")
@@ -106,9 +101,6 @@ internal object D2Helper {
             activated = result.getBoolean("activated") && !installed.stopped,
             enabled = result.getBoolean("enabled"), busy = result.getBoolean("busy"),
             current = result.getBoolean("current"), verified = result.getBoolean("verified") && !timeout,
-            lock = result.getInt("lock", -1), maintenance = result.getInt("maintenance", -1),
-            at = result.getInt("at", -1), ageMs = result.getLong("age_ms", -1),
-            detail = if (timeout) "DMC check timed out; the flag is unconfirmed" else result.getString("detail").orEmpty(),
         )
     }
 
@@ -135,7 +127,7 @@ internal object D2Helper {
             catch (error: Exception) {
                 if (enabled != null) throw error
                 // Retain the authenticated installed identity so Update/Activate remain reachable.
-                base.copy(detail = error.message ?: "D2 control connection is unavailable")
+                base
             }
         }
 
@@ -200,29 +192,34 @@ internal object D2Helper {
             Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
         }.getOrDefault(-1)).commit()
 
+    fun prepared(context: Context): Boolean = preferences(context).getBoolean("prepared", false)
+
     suspend fun setup(context: Context, mode: String): D2SetupResult = withContext(Dispatchers.IO) {
         val command = SetupCommand.command(context.applicationInfo.sourceDir, mode, hex(currentSigner(context)))
         // If the UI process is lost after a commit, the next launch must still ask for a reboot.
-        val marking = mode != "inspect" && !rebootPending(context)
+        val marking = !rebootPending(context)
         if (marking) check(rememberBoot(context, kernelBootToken()?.let { "kernel-$it" } ?: "unknown")) {
             "The setup recovery marker could not be saved; no system change was requested"
         }
         val shell = KernelSuRuntime.rootShell(command, timeoutSeconds = 75)
             ?: run {
                 if (marking) preferences(context).edit().remove("prepared_boot").commit()
-                return@withContext D2SetupResult(false, false, context.getString(R.string.d2_root_required))
+                return@withContext D2SetupResult(false, false, rootRequired = true)
             }
         val json = shell.output.lineSequence().lastOrNull { it.startsWith("RMGU_D2_SETUP_RESULT ") }
             ?.substringAfter("RMGU_D2_SETUP_RESULT ")?.let(::JSONObject)
-            ?: return@withContext D2SetupResult(false, false, "Setup did not return a verified result. Check root permission, then use Inspect setup before retrying.")
+            ?: return@withContext D2SetupResult(false, false)
         val ok = shell.exitCode == 0 && json.optBoolean("ok")
         val committed = json.optBoolean("committed")
         if (mode == "prepare" && !ok && !committed && marking) {
             preferences(context).edit().remove("prepared_boot").commit()
         }
         if ((mode == "prepare" || mode == "remove") && (ok || committed)) {
+            check(preferences(context).edit().putBoolean("prepared", mode == "prepare").commit()) {
+                "The setup progress could not be saved; restart before continuing"
+            }
             rememberBoot(context, json.optString("boot_key"))
         }
-        D2SetupResult(ok, committed, json.optString(if (ok) "status" else "error", "Setup did not complete"))
+        D2SetupResult(ok, committed)
     }
 }
