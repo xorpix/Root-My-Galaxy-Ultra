@@ -207,9 +207,12 @@ class LifecycleTests(unittest.TestCase):
         self.boot.write_text('11111111-2222-3333-4444-555555555555\n')
         self.parent = self.root / 'parent-stat'
         self.parent_stat('100')
+        self.clock = self.root / 'uptime'
+        self.clock.write_text('1000.00 0.00\n')
         self.text = self.text.replace('/data/adb/rmgu/composer', str(self.directory))
         self.text = self.text.replace('/proc/sys/kernel/random/boot_id', str(self.boot))
         self.text = self.text.replace('"/proc/$PPID/stat"', shlex.quote(str(self.parent)))
+        self.text = self.text.replace('/proc/uptime', str(self.clock))
         for command in ('mv', 'rm'):
             (self.bin / command).symlink_to(shutil.which(command))
         self.rc('service vendor.hwc /vendor/bin/hw/hwcomposer\n')
@@ -248,7 +251,7 @@ class LifecycleTests(unittest.TestCase):
         self.stop_framework()
         result = self.mode('post-mount')
         self.assertEqual(0, result.returncode, result.stderr)
-        self.assertEqual(['done', 'post-mount'], self.transition.read_text().splitlines()[1:])
+        self.assertEqual(['done', 'post-mount'], self.transition.read_text().splitlines()[1:3])
         self.assertEqual(0, self.mode('native').returncode)
         self.assertEqual([['ctl.stop', 'vendor.hwc'], ['ctl.start', 'vendor.hwc']], self.calls())
 
@@ -312,7 +315,17 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual(1, self.mode('post-mount').returncode)
         self.assertEqual('armed', self.transition.read_text().splitlines()[1])
         self.assertEqual(0, self.mode('native').returncode)
-        self.assertEqual(['done', 'native'], self.transition.read_text().splitlines()[1:])
+        self.assertEqual(['done', 'native'], self.transition.read_text().splitlines()[1:3])
+
+    def test_a_delayed_hook_cannot_reset_the_display_after_its_stage_deadline(self):
+        self.mode('arm')
+        self.stop_framework()
+        self.clock.write_text('1020.00 0.00\n')
+        self.assertEqual(0, self.mode('post-mount').returncode)
+        self.assertEqual([], self.calls())
+        self.assertEqual('armed', self.transition.read_text().splitlines()[1])
+        self.assertEqual(0, self.mode('native').returncode)
+        self.assertEqual(2, len(self.calls()))
 
     def test_symlinked_state_is_refused(self):
         other = self.root / 'unrelated'

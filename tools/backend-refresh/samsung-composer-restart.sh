@@ -14,6 +14,13 @@ rmgu_transition=/data/adb/rmgu/composer/transition
 rmgu_key=
 rmgu_phase=
 rmgu_recorded_key=
+rmgu_armed_second=
+rmgu_uptime_second=
+rmgu_read_uptime() {
+    read -r rmgu_uptime rmgu_idle < /proc/uptime || return 1
+    rmgu_uptime_second=${rmgu_uptime%%.*}
+    case "$rmgu_uptime_second" in ''|*[!0-9]*) return 1 ;; esac
+}
 rmgu_make_key() {
     case "$PPID" in ''|*[!0-9]*) return 1 ;; esac
     IFS= read -r rmgu_boot < /proc/sys/kernel/random/boot_id || return 1
@@ -29,7 +36,7 @@ rmgu_make_key() {
 }
 rmgu_read_transition() {
     [ -f "$rmgu_transition" ] && [ ! -L "$rmgu_transition" ] || return 1
-    { IFS= read -r rmgu_recorded_key; IFS= read -r rmgu_phase; } < "$rmgu_transition"
+    { IFS= read -r rmgu_recorded_key; IFS= read -r rmgu_phase; IFS= read -r rmgu_source; IFS= read -r rmgu_armed_second; } < "$rmgu_transition"
 }
 rmgu_write_transition() {
     [ -n "$rmgu_key" ] || return 1
@@ -37,7 +44,7 @@ rmgu_write_transition() {
     [ ! -L "$rmgu_transition" ] || return 1
     if [ -e "$rmgu_transition" ]; then [ -f "$rmgu_transition" ] || return 1; fi
     rmgu_temporary="$rmgu_transition.$$.tmp"
-    (umask 077; set -C; printf '%s\n%s\n%s\n' "$rmgu_key" "$1" "$rmgu_mode" > "$rmgu_temporary") || return 1
+    (umask 077; set -C; printf '%s\n%s\n%s\n%s\n' "$rmgu_key" "$1" "$rmgu_mode" "$rmgu_armed_second" > "$rmgu_temporary") || return 1
     if ! mv -f "$rmgu_temporary" "$rmgu_transition"; then
         rm -f "$rmgu_temporary"
         return 1
@@ -49,6 +56,8 @@ rmgu_read_transition || :
 case "$rmgu_mode" in
     arm)
         [ "$(getprop sys.boot_completed)" = 0 ] || exit 0
+        rmgu_read_uptime || exit 1
+        rmgu_armed_second=$rmgu_uptime_second
         rmgu_write_transition armed
         exit "$?"
         ;;
@@ -58,6 +67,13 @@ case "$rmgu_mode" in
         [ "$(getprop sys.boot_completed)" = 0 ] || exit 0
         [ "$(getprop init.svc.zygote)" = stopped ] || exit 0
         case "$(getprop init.svc.zygote_secondary)" in ''|stopped) ;; *) exit 0 ;; esac
+        # KernelSU shares a 35-second deadline across boot-stage scripts and may
+        # stop waiting once it expires. Leave at least 14 seconds for our two
+        # five-second phases; never let a delayed hook reset an already-starting UI.
+        case "$rmgu_armed_second" in ''|*[!0-9]*) exit 0 ;; esac
+        rmgu_read_uptime || exit 0
+        rmgu_elapsed=$((rmgu_uptime_second - rmgu_armed_second))
+        [ "$rmgu_elapsed" -ge 0 ] && [ "$rmgu_elapsed" -lt 20 ] || exit 0
         ;;
     native)
         # The common hook ran before the bundled native fallback. Do not cycle
