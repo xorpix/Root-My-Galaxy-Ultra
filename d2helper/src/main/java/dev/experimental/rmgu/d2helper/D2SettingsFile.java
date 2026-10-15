@@ -49,8 +49,11 @@ final class D2SettingsFile implements D2Configuration.Storage {
             file.finishWrite(output);
             output = null;
             FileDescriptor directory = Os.open("/data/system", OsConstants.O_RDONLY |
-                    OsConstants.O_DIRECTORY | OsConstants.O_CLOEXEC | OsConstants.O_NOFOLLOW, 0);
-            try { Os.fsync(directory); } finally { Os.close(directory); }
+                    OsConstants.O_CLOEXEC | OsConstants.O_NOFOLLOW, 0);
+            try {
+                if (!OsConstants.S_ISDIR(Os.fstat(directory).st_mode)) throw new IOException("Expected system-data directory for fsync");
+                Os.fsync(directory);
+            } finally { Os.close(directory); }
         } catch (ErrnoException error) {
             throw new IOException("Cannot save D2 system settings: " + error.getMessage(), error);
         } finally {
