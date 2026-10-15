@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sharedUserId="android.uid.system">
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <application android:label="RMGU Odin Helper" android:allowBackup="false"
+        android:process="system" android:directBootAware="true"
+        android:theme="@android:style/Theme.NoDisplay">
+        <meta-data android:name="dev.experimental.azhlroot.d2helper.source"
+            android:value="${d2SourceSha256}" />
+        <service android:name=".D2ControlService"
+            android:exported="true" android:directBootAware="true"
+            android:permission="dev.experimental.azhlroot.permission.CONTROL_D2_HELPER" />
+        <activity android:name=".ActivateActivity" android:exported="true"
+            android:permission="dev.experimental.azhlroot.permission.CONTROL_D2_HELPER"
+            android:excludeFromRecents="true" />
+        <receiver android:name=".D2BootReceiver" android:exported="false" android:directBootAware="true">
+            <intent-filter>
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

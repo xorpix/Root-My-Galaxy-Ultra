@@ -127,6 +127,7 @@ Useful controls in Settings:
 | Reset all root state before loading | Destructive recovery option. AZHL clears the contents of `/data/adb`; DirtyFrag clears installed and pending modules. Leave it off for normal rooting. |
 | Protect image partitions | Enabled by default. Requests read-only protection for image partitions after root; it can block image flashing and boot-patching operations. |
 | Recovery Management | Module reload and framework/reboot actions for an already rooted session. A framework restart does not replace the full reboot required for a fresh attempt or backend change. |
+| Keep Odin reachable | Helps keep Download Mode available with a screen lock. An optional signed helper runs automatically after one-time root setup, independently of root on boot. [Setup guide](docs/d2-fix.md). |
 | Root on boot | Optional automation. Establish a working manual setup first; Android background-service restrictions and transport availability can prevent automatic startup. |
 
 The **Shizuku start token** is optional and only applies to Shizuku builds that

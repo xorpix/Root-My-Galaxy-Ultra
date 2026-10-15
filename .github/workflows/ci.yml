@@ -83,6 +83,12 @@ jobs:
       - name: Build APKs
         run: ./gradlew assembleDebug assembleRelease --no-daemon
 
+      - name: Verify embedded D2 companions
+        run: |
+          python3 -m unittest discover -s tools/backend-refresh -p test_d2_signing.py
+          python3 tools/verify_d2_helper.py app/build/outputs/apk/debug/app-debug.apk
+          python3 tools/verify_d2_helper.py app/build/outputs/apk/release/app-release.apk
+
       - name: Verify release APK signature
         shell: bash
         run: |

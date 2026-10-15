@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.security.MessageDigest
 import org.gradle.api.provider.ValueSource
 import org.gradle.api.provider.ValueSourceParameters
 
@@ -24,7 +25,7 @@ fun signingProperty(envName: String, propertyName: String): String? =
 //
 // Policy: major stays 1; minor grows per supported firmware generation
 // (1.1 = BZIG/OneUI 9); patch grows per fix on one generation (1.1.1, ...).
-val appVersionBase = "1.2.9"
+val appVersionBase = "1.2.10"
 
 // An offset under the version code, not a version of its own: the code is this plus the clock, and the
 // only rule is that it may be raised and never lowered - lowering it would put a new build below an
@@ -86,6 +87,8 @@ android {
             }
         }
     }
+
+    sourceSets.getByName("main").java.srcDir(rootProject.file("d2-shared/src/main/java"))
 
     buildFeatures {
         compose = true
@@ -195,4 +198,35 @@ dependencies {
     androidTestImplementation("androidx.test:core-ktx:1.7.0")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test:runner:1.7.0")
+}
+
+
+/** The signed companion is built with this variant, then embedded with an integrity receipt. */
+abstract class D2HelperAssets : DefaultTask() {
+    @get:InputFile abstract val apk: RegularFileProperty
+    @get:InputFile abstract val identity: RegularFileProperty
+    @get:OutputDirectory abstract val outputDir: DirectoryProperty
+    @TaskAction fun stage() {
+        val bytes = apk.get().asFile.readBytes()
+        val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
+            .joinToString("") { "%02x".format(it.toInt() and 255) }
+        val directory = outputDir.get().asFile.resolve("d2").apply { mkdirs() }
+        directory.resolve("helper.apk").writeBytes(bytes)
+        val record = identity.get().asFile.readText().trim().removeSuffix("}") +
+            ",\"sha256\":\"$digest\",\"size\":${bytes.size}}"
+        directory.resolve("helper.json").writeText(record)
+    }
+}
+androidComponents {
+    onVariants { variant ->
+        val type = requireNotNull(variant.buildType)
+        val capitalized = type.replaceFirstChar { it.uppercase() }
+        val stage = tasks.register<D2HelperAssets>("stageD2Helper$capitalized") {
+            dependsOn(":d2helper:assemble$capitalized", ":d2helper:writeD2Identity")
+            apk.set(project(":d2helper").layout.buildDirectory.file("outputs/apk/$type/d2helper-$type.apk"))
+            identity.set(project(":d2helper").layout.buildDirectory.file("outputs/d2-identity.json"))
+            outputDir.set(layout.buildDirectory.dir("generated/d2-helper/$type"))
+        }
+        variant.sources.assets?.addGeneratedSourceDirectory(stage, D2HelperAssets::outputDir)
+    }
 }

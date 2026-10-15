@@ -17,6 +17,9 @@ import zipfile
 from common import ASSETS, HERE, JAVA, JNI, PROJECT, app_version, baseline, capture, load_config, record, write_json
 from refresh import package_result, render_curated_notes
 
+sys.path.insert(0, str(PROJECT / 'tools'))
+from verify_d2_helper import verify as verify_d2, embed_signed_helper
+
 
 def metadata(result):
     info = json.loads((result / 'release.json').read_text())
@@ -59,6 +62,7 @@ def verify_apk(apk, project, info):
     match = re.search(r"package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'", output)
     if not match or (match[1], match[3]) != ('dev.experimental.azhlroot', info['version']):
         raise ValueError('APK package/version does not match this release')
+    verify_d2(apk, project)
     return int(match[2])
 
 
@@ -191,9 +195,19 @@ def sign(result):
         cert = subprocess.check_output(['keytool', '-exportcert', '-keystore', str(key),
                 '-storepass:env', 'KEYSTORE_PASSWORD', '-alias', os.environ['KEY_ALIAS']])
         expected = hashlib.sha256(cert).hexdigest()
+        # Build the privileged companion only from the checked, trusted application source in this
+        # fresh job. The disposable upstream-build job never receives the production signing key.
+        helper_env = dict(os.environ, KEYSTORE_FILE=str(key), KEYSTORE_TYPE='PKCS12')
+        subprocess.run([PROJECT / 'gradlew', ':d2helper:assembleRelease', '--no-daemon',
+                        '--no-configuration-cache'], cwd=PROJECT, env=helper_env, check=True)
+        helper = PROJECT / 'd2helper/build/outputs/apk/release/d2helper-release.apk'
+        rebuilt = Path(directory) / 'with-signed-helper.apk'
+        aligned = Path(directory) / 'aligned.apk'
+        embed_signed_helper(result / 'apk-input.apk', rebuilt, helper)
+        subprocess.run([android_tool('zipalign'), '-P', '16', '-f', '4', rebuilt, aligned], check=True)
         subprocess.run([android_tool('apksigner'), 'sign', '--ks', key,
                 '--ks-pass', 'env:KEYSTORE_PASSWORD', '--key-pass', 'env:KEY_PASSWORD',
-                '--ks-key-alias', os.environ['KEY_ALIAS'], '--out', output, result / 'apk-input.apk'], check=True)
+                '--ks-key-alias', os.environ['KEY_ALIAS'], '--out', output, aligned], check=True)
         certificate = capture([android_tool('apksigner'), 'verify', '--verbose', '--print-certs', output])
         digests = re.findall(r'certificate SHA-256 digest: ([0-9a-fA-F]+)', certificate)
         if digests != [expected]:
