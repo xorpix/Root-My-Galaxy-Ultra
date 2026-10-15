@@ -152,6 +152,9 @@ jobs:
       - name: Build release APK
         run: ./gradlew assembleRelease --no-daemon
 
+      - name: Verify embedded D2 companion
+        run: python3 tools/verify_d2_helper.py app/build/outputs/apk/release/app-release.apk
+
       - name: Verify APK payload integrity
         shell: bash
         run: |

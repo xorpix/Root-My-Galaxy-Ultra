@@ -15,4 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "RootMyGalaxy"
-include(":app")
+include(":app", ":d2helper")
