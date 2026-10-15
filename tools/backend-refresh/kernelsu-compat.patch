@@ -1485,19 +1485,16 @@ index a7434d020984f77f833d752b270738f73004f357..37936c0236caab998a4801508d3e2fa0
      Ok(())
  }
 diff --git a/userspace/ksud/src/soft_reboot.rs b/userspace/ksud/src/soft_reboot.rs
-index d9eb492bf637ae36456fbd77577aa85c8a7ff122..1fb6ed45c923daba7660b812993f046462d2a174 100644
+index d9eb492bf637ae36456fbd77577aa85c8a7ff122..9ec84d074bdbe44532e98c1f5d70d5d382d6cdca 100644
 --- a/userspace/ksud/src/soft_reboot.rs
 +++ b/userspace/ksud/src/soft_reboot.rs
-@@ -204,6 +204,17 @@ pub fn soft_reboot() -> Result<()> {
+@@ -204,6 +204,14 @@ pub fn soft_reboot() -> Result<()> {
  
      info!("post-fs-data");
      on_post_fs_data()?;
 +    // Cycle Samsung's active vendor composers before restarting Android's framework.
 +    if !Command::new("/system/bin/sh")
-+        .args([
-+            "-c",
-+            SAMSUNG_COMPOSER_SCRIPT,
-+        ])
++        .args(["-c", SAMSUNG_COMPOSER_SCRIPT])
 +        .status()
 +        .is_ok_and(|status| status.success())
 +    {
@@ -1506,7 +1503,7 @@ index d9eb492bf637ae36456fbd77577aa85c8a7ff122..1fb6ed45c923daba7660b812993f0464
      info!("start");
      let status = Command::new("start").status().context("start failed")?;
      if !status.success() {
-@@ -220,3 +231,278 @@ pub fn soft_reboot() -> Result<()> {
+@@ -220,3 +228,281 @@ pub fn soft_reboot() -> Result<()> {
          _exit(0);
      }
  }
@@ -1773,7 +1770,10 @@ index d9eb492bf637ae36456fbd77577aa85c8a7ff122..1fb6ed45c923daba7660b812993f0464
 +    ensure_hook_directory("/data/adb/emulated-soft-reboot.d", false)?;
 +    // Publish the shared body first and the arming entry point last. A partial
 +    // installation cannot arm a transition whose reset script is not installed.
-+    write_hook("/data/adb/rmgu/composer/restart.sh", SAMSUNG_COMPOSER_SCRIPT)?;
++    write_hook(
++        "/data/adb/rmgu/composer/restart.sh",
++        SAMSUNG_COMPOSER_SCRIPT,
++    )?;
 +    write_hook(
 +        "/data/adb/post-mount.d/00-rmgu-samsung-composer.sh",
 +        "#!/system/bin/sh\nexec /system/bin/sh /data/adb/rmgu/composer/restart.sh post-mount\n",
@@ -1865,7 +1865,7 @@ index 33653c511885d6851cb0b0459aac5a874cc2ad67..6c034ca9652e5f4a69981f67c6b3261a
 @@ -272,9 +312,19 @@ pub fn install(libadbroot: Option<PathBuf>, data_path: Option<PathBuf>) -> Resul
          }
      }
-
+ 
 +    if let Err(error) = crate::soft_reboot::install_samsung_composer_hooks() {
 +        log::warn!("Samsung composer lifecycle hooks were not installed: {error:#}");
 +    }

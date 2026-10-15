@@ -1,8 +1,8 @@
 {
   "schema": 2,
-  "app_base": "81cb5269c930395e9de38a658e0f7aa1f2df0a77",
+  "app_base": "bf48dd62b8b33b380be55b3fe04b4ff9f2bd2687",
   "uapi": 5,
-  "checked_date": "2026-10-14",
+  "checked_date": "2026-10-15",
   "build_status": "built",
   "backends": {
     "kernelsu": {
@@ -12,8 +12,8 @@
       "version": 32680,
       "daemon_version": "3.3.0-79-g0c0fdb96",
       "rust": "1.98.1",
-      "rebuild": true,
-      "compat_sha256": "e42266cdfd9260699d04a8742b9747f0c94ed6fd73512846618f22bbb5590484",
+      "rebuild": false,
+      "compat_sha256": "2e4181ae838b8bb4d2b9a126f31d762bf502f8b114d42d10ce5131690744b6c6",
       "branch": "main",
       "version_offset": 30000
     },
@@ -24,8 +24,8 @@
       "version": 33354,
       "daemon_version": "3.4.1-21-g3157e782",
       "rust": "1.98.1",
-      "rebuild": true,
-      "compat_sha256": "a92195f44d2ab5a61853adf8d4c9e2babbc12d53339d2c78aaff8261f4f7a46d",
+      "rebuild": false,
+      "compat_sha256": "1693254b58106f684fe39ee7f2bef889af221c4738132dc7343a35bc3a4cded5",
       "branch": "dev",
       "version_offset": 30000
     },
@@ -36,8 +36,8 @@
       "version": 35229,
       "daemon_version": "4.2.0-rc3-58-gd7260ca1",
       "rust": "nightly-2026-09-25",
-      "rebuild": true,
-      "compat_sha256": "97d1dd7fcd5d31159d079c4eb2214c87a198e953ec0098dd71ca54b3115df48f",
+      "rebuild": false,
+      "compat_sha256": "937a76935534953ea9ad5269c21b3174806bf0dc7ea571f82a5ce0377143aed6",
       "branch": "main",
       "version_offset": 30700
     }

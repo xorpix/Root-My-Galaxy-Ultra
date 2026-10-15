@@ -23,8 +23,8 @@
     "path": "kernelsu/patches/ReSukiSU-v4.2.0-rc3-samsung-kdp-rkp-defex.patch",
     "sha256": "6f4be33d5f558865f02e6d0010f40320f540c78f80c999ad6bf0b8f22275b4f4"
   },
-  "created_utc": "2026-10-14",
-  "app_base_commit": "81cb5269c930395e9de38a658e0f7aa1f2df0a77",
+  "created_utc": "2026-10-15",
+  "app_base_commit": "bf48dd62b8b33b380be55b3fe04b4ff9f2bd2687",
   "upstream_repository": "https://github.com/Baka-SU/BakaSU",
   "upstream_commit": "d7260ca1e5c128061122924d0d48754e361e135c",
   "upstream_commit_count": 4529,
@@ -43,8 +43,8 @@
   "source_provenance": "Existing Samsung compatibility changes rebased onto pinned upstream.",
   "outputs": {
     "ksud": {
-      "size": 4373200,
-      "sha256": "66800452500a4b9c9856b79836fdb56ec8db57433b3f2c38e8749045ac08ee8e"
+      "size": 4380304,
+      "sha256": "f6b1d578f8db38249034ec22193ea646abbf4607e14cafd784954214aab6daa3"
     },
     "kernelsu.ko": {
       "size": 432856,
@@ -57,8 +57,8 @@
   },
   "rebased_patch": {
     "path": "samsung-compat-35229.patch",
-    "size": 68854,
-    "sha256": "a01b753fe0ceae817364b3006f4d57e7886a476f82039be3e0d9882e2e9469e0"
+    "size": 76787,
+    "sha256": "937a76935534953ea9ad5269c21b3174806bf0dc7ea571f82a5ce0377143aed6"
   },
   "patched_source_sha256": {
     "kernel/Kbuild": "9cacd4841ec207a73926d5833473b8001d279318762a2d5b1db909431132a0fd",
@@ -80,10 +80,10 @@
     "userspace/ksud/build.rs": "dbe563b7904faf8467de95a5269ccfdbf7e69ddc588ac25052ee301a7f9d544a",
     "userspace/ksud/src/android/cli.rs": "e29d1aa8e7e73e48991c436891393adedc046f08f8a1e00265829b63c519a611",
     "userspace/ksud/src/android/late_load/mod.rs": "586afee86c0c06c7899cb3147884c5b4e473d5048c5850ca933a148938cfdb88",
-    "userspace/ksud/src/android/soft_reboot.rs": "27cbe751bb464fb31ed4f3771b71ac5e610e78be7ee19783745a999b6db6d261",
-    "userspace/ksud/src/android/utils.rs": "f52cfe6312c3fe2b44eb36e0b2ff862d51d8868c8cd5eea51a96748fdbee7539",
+    "userspace/ksud/src/android/soft_reboot.rs": "36b54a62c2d7623214fa335f0bfef08e560dfa60973317a024beb749f88709d2",
+    "userspace/ksud/src/android/utils.rs": "5616c4b795469abd91fc4df54de46f8a6790231baabf1caf6c51236814f67eb0",
     "userspace/ksuinit/src/lib.rs": "8e33b668dd35a23cafde56b00f49d35f832fa0ce7709733791f9e64c037c6ccc"
   },
-  "app_version": "1.2.7",
+  "app_version": "1.2.9",
   "previous_upstream_commit": "d7260ca1e5c128061122924d0d48754e361e135c"
 }

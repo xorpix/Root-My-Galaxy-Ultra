@@ -22,8 +22,8 @@
     "size": 54634,
     "sha256": "8bea92389e8b9ddcf63de83b776e7baed25636d6c85d07490c9c7016a969fb29"
   },
-  "created_utc": "2026-10-14",
-  "app_base_commit": "81cb5269c930395e9de38a658e0f7aa1f2df0a77",
+  "created_utc": "2026-10-15",
+  "app_base_commit": "bf48dd62b8b33b380be55b3fe04b4ff9f2bd2687",
   "upstream_repository": "https://github.com/tiann/KernelSU",
   "upstream_commit": "0c0fdb960178fa12d80d6cbcfdcb6ad8be6a865d",
   "upstream_commit_count": 2680,
@@ -42,8 +42,8 @@
   "source_provenance": "Existing Samsung compatibility changes rebased onto pinned upstream.",
   "outputs": {
     "ksud": {
-      "size": 5186616,
-      "sha256": "16df0ebfcef00cd818d44b81498e8fe5a43ed2b6446a92d91a7034d3f47fff53"
+      "size": 5195704,
+      "sha256": "eda5c9d35431cb19a68786c23c4534e3830ab877b7aa5895e45fae7240c2eccf"
     },
     "kernelsu.ko": {
       "size": 407712,
@@ -56,8 +56,8 @@
   },
   "rebased_patch": {
     "path": "samsung-compat-32680.patch",
-    "size": 60190,
-    "sha256": "3e8f0505da698478427a3e7034d748fbbfb8deb03c5bf7f5753762c748928172"
+    "size": 68102,
+    "sha256": "2e4181ae838b8bb4d2b9a126f31d762bf502f8b114d42d10ce5131690744b6c6"
   },
   "patched_source_sha256": {
     "kernel/Kbuild": "23f2bf2a44430a700acc19f425b1bfd8292184a8caa3eee40cbcb6624f49ce3d",
@@ -76,9 +76,9 @@
     "kernel/policy/app_profile.c": "ed726a7c12eb431389277efa02f4c65e1bda8d54c21742af40d990afb7834d49",
     "kernel/selinux/selinux.c": "8acc0e979b9d2f242dd16af856dda99bb866f9a62781f71b18cacb1995d43489",
     "userspace/ksud/src/late_load.rs": "b01d401c6f64a3e64e76932ab5e6605bc94f968cdfa0f522c343651ec9918567",
-    "userspace/ksud/src/soft_reboot.rs": "ff6f252965a0a9ecbddbebd215f736cb42dc219fc9856dd66e65d9a61426e2d4",
-    "userspace/ksud/src/utils.rs": "5a077fd7b9d5632c1879a7124f81e161cffd1cdb6dab72881778bf9dbabc80f0"
+    "userspace/ksud/src/soft_reboot.rs": "3b4de8e7112f43240969ad16c0e4e6938713c814d77f832e7932d75e547af407",
+    "userspace/ksud/src/utils.rs": "f4cd75fa27efc7b9480ea20ff2f3023388061cfe1da4343bf05e7bad6043a384"
   },
-  "app_version": "1.2.7",
+  "app_version": "1.2.9",
   "previous_upstream_commit": "0c0fdb960178fa12d80d6cbcfdcb6ad8be6a865d"
 }

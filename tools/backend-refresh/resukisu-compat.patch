@@ -1959,7 +1959,7 @@ index 1de7c87ba533e8cd85c46e9f39ad70daefb4d3ec..d07c854d6b6037a6fd0cf56684701bcb
 @@ -274,9 +312,18 @@ pub fn install(libadbroot: Option<PathBuf>, data_path: Option<PathBuf>) -> Resul
          }
      }
-
+ 
 +    if let Err(error) = crate::android::soft_reboot::install_samsung_composer_hooks() {
 +        log::warn!("Samsung composer lifecycle hooks were not installed: {error:#}");
 +    }

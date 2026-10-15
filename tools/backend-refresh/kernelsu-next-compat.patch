@@ -1949,7 +1949,7 @@ index 9365663cefe124422bea71e12e1b37b70928ce75..408389c69bea4265cd7b13c0f3ad72b8
 @@ -247,9 +277,18 @@ pub fn install(libadbroot: Option<PathBuf>) -> Result<()> {
          let _ = std::fs::copy(libadbroot, defs::LIBADBROOT_PATH);
      }
-
+ 
 +    if let Err(error) = crate::soft_reboot::install_samsung_composer_hooks() {
 +        log::warn!("Samsung composer lifecycle hooks were not installed: {error:#}");
 +    }
