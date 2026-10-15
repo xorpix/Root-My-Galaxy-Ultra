@@ -119,7 +119,7 @@ public final class D2SetupMain {
                 if(!OsConstants.S_ISREG(stat.st_mode)||stat.st_uid!=1000||stat.st_gid!=1000||
                         stat.st_nlink!=1||(stat.st_mode&0077)!=0)throw new IOException("Unexpected D2 helper settings metadata; automatic removal refused");
             }catch(ErrnoException error){if(error.errno==OsConstants.ENOENT)continue;throw error;}
-            Os.unlink(path);
+            java.nio.file.Files.delete(new File(path).toPath());
         }
         syncDirectory(new File("/data/system"));
     }
