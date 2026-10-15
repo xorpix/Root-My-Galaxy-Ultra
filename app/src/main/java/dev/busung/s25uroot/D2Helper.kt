@@ -22,6 +22,7 @@ internal data class D2Status(
     val installed: Boolean = false,
     val controllable: Boolean = false,
     val needsUpdate: Boolean = false,
+    val needsReboot: Boolean = false,
     val activated: Boolean = false,
     val enabled: Boolean = false,
     val busy: Boolean = false,
@@ -62,7 +63,7 @@ internal object D2Helper {
     private fun status(context: Context, method: String, enabled: Boolean? = null): D2Status {
         val pm = context.packageManager
         val info = try {
-            pm.getPackageInfo(D2Protocol.HELPER, PackageManager.GET_SIGNING_CERTIFICATES)
+            pm.getPackageInfo(D2Protocol.HELPER, PackageManager.GET_SIGNING_CERTIFICATES or PackageManager.GET_META_DATA)
         } catch (_: PackageManager.NameNotFoundException) { return D2Status() }
         val app = requireNotNull(info.applicationInfo)
         if (app.uid != 1000 || app.processName != "system" ||
@@ -76,15 +77,19 @@ internal object D2Helper {
         require(reply.getInt("api") == D2Protocol.API && reply.getInt("uid") == 1000) {
             "Unsupported helper protocol or UID"
         }
-        val needsUpdate = reply.getString("source") != expected.getString("source") ||
-            reply.getInt("version") != expected.getInt("version")
-        require(method != "configure" || enabled != true || !needsUpdate) { "Update the helper before enabling D2" }
+        val needsUpdate = app.metaData?.getString(D2Protocol.SOURCE_METADATA) != expected.getString("source") ||
+            info.longVersionCode != expected.getLong("version")
+        val needsReboot = !needsUpdate && (reply.getString("source") != expected.getString("source") ||
+            reply.getInt("version") != expected.getInt("version"))
+        require(method != "configure" || enabled != true || (!needsUpdate && !needsReboot)) {
+            "Install the matching helper and fully reboot before enabling D2"
+        }
         val result = if (method == "status") reply else context.contentResolver.call(
             uri, method, null, enabled?.let { Bundle().apply { putBoolean("enabled", it) } },
         ) ?: error("Helper did not return a result")
         val timeout = result.getBoolean("timed_out")
         return D2Status(
-            installed = true, controllable = true, needsUpdate = needsUpdate,
+            installed = true, controllable = true, needsUpdate = needsUpdate, needsReboot = needsReboot,
             activated = result.getBoolean("activated") && app.flags and ApplicationInfo.FLAG_STOPPED == 0,
             enabled = result.getBoolean("enabled"), busy = result.getBoolean("busy"),
             current = result.getBoolean("current"), verified = result.getBoolean("verified") && !timeout,
@@ -115,12 +120,15 @@ internal object D2Helper {
         }
         val directory = File(context.cacheDir, "d2-helper").apply { mkdirs() }
         val apk = File(directory, "helper.apk").apply { writeBytes(bytes) }
-        val archive = context.packageManager.getPackageArchiveInfo(apk.path, PackageManager.GET_SIGNING_CERTIFICATES)
+        val archive = context.packageManager.getPackageArchiveInfo(
+            apk.path, PackageManager.GET_SIGNING_CERTIFICATES or PackageManager.GET_META_DATA,
+        )
             ?: error("Embedded helper is not a valid APK")
         val app = requireNotNull(archive.applicationInfo)
         require(archive.packageName == D2Protocol.HELPER && archive.sharedUserId == "android.uid.system" &&
             app.processName == "system" && app.flags and ApplicationInfo.FLAG_DEBUGGABLE == 0 &&
             archive.longVersionCode == expected.getLong("version") &&
+            app.metaData?.getString(D2Protocol.SOURCE_METADATA) == expected.getString("source") &&
             archive.signingInfo?.apkContentsSigners?.singleOrNull()?.toByteArray()?.contentEquals(currentSigner(context)) == true
         ) { "Embedded helper identity check failed" }
         Intent(Intent.ACTION_VIEW).setDataAndType(

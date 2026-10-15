@@ -80,8 +80,10 @@ promptly and check installation rather than assuming a receipt guarantees trust.
 Receipts and backups are kept in `/data/system/rmgu-d2-setup`. The helper's signing
 trust persists across reboots; it is not a one-boot certificate. The embedded APK
 is checked for package, signature, digest, version and source identity. A source
-change offers **Update embedded helper**; a main-app-only rebuild does not force
-an unnecessary helper update.
+change offers **Update embedded helper**; after installation, **fully reboot** to
+load its new code into Android's system process. The app distinguishes an update
+that still needs installation from one installed but waiting for reboot. A
+main-app-only rebuild does not force an unnecessary helper update.
 
 Use **Remove helper and owned trust** with existing root, then fully reboot. It
 uninstalls the companion before editing a freshly read registry. It removes only

@@ -51,6 +51,7 @@ android {
         versionCode = helperCode
         versionName = "1.0"
         buildConfigField("String", "SOURCE_SHA256", "\"$sourceFingerprint\"")
+        manifestPlaceholders["d2SourceSha256"] = sourceFingerprint
     }
     sourceSets.getByName("main").java.srcDir(rootProject.file("d2-shared/src/main/java"))
     buildFeatures { buildConfig = true }

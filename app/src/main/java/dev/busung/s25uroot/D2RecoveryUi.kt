@@ -111,7 +111,8 @@ internal fun D2RecoverySection() {
             title = stringResource(R.string.d2_title),
             description = stringResource(R.string.d2_summary),
             checked = status.enabled,
-            enabled = !running && status.controllable && (status.enabled || (!status.needsUpdate && status.activated)),
+            enabled = !running && status.controllable &&
+                (status.enabled || (!status.needsUpdate && !status.needsReboot && status.activated)),
             position = SettingsCardPosition.Top,
             onCheckedChange = { enabled -> if (enabled) confirming = "enable" else refresh(false) },
         )
@@ -125,6 +126,7 @@ internal fun D2RecoverySection() {
                     !status.installed -> R.string.d2_not_installed
                     !status.controllable -> R.string.d2_unavailable
                     status.needsUpdate -> R.string.d2_update_required
+                    status.needsReboot -> R.string.d2_helper_reboot
                     !status.activated -> R.string.d2_activation_needed
                     !status.current -> R.string.d2_not_checked
                     status.verified -> R.string.d2_verified
@@ -138,8 +140,9 @@ internal fun D2RecoverySection() {
                 if (status.detail.isNotBlank()) Text(status.detail, style = MaterialTheme.typography.bodySmall)
                 Text(stringResource(R.string.d2_limit), style = MaterialTheme.typography.bodySmall)
                 if (running) LoadingIndicator()
-                if (pendingReboot) {
-                    Text(stringResource(R.string.d2_reboot_required), color = MaterialTheme.colorScheme.error)
+                if (pendingReboot || status.needsReboot) {
+                    Text(stringResource(if (pendingReboot) R.string.d2_reboot_required else R.string.d2_helper_reboot),
+                        color = MaterialTheme.colorScheme.error)
                     FilledTonalButton(enabled = !running, onClick = {
                         running = true
                         scope.launch {
@@ -162,7 +165,7 @@ internal fun D2RecoverySection() {
                         }
                     }) { Text(stringResource(if (status.installed) R.string.d2_update else R.string.d2_install)) }
                 }
-                if (status.installed && status.controllable) {
+                if (status.installed && status.controllable && !status.needsUpdate && !status.needsReboot) {
                     TextButton(enabled = !running, onClick = {
                         try { activate.launch(D2Helper.activation()) }
                         catch (error: Exception) { message = error.message ?: context.getString(R.string.d2_activation_failed) }

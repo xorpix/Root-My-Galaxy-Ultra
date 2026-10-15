@@ -16,7 +16,7 @@ public final class ActivateActivity extends Activity {
                 throw new SecurityException("Activation must be requested by RMGU");
             }
             if (!D2Store.activate(this)) throw new IllegalStateException("Activation was not saved");
-            D2Runtime.request(this, "activated", false, () -> {});
+            D2Runtime.request(this, "activated", D2Store.enabled(this), () -> {});
             setResult(RESULT_OK);
         } catch (Exception error) {
             setResult(RESULT_CANCELED);

@@ -862,6 +862,7 @@ Hold Power and Volume Down together for 7 seconds to restart it from there.</str
     <string name="d2_not_installed">Optional helper is not installed</string>
     <string name="d2_unavailable">Helper is unavailable or its identity could not be verified</string>
     <string name="d2_update_required">Update the helper to match this app before enabling D2</string>
+    <string name="d2_helper_reboot">The matching helper is installed. Fully reboot to load its updated code before enabling D2.</string>
     <string name="d2_not_checked">No current boot reading. Check status before relying on this setting.</string>
     <string name="d2_verified">DMC AT flag was read back as set</string>
     <string name="d2_unconfirmed">DMC AT flag is unconfirmed</string>

@@ -5,6 +5,8 @@
     <application android:label="RMGU D2 Helper" android:allowBackup="false"
         android:process="system" android:directBootAware="true"
         android:theme="@android:style/Theme.NoDisplay">
+        <meta-data android:name="dev.experimental.azhlroot.d2helper.source"
+            android:value="${d2SourceSha256}" />
         <provider android:name=".D2Provider"
             android:authorities="dev.experimental.azhlroot.d2helper.control"
             android:exported="true" android:directBootAware="true"

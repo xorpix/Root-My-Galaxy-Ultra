@@ -11,5 +11,6 @@ public final class D2Protocol {
     public static final String ACTIVATION = "dev.experimental.rmgu.d2helper.ActivateActivity";
     public static final String ASSET = "d2/helper.apk";
     public static final String METADATA = "d2/helper.json";
+    public static final String SOURCE_METADATA = HELPER + ".source";
     public static final String DIRECTORY = "/data/system/rmgu-d2-setup";
 }

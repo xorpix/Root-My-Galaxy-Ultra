@@ -165,6 +165,8 @@ def verify(apk, project=ROOT, signatures=True):
         require(attribute(app, 'process') == 'system', 'Helper must use the measured system process')
         require(attribute(app, 'directBootAware') is True, 'Helper is not direct-boot aware')
         require(attribute(app, 'allowBackup') is False and not attribute(app, 'debuggable', False), 'Helper must be non-debuggable with backups disabled')
+        identity = [n for n in children(app, 'meta-data') if attribute(n, 'name') == HELPER + '.source']
+        require(len(identity) == 1 and attribute(identity[0], 'value') == metadata['source'], 'Installed helper source identity mismatch')
         requested = {attribute(p, 'name') for p in children(xml, 'uses-permission')}
         require(requested == {'android.permission.RECEIVE_BOOT_COMPLETED'}, 'Unexpected helper permissions')
         components = [n for n in app['children'] if n['name'] in ('activity', 'activity-alias', 'service', 'receiver', 'provider')]
