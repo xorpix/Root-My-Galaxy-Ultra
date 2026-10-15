@@ -42,6 +42,8 @@ tasks.register<D2IdentityTask>("writeD2Identity") {
 }
 
 android {
+    // Java-only companion: do not inject a Kotlin runtime into the system process.
+    enableKotlin = false
     namespace = "dev.experimental.rmgu.d2helper"
     compileSdk = 37
     defaultConfig {

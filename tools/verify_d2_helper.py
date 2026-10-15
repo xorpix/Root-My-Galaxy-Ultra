@@ -143,6 +143,7 @@ def verify(apk, project=ROOT, signatures=True):
         host = manifest(parent.read('AndroidManifest.xml'))
     require(metadata['api'] == 1 and metadata['package'] == HELPER and metadata['version'] == 1, 'Helper identity mismatch')
     require(metadata['size'] == len(payload) and metadata['sha256'] == hashlib.sha256(payload).hexdigest(), 'Embedded helper digest/size mismatch')
+    require(len(payload) <= 256 * 1024, 'Companion unexpectedly exceeds 256 KiB')
     require(metadata['source'] == source_fingerprint(project), 'Helper source fingerprint mismatch')
     require(host['attributes'].get(('', 'package')) == CONTROLLER, 'Unexpected controller package')
     permission = [p for p in children(host, 'permission') if attribute(p, 'name') == PERMISSION]
