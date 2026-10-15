@@ -154,7 +154,7 @@ class PreparationTests(unittest.TestCase):
         (self.module / 'data').write_text('preserve this')
 
     def run_script(self, backend='kernelsu-next', sha=None, disable='0'):
-        return subprocess.run(['sh', str(self.script), backend, str(self.daemon), sha or self.sha, disable],
+        return subprocess.run(['sh', str(self.script), backend, str(self.daemon), sha or self.sha, disable, '0'],
                               capture_output=True, text=True, timeout=5)
 
     def test_first_switch_disables_but_preserves_modules_and_stages_both_paths(self):
