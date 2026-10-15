@@ -1528,7 +1528,7 @@ index 5381571f3ce58d913ae9e77e3d0f319f0081020a..1dc640d0c42ab2e2c1504c7eda7b93f3
      Ok(())
  }
 diff --git a/userspace/ksud/src/soft_reboot.rs b/userspace/ksud/src/soft_reboot.rs
-index d9eb492bf637ae36456fbd77577aa85c8a7ff122..2339eb74882e69e845d5d82a39e9607ba1d2a38b 100644
+index d9eb492bf637ae36456fbd77577aa85c8a7ff122..1fb6ed45c923daba7660b812993f046462d2a174 100644
 --- a/userspace/ksud/src/soft_reboot.rs
 +++ b/userspace/ksud/src/soft_reboot.rs
 @@ -204,6 +204,17 @@ pub fn soft_reboot() -> Result<()> {
@@ -1549,7 +1549,7 @@ index d9eb492bf637ae36456fbd77577aa85c8a7ff122..2339eb74882e69e845d5d82a39e9607b
      info!("start");
      let status = Command::new("start").status().context("start failed")?;
      if !status.success() {
-@@ -220,3 +231,272 @@ pub fn soft_reboot() -> Result<()> {
+@@ -220,3 +231,278 @@ pub fn soft_reboot() -> Result<()> {
          _exit(0);
      }
  }
@@ -1737,7 +1737,7 @@ index d9eb492bf637ae36456fbd77577aa85c8a7ff122..2339eb74882e69e845d5d82a39e9607b
 +"#;
 +
 +/// Install standard KernelSU lifecycle hooks, independent of manager-owned ksud copies.
-+pub(crate) fn install_samsung_composer_hooks() -> Result<()> {
++pub fn install_samsung_composer_hooks() -> Result<()> {
 +    use std::fs;
 +    use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
 +    use std::path::Path;
@@ -1771,7 +1771,10 @@ index d9eb492bf637ae36456fbd77577aa85c8a7ff122..2339eb74882e69e845d5d82a39e9607b
 +            Err(error) => return Err(error.into()),
 +        }
 +        let destination = Path::new(path);
-+        let name = destination.file_name().context("missing hook filename")?.to_string_lossy();
++        let name = destination
++            .file_name()
++            .context("missing hook filename")?
++            .to_string_lossy();
 +        let temporary = destination.with_file_name(format!(".{name}.{}.tmp", std::process::id()));
 +        let mut file = fs::OpenOptions::new()
 +            .write(true)
@@ -1795,7 +1798,10 @@ index d9eb492bf637ae36456fbd77577aa85c8a7ff122..2339eb74882e69e845d5d82a39e9607b
 +    let manufacturer = Command::new("/system/bin/getprop")
 +        .arg("ro.product.manufacturer")
 +        .output()?;
-+    anyhow::ensure!(manufacturer.status.success(), "cannot read device manufacturer");
++    anyhow::ensure!(
++        manufacturer.status.success(),
++        "cannot read device manufacturer"
++    );
 +    if !String::from_utf8_lossy(&manufacturer.stdout)
 +        .trim()
 +        .eq_ignore_ascii_case("samsung")

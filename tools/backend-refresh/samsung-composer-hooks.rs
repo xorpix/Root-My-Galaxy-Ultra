@@ -1,5 +1,5 @@
 /// Install standard KernelSU lifecycle hooks, independent of manager-owned ksud copies.
-pub(crate) fn install_samsung_composer_hooks() -> Result<()> {
+pub fn install_samsung_composer_hooks() -> Result<()> {
     use std::fs;
     use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
     use std::path::Path;
@@ -33,7 +33,10 @@ pub(crate) fn install_samsung_composer_hooks() -> Result<()> {
             Err(error) => return Err(error.into()),
         }
         let destination = Path::new(path);
-        let name = destination.file_name().context("missing hook filename")?.to_string_lossy();
+        let name = destination
+            .file_name()
+            .context("missing hook filename")?
+            .to_string_lossy();
         let temporary = destination.with_file_name(format!(".{name}.{}.tmp", std::process::id()));
         let mut file = fs::OpenOptions::new()
             .write(true)
@@ -57,7 +60,10 @@ pub(crate) fn install_samsung_composer_hooks() -> Result<()> {
     let manufacturer = Command::new("/system/bin/getprop")
         .arg("ro.product.manufacturer")
         .output()?;
-    anyhow::ensure!(manufacturer.status.success(), "cannot read device manufacturer");
+    anyhow::ensure!(
+        manufacturer.status.success(),
+        "cannot read device manufacturer"
+    );
     if !String::from_utf8_lossy(&manufacturer.stdout)
         .trim()
         .eq_ignore_ascii_case("samsung")
