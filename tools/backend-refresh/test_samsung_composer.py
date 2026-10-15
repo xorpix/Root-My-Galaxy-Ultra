@@ -2,8 +2,10 @@
 """Exercise the embedded composer script against mocked Android init properties."""
 import json
 import os
+import re
 from pathlib import Path
 import shlex
+import shutil
 import signal
 import subprocess
 import sys
@@ -46,6 +48,19 @@ elif cmd == 'sleep':
 else:
     raise SystemExit('Unexpected external command: ' + cmd)
 '''
+
+
+def rust_tokens(text):
+    tokens = re.findall(r'"(?:\\.|[^"\\])*"|[A-Za-z_][A-Za-z_0-9]*|[0-9]+|[^\s]', text)
+    result, calls = [], []
+    for token in tokens:
+        if token == '(':
+            calls.append(bool(result) and result[-1] == 'write_hook')
+        elif token == ')' and calls:
+            if calls.pop() and result[-1] == ',':
+                result.pop()  # rustfmt adds this optional trailing call comma.
+        result.append(token)
+    return result
 
 
 class ComposerTests(unittest.TestCase):
@@ -183,11 +198,179 @@ class ComposerTests(unittest.TestCase):
 
     def test_all_backends_embed_the_reviewed_script(self):
         script = SCRIPT.read_text()
+        installer = (HERE / 'samsung-composer-hooks.rs').read_text()
         for name in ('kernelsu', 'kernelsu-next', 'resukisu'):
             patch = (HERE / (name + '-compat.patch')).read_text()
             added = '\n'.join(line[1:] for line in patch.splitlines()
                               if line.startswith('+') and not line.startswith('+++'))
             self.assertIn('r#"' + script + '"#', added, name)
+            # cargo fmt may wrap Rust calls when the native build rebases its patch.
+            # Compare tokens so formatting is ignored but string contents stay exact.
+            start = added.index(installer.splitlines()[0])
+            expected = rust_tokens(installer)
+            self.assertEqual(rust_tokens(added[start:])[:len(expected)], expected, name)
+            prefix = 'crate::android::soft_reboot' if name == 'resukisu' else 'crate::soft_reboot'
+            self.assertIn(prefix + '::install_samsung_composer_hooks()', added, name)
+
+
+class LifecycleTests(unittest.TestCase):
+    rc = ComposerTests.rc
+
+    def setUp(self):
+        ComposerTests.setUp(self)
+        self.directory = self.root / 'composer'
+        self.directory.mkdir()
+        self.transition = self.directory / 'transition'
+        self.boot = self.root / 'boot-id'
+        self.boot.write_text('11111111-2222-3333-4444-555555555555\n')
+        self.parent = self.root / 'parent-stat'
+        self.parent_stat('100')
+        self.clock = self.root / 'uptime'
+        self.clock.write_text('1000.00 0.00\n')
+        self.text = self.text.replace('/data/adb/rmgu/composer', str(self.directory))
+        self.text = self.text.replace('/proc/sys/kernel/random/boot_id', str(self.boot))
+        self.text = self.text.replace('"/proc/$PPID/stat"', shlex.quote(str(self.parent)))
+        self.text = self.text.replace('/proc/uptime', str(self.clock))
+        for command in ('mv', 'rm'):
+            (self.bin / command).symlink_to(shutil.which(command))
+        self.rc('service vendor.hwc /vendor/bin/hw/hwcomposer\n')
+        self.state.write_text(json.dumps({'services': {
+            'vendor.hwc': 'running', 'sys.boot_completed': '0',
+            'zygote': 'running', 'zygote_secondary': 'running',
+        }}))
+
+    def parent_stat(self, start):
+        tail = ['S'] + ['0'] * 18 + [start, '0', '0']
+        self.parent.write_text('1234 (daemon (test)) ' + ' '.join(tail) + '\n')
+
+    def properties(self, **values):
+        state = json.loads(self.state.read_text())
+        state['services'].update(values)
+        self.state.write_text(json.dumps(state))
+
+    def mode(self, mode):
+        return subprocess.run(['/bin/dash', '-c', self.text, 'rmgu-composer', mode],
+                              env=self.env, capture_output=True, text=True, timeout=10)
+
+    def calls(self):
+        return json.loads(self.state.read_text()).get('calls', [])
+
+    def stop_framework(self):
+        self.properties(zygote='stopped', zygote_secondary='stopped')
+
+    def test_an_ordinary_late_load_never_restarts_the_display(self):
+        self.stop_framework()
+        self.assertEqual(0, self.mode('post-mount').returncode)
+        self.assertEqual([], self.calls())
+
+    def test_manager_soft_reboot_resets_once_before_the_native_fallback(self):
+        self.assertEqual(0, self.mode('arm').returncode)
+        self.assertEqual([], self.calls())
+        self.stop_framework()
+        result = self.mode('post-mount')
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(['done', 'post-mount'], self.transition.read_text().splitlines()[1:3])
+        self.assertEqual(0, self.mode('native').returncode)
+        self.assertEqual([['ctl.stop', 'vendor.hwc'], ['ctl.start', 'vendor.hwc']], self.calls())
+
+    def test_repeated_soft_reboots_rearm_the_hook(self):
+        self.stop_framework()
+        for _ in range(2):
+            self.assertEqual(0, self.mode('arm').returncode)
+            self.assertEqual(0, self.mode('post-mount').returncode)
+        self.assertEqual(4, len(self.calls()))
+
+    def test_a_running_primary_or_secondary_zygote_blocks_the_common_hook(self):
+        self.mode('arm')
+        self.assertEqual(0, self.mode('post-mount').returncode)
+        self.properties(zygote='stopped')
+        self.assertEqual(0, self.mode('post-mount').returncode)
+        self.assertEqual([], self.calls())
+
+    def test_a_completed_boot_cannot_arm_or_consume_a_transition(self):
+        self.properties(**{'sys.boot_completed': '1'})
+        self.assertEqual(0, self.mode('arm').returncode)
+        self.assertFalse(self.transition.exists())
+        self.properties(**{'sys.boot_completed': '0'})
+        self.mode('arm')
+        self.stop_framework()
+        self.properties(**{'sys.boot_completed': '1'})
+        self.assertEqual(0, self.mode('post-mount').returncode)
+        self.assertEqual([], self.calls())
+
+    def test_a_marker_from_a_previous_kernel_boot_is_ignored(self):
+        self.mode('arm')
+        self.stop_framework()
+        self.boot.write_text('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee\n')
+        self.assertEqual(0, self.mode('post-mount').returncode)
+        self.assertEqual([], self.calls())
+
+    def test_another_daemon_or_a_reused_pid_cannot_consume_the_marker(self):
+        self.mode('arm')
+        self.stop_framework()
+        self.parent_stat('101')
+        self.assertEqual(0, self.mode('post-mount').returncode)
+        self.assertEqual([], self.calls())
+
+    def test_old_completion_cannot_suppress_a_new_native_daemon(self):
+        self.mode('arm')
+        self.stop_framework()
+        self.mode('post-mount')
+        self.parent_stat('101')
+        self.assertEqual(0, self.mode('native').returncode)
+        self.assertEqual(4, len(self.calls()))
+
+    def test_the_native_path_still_works_without_lifecycle_hooks(self):
+        self.assertEqual(0, self.mode('native').returncode)
+        self.assertEqual(2, len(self.calls()))
+
+    def test_failed_common_reset_is_retried_by_the_native_fallback(self):
+        state = json.loads(self.state.read_text())
+        state['fail'] = {'ctl.stop': {'vendor.hwc': 1}}
+        self.state.write_text(json.dumps(state))
+        self.mode('arm')
+        self.stop_framework()
+        self.assertEqual(1, self.mode('post-mount').returncode)
+        self.assertEqual('armed', self.transition.read_text().splitlines()[1])
+        self.assertEqual(0, self.mode('native').returncode)
+        self.assertEqual(['done', 'native'], self.transition.read_text().splitlines()[1:3])
+
+    def test_a_delayed_hook_cannot_reset_the_display_after_its_stage_deadline(self):
+        self.mode('arm')
+        self.stop_framework()
+        self.clock.write_text('1020.00 0.00\n')
+        self.assertEqual(0, self.mode('post-mount').returncode)
+        self.assertEqual([], self.calls())
+        self.assertEqual('armed', self.transition.read_text().splitlines()[1])
+        self.assertEqual(0, self.mode('native').returncode)
+        self.assertEqual(2, len(self.calls()))
+
+    def test_symlinked_state_is_refused(self):
+        other = self.root / 'unrelated'
+        other.write_text('unchanged')
+        self.transition.symlink_to(other)
+        self.assertEqual(1, self.mode('arm').returncode)
+        self.assertEqual('unchanged', other.read_text())
+        self.assertEqual([], self.calls())
+
+    def test_malformed_process_metadata_cannot_arm_the_hook(self):
+        self.parent.write_text('not proc stat\n')
+        self.assertEqual(1, self.mode('arm').returncode)
+        self.assertFalse(self.transition.exists())
+
+    def test_a_directory_cannot_be_used_as_transition_state(self):
+        self.transition.mkdir()
+        self.assertEqual(1, self.mode('arm').returncode)
+        self.assertEqual([], list(self.transition.iterdir()))
+
+    def test_non_samsung_devices_have_no_hook_side_effects(self):
+        state = json.loads(self.state.read_text())
+        state['manufacturer'] = 'Other'
+        self.state.write_text(json.dumps(state))
+        for mode in ('arm', 'post-mount', 'native'):
+            self.assertEqual(0, self.mode(mode).returncode)
+        self.assertFalse(self.transition.exists())
+        self.assertEqual([], self.calls())
 
 
 if __name__ == '__main__':

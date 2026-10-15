@@ -1,8 +1,8 @@
 {
   "schema": 2,
-  "created_utc": "2026-10-14",
-  "app_version": "1.2.7",
-  "app_base_commit": "81cb5269c930395e9de38a658e0f7aa1f2df0a77",
+  "created_utc": "2026-10-15",
+  "app_version": "1.2.9",
+  "app_base_commit": "bf48dd62b8b33b380be55b3fe04b4ff9f2bd2687",
   "upstream_repository": "https://github.com/KernelSU-Next/KernelSU-Next",
   "upstream_commit": "3157e7822190eba628ca6796242db970405e440a",
   "previous_upstream_commit": "3157e7822190eba628ca6796242db970405e440a",
@@ -35,8 +35,8 @@
   },
   "outputs": {
     "ksud": {
-      "size": 4296376,
-      "sha256": "94f16aa8496c42f888a026eb1b27e6aac71b8fc2a92fa992488fbf8dd3e4ff8a"
+      "size": 4303544,
+      "sha256": "9fbc08223e55de8a83a79959d3f4ea23e109e9fc3d8ad37b4cea65d6a08d7096"
     },
     "kernelsu.ko": {
       "size": 502192,
@@ -49,8 +49,8 @@
   },
   "rebased_patch": {
     "path": "samsung-compat-33354.patch",
-    "size": 63732,
-    "sha256": "0668a39309bc31875e79ff6b96728ec3fec8c4c6d4ff9ba3441a84b1a18a8a9a"
+    "size": 71712,
+    "sha256": "1693254b58106f684fe39ee7f2bef889af221c4738132dc7343a35bc3a4cded5"
   },
   "validation": {
     "kernel_build": "passed",
@@ -79,9 +79,9 @@
     "kernel/policy/app_profile.c": "e7da56b2cd85327b3f7d06f02e06aaca4ff64bff6132ffefd346c9124febf784",
     "kernel/selinux/selinux.c": "fb3f82179ad364ac50ac148e0c014d4f822bc586251f3efa5ee4422687a2c036",
     "userspace/ksud/src/late_load.rs": "483cd4ece910d2cdefd0d1b6787735feaeb16c74c0aa909380e25b480a4cb11f",
-    "userspace/ksud/src/soft_reboot.rs": "ff6f252965a0a9ecbddbebd215f736cb42dc219fc9856dd66e65d9a61426e2d4",
+    "userspace/ksud/src/soft_reboot.rs": "f76c3603e9699758c340f983c150ebc20475697f847fff4c3a9758c0eb77fe32",
     "userspace/ksud/src/susfsd.rs": "3c944df9030528ea786f83fea0b37f5148e7c90aa991708f495a2f57ff995e9e",
-    "userspace/ksud/src/utils.rs": "75559a08f8b45a50157152c6870bf8db9b53682c6b76644e42bb5e5faf1ecfd3",
+    "userspace/ksud/src/utils.rs": "4f63c4c55d39060d920658dbe8c0706f4514a89f0796e9a2fd7b75deafc71df5",
     "userspace/ksuinit/src/lib.rs": "8e33b668dd35a23cafde56b00f49d35f832fa0ce7709733791f9e64c037c6ccc"
   }
 }
