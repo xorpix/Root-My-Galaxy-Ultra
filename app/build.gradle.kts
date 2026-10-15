@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.security.MessageDigest
 import org.gradle.api.provider.ValueSource
 import org.gradle.api.provider.ValueSourceParameters
 
@@ -207,7 +208,7 @@ abstract class D2HelperAssets : DefaultTask() {
     @get:OutputDirectory abstract val outputDir: DirectoryProperty
     @TaskAction fun stage() {
         val bytes = apk.get().asFile.readBytes()
-        val digest = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
+        val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
             .joinToString("") { "%02x".format(it.toInt() and 255) }
         val directory = outputDir.get().asFile.resolve("d2").apply { mkdirs() }
         directory.resolve("helper.apk").writeBytes(bytes)

@@ -132,27 +132,42 @@ internal object D2Helper {
     fun activation() = Intent().setComponent(ComponentName(D2Protocol.HELPER, D2Protocol.ACTIVATION))
 
     /** A successful preparation is remembered until a different kernel boot, including after an app restart. */
-    fun rebootPending(context: Context): Boolean {
+    fun rebootPending(context: Context): Boolean = runCatching {
         val p = preferences(context)
-        val prepared = p.getString("prepared_boot", null) ?: return false
+        val prepared = p.getString("prepared_boot", null) ?: return@runCatching false
         val current = kernelBootToken()?.let { "kernel-$it" }
-        return if (current != null) current == prepared else
+        if (current != null) current == prepared else
             Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1) == p.getInt("prepared_count", -1)
-    }
+    }.getOrDefault(true)
+
+    private fun rememberBoot(context: Context, key: String) = preferences(context).edit()
+        .putString("prepared_boot", key)
+        .putInt("prepared_count", runCatching {
+            Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
+        }.getOrDefault(-1)).commit()
 
     suspend fun setup(context: Context, mode: String): D2SetupResult = withContext(Dispatchers.IO) {
         val command = SetupCommand.command(context.applicationInfo.sourceDir, mode, hex(currentSigner(context)))
+        // If the UI process is lost after a commit, the next launch must still ask for a reboot.
+        val marking = mode != "inspect" && !rebootPending(context)
+        if (marking) check(rememberBoot(context, kernelBootToken()?.let { "kernel-$it" } ?: "unknown")) {
+            "The setup recovery marker could not be saved; no system change was requested"
+        }
         val shell = KernelSuRuntime.rootShell(command, timeoutSeconds = 75)
-            ?: return@withContext D2SetupResult(false, false, context.getString(R.string.d2_root_required))
+            ?: run {
+                if (marking) preferences(context).edit().remove("prepared_boot").commit()
+                return@withContext D2SetupResult(false, false, context.getString(R.string.d2_root_required))
+            }
         val json = shell.output.lineSequence().lastOrNull { it.startsWith("RMGU_D2_SETUP_RESULT ") }
             ?.substringAfter("RMGU_D2_SETUP_RESULT ")?.let(::JSONObject)
             ?: return@withContext D2SetupResult(false, false, "Setup did not return a verified result. Check root permission, then use Inspect setup before retrying.")
         val ok = shell.exitCode == 0 && json.optBoolean("ok")
         val committed = json.optBoolean("committed")
+        if (mode == "prepare" && !ok && !committed && marking) {
+            preferences(context).edit().remove("prepared_boot").commit()
+        }
         if ((mode == "prepare" || mode == "remove") && (ok || committed)) {
-            preferences(context).edit().putString("prepared_boot", json.optString("boot_key"))
-                .putInt("prepared_count", Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1))
-                .commit()
+            rememberBoot(context, json.optString("boot_key"))
         }
         D2SetupResult(ok, committed, json.optString(if (ok) "status" else "error", "Setup did not complete"))
     }
