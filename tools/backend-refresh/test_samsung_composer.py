@@ -2,6 +2,7 @@
 """Exercise the embedded composer script against mocked Android init properties."""
 import json
 import os
+import re
 from pathlib import Path
 import shlex
 import shutil
@@ -47,6 +48,19 @@ elif cmd == 'sleep':
 else:
     raise SystemExit('Unexpected external command: ' + cmd)
 '''
+
+
+def rust_tokens(text):
+    tokens = re.findall(r'"(?:\\.|[^"\\])*"|[A-Za-z_][A-Za-z_0-9]*|[0-9]+|[^\s]', text)
+    result, calls = [], []
+    for token in tokens:
+        if token == '(':
+            calls.append(bool(result) and result[-1] == 'write_hook')
+        elif token == ')' and calls:
+            if calls.pop() and result[-1] == ',':
+                result.pop()  # rustfmt adds this optional trailing call comma.
+        result.append(token)
+    return result
 
 
 class ComposerTests(unittest.TestCase):
@@ -190,7 +204,11 @@ class ComposerTests(unittest.TestCase):
             added = '\n'.join(line[1:] for line in patch.splitlines()
                               if line.startswith('+') and not line.startswith('+++'))
             self.assertIn('r#"' + script + '"#', added, name)
-            self.assertIn(installer, added + '\n', name)
+            # cargo fmt may wrap Rust calls when the native build rebases its patch.
+            # Compare tokens so formatting is ignored but string contents stay exact.
+            start = added.index(installer.splitlines()[0])
+            expected = rust_tokens(installer)
+            self.assertEqual(rust_tokens(added[start:])[:len(expected)], expected, name)
             prefix = 'crate::android::soft_reboot' if name == 'resukisu' else 'crate::soft_reboot'
             self.assertIn(prefix + '::install_samsung_composer_hooks()', added, name)
 
