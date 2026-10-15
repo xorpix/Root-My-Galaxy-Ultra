@@ -1,51 +1,66 @@
 package dev.experimental.rmgu.d2helper;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.util.Log;
+import dev.experimental.rmgu.d2.D2Configuration;
 import dev.experimental.rmgu.d2.VaultOperation;
 import dev.experimental.rmgu.d2.VaultRecord;
-import java.util.UUID;
+import java.io.IOException;
 
 final class D2Store {
-    static final String SESSION = UUID.randomUUID().toString();
-    private static volatile boolean observationSaved = true;
-    private static SharedPreferences preferences(Context context) {
-        return context.createDeviceProtectedStorageContext().getSharedPreferences("rmgu_d2", Context.MODE_PRIVATE);
+    private static final D2Configuration configuration = new D2Configuration(new D2SettingsFile());
+    private static volatile Observation observation;
+    private static volatile String settingsError = "";
+    private static final class Observation {
+        final String event;
+        final VaultOperation.Result result;
+        final long elapsed = SystemClock.elapsedRealtime();
+        Observation(String event, VaultOperation.Result result) { this.event = event; this.result = result; }
     }
-    static boolean enabled(Context context) { return preferences(context).getBoolean("enabled", false); }
-    static boolean activate(Context context) { return preferences(context).edit().putBoolean("activated", true).commit(); }
-    static boolean setEnabled(Context context, boolean enabled) {
-        return preferences(context).edit().putBoolean("enabled", enabled).commit();
+    private static D2Configuration.State state() throws IOException {
+        D2Configuration.State state = configuration.read();
+        settingsError = "";
+        return state;
     }
-    static void record(Context context, String event, VaultOperation.Result result) {
-        SharedPreferences.Editor edit = preferences(context).edit()
-                .putString("session", SESSION).putLong("elapsed", SystemClock.elapsedRealtime())
-                .putString("event", event).putString("state", result.state.name())
-                .putString("detail", result.detail).putBoolean("verified", result.verified())
-                .putBoolean("wrote", result.wrote);
-        VaultRecord flags = result.record;
-        observationSaved = edit.putInt("lock", flags == null ? -1 : flags.lock())
-                .putInt("maintenance", flags == null ? -1 : flags.maintenance())
-                .putInt("at", flags == null ? -1 : flags.at()).commit();
+    static boolean enabled(Context ignored) {
+        try { return state().enabled; }
+        catch (IOException error) {
+            settingsError = error.getMessage();
+            Log.w("RMGUD2", "D2 settings unavailable; no flag write allowed", error);
+            return false;
+        }
     }
-    static Bundle snapshot(Context context) {
-        SharedPreferences p = preferences(context);
+    static void activate(Context ignored) throws IOException { configuration.activate(); settingsError = ""; }
+    static void setEnabled(Context ignored, boolean enabled) throws IOException {
+        configuration.setEnabled(enabled);
+        settingsError = "";
+    }
+    static void record(Context ignored, String event, VaultOperation.Result result) {
+        // Live observations belong to this system-process session, not a possibly unwritable app directory.
+        observation = new Observation(event, result);
+    }
+    static Bundle snapshot(Context ignored) {
         Bundle b = new Bundle();
-        boolean current = SESSION.equals(p.getString("session", ""));
-        b.putBoolean("enabled", enabled(context));
-        b.putBoolean("activated", p.getBoolean("activated", false));
-        b.putBoolean("current", current);
-        b.putString("event", p.getString("event", ""));
-        b.putString("state", p.getString("state", "UNCHECKED"));
-        b.putString("detail", p.getString("detail", "No DMC observation yet"));
-        b.putLong("age_ms", current ? Math.max(0, SystemClock.elapsedRealtime() - p.getLong("elapsed", 0)) : -1);
-        b.putBoolean("verified", current && observationSaved && p.getBoolean("verified", false));
-        b.putBoolean("observation_saved", observationSaved);
-        b.putInt("lock", current ? p.getInt("lock", -1) : -1);
-        b.putInt("maintenance", current ? p.getInt("maintenance", -1) : -1);
-        b.putInt("at", current ? p.getInt("at", -1) : -1);
+        try {
+            D2Configuration.State state = state();
+            b.putBoolean("enabled", state.enabled);
+            b.putBoolean("activated", state.activated);
+        } catch (IOException error) { settingsError = error.getMessage(); }
+        Observation current = observation;
+        b.putBoolean("current", current != null);
+        b.putString("event", current == null ? "" : current.event);
+        b.putString("state", current == null ? "UNCHECKED" : current.result.state.name());
+        String detail = current == null ? "No DMC observation yet" : current.result.detail;
+        b.putString("detail", settingsError.isEmpty() ? detail : detail + "\nD2 settings: " + settingsError);
+        b.putLong("age_ms", current == null ? -1 : Math.max(0, SystemClock.elapsedRealtime() - current.elapsed));
+        b.putBoolean("verified", current != null && current.result.verified());
+        b.putBoolean("observation_saved", true); // API 1 compatibility; observations deliberately stay in memory.
+        VaultRecord flags = current == null ? null : current.result.record;
+        b.putInt("lock", flags == null ? -1 : flags.lock());
+        b.putInt("maintenance", flags == null ? -1 : flags.maintenance());
+        b.putInt("at", flags == null ? -1 : flags.at());
         return b;
     }
 }

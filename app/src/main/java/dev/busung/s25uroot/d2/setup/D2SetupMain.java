@@ -84,6 +84,7 @@ public final class D2SetupMain {
                     drain.join(2000);
                     if(child.exitValue()!=0||!output.toString(StandardCharsets.UTF_8).contains("Success"))throw new IOException("Helper uninstall failed: "+output.toString(StandardCharsets.UTF_8));
                 }
+                removeHelperSettings();
                 if(!ownsTrust) {
                     result.put("ok",true).put("committed",false)
                             .put("status","Helper removed. No owned trust receipt exists, so pre-existing signature trust was retained. Fully reboot to finish removal.");
@@ -108,6 +109,19 @@ public final class D2SetupMain {
             try{if(lock!=null)lock.release();}catch(IOException ignored){}
             try{if(guard!=null)guard.close();}catch(IOException ignored){}
         }
+    }
+    private static void removeHelperSettings()throws Exception {
+        // Fixed private helper files only; no app-data traversal or recursive deletion.
+        for(String suffix:List.of("",".new",".bak")) {
+            String path=D2Protocol.SETTINGS_FILE+suffix;
+            try {
+                StructStat stat=Os.lstat(path);
+                if(!OsConstants.S_ISREG(stat.st_mode)||stat.st_uid!=1000||stat.st_gid!=1000||
+                        stat.st_nlink!=1||(stat.st_mode&0077)!=0)throw new IOException("Unexpected D2 helper settings metadata; automatic removal refused");
+            }catch(ErrnoException error){if(error.errno==OsConstants.ENOENT)continue;throw error;}
+            Os.unlink(path);
+        }
+        syncDirectory(new File("/data/system"));
     }
     private static String installedCertificate(PackageTrust trust,String packageName)throws Exception {
         for(AbxDocument.Element p:trust.doc.root.children("package"))if(p.text("name").equals(packageName)) {

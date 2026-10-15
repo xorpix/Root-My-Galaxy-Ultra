@@ -56,7 +56,8 @@ internal fun D2RecoverySection() {
     }
     val installer = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { refresh() }
     val activate = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        if (it.resultCode != Activity.RESULT_OK) message = context.getString(R.string.d2_activation_failed)
+        if (it.resultCode != Activity.RESULT_OK) message = it.data?.getStringExtra("error")
+            ?: context.getString(R.string.d2_activation_failed)
         refresh()
     }
     DisposableEffect(lifecycle) {

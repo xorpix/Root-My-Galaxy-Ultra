@@ -47,10 +47,16 @@ next full boot. Root and autoroot settings remain independent.
   activation operations. They require a signature permission and additionally
   check the exact controller UID/package and signing certificate. No shell,
   arbitrary file, property, vault name, record number or byte-offset API exists.
-- Boot work uses device-protected storage and `LOCKED_BOOT_COMPLETED`,
+- Boot work uses the private system-data settings file and `LOCKED_BOOT_COMPLETED`,
   `BOOT_COMPLETED` and package-replacement delivery. Explicit activation clears
   the new package's stopped state. Force-stopping or disabling the helper can
   prevent future boot delivery; activate it again after doing so.
+- The switch and activation are stored in the helper's fixed
+  `/data/system/rmgu-d2-settings.bin` file, with system ownership, private mode,
+  atomic replacement, file/directory sync and exact read-back. This avoids app-data
+  preference writes that the system process can be denied even with UID 1000.
+  Settings reads fail closed. Live observations remain in memory and disappear
+  with the system process; they are never mistaken for a new boot's readings.
 - A single worker checks at approximately 0, 0.5, 2 and 6 seconds. It rereads after
   successful operations because Samsung may reset AT during boot. The broadcast
   is finished within 8 seconds; there is no permanent poller or root invocation.
@@ -85,12 +91,20 @@ load its new code into Android's system process. The app distinguishes an update
 that still needs installation from one installed but waiting for reboot. A
 main-app-only rebuild does not force an unnecessary helper update.
 
+When updating from the first D2 test APK, old app-directory preferences are
+deliberately not imported: a failed preference commit could still have changed
+its in-memory value. Update the embedded helper, fully reboot, activate it again
+and explicitly enable the switch. Existing certificate preparation remains valid;
+it does not need to be repeated just to update this helper.
+
 Use **Remove helper and owned trust** with existing root, then fully reboot. It
 uninstalls the companion before editing a freshly read registry. It removes only
 the recorded signer's history references, retaining trust if another system-UID
 app needs it. Without an ownership receipt it removes the matching helper and
 retains pre-existing trust. It never restores an old complete package database
-over the current one. Verified backups are retained for manual recovery.
+over the current one. Removal also deletes only the fixed, metadata-validated
+helper settings file and its atomic-write siblings. Verified backups are retained
+for manual recovery.
 
 ## Validation limits
 

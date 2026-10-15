@@ -35,7 +35,10 @@ public final class D2Provider extends ContentProvider {
                 if (enabled && !D2Store.snapshot(context).getBoolean("activated")) {
                     throw new IllegalStateException("Activate the helper before enabling D2");
                 }
-                if (!D2Store.setEnabled(context, enabled)) throw new IllegalStateException("The switch was not saved");
+                try { D2Store.setEnabled(context, enabled); }
+                catch (java.io.IOException error) {
+                    throw new IllegalStateException("D2 switch was not saved: " + error.getMessage(), error);
+                }
                 if (enabled) D2Runtime.request(context, "enabled", true, () -> {});
             } else if ("refresh".equals(method)) {
                 D2Runtime.request(context, "status", false, () -> {});
