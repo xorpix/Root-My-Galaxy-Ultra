@@ -93,4 +93,11 @@ public class PackageTrustTest {
         assertTrue(new PackageTrust(d.encode()).usedByAnotherSystemPackage(OWN));
         p.attr("name").value=D2Protocol.HELPER;assertFalse(new PackageTrust(d.encode()).usedByAnotherSystemPackage(OWN));
     }
+    @Test public void cleanupRetainsTrustUsedByAnotherAppsSigningLineage()throws Exception {
+        AbxDocument d=AbxDocument.decode(fixture(true));AbxDocument.Element p=d.root.children("package").get(3);
+        p.attr("userId").integer(1000);p.children("sigs").get(0).children("cert").get(0).attr("index").integer(2);
+        AbxDocument.Element history=element("pastSigs");history.intAttr("count",1);history.contents.add(cert(1,null,2));p.children("sigs").get(0).contents.add(history);
+        assertTrue(new PackageTrust(d.encode()).usedByAnotherSystemPackage(OWN));
+    }
+
 }

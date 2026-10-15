@@ -117,6 +117,7 @@ internal fun D2RecoverySection() {
         )
         Card(
             modifier = Modifier.fillMaxWidth(),
+            shape = settingsCardRestingShape(position = SettingsCardPosition.Bottom),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
         ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {

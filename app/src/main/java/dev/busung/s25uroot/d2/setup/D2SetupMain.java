@@ -150,9 +150,9 @@ public final class D2SetupMain {
         ensureDirectories();String id=UUID.randomUUID().toString();
         File backup=new File(SETUP,"packages-before-"+id+".abx"),stage=new File("/data/system/packages.xml.rmgu-d2-"+id+".new");
         writeNew(backup,original,metadata,label);if(!Arrays.equals(read(backup,24*1024*1024),original))throw new IOException("Backup verification failed");
-        writeNew(stage,patched,metadata,label);frameworkParse(read(stage,24*1024*1024));
         try {
-            if(java.nio.file.Files.exists(java.nio.file.Path.of("/data/system/packages-backup.xml"),java.nio.file.LinkOption.NOFOLLOW_LINKS)||java.nio.file.Files.exists(java.nio.file.Path.of("/data/system/packages.xml.bak"),java.nio.file.LinkOption.NOFOLLOW_LINKS))throw new IOException("Package Manager backup indicates a write in progress; retry after it finishes");
+            writeNew(stage,patched,metadata,label);frameworkParse(read(stage,24*1024*1024));
+            if(java.nio.file.Files.exists(new File("/data/system/packages-backup.xml").toPath(),java.nio.file.LinkOption.NOFOLLOW_LINKS)||java.nio.file.Files.exists(new File("/data/system/packages.xml.bak").toPath(),java.nio.file.LinkOption.NOFOLLOW_LINKS))throw new IOException("Package Manager backup indicates a write in progress; retry after it finishes");
             StructStat current=Os.lstat(STORE);
             if(current.st_ino!=metadata.st_ino||current.st_dev!=metadata.st_dev||!Arrays.equals(readStore(),original))throw new IOException("Package Manager changed the registry during setup; original was not replaced");
             // Stage is already complete, parsed, owned, labelled, and fsynced. No direct truncating writes.

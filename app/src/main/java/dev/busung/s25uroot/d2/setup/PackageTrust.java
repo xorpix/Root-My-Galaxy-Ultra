@@ -93,7 +93,7 @@ final class PackageTrust {
             if(!"1000".equals(uid))continue;
             List<AbxDocument.Element> blocks=p.children("sigs");
             if(blocks.size()!=1)throw new IOException("Cannot verify another system-UID package; trust was retained");
-            for(AbxDocument.Element c:blocks.get(0).children("cert"))if(key(c).equals(cert))return true;
+            for(AbxDocument.Element c:all(blocks.get(0)))if(c.start.name.equals("cert")&&key(c).equals(cert))return true;
         }
         return false;
     }
