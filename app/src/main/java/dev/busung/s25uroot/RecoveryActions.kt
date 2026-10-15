@@ -128,10 +128,19 @@ internal suspend fun runRecoveryAction(context: Context, tool: RecoveryTool): Re
                         refusalDetail,
                     )
                 }
-                // Read once for both actions that depend on it: the daemon is the same binary
-                // either way, and asking it twice would be two answers to one question.
+                val softRebootDaemon by lazy {
+                    RootRecovery.softRebootDaemon(
+                        nativeLibraryDirectory = context.applicationInfo.nativeLibraryDir,
+                        backend = AppPreferences.loadedFlavor(context)?.let { M3qLaunch.backend(it.id) },
+                        shell = rootShell,
+                    )
+                }
                 val capabilities by lazy {
-                    RootRecovery.capabilities(rootShell) ?: KsudCapabilities()
+                    if (tool == RecoveryTool.SoftReboot) {
+                        RootRecovery.capabilities(rootShell, softRebootDaemon) ?: KsudCapabilities()
+                    } else {
+                        RootRecovery.capabilities(rootShell) ?: KsudCapabilities()
+                    }
                 }
                 when (tool) {
                     // A reload is the same shape of change as a load, and the manager that was open
@@ -158,6 +167,7 @@ internal suspend fun runRecoveryAction(context: Context, tool: RecoveryTool): Re
                         shell = rootShell,
                         bootToken = bootToken,
                         capabilities = capabilities,
+                        daemonPath = softRebootDaemon,
                     )
                     RecoveryTool.RebootAndUnroot -> rebootAndUnrootKeepingTheSetting(
                         context = context,

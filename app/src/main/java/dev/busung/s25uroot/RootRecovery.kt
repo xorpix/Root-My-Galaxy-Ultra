@@ -305,11 +305,29 @@ internal object RootRecovery {
         """.trimIndent()
     }
 
-    /** Asks the installed daemon what it supports; null when there is no daemon to ask. */
+    internal fun softRebootDaemon(
+        nativeLibraryDirectory: String,
+        backend: M3qLaunch.Backend?,
+        shell: (String) -> ShizukuController.ShellResult,
+    ): String {
+        if (backend == null) return KSUD_PATH
+        // Managers can replace /data/adb/ksud with an unpatched build.
+        val bundled = File(nativeLibraryDirectory, backend.daemonLibrary).absolutePath
+        val probe = shell("test -x ${shellQuote(bundled)} && ${shellQuote(bundled)} debug version 2>&1")
+        return if (probe.exitCode == 0 && parseKernelVersionCode(probe.output) == backend.version) {
+            bundled
+        } else {
+            KSUD_PATH
+        }
+    }
+
+    /** Asks the selected daemon what it supports; null when there is no daemon to ask. */
     internal fun capabilities(
         shell: (String) -> ShizukuController.ShellResult,
+        daemonPath: String = KSUD_PATH,
     ): KsudCapabilities? {
-        val probe = shell("test -x $KSUD_PATH && $KSUD_PATH --help 2>&1 || true")
+        val quoted = shellQuote(daemonPath)
+        val probe = shell("test -x $quoted && $quoted --help 2>&1 || true")
         val help = probe.output
         if (probe.exitCode != 0 && help.isBlank()) return null
         if (!help.containsWord("late-load") && !help.containsWord("soft-reboot")) return null
@@ -367,19 +385,18 @@ internal object RootRecovery {
      * Android userspace and walks the module lifecycle in its normal order.
      *
      * The keeper is a single owner per kernel boot: it takes a lock carrying the boot id, so a second
-     * request in the same boot is told that the first one already owns it rather than racing it. The
-     * daemon is never replaced and late-load is never replayed from here - consuming the daemon the
-     * verified load installed is the whole point.
+     * request in the same boot is told that the first one already owns it rather than racing it.
      */
     suspend fun softReboot(
         shell: (String) -> ShizukuController.ShellResult,
         bootToken: String,
         capabilities: KsudCapabilities,
+        daemonPath: String = KSUD_PATH,
     ): RecoveryOutcome {
         if (!capabilities.softReboot) {
             return RecoveryOutcome(
                 accepted = false,
-                detail = "The installed KernelSU has no soft-reboot command",
+                detail = "The selected KernelSU daemon has no soft-reboot command",
             )
         }
         return runDetached(
@@ -387,7 +404,7 @@ internal object RootRecovery {
             scriptPath = "/data/local/tmp/rmgnext-soft-reboot-keeper.sh",
             logPath = "/data/local/tmp/rmgnext-soft-reboot.log",
             acceptedPath = "/data/local/tmp/.rmgnext-soft-reboot-accepted",
-            script = softRebootScript(bootToken, "/data/local/tmp/.rmgnext-soft-reboot-accepted"),
+            script = softRebootScript(bootToken, "/data/local/tmp/.rmgnext-soft-reboot-accepted", daemonPath),
             acceptPollAttempts = softRebootAcceptPollAttempts,
         )
     }
@@ -577,9 +594,7 @@ internal object RootRecovery {
      *
      * It waits for `sys.boot_completed` because a userspace transition requested before Android is up
      * has nothing to stop in order, and it refuses to run when the boot id has changed under it. The
-     * daemon must exist and be executable: a missing `/data/adb/ksud` means the verified load did not
-     * leave one, which is a failure to report rather than a reason to fetch or stage another daemon
-     * from here.
+     * selected daemon must exist and be executable.
      *
      * Two waits are bounded on purpose, so that the child always answers *inside* the window the app
      * is waiting in, and never acts after the app has given up on it: the wait for Android to come up
@@ -592,14 +607,18 @@ internal object RootRecovery {
      * attempt for the rest of the boot. The check fails safe - if the pid has since been reused by an
      * unrelated process, the lock is respected and the request is refused rather than doubled.
      */
-    internal fun softRebootScript(bootToken: String, acceptedPath: String): String = """
+    internal fun softRebootScript(
+        bootToken: String,
+        acceptedPath: String,
+        daemonPath: String = KSUD_PATH,
+    ): String = """
         #!/system/bin/sh
         EXPECTED_BOOT=${shellQuote(bootToken)}
         ACCEPTED=${shellQuote(acceptedPath)}
         ACCEPTED_VALUE='$ACCEPTED_MARKER'
         LOCK='/data/local/tmp/.rmgnext-soft-reboot-owner'
         KSUD_OUT='/data/local/tmp/rmgnext-soft-reboot-ksud.log'
-        KSUD=$KSUD_PATH
+        KSUD=${shellQuote(daemonPath)}
 
         log() { echo "[keeper] ${'$'}(date +%s 2>/dev/null) ${'$'}*"; }
         current_boot() { cat /proc/sys/kernel/random/boot_id 2>/dev/null; }

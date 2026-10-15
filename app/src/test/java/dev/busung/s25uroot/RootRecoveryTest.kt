@@ -1,5 +1,6 @@
 package dev.busung.s25uroot
 
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -233,11 +234,61 @@ class RootRecoveryTest {
     // --- the soft reboot ---------------------------------------------------------------------------
 
     @Test
+    fun `a matching bundled daemon survives replacement of the installed daemon`() {
+        for (id in listOf("kernelsu", "kernelsu-next", "resukisu")) {
+            val backend = M3qLaunch.backend(id)
+            val directory = File(System.getProperty("java.io.tmpdir"), "root my galaxy/lib").absolutePath
+            val expected = File(directory, backend.daemonLibrary).absolutePath
+            val commands = mutableListOf<String>()
+            val shell: (String) -> ShizukuController.ShellResult = { command ->
+                commands += command
+                ShizukuController.ShellResult(
+                    0,
+                    if (command.contains("debug version")) "Kernel Version: ${backend.version}"
+                    else "Commands:\n  soft-reboot\n  late-load",
+                )
+            }
+
+            val selected = RootRecovery.softRebootDaemon(directory, backend, shell)
+            assertEquals(expected, selected)
+            assertTrue(RootRecovery.capabilities(shell, selected)!!.softReboot)
+            assertEquals(2, commands.size)
+            assertTrue(commands.all { it.contains(expected) && !it.contains("/data/adb/ksud") })
+        }
+    }
+
+    @Test
+    fun `external or unreadable backends keep their installed daemon`() {
+        val backend = M3qLaunch.backend("resukisu")
+        for (probe in listOf(
+            ShizukuController.ShellResult(0, "Kernel Version: 35216"),
+            ShizukuController.ShellResult(0, ""),
+            ShizukuController.ShellResult(1, "Kernel Version: ${backend.version}"),
+        )) {
+            assertEquals("/data/adb/ksud", RootRecovery.softRebootDaemon("/libraries", backend) { probe })
+        }
+        assertEquals("/data/adb/ksud", RootRecovery.softRebootDaemon("/libraries", null) {
+            error("An unknown backend must not probe a bundled daemon")
+        })
+    }
+
+    @Test
+    fun `the keeper executes the selected daemon directly without replacing the installed one`() {
+        val path = "/data/app/root my galaxy/lib/arm64/libm3qksud_resukisu.so"
+        val script = RootRecovery.softRebootScript(BOOT, ACCEPTED, path)
+        assertTrue(script.contains("KSUD='$path'"))
+        assertTrue(script.contains("\"\$KSUD\" soft-reboot"))
+        assertFalse(script.contains("/data/adb/ksud"))
+        assertFalse(script.contains("late-load"))
+        assertFalse(script.contains("cp "))
+    }
+
+    @Test
     fun `the soft reboot is handed to KernelSU and consumes the installed daemon`() {
         val script = RootRecovery.softRebootScript(BOOT, ACCEPTED)
 
         assertTrue(script.contains("\"\$KSUD\" soft-reboot"))
-        assertTrue(script.contains("KSUD=/data/adb/ksud"))
+        assertTrue(script.contains("KSUD='/data/adb/ksud'"))
         assertTrue(script.contains("[ -x \"\$KSUD\" ] || reject_handoff 'installed-ksud-missing'"))
         // It must not stage a daemon of its own or replay the load: the verified load owns both.
         assertFalse(script.contains("late-load"))
