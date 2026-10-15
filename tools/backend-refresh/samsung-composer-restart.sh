@@ -6,6 +6,69 @@ case "$(getprop ro.product.manufacturer)" in
     *) exit 0 ;;
 esac
 
+# Common lifecycle hooks run for manager-owned daemons too. Arm only in the
+# explicit soft-reboot stage; ordinary late-load and a real boot must not cycle
+# the display. The daemon PID and start time scope completion to one transition.
+rmgu_mode=${1:-native}
+rmgu_transition=/data/adb/rmgu/composer/transition
+rmgu_key=
+rmgu_phase=
+rmgu_recorded_key=
+rmgu_make_key() {
+    case "$PPID" in ''|*[!0-9]*) return 1 ;; esac
+    IFS= read -r rmgu_boot < /proc/sys/kernel/random/boot_id || return 1
+    case "$rmgu_boot" in ''|*[!0-9a-fA-F-]*) return 1 ;; esac
+    IFS= read -r rmgu_parent_stat < "/proc/$PPID/stat" || return 1
+    # proc stat's comm may contain spaces or parentheses; fields after its last
+    # closing parenthesis are fixed, and field 22 is the process start time.
+    set -- ${rmgu_parent_stat##*) }
+    [ "$#" -ge 20 ] || return 1
+    shift 19
+    case "$1" in ''|*[!0-9]*) return 1 ;; esac
+    rmgu_key="$rmgu_boot:$PPID:$1"
+}
+rmgu_read_transition() {
+    [ -f "$rmgu_transition" ] && [ ! -L "$rmgu_transition" ] || return 1
+    { IFS= read -r rmgu_recorded_key; IFS= read -r rmgu_phase; } < "$rmgu_transition"
+}
+rmgu_write_transition() {
+    [ -n "$rmgu_key" ] || return 1
+    [ -d "${rmgu_transition%/*}" ] && [ ! -L "${rmgu_transition%/*}" ] || return 1
+    [ ! -L "$rmgu_transition" ] || return 1
+    if [ -e "$rmgu_transition" ]; then [ -f "$rmgu_transition" ] || return 1; fi
+    rmgu_temporary="$rmgu_transition.$$.tmp"
+    (umask 077; set -C; printf '%s\n%s\n%s\n' "$rmgu_key" "$1" "$rmgu_mode" > "$rmgu_temporary") || return 1
+    if ! mv -f "$rmgu_temporary" "$rmgu_transition"; then
+        rm -f "$rmgu_temporary"
+        return 1
+    fi
+}
+
+rmgu_make_key || rmgu_key=
+rmgu_read_transition || :
+case "$rmgu_mode" in
+    arm)
+        [ "$(getprop sys.boot_completed)" = 0 ] || exit 0
+        rmgu_write_transition armed
+        exit "$?"
+        ;;
+    post-mount)
+        [ -n "$rmgu_key" ] && [ "$rmgu_recorded_key" = "$rmgu_key" ] || exit 0
+        [ "$rmgu_phase" = armed ] || exit 0
+        [ "$(getprop sys.boot_completed)" = 0 ] || exit 0
+        [ "$(getprop init.svc.zygote)" = stopped ] || exit 0
+        case "$(getprop init.svc.zygote_secondary)" in ''|stopped) ;; *) exit 0 ;; esac
+        ;;
+    native)
+        # The common hook ran before the bundled native fallback. Do not cycle
+        # twice; absent/failed hooks still leave the existing native path intact.
+        if [ -n "$rmgu_key" ] && [ "$rmgu_recorded_key" = "$rmgu_key" ] && [ "$rmgu_phase" = done ]; then
+            exit 0
+        fi
+        ;;
+    *) exit 64 ;;
+esac
+
 rmgu_seen=
 rmgu_composers=
 for rmgu_rc_file in \
@@ -94,5 +157,8 @@ done
 
 if [ "$rmgu_all_running" = 1 ]; then
     rmgu_restore_needed=0
+fi
+if [ "$rmgu_result" = 0 ] && [ -n "$rmgu_key" ] && [ "$rmgu_recorded_key" = "$rmgu_key" ] && [ "$rmgu_phase" = armed ]; then
+    rmgu_write_transition done || printf '%s\n' 'RMGU: composer completion could not be recorded' >&2
 fi
 exit "$rmgu_result"

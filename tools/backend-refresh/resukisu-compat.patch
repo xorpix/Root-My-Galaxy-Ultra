@@ -1576,10 +1576,10 @@ index 6c207857b701f42fddf5e4ee507017ba4e3a3ab6..a702ba14d9f1581af50497450c3558b5
      // 5. Handle module updates
      if let Err(e) = handle_updated_modules() {
 diff --git a/userspace/ksud/src/android/soft_reboot.rs b/userspace/ksud/src/android/soft_reboot.rs
-index c44a966f6477393bb6b7aff231792c96dd0253f5..178a76207a5f10bc9fbe117e68eeee8382f0ea19 100644
+index c44a966f6477393bb6b7aff231792c96dd0253f5..206b0f62b9ba526a9f2f3fdb6995c7fe9ffd6328 100644
 --- a/userspace/ksud/src/android/soft_reboot.rs
 +++ b/userspace/ksud/src/android/soft_reboot.rs
-@@ -206,6 +206,115 @@ pub fn soft_reboot() -> Result<()> {
+@@ -206,6 +206,17 @@ pub fn soft_reboot() -> Result<()> {
  
      info!("post-fs-data");
      on_post_fs_data()?;
@@ -1587,12 +1587,90 @@ index c44a966f6477393bb6b7aff231792c96dd0253f5..178a76207a5f10bc9fbe117e68eeee83
 +    if !Command::new("/system/bin/sh")
 +        .args([
 +            "-c",
-+            r#"#!/system/bin/sh
++            SAMSUNG_COMPOSER_SCRIPT,
++        ])
++        .status()
++        .is_ok_and(|status| status.success())
++    {
++        warn!("Samsung hardware composer cycle failed during soft reboot");
++    }
+     info!("start");
+     let status = Command::new("start").status().context("start failed")?;
+     if !status.success() {
+@@ -222,3 +233,256 @@ pub fn soft_reboot() -> Result<()> {
+         _exit(0);
+     }
+ }
++
++const SAMSUNG_COMPOSER_SCRIPT: &str = r#"#!/system/bin/sh
 +# Restart Samsung's already-running composers while the Android framework is stopped.
 +# Uses shell builtins plus Android getprop/setprop/sleep; no awk or BusyBox dependency.
 +case "$(getprop ro.product.manufacturer)" in
 +    [Ss][Aa][Mm][Ss][Uu][Nn][Gg]) ;;
 +    *) exit 0 ;;
++esac
++
++# Common lifecycle hooks run for manager-owned daemons too. Arm only in the
++# explicit soft-reboot stage; ordinary late-load and a real boot must not cycle
++# the display. The daemon PID and start time scope completion to one transition.
++rmgu_mode=${1:-native}
++rmgu_transition=/data/adb/rmgu/composer/transition
++rmgu_key=
++rmgu_phase=
++rmgu_recorded_key=
++rmgu_make_key() {
++    case "$PPID" in ''|*[!0-9]*) return 1 ;; esac
++    IFS= read -r rmgu_boot < /proc/sys/kernel/random/boot_id || return 1
++    case "$rmgu_boot" in ''|*[!0-9a-fA-F-]*) return 1 ;; esac
++    IFS= read -r rmgu_parent_stat < "/proc/$PPID/stat" || return 1
++    # proc stat's comm may contain spaces or parentheses; fields after its last
++    # closing parenthesis are fixed, and field 22 is the process start time.
++    set -- ${rmgu_parent_stat##*) }
++    [ "$#" -ge 20 ] || return 1
++    shift 19
++    case "$1" in ''|*[!0-9]*) return 1 ;; esac
++    rmgu_key="$rmgu_boot:$PPID:$1"
++}
++rmgu_read_transition() {
++    [ -f "$rmgu_transition" ] && [ ! -L "$rmgu_transition" ] || return 1
++    { IFS= read -r rmgu_recorded_key; IFS= read -r rmgu_phase; } < "$rmgu_transition"
++}
++rmgu_write_transition() {
++    [ -n "$rmgu_key" ] || return 1
++    [ -d "${rmgu_transition%/*}" ] && [ ! -L "${rmgu_transition%/*}" ] || return 1
++    [ ! -L "$rmgu_transition" ] || return 1
++    if [ -e "$rmgu_transition" ]; then [ -f "$rmgu_transition" ] || return 1; fi
++    rmgu_temporary="$rmgu_transition.$$.tmp"
++    (umask 077; set -C; printf '%s\n%s\n%s\n' "$rmgu_key" "$1" "$rmgu_mode" > "$rmgu_temporary") || return 1
++    if ! mv -f "$rmgu_temporary" "$rmgu_transition"; then
++        rm -f "$rmgu_temporary"
++        return 1
++    fi
++}
++
++rmgu_make_key || rmgu_key=
++rmgu_read_transition || :
++case "$rmgu_mode" in
++    arm)
++        [ "$(getprop sys.boot_completed)" = 0 ] || exit 0
++        rmgu_write_transition armed
++        exit "$?"
++        ;;
++    post-mount)
++        [ -n "$rmgu_key" ] && [ "$rmgu_recorded_key" = "$rmgu_key" ] || exit 0
++        [ "$rmgu_phase" = armed ] || exit 0
++        [ "$(getprop sys.boot_completed)" = 0 ] || exit 0
++        [ "$(getprop init.svc.zygote)" = stopped ] || exit 0
++        case "$(getprop init.svc.zygote_secondary)" in ''|stopped) ;; *) exit 0 ;; esac
++        ;;
++    native)
++        # The common hook ran before the bundled native fallback. Do not cycle
++        # twice; absent/failed hooks still leave the existing native path intact.
++        if [ -n "$rmgu_key" ] && [ "$rmgu_recorded_key" = "$rmgu_key" ] && [ "$rmgu_phase" = done ]; then
++            exit 0
++        fi
++        ;;
++    *) exit 64 ;;
 +esac
 +
 +rmgu_seen=
@@ -1684,19 +1762,100 @@ index c44a966f6477393bb6b7aff231792c96dd0253f5..178a76207a5f10bc9fbe117e68eeee83
 +if [ "$rmgu_all_running" = 1 ]; then
 +    rmgu_restore_needed=0
 +fi
++if [ "$rmgu_result" = 0 ] && [ -n "$rmgu_key" ] && [ "$rmgu_recorded_key" = "$rmgu_key" ] && [ "$rmgu_phase" = armed ]; then
++    rmgu_write_transition done || printf '%s\n' 'RMGU: composer completion could not be recorded' >&2
++fi
 +exit "$rmgu_result"
-+"#,
-+        ])
-+        .status()
-+        .is_ok_and(|status| status.success())
-+    {
-+        warn!("Samsung hardware composer cycle failed during soft reboot");
++"#;
++
++/// Install standard KernelSU lifecycle hooks, independent of manager-owned ksud copies.
++pub(crate) fn install_samsung_composer_hooks() -> Result<()> {
++    use std::fs;
++    use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
++    use std::path::Path;
++
++    fn ensure_hook_directory(path: &str, private: bool) -> Result<()> {
++        let created = match fs::DirBuilder::new().mode(0o700).create(path) {
++            Ok(()) => true,
++            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => false,
++            Err(error) => return Err(error.into()),
++        };
++        let metadata = fs::symlink_metadata(path)?;
++        anyhow::ensure!(
++            metadata.is_dir() && metadata.uid() == 0 && metadata.mode() & 0o022 == 0,
++            "unsafe hook directory: {path}"
++        );
++        if private {
++            fs::set_permissions(path, fs::Permissions::from_mode(0o700))?;
++        } else if created {
++            fs::set_permissions(path, fs::Permissions::from_mode(0o755))?;
++        }
++        Ok(())
 +    }
-     info!("start");
-     let status = Command::new("start").status().context("start failed")?;
-     if !status.success() {
++
++    fn write_hook(path: &str, contents: &str) -> Result<()> {
++        match fs::symlink_metadata(path) {
++            Ok(metadata) => anyhow::ensure!(
++                metadata.is_file() && metadata.uid() == 0,
++                "unsafe hook destination: {path}"
++            ),
++            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
++            Err(error) => return Err(error.into()),
++        }
++        let destination = Path::new(path);
++        let name = destination.file_name().context("missing hook filename")?.to_string_lossy();
++        let temporary = destination.with_file_name(format!(".{name}.{}.tmp", std::process::id()));
++        let mut file = fs::OpenOptions::new()
++            .write(true)
++            .create_new(true)
++            .mode(0o700)
++            .open(&temporary)?;
++        let result = std::io::Write::write_all(&mut file, contents.as_bytes())
++            .and_then(|()| file.sync_all());
++        drop(file);
++        if let Err(error) = result {
++            let _ = fs::remove_file(&temporary);
++            return Err(error.into());
++        }
++        if let Err(error) = fs::rename(&temporary, destination) {
++            let _ = fs::remove_file(&temporary);
++            return Err(error.into());
++        }
++        Ok(())
++    }
++
++    let manufacturer = Command::new("/system/bin/getprop")
++        .arg("ro.product.manufacturer")
++        .output()?;
++    anyhow::ensure!(manufacturer.status.success(), "cannot read device manufacturer");
++    if !String::from_utf8_lossy(&manufacturer.stdout)
++        .trim()
++        .eq_ignore_ascii_case("samsung")
++    {
++        return Ok(());
++    }
++
++    ensure_hook_directory("/data/adb", false)?;
++    ensure_hook_directory("/data/adb/rmgu", true)?;
++    ensure_hook_directory("/data/adb/rmgu/composer", true)?;
++    ensure_hook_directory("/data/adb/post-mount.d", false)?;
++    ensure_hook_directory("/data/adb/emulated-soft-reboot.d", false)?;
++    // Publish the shared body first and the arming entry point last. A partial
++    // installation cannot arm a transition whose reset script is not installed.
++    write_hook("/data/adb/rmgu/composer/restart.sh", SAMSUNG_COMPOSER_SCRIPT)?;
++    write_hook(
++        "/data/adb/post-mount.d/00-rmgu-samsung-composer.sh",
++        "#!/system/bin/sh\nexec /system/bin/sh /data/adb/rmgu/composer/restart.sh post-mount\n",
++    )?;
++    write_hook(
++        "/data/adb/emulated-soft-reboot.d/00-rmgu-samsung-composer.sh",
++        "#!/system/bin/sh\nexec /system/bin/sh /data/adb/rmgu/composer/restart.sh arm\n",
++    )?;
++    info!("RMGU Samsung composer lifecycle hooks installed");
++    Ok(())
++}
 diff --git a/userspace/ksud/src/android/utils.rs b/userspace/ksud/src/android/utils.rs
-index 1de7c87ba533e8cd85c46e9f39ad70daefb4d3ec..e7f8f6347a0064afcc08fbe74d5859e5e726abbb 100644
+index 1de7c87ba533e8cd85c46e9f39ad70daefb4d3ec..d07c854d6b6037a6fd0cf56684701bcb4234cb79 100644
 --- a/userspace/ksud/src/android/utils.rs
 +++ b/userspace/ksud/src/android/utils.rs
 @@ -12,11 +12,11 @@ use std::{
@@ -1725,7 +1884,14 @@ index 1de7c87ba533e8cd85c46e9f39ad70daefb4d3ec..e7f8f6347a0064afcc08fbe74d5859e5
 +/// loaded after boot the process doing them does not have that policy yet. A copy made before the
 +/// load is the one that can still be written, which is what makes the rest of the install possible.
 +pub fn stage_daemon() -> Result<()> {
-+    ensure_dir_exists(defs::ADB_DIR)?;
+     ensure_dir_exists(defs::ADB_DIR)?;
+-    let _ = std::fs::remove_file(defs::DAEMON_PATH);
+-    std::fs::copy(
+-        // We should use /proc/self/exe, DO NOT resolve the real path
+-        // So that if someone execute /data/adb/ksud install, ksud won't be removed unexpectedly
+-        "/proc/self/exe",
+-        defs::DAEMON_PATH,
+-    )?;
 +
 +    let current_exe = std::env::current_exe().with_context(|| "Failed to get self exe path")?;
 +    // When this process *is* the installed daemon there is nothing to stage, and writing over a
@@ -1748,14 +1914,7 @@ index 1de7c87ba533e8cd85c46e9f39ad70daefb4d3ec..e7f8f6347a0064afcc08fbe74d5859e5
 +/// Take a copy that was staged elsewhere by a process which had no shell here yet, and move it
 +/// into place as root - the ownership the module's policy expects of it.
 +pub fn stage_daemon_from(staged_exe: impl AsRef<Path>) -> Result<()> {
-     ensure_dir_exists(defs::ADB_DIR)?;
--    let _ = std::fs::remove_file(defs::DAEMON_PATH);
--    std::fs::copy(
--        // We should use /proc/self/exe, DO NOT resolve the real path
--        // So that if someone execute /data/adb/ksud install, ksud won't be removed unexpectedly
--        "/proc/self/exe",
--        defs::DAEMON_PATH,
--    )?;
++    ensure_dir_exists(defs::ADB_DIR)?;
 +
 +    std::fs::rename(staged_exe.as_ref(), defs::DAEMON_PATH).with_context(|| {
 +        format!(
@@ -1775,7 +1934,14 @@ index 1de7c87ba533e8cd85c46e9f39ad70daefb4d3ec..e7f8f6347a0064afcc08fbe74d5859e5
      restorecon::lsetfilecon(defs::DAEMON_PATH, restorecon::KSU_CON)?;
      // install binary assets
      assets::ensure_binaries(false).with_context(|| "Failed to extract assets")?;
-@@ -277,6 +315,11 @@ pub fn install(libadbroot: Option<PathBuf>, data_path: Option<PathBuf>) -> Resul
+@@ -274,9 +312,18 @@ pub fn install(libadbroot: Option<PathBuf>, data_path: Option<PathBuf>) -> Resul
+         }
+     }
+
++    if let Err(error) = crate::android::soft_reboot::install_samsung_composer_hooks() {
++        log::warn!("Samsung composer lifecycle hooks were not installed: {error:#}");
++    }
++
      Ok(())
  }
  
@@ -1787,7 +1953,7 @@ index 1de7c87ba533e8cd85c46e9f39ad70daefb4d3ec..e7f8f6347a0064afcc08fbe74d5859e5
  pub fn uninstall(package_name: &str) -> Result<()> {
      if Path::new(defs::MODULE_DIR).exists() {
          println!("- Uninstall modules..");
-@@ -321,6 +364,8 @@ pub fn daemonize_with<F: FnOnce() -> Result<()>>(use_init_pgrp: bool, configure:
+@@ -321,6 +368,8 @@ pub fn daemonize_with<F: FnOnce() -> Result<()>>(use_init_pgrp: bool, configure:
      Ok(())
  }
  

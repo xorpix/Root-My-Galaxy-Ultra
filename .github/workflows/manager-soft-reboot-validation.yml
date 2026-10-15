@@ -1,0 +1,150 @@
+name: Validate manager soft reboot
+
+on:
+  push:
+    branches: [fix/manager-soft-reboot-composer]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: manager-soft-reboot-validation
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check the bundle and host regression tests
+        run: |
+          python3 tools/test_m3q_host.py BundleTests
+          python3 tools/test_backend_bundle.py
+          python3 tools/backend-refresh/test_refresh.py
+          python3 tools/backend-refresh/test_samsung_composer.py
+          python3 tools/backend-refresh/test_patching.py
+          python3 tools/backend-refresh/test_notify.py
+          python3 tools/backend-refresh/test_managers.py
+      - name: Snapshot the existing backend pins
+        run: |
+          python3 - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          config = json.loads(Path('tools/backend-refresh/targets.json').read_text())
+          snapshot = {'schema': 1,
+                      'app_base': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
+                      'heads': {name: t['commit'] for name, t in config['backends'].items()}}
+          Path(os.environ['RUNNER_TEMP'], 'pinned-snapshot.json').write_text(json.dumps(snapshot))
+          PY
+      - name: Install host build prerequisites
+        run: sudo apt-get update && sudo apt-get install -y build-essential libssl-dev pkg-config python3
+      - name: Provide the standard DDK path
+        run: |
+          mkdir -p "$RUNNER_TEMP/rmgu-backends/ddk-root/opt/ddk"
+          sudo ln -s "$RUNNER_TEMP/rmgu-backends/ddk-root/opt/ddk" /opt/ddk
+      - name: Build all three matched native backends
+        run: python3 tools/backend-refresh/refresh.py --work "$RUNNER_TEMP/rmgu-backends" --snapshot "$RUNNER_TEMP/pinned-snapshot.json" --release
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-37.0 build-tools;36.0.0 cmake;3.22.1'
+          accept-android-sdk-licenses: true
+      - name: Reuse the pinned daemon NDK
+        run: |
+          mkdir -p "$ANDROID_HOME/ndk"
+          if [ ! -d "$ANDROID_HOME/ndk/28.2.13676358" ]; then
+            ln -s "$RUNNER_TEMP/rmgu-backends/android-ndk-r28c" "$ANDROID_HOME/ndk/28.2.13676358"
+          fi
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Create a disposable verification key
+        run: |
+          keytool -genkeypair -storetype PKCS12 -keystore "$RUNNER_TEMP/build-only.p12" \
+            -storepass build-only -keypass build-only -alias build-only -keyalg RSA \
+            -keysize 2048 -validity 2 -dname 'CN=Build verification only'
+      - name: Run Android unit tests and build an APK
+        working-directory: ${{ runner.temp }}/rmgu-backends/source
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/build-only.p12
+          KEYSTORE_TYPE: PKCS12
+          KEYSTORE_PASSWORD: build-only
+          KEY_ALIAS: build-only
+          KEY_PASSWORD: build-only
+        run: ./gradlew :app:testDebugUnitTest :app:assembleRelease --no-daemon --no-configuration-cache
+      - name: Verify APK contents and finalize native provenance
+        run: python3 tools/backend-refresh/release.py finish-build --work "$RUNNER_TEMP/rmgu-backends"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: checked-manager-soft-reboot-backends
+          path: ${{ runner.temp }}/rmgu-backends/result/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Preserve failed build logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: manager-soft-reboot-build-failure
+          path: |
+            ${{ runner.temp }}/rmgu-backends/logs/
+            ${{ runner.temp }}/rmgu-backends/source/app/build/reports/tests/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  stage:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: checked-manager-soft-reboot-backends
+          path: ${{ runner.temp }}/result
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'build-tools;36.0.0'
+          accept-android-sdk-licenses: true
+      - name: Validate the artifact with the trusted base scripts
+        run: |
+          python3 - <<'PY'
+          import os, sys
+          from pathlib import Path
+          sys.path.insert(0, 'tools/backend-refresh')
+          from common import load_config
+          import release
+          before = load_config()
+          info = release.apply_checked_update(Path(os.environ['RUNNER_TEMP'], 'result'))
+          after = load_config()
+          assert set(info['changed']) == set(before['backends'])
+          for name, target in before['backends'].items():
+              for field in ('repository', 'branch', 'commit', 'commit_count', 'version', 'rust', 'daemon_version'):
+                  assert target[field] == after['backends'][name][field], (name, field)
+              assert not after['backends'][name]['rebuild']
+          PY
+          python3 tools/backend-refresh/test_samsung_composer.py
+          python3 tools/test_m3q_host.py BundleTests
+      - name: Commit the checked bundles to the candidate branch
+        env:
+          BUILD_BASE: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          BRANCH=fix/manager-soft-reboot-composer
+          REMOTE_HEAD=$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)
+          test "$REMOTE_HEAD" = "$BUILD_BASE"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add --all
+          git commit -m 'build: Rebuild backends with manager soft reboot hooks'
+          git push origin "HEAD:refs/heads/$BRANCH"
+          echo 'Native bundles and APK checks passed. No tag or public release was created.' >> "$GITHUB_STEP_SUMMARY"
