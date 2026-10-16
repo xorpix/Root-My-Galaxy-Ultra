@@ -13,6 +13,13 @@ public class D2ControlPolicyTest {
         request("status", null, "old", 0, 5000, 1000);
         request("refresh", null, "current", 1, 5000, 1000);
     }
+    @Test public void earlyRootUsesItsOwnAuthenticatedAndExpiringSwitch() {
+        request("configure_root", true, "current", 1, 5000, 1000);
+        request("configure_root", false, "old", 0, 5000, 1000);
+        assertThrows(IllegalStateException.class, () -> request("configure_root", true, "old", 1, 5000, 1000));
+        assertThrows(IllegalArgumentException.class, () -> request("configure_root", null, "current", 1, 5000, 1000));
+        assertThrows(IllegalStateException.class, () -> request("configure_root", true, "current", 1, 999, 1000));
+    }
     @Test public void enablingRequiresTheRunningSourceNotJustTheInstalledApk() {
         assertThrows(IllegalStateException.class, () -> request("configure", true, "old", 1, 5000, 1000));
         assertThrows(IllegalStateException.class, () -> request("configure", true, null, 1, 5000, 1000));

@@ -75,6 +75,7 @@ class AzhlBundleTest {
         assertEquals(version, verifiedAzhlControl("$report\n$marker", flavor)?.version)
         assertNull(verifiedAzhlControl(report, flavor))
         assertNull(verifiedAzhlControl(marker, flavor))
+        assertNull(verifiedAzhlControl("${report.replace("uapi=5", "uapi=6")}\n$marker", flavor))
         assertNull(verifiedAzhlControl("${report.replace(version.toString(), azhlDriverVersion(KernelSuFlavor.KernelSu).toString())}\n$marker", flavor))
         listOf("0x1", "0x4").forEach { flags ->
             assertNull(verifiedAzhlControl("${report.replace("0x5", flags)}\n$marker", flavor))
@@ -105,13 +106,17 @@ class AzhlBundleTest {
     @Test fun m3qControlLineVerifiesEachBackendAgainstItsOwnDriver() {
         KernelSuFlavor.entries.forEach { flavor ->
             val version = azhlDriverVersion(flavor)
-            val good = "KernelSU control verified version=$version flags=0x5 uapi=5 features=0x3"
+            val uapi = M3qLaunch.backend(flavor.id).uapi
+            val good = "KernelSU control verified version=$version flags=0x5 uapi=$uapi features=0x3"
             assertEquals(version, verifiedM3qControl("noise\n$good\n", flavor)?.version)
+            assertEquals(version, verifiedM3qControl(good.replace("flags=0x5", "flags=0x25"), flavor)?.version)
             assertNull(verifiedM3qControl(good.replace(version.toString(), "1"), flavor))
-            assertNull(verifiedM3qControl(good.replace("uapi=5", "uapi=4"), flavor))
+            listOf(4, 5, 6, 7).filter { it != uapi }.forEach { other ->
+                assertNull(verifiedM3qControl(good.replace("uapi=$uapi", "uapi=$other"), flavor))
+            }
             assertNull(
                 verifiedM3qControl(
-                    "KernelSU control verified version=$version flags=0x1 uapi=5 features=0x3",
+                    "KernelSU control verified version=$version flags=0x1 uapi=$uapi features=0x3",
                     flavor,
                 ),
             )

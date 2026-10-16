@@ -14,7 +14,7 @@ import subprocess
 import tempfile
 import zipfile
 
-from common import ASSETS, HERE, JAVA, JNI, PROJECT, app_version, baseline, capture, load_config, record, write_json
+from common import ASSETS, HERE, JAVA, JNI, PROJECT, app_version, baseline, capture, catalog_releases, daemon_release, load_config, record, release_label_edit, write_json
 from refresh import package_result, render_curated_notes
 
 sys.path.insert(0, str(PROJECT / 'tools'))
@@ -93,6 +93,7 @@ def apply_checked_update(result):
         raise ValueError('Artifact was built from a different source revision')
     old_config = load_config(PROJECT / 'tools/backend-refresh/targets.json')
     old = baseline(PROJECT, old_config)
+    old_releases = catalog_releases(PROJECT)
     fixed = [Path('README.md'), Path('app/build.gradle.kts'), Path('tools/prepare_m3q_helpers.py'),
              JAVA / 'AzhlCatalog.kt', JAVA / 'M3qLaunch.kt', Path('native/azhl/src/azhl_backend.h'),
              ASSETS / 'azhl/catalog.json', ASSETS / 'df/catalog.json',
@@ -131,7 +132,7 @@ def apply_checked_update(result):
             raise ValueError('Release notes differ from the trusted template and backend table')
     targets = info['targets']['backends']
     for name, target in targets.items():
-        for key in ('repository', 'branch', 'commit', 'commit_count', 'version', 'rust', 'daemon_version'):
+        for key in ('repository', 'branch', 'commit', 'commit_count', 'version', 'rust', 'daemon_version', 'uapi'):
             if config['backends'][name][key] != target[key]:
                 raise ValueError('Release metadata differs from the staged targets')
     for path, text in originals.items():
@@ -141,18 +142,26 @@ def apply_checked_update(result):
         elif path.name == 'M3qLaunch.kt':
             variants = json.loads((PROJECT / ASSETS / 'm3q/helper-variants.json').read_text())['variants']
             for name, target in targets.items():
-                before = f'"{name}" -> Backend(id, {old[name]["driver_version"]}, "{old[name]["outputs"]["helper"]["sha256"]}")'
-                after = f'"{name}" -> Backend(id, {target["version"]}, "{variants[name]["sha256"]}")'
+                before = f'"{name}" -> Backend(id, {old[name]["driver_version"]}, {old[name]["uapi_version"]}, "{old[name]["outputs"]["helper"]["sha256"]}")'
+                after = f'"{name}" -> Backend(id, {target["version"]}, {target["uapi"]}, "{variants[name]["sha256"]}")'
                 if text.count(before) != 1:
                     raise ValueError('Unexpected base helper declaration')
                 text = text.replace(before, after)
         else:
             for name, target in targets.items():
                 text = re.sub(r'\b' + str(old[name]['driver_version']) + r'\b', str(target['version']), text)
+            if path.name == 'AzhlCatalog.kt':
+                text = release_label_edit(text, old_releases, targets)
+            if path.name == 'prepare_m3q_helpers.py':
+                text, count = re.subn(r'^UAPI_VERSIONS = .+$',
+                    'UAPI_VERSIONS = ' + repr({n: t['uapi'] for n, t in targets.items()}), text, flags=re.M)
+                if count != 1:
+                    raise ValueError('Unexpected helper UAPI declaration')
         if (PROJECT / path).read_text() != text:
             raise ValueError(f'Unexpected control/build logic change: {path}')
     original = (PROJECT / ASSETS / 'm3q/libm3qroot.so').read_bytes()
     helpers.VERSIONS = {n: t['version'] for n, t in targets.items()}
+    helpers.UAPI_VERSIONS = {n: t['uapi'] for n, t in targets.items()}
     for name in targets:
         generated, _ = helpers.variant(original, name)
         if (PROJECT / JNI / helpers.LIBRARIES[name]).read_bytes() != generated:
@@ -162,8 +171,10 @@ def apply_checked_update(result):
         before = json.loads(capture(['git', 'show', f'HEAD:{path.as_posix()}'], PROJECT))
         after = json.loads((PROJECT / path).read_text())
         for a, b in zip(before['payloads'], after['payloads'], strict=True):
+            if b['kernelsu']['version'] != daemon_release(targets[b['flavor']]):
+                raise ValueError('Catalog release name differs from the built daemon')
             for item in (a, b):
-                for key in ('size', 'sha256'):
+                for key in ('size', 'sha256', 'version'):
                     item['kernelsu'].pop(key)
         if before != after:
             raise ValueError('Artifact modifies firmware/routing or catalog identity')

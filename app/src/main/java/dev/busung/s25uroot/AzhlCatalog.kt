@@ -101,14 +101,14 @@ internal object AzhlCatalog {
 }
 
 internal fun azhlReleaseVersion(flavor: KernelSuFlavor): String = when (flavor) {
-    KernelSuFlavor.KernelSu -> "3.3.0"
-    KernelSuFlavor.KernelSuNext -> "3.4.0"
+    KernelSuFlavor.KernelSu -> "3.3.1"
+    KernelSuFlavor.KernelSuNext -> "3.4.2"
     KernelSuFlavor.ReSukiSU -> "4.2.0-rc3"
 }
 
 internal fun azhlDriverVersion(flavor: KernelSuFlavor): Int = when (flavor) {
-    KernelSuFlavor.KernelSu -> 32680
-    KernelSuFlavor.KernelSuNext -> 33354
+    KernelSuFlavor.KernelSu -> 32692
+    KernelSuFlavor.KernelSuNext -> 33390
     KernelSuFlavor.ReSukiSU -> 35229
 }
 
@@ -126,7 +126,7 @@ internal fun verifiedAzhlControl(output: String, flavor: KernelSuFlavor): Kernel
     val report = output.lineSequence().firstNotNullOfOrNull { line ->
         if (line.startsWith("KernelSU control verified ")) parseControlReport(line) else null
     }
-    return report?.takeIf { it.version == azhlDriverVersion(flavor) && (it.flags and 5) == 5 }
+    return report?.takeIf { M3qLaunch.acceptsControl(flavor.id, it.version, it.flags, it.uapi) }
 }
 
 /**

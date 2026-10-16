@@ -11,6 +11,7 @@ import android.provider.Settings
 import androidx.core.content.FileProvider
 import dev.busung.s25uroot.d2.setup.SetupCommand
 import dev.experimental.rmgu.d2.D2Protocol
+import dev.experimental.rmgu.d2.KernelIdentity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -30,6 +31,8 @@ internal data class D2Status(
     val busy: Boolean = false,
     val current: Boolean = false,
     val verified: Boolean = false,
+    val earlyRootEnabled: Boolean = false,
+    val kernelRelease: String? = null,
 )
 
 internal data class D2SetupResult(val ok: Boolean, val committed: Boolean, val rootRequired: Boolean = false)
@@ -90,10 +93,10 @@ internal object D2Helper {
         }
         val reply = call("status")
         val needsReboot = reply.getString("source") != installed.source || reply.getInt("version") != installed.version
-        require(method != "configure" || enabled != true || !needsReboot) {
+        require(method !in setOf("configure", "configure_root") || enabled != true || !needsReboot) {
             "Install the matching helper and fully reboot before enabling D2"
         }
-        val result = if (method == "status" || (needsReboot && !(method == "configure" && enabled == false))) reply
+        val result = if (method == "status" || (needsReboot && !(method in setOf("configure", "configure_root") && enabled == false))) reply
             else call(method, enabled)
         val timeout = result.getBoolean("timed_out")
         return installed.status.copy(
@@ -101,11 +104,25 @@ internal object D2Helper {
             activated = result.getBoolean("activated") && !installed.stopped,
             enabled = result.getBoolean("enabled"), busy = result.getBoolean("busy"),
             current = result.getBoolean("current"), verified = result.getBoolean("verified") && !timeout,
+            earlyRootEnabled = result.getBoolean("early_root_enabled"),
+            kernelRelease = result.getString("kernel_release")?.takeIf { !needsReboot && KernelIdentity.valid(it) },
         )
     }
 
-    suspend fun query(context: Context, refresh: Boolean = false, enabled: Boolean? = null): D2Status =
+    suspend fun setEarlyRoot(context: Context, enabled: Boolean): D2Status = withContext(Dispatchers.IO) {
+        val installed = installed(context)
+        check(installed.status.identityVerified && !installed.status.needsUpdate && !installed.status.needsReboot) {
+            "Update the boot helper in Recovery Management, fully reboot, then activate it"
+        }
+        D2ControlClient.use(context) { status(installed, it, "configure_root", enabled) }.also {
+            check(it.earlyRootEnabled == enabled) { "The helper did not confirm the early root setting" }
+        }
+    }
+
+    suspend fun query(context: Context, refresh: Boolean = false, enabled: Boolean? = null,
+        waitForIdle: Boolean = true): D2Status =
         withContext(Dispatchers.IO) {
+            require(waitForIdle || (!refresh && enabled == null)) { "Configuration must wait for helper checks" }
             val installed = installed(context)
             val base = installed.status
             if (!base.identityVerified || base.needsUpdate || base.needsReboot) {
@@ -117,7 +134,7 @@ internal object D2Helper {
                     var result = status(installed, client, if (enabled != null) "configure" else if (refresh) "refresh" else "status", enabled)
                     // IPC never waits for a Samsung vault call; that work has its own bounded worker.
                     repeat(9) {
-                        if (!result.busy || result.needsReboot) return@use result
+                        if (!waitForIdle || !result.busy || result.needsReboot) return@use result
                         delay(1000)
                         result = status(installed, client, "status")
                     }

@@ -247,7 +247,7 @@ internal object StagingSweep {
      * caller's to have ended already - the sweep that follows a run is called after it.
      */
     fun sweepWhenQuiet(context: Context): SweepOutcome {
-        if (RunInFlight.holder(context) != null || M3qBootGuard.isClaimed(context)) return SweepOutcome.SkippedRun
+        if (EarlyRootStore.protectsStaging(context) || RunInFlight.holder(context) != null || M3qBootGuard.isClaimed(context)) return SweepOutcome.SkippedRun
         return sweep(context)
     }
 
@@ -306,7 +306,7 @@ internal object StagingSweep {
      * running it.
      */
     fun removeWhenQuiet(context: Context, paths: List<String>): SweepOutcome {
-        if (RunInFlight.holder(context) != null || M3qBootGuard.isClaimed(context)) return SweepOutcome.SkippedRun
+        if (EarlyRootStore.protectsStaging(context) || RunInFlight.holder(context) != null || M3qBootGuard.isClaimed(context)) return SweepOutcome.SkippedRun
         return remove(paths)
     }
 
@@ -323,7 +323,7 @@ internal object StagingSweep {
      * which is the one thing here another process may be mid-way through using.
      */
     fun clearWhenQuiet(context: Context): SweepOutcome {
-        if (RunInFlight.holder(context) != null || M3qBootGuard.isClaimed(context)) return SweepOutcome.SkippedRun
+        if (EarlyRootStore.protectsStaging(context) || RunInFlight.holder(context) != null || M3qBootGuard.isClaimed(context)) return SweepOutcome.SkippedRun
         return clear()
     }
 

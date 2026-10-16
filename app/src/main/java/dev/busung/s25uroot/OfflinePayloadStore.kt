@@ -60,8 +60,8 @@ internal object KnownGoodPayloadStore {
     /** Name of the root helper this app bundles, as the manifest's own metadata describes it. */
     const val ROOT_HELPER_LIBRARY = "libcve43499root.so"
 
-    fun hasValid(context: Context): Boolean = runCatching {
-        load(context)
+    fun hasValid(context: Context, snapshot: DeviceSnapshot = DeviceSnapshot.current()): Boolean = runCatching {
+        load(context, snapshot = snapshot)
         true
     }.getOrDefault(false)
 
@@ -75,16 +75,18 @@ internal object KnownGoodPayloadStore {
      * question of whether the cache may be used is answered the same way here as when it is loaded,
      * so a run cannot get past this point and then find the files unusable.
      */
-    fun profileFor(context: Context, requestedProfileId: String? = null): TargetProfile {
-        val cached = usableDescriptor(context, requestedProfileId)
+    fun profileFor(context: Context, requestedProfileId: String? = null,
+        snapshot: DeviceSnapshot = DeviceSnapshot.current()): TargetProfile {
+        val cached = usableDescriptor(context, requestedProfileId, snapshot)
         return cached.profile()
     }
 
     /**
      * Reads the cached payload, refusing anything that does not belong to this device and this build.
      */
-    fun load(context: Context, requestedProfileId: String? = null): VerifiedPayloads {
-        val cached = usableDescriptor(context, requestedProfileId)
+    fun load(context: Context, requestedProfileId: String? = null,
+        snapshot: DeviceSnapshot = DeviceSnapshot.current()): VerifiedPayloads {
+        val cached = usableDescriptor(context, requestedProfileId, snapshot)
         val directory = directory(context, cached.id)
         val exploit = File(directory, EXPLOIT)
         val kernelSu = File(directory, KSUD)
@@ -215,7 +217,7 @@ internal object KnownGoodPayloadStore {
     }
 
     /** The descriptor, with the checks that make it usable for this device and this build applied. */
-    private fun usableDescriptor(context: Context, requestedProfileId: String?): CachedPayload {
+    private fun usableDescriptor(context: Context, requestedProfileId: String?, snapshot: DeviceSnapshot): CachedPayload {
         val cached = descriptor(context)
         val helper = bundledRootHelper(context)
         // A missing helper is its own refusal rather than a digest mismatch: the message for a
@@ -226,7 +228,7 @@ internal object KnownGoodPayloadStore {
             cached = cached,
             helperSha256 = helperSha256,
             helperSize = helper.size,
-            snapshot = DeviceSnapshot.current(),
+            snapshot = snapshot,
             requestedProfileId = requestedProfileId,
         )?.let { reason -> error(reason) }
         return cached

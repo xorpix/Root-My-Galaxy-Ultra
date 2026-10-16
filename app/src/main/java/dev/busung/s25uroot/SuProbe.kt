@@ -1,9 +1,6 @@
 package dev.busung.s25uroot
 
 import android.util.Log
-import java.io.BufferedReader
-import java.io.InputStreamReader
-import java.util.concurrent.TimeUnit
 
 /**
  * Asks KernelSU itself whether root is live, by running `su`.
@@ -40,25 +37,15 @@ internal object SuProbe {
     fun isActive(): Boolean {
         lastFailure = Failure.NONE
         return try {
-            val process = ProcessBuilder("su", "-c", "id")
-                .redirectErrorStream(true)
-                .start()
-            val output = StringBuilder()
-            BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
-                var line: String?
-                while (reader.readLine().also { line = it } != null) {
-                    output.append(line).append('\n')
-                }
-            }
-            // Capped, because the probe is a step inside a run rather than a thing worth waiting on,
-            // and a `su` that never answers is a no.
-            if (!process.waitFor(PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-                process.destroyForcibly()
+            // Read output concurrently with the deadline. Reading to EOF first can block forever,
+            // so the old waitFor(3s) was never reached when su stalled before first unlock.
+            val result = SuShell.run("id", PROBE_TIMEOUT_SECONDS)
+            if (result == null) {
                 lastFailure = Failure.ERROR
                 return false
             }
-            val rooted = process.exitValue() == 0 && output.contains("uid=0")
-            Log.d(TAG, "su probe: exit=${process.exitValue()} rooted=$rooted")
+            val rooted = isRootAnswer(result)
+            Log.d(TAG, "su probe: exit=${result.exitCode} rooted=$rooted")
             if (!rooted) lastFailure = Failure.DENIED
             rooted
         } catch (error: Throwable) {

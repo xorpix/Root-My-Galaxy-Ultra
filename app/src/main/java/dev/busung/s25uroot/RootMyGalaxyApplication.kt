@@ -2,6 +2,7 @@ package dev.busung.s25uroot
 
 import android.app.Application
 import android.content.Context
+import android.os.UserManager
 import rikka.shizuku.ShizukuProvider
 
 /**
@@ -23,6 +24,8 @@ class RootMyGalaxyApplication : Application() {
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
 
+        if (Application.getProcessName() == base.packageName + EarlyRootService.PROCESS_SUFFIX) return
+
         isShizukuProviderProcess = Application.getProcessName() == base.packageName
         ShizukuProvider.enableMultiProcessSupport(isShizukuProviderProcess)
     }
@@ -30,9 +33,20 @@ class RootMyGalaxyApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
+        if (Application.getProcessName() == packageName + EarlyRootService.PROCESS_SUFFIX) {
+            AppLog.install(createDeviceProtectedStorageContext())
+            return
+        }
+
         // Every process, including the two services: the Logs tab is where a boot install explains
         // itself, and a boot install has no screen to be explained on at the time.
         AppLog.install(this)
+
+        // Upgrade an existing early-root policy with new boot options while CE settings are readable.
+        if (isShizukuProviderProcess && getSystemService(UserManager::class.java).isUserUnlocked) {
+            runCatching { EarlyRootStore.syncOptions(this) }
+                .onFailure { AppLog.warn(AppLogTags.BOOT, "Boot options could not be updated: ${it.message}") }
+        }
 
         // A run killed with its process cannot take its own notification down, and one left claiming an
         // install that is not happening is worse than none: it would keep someone waiting and its Stop

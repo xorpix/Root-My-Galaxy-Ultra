@@ -79,7 +79,10 @@ internal fun D2RecoverySection() {
         running = true
         scope.launch {
             try {
-                if (mode == "remove" && status.controllable) D2Helper.query(context, enabled = false)
+                if (mode == "remove") {
+                    EarlyRootCoordinator.configure(context, false)
+                    if (status.controllable) D2Helper.query(context, enabled = false)
+                }
                 val result = D2Helper.setup(context, mode)
                 message = context.getString(when {
                     result.rootRequired -> R.string.d2_root_required

@@ -9,7 +9,6 @@ internal object M3qLaunch {
     const val DAEMON_PATH = "/data/local/tmp/ksud-m3q-S948NKSS4AZG3-kdp"
     const val DAEMON_STAGE = "/data/local/tmp/.ksud-stage"
     const val LOAD_LOG = "/data/local/tmp/m3q-kernelsu-late-load.log"
-    const val UAPI_VERSION = 5
 
     /** Android sh treats a CR after `set -eu` as another option, even with `sh -c`. */
     fun normalizeShellScript(source: String): String = source
@@ -17,15 +16,15 @@ internal object M3qLaunch {
         .replace("\r\n", "\n")
         .replace('\r', '\n')
 
-    data class Backend(val id: String, val version: Int, val helperHash: String) {
+    data class Backend(val id: String, val version: Int, val uapi: Int, val helperHash: String) {
         val helperLibrary: String get() = "libm3qroot_${id.replace('-', '_')}.so"
         val daemonLibrary: String get() = "libm3qksud_${id.replace('-', '_')}.so"
     }
 
     fun backend(id: String): Backend = when (id) {
-        "kernelsu" -> Backend(id, 32680, "5c67661a0065e797ee4abfe12ac06a8a9564e57494cafca98697656b267e2f7f")
-        "kernelsu-next" -> Backend(id, 33354, "38781510d8bd18b91ba956aa83b6d9cca8f9a119c5c72748027b7ccd80f048f9")
-        "resukisu" -> Backend(id, 35229, "8236c0a03dc6bb287f3a4f7c2dcb8559832610a68c80bef53a50822a242c5498")
+        "kernelsu" -> Backend(id, 32692, 6, "0a6ee25226210da2d070364dacf7130bedd8baa0cf6b426bb11ad756a446cfdd")
+        "kernelsu-next" -> Backend(id, 33390, 5, "832bc6d5c9eaa9048f8735fb4e91ed4af47f4b32215ff8a41e89f394823e4fc6")
+        "resukisu" -> Backend(id, 35229, 5, "8236c0a03dc6bb287f3a4f7c2dcb8559832610a68c80bef53a50822a242c5498")
         else -> error("Unknown M3Q backend: $id")
     }
 
@@ -64,7 +63,7 @@ internal object M3qLaunch {
     }
 
     fun acceptsControl(id: String, version: Int, flags: Int, uapi: Int): Boolean =
-        version == backend(id).version && (flags and 5) == 5 && uapi == UAPI_VERSION
+        version == backend(id).version && (flags and 5) == 5 && uapi == backend(id).uapi
 
     fun bootClaimNames(bootId: String, bootCount: String): List<String> {
         require(Regex("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}").matches(bootId))

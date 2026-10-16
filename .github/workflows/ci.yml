@@ -77,6 +77,11 @@ jobs:
       # Before the APKs, so a failing test reports as a failing test rather than as a build that
       # stopped somewhere. The release workflow runs the same task for the same reason: a stable
       # release is not a way past the suite.
+      - name: Check boot handoff and root process deadlines
+        run: |
+          python3 tools/test_su_process.py
+          python3 tools/test_early_root_speed.py
+
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --no-daemon
 

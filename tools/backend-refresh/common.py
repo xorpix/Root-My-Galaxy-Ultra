@@ -13,9 +13,13 @@ REPOSITORIES = {
     'kernelsu-next': ('KernelSU-Next/KernelSU-Next', 'dev', 30000),
     'resukisu': ('Baka-SU/BakaSU', 'main', 30700),
 }
+# KernelSU 6 adds symbol lookup and a preinit flag. Its GET_INFO layout,
+# install-fd magic and existing flag meanings are unchanged. Forks remain at 5.
+REVIEWED_UAPIS = {'kernelsu': {5, 6}, 'kernelsu-next': {5}, 'resukisu': {5}}
 ASSETS = Path('app/src/main/assets')
 JNI = Path('app/src/main/jniLibs/arm64-v8a')
 JAVA = Path('app/src/main/java/dev/busung/s25uroot')
+FLAVOR_ENUMS = {'kernelsu': 'KernelSu', 'kernelsu-next': 'KernelSuNext', 'resukisu': 'ReSukiSU'}
 
 
 def capture(args, cwd=None):
@@ -33,11 +37,13 @@ def write_json(path, value):
 
 def load_config(path=HERE / 'targets.json'):
     config = json.loads(path.read_text())
-    if config.get('schema') != 2 or config.get('uapi') != 5:
-        raise ValueError('Only the reviewed UAPI 5 build configuration is supported')
+    if config.get('schema') != 3 or 'uapi' in config:
+        raise ValueError('Expected reviewed per-backend UAPI configuration')
     if set(config['backends']) != set(REPOSITORIES):
         raise ValueError('Unexpected backend list')
     for name, target in config['backends'].items():
+        if target.get('uapi') not in REVIEWED_UAPIS[name]:
+            raise ValueError(f'Unreviewed UAPI: {name}')
         expected = REPOSITORIES[name]
         if (target['repository'], target['branch'], target['version_offset']) != expected:
             raise ValueError(f'Unreviewed source/version rules: {name}')
@@ -52,6 +58,64 @@ def load_config(path=HERE / 'targets.json'):
     return config
 
 
+def reviewed_uapi(header, name):
+    """Check the control contract before accepting a reviewed upstream API number."""
+    versions = re.findall(r'KERNEL_SU_UAPI_VERSION\s*=\s*(\d+)\s*;', header)
+    if len(versions) != 1 or int(versions[0]) not in REVIEWED_UAPIS[name]:
+        raise ValueError(f'{name}: new UAPI requires a reviewed helper/control-channel update')
+    clean = re.sub(r'/\*.*?\*/|//[^\n]*', '', header, flags=re.S)
+    match = re.search(r'struct ksu_get_info_cmd\s*\{([^}]+)\};', clean)
+    expected = '__u32 version; __u32 flags; __u32 features; __u32 uapi_version;'
+    if not match or ' '.join(match[1].split()) != expected:
+        raise ValueError(f'{name}: GET_INFO control layout requires review')
+    if not re.search(r"KSU_IOCTL_GET_INFO\s*(?:=|,)\s*_IOR\(\s*'K'\s*,\s*2\s*,\s*struct ksu_get_info_cmd\s*\)", clean):
+        raise ValueError(f'{name}: GET_INFO ioctl requires review')
+    return int(versions[0])
+
+
+def daemon_release(target):
+    version = re.sub(r'-\d+-g[0-9a-f]+$', '', target['daemon_version'])
+    if not re.fullmatch(r'\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?', version):
+        raise ValueError('Unrecognized daemon release name')
+    return version
+
+
+def catalog_releases(project):
+    versions = {}
+    for family in ('azhl', 'df'):
+        profiles = json.loads((project / ASSETS / family / 'catalog.json').read_text())['payloads']
+        for profile in profiles:
+            name, version = profile['flavor'], profile['kernelsu']['version']
+            if name in versions and versions[name] != version:
+                raise ValueError('Bundled catalogs disagree on the backend release')
+            versions[name] = version
+    if set(versions) != set(REPOSITORIES):
+        raise ValueError('Missing backend release metadata')
+    return versions
+
+
+def release_label_edit(text, previous, targets):
+    for name, target in targets.items():
+        before = f'KernelSuFlavor.{FLAVOR_ENUMS[name]} -> "{previous[name]}"'
+        if text.count(before) != 1:
+            raise ValueError(f'Expected one backend release label: {name}')
+        text = text.replace(before, f'KernelSuFlavor.{FLAVOR_ENUMS[name]} -> "{daemon_release(target)}"')
+    return text
+
+
+def sync_release_labels(project, targets):
+    """Update version labels together without touching payload hashes or firmware identities."""
+    previous = catalog_releases(project)
+    source = project / JAVA / 'AzhlCatalog.kt'
+    source.write_text(release_label_edit(source.read_text(), previous, targets))
+    for family in ('azhl', 'df'):
+        path = project / ASSETS / family / 'catalog.json'
+        catalog = json.loads(path.read_text())
+        for profile in catalog['payloads']:
+            profile['kernelsu']['version'] = daemon_release(targets[profile['flavor']])
+        write_json(path, catalog)
+
+
 def baseline(project, config=None, clean=True):
     config = config or load_config(project / 'tools/backend-refresh/targets.json')
     if clean and capture(['git', 'status', '--porcelain'], project):
@@ -62,6 +126,9 @@ def baseline(project, config=None, clean=True):
     versions = ast.literal_eval(re.search(r'^VERSIONS = (.+)$', generator, re.M)[1])
     if versions != {n: t['version'] for n, t in config['backends'].items()}:
         raise ValueError('Helper generator is not aligned with the bundled targets')
+    uapis = ast.literal_eval(re.search(r'^UAPI_VERSIONS = (.+)$', generator, re.M)[1])
+    if uapis != {n: t['uapi'] for n, t in config['backends'].items()}:
+        raise ValueError('Helper UAPI requirements differ from bundled targets')
     manifests = {}
     for name, target in config['backends'].items():
         patch = (project / 'tools/backend-refresh' / f'{name}-compat.patch').read_bytes()
@@ -73,7 +140,8 @@ def baseline(project, config=None, clean=True):
         manifest = json.loads((folder / 'build-manifest.json').read_text())
         for key, value in [('upstream_commit', target['commit']),
                            ('upstream_commit_count', target['commit_count']),
-                           ('driver_version', target['version']), ('uapi_version', config['uapi']),
+                           ('driver_version', target['version']), ('uapi_version', target['uapi']),
+                           ('manager_required_uapi', target['uapi']),
                            ('daemon_version', target['daemon_version'])]:
             if manifest[key] != value:
                 raise ValueError(f'Baseline manifest/target mismatch: {name}/{key}')
@@ -87,7 +155,7 @@ def baseline(project, config=None, clean=True):
         if record(daemon) != manifest['outputs']['ksud']:
             raise ValueError(f'Bundled daemon differs from build records: {name}')
         helper = helpers[name]
-        if (helper['driverVersion'], helper['uapiVersion']) != (target['version'], config['uapi']):
+        if (helper['driverVersion'], helper['uapiVersion']) != (target['version'], target['uapi']):
             raise ValueError(f'Helper version mismatch: {name}')
         if record((project / JNI / helper['library']).read_bytes()) != manifest['outputs']['helper']:
             raise ValueError(f'Helper hash mismatch: {name}')

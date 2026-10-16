@@ -23,8 +23,8 @@
     "path": "kernelsu/patches/ReSukiSU-v4.2.0-rc3-samsung-kdp-rkp-defex.patch",
     "sha256": "6f4be33d5f558865f02e6d0010f40320f540c78f80c999ad6bf0b8f22275b4f4"
   },
-  "created_utc": "2026-10-15",
-  "app_base_commit": "bf48dd62b8b33b380be55b3fe04b4ff9f2bd2687",
+  "created_utc": "2026-10-16",
+  "app_base_commit": "763db1a30ea8c2e07804eb1cfd12686454945385",
   "upstream_repository": "https://github.com/Baka-SU/BakaSU",
   "upstream_commit": "d7260ca1e5c128061122924d0d48754e361e135c",
   "upstream_commit_count": 4529,
@@ -43,8 +43,8 @@
   "source_provenance": "Existing Samsung compatibility changes rebased onto pinned upstream.",
   "outputs": {
     "ksud": {
-      "size": 4380304,
-      "sha256": "f6b1d578f8db38249034ec22193ea646abbf4607e14cafd784954214aab6daa3"
+      "size": 4380272,
+      "sha256": "b21ad415c8b254f7118de052a09ff47d67c55d1298c26ff96624feb7a594f635"
     },
     "kernelsu.ko": {
       "size": 432856,
@@ -84,6 +84,6 @@
     "userspace/ksud/src/android/utils.rs": "5616c4b795469abd91fc4df54de46f8a6790231baabf1caf6c51236814f67eb0",
     "userspace/ksuinit/src/lib.rs": "8e33b668dd35a23cafde56b00f49d35f832fa0ce7709733791f9e64c037c6ccc"
   },
-  "app_version": "1.2.9",
+  "app_version": "1.2.11",
   "previous_upstream_commit": "d7260ca1e5c128061122924d0d48754e361e135c"
 }

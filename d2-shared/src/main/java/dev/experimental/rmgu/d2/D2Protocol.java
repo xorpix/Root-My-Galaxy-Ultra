@@ -1,6 +1,6 @@
 package dev.experimental.rmgu.d2;
 
-/** Fixed identities shared by the controller and its D2-only companion. */
+/** Fixed identities shared by the controller and its boot companion. */
 public final class D2Protocol {
     private D2Protocol() {}
     public static final int API = 1;
@@ -16,4 +16,13 @@ public final class D2Protocol {
     public static final String SOURCE_METADATA = HELPER + ".source";
     public static final String DIRECTORY = "/data/system/rmgu-d2-setup";
     public static final String SETTINGS_FILE = "/data/system/rmgu-d2-settings.bin";
+    public static final String EARLY_ROOT_SETTINGS_FILE = "/data/system/rmgu-early-root-settings.bin";
+    public static final String EARLY_ROOT_PERMISSION = CONTROLLER + ".permission.START_EARLY_ROOT";
+    public static final String EARLY_ROOT_SERVICE = "dev.busung.s25uroot.EarlyRootService";
+    public static final String EARLY_ROOT_ACTION = CONTROLLER + ".action.EARLY_ROOT";
+    public static final String EARLY_ROOT_EVENT = CONTROLLER + ".extra.BOOT_EVENT";
+    public static final String EARLY_ROOT_REQUEST_UPTIME = CONTROLLER + ".extra.REQUEST_UPTIME";
+    public static final String EARLY_ROOT_REQUEST_UNLOCKED = CONTROLLER + ".extra.REQUEST_UNLOCKED";
+    public static final String EARLY_ROOT_BROADCAST_UPTIME = CONTROLLER + ".extra.BROADCAST_UPTIME";
+    public static final String EARLY_ROOT_HANDOFF = CONTROLLER + ".extra.HANDOFF";
 }

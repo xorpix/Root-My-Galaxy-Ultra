@@ -9,7 +9,7 @@ import re
 from common import PROJECT, baseline, capture, load_config, write_json
 
 
-def probe(project, resolve=None):
+def probe(project, resolve=None, force_rebuild=False):
     config = load_config(project / 'tools/backend-refresh/targets.json')
     manifests = baseline(project, config)
     heads = {}
@@ -23,8 +23,9 @@ def probe(project, resolve=None):
         heads[name] = fields[0]
     return {'schema': 1, 'app_base': capture(['git', 'rev-parse', 'HEAD'], project),
             'created_utc': datetime.now(timezone.utc).isoformat(), 'heads': heads,
+            'force_rebuild': force_rebuild,
             'changed': [n for n, sha in heads.items()
-                        if needs_rebuild(config['backends'][n], sha, manifests[n])]}
+                        if force_rebuild or needs_rebuild(config['backends'][n], sha, manifests[n])]}
 
 
 def needs_rebuild(target, upstream_sha, manifest):
@@ -37,8 +38,9 @@ def needs_rebuild(target, upstream_sha, manifest):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--force-rebuild', action='store_true', help='Rebuild all three matched pairs')
     args = parser.parse_args()
-    snapshot = probe(PROJECT)
+    snapshot = probe(PROJECT, force_rebuild=args.force_rebuild)
     write_json(args.output, snapshot)
     changed = bool(snapshot['changed'])
     print('Changed backends:', ', '.join(snapshot['changed']) if changed else 'none')

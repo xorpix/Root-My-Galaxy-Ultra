@@ -6,6 +6,8 @@ import java.io.File
 import java.security.MessageDigest
 import org.json.JSONArray
 
+internal data class DfStageOptions(val disableModules: Boolean, val wipeModules: Boolean, val protectImages: Boolean)
+
 /** Closed DirtyFrag payloads, with profiles bound to eligible S26 Ultra devices at runtime. */
 internal object DfCatalog {
     const val SOURCE = "bundled-df"
@@ -132,11 +134,17 @@ internal object DfCatalog {
             "The selected payload is not the current DirtyFrag bundle for this device. Select a bundled backend."
         }
 
-    fun stage(context: Context, profile: TargetProfile, onProgress: (String) -> Unit): VerifiedPayloads {
+    fun stage(context: Context, profile: TargetProfile,
+        options: DfStageOptions = DfStageOptions(AppPreferences.disableKsuModules(context),
+            AppPreferences.wipeModuleState(context), AppPreferences.partitionReadOnlyMode(context)),
+        onProgress: (String) -> Unit): VerifiedPayloads {
         val snapshot = DeviceSnapshot.current()
         context.assets.open("df/catalog.json").use {
             requireCurrent(it.readBytes(), snapshot, profile)
         }
+        // Claim before touching the shared native handoff. A UI/boot race must not replace the
+        // daemon or its flags underneath a different process's exploit.
+        DfBootAttempt.claim(context)
         onProgress("DirtyFrag target ${snapshot.model} / ${snapshot.incremental}; kernel ${snapshot.kernelRelease}")
         val dest = File(context.createDeviceProtectedStorageContext().getFilesDir().getParentFile(), "ksud")
         check(dest.parentFile.isDirectory || dest.parentFile.mkdirs())
@@ -172,19 +180,19 @@ internal object DfCatalog {
         }
         val library = File(context.applicationInfo.nativeLibraryDir, DF_LIB_NAME)
         require(library.isFile && library.canRead()) { "DirtyFrag native library missing from this build" }
-        if (AppPreferences.wipeModuleState(context)) {
+        if (options.wipeModules) {
             File(target.parentFile, WIPE_FLAG_NAME).writeText("1\n")
             onProgress("DirtyFrag wipe armed before loading (turn the reset switch off again after)")
         } else {
             File(target.parentFile, WIPE_FLAG_NAME).delete()
         }
-        if (AppPreferences.partitionReadOnlyMode(context)) {
+        if (options.protectImages) {
             File(target.parentFile, NO_RO_FLAG_NAME).delete()
             onProgress("Image protection armed pre-load (no grant needed)")
         } else if (!File(target.parentFile, NO_RO_FLAG_NAME).isFile) {
             File(target.parentFile, NO_RO_FLAG_NAME).writeText("1\n")
         }
-        if (AppPreferences.disableKsuModules(context)) {
+        if (options.disableModules) {
             File(target.parentFile, DISABLE_FLAG_NAME).writeText("1\n")
             onProgress("Module disable armed before loading")
         } else {

@@ -15,11 +15,21 @@ import java.io.IOException;
 
 /** The system process owns system data; an APK's app-data SELinux label need not allow it writes. */
 final class D2SettingsFile implements D2Configuration.Storage {
-    private final AtomicFile file = new AtomicFile(new File(D2Protocol.SETTINGS_FILE));
+    private final String path;
+    private final AtomicFile file;
 
-    private static boolean validate(String suffix) throws IOException {
+    D2SettingsFile() { this(D2Protocol.SETTINGS_FILE); }
+    D2SettingsFile(String path) {
+        if (!D2Protocol.SETTINGS_FILE.equals(path) && !D2Protocol.EARLY_ROOT_SETTINGS_FILE.equals(path)) {
+            throw new IllegalArgumentException("Unknown boot-helper settings file");
+        }
+        this.path = path;
+        this.file = new AtomicFile(new File(path));
+    }
+
+    private boolean validate(String suffix) throws IOException {
         try {
-            StructStat stat = Os.lstat(D2Protocol.SETTINGS_FILE + suffix);
+            StructStat stat = Os.lstat(path + suffix);
             if (!OsConstants.S_ISREG(stat.st_mode) || stat.st_uid != 1000 || stat.st_gid != 1000 ||
                     stat.st_nlink != 1 || (stat.st_mode & 0077) != 0 || stat.st_size > 16) {
                 throw new IOException("Unexpected D2 settings file ownership, type, permissions or size");

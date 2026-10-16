@@ -80,6 +80,11 @@ jobs:
       # Before the tag, deliberately: this runs on the commit that is about to be tagged, and a
       # failure here leaves nothing behind. The other order leaves a tag with no release on it, which
       # is a mess to clean up by hand. The same suite gates the CI workflow's pre-releases.
+      - name: Check boot handoff and root process deadlines
+        run: |
+          python3 tools/test_su_process.py
+          python3 tools/test_early_root_speed.py
+
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --no-daemon
 

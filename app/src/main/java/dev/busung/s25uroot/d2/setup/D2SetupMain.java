@@ -105,8 +105,9 @@ public final class D2SetupMain {
     }
     private static void removeHelperSettings()throws Exception {
         // Fixed private helper files only; no app-data traversal or recursive deletion.
+        for(String base:List.of(D2Protocol.SETTINGS_FILE,D2Protocol.EARLY_ROOT_SETTINGS_FILE))
         for(String suffix:List.of("",".new",".bak")) {
-            String path=D2Protocol.SETTINGS_FILE+suffix;
+            String path=base+suffix;
             try {
                 StructStat stat=Os.lstat(path);
                 if(!OsConstants.S_ISREG(stat.st_mode)||stat.st_uid!=1000||stat.st_gid!=1000||

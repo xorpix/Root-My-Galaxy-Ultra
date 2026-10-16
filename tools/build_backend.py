@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 """Build a pinned, already patched backend with the recovered DDK and NDK."""
 import hashlib, json, os, pathlib, shutil, subprocess, sys
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent / 'backend-refresh'))
+from common import load_config, reviewed_uapi
 tools=pathlib.Path(sys.argv[1]).resolve()
 flavor=sys.argv[2]
 assert flavor in ('kernelsu','kernelsu-next','resukisu')
 repo=tools/flavor
-plan=json.loads((tools/'targets.json').read_text())
+plan=load_config(tools/'targets.json')
 target=plan['backends'][flavor]
 expected=(target['commit'],target['version'])
 def git(*args):return subprocess.check_output(['git','-C',str(repo),*args],text=True).strip()
 assert git('rev-parse','HEAD')==expected[0]
 assert int(git('rev-list','--count','HEAD'))==target['commit_count']
 assert target['version_offset']+target['commit_count']==expected[1]
-assert plan['uapi']==5, 'A new UAPI requires a reviewed app/helper update'
-assert 'KERNEL_SU_UAPI_VERSION = 5;' in (repo/'uapi/supercall.h').read_text()
+assert reviewed_uapi((repo/'uapi/supercall.h').read_text(), flavor)==target['uapi']
 for name in git('ls-files','*Cargo.toml','*Cargo.lock').splitlines():
     if name.startswith('manager/'):continue
     p=repo/name
@@ -58,7 +59,7 @@ def fingerprint(path):
     data=path.read_bytes()
     return {'size':len(data),'sha256':hashlib.sha256(data).hexdigest()}
 (artifacts/'build-receipt.json').write_text(json.dumps({
-    'commit':expected[0],'driver_version':expected[1],'uapi':5,
+    'commit':expected[0],'driver_version':expected[1],'uapi':target['uapi'],
     'ksud':fingerprint(daemon),'kernelsu.ko':fingerprint(module)},indent=2)+'\n')
 print('BUILT',flavor,expected,flush=True)
 print('DAEMON',daemon,flush=True)
