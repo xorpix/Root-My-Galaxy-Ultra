@@ -4919,6 +4919,7 @@ private fun SettingsPage(
                         onBootRootModeChanged(enabled)
                     },
                 )
+                EarlyRootSection(bootRootMode, loadKernelSu)
                 // Follows the load decision for the same reason root on boot does: what it applies its
                 // modules to is the KernelSU a run loaded, and with loading off there is nothing to
                 // apply. It is not tied to root on boot - a manual run can load KernelSU with that off.

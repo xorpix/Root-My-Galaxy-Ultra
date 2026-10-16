@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="early_root_title">Root before first unlock</string>
+    <string name="early_root_summary">Restore root automatically while the phone is still locked. Uses your boot delay and selected backend.</string>
+    <string name="early_root_needs_boot_root">Enable Root on boot first.</string>
+    <string name="early_root_needs_helper">Update and activate the boot helper under Keep Odin reachable in Recovery Management, then return here.</string>
+    <string name="early_root_unsupported">Available with the bundled DirtyFrag backend on supported S26 Ultra firmware.</string>
+    <string name="early_root_starting">Restoring root…</string>
+    <string name="early_root_waiting">Waiting for the configured boot delay.</string>
+    <string name="early_root_failed">Early root did not finish.</string>
+    <string name="early_root_verified_locked">Root verified before first unlock, %1$d seconds after boot.</string>
+    <string name="early_root_verified_unlocked">Root verified after first unlock, %1$d seconds after boot.</string>
+</resources>

@@ -11,9 +11,15 @@ public final class D2BootReceiver extends BroadcastReceiver {
         if (!Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action) &&
                 !Intent.ACTION_BOOT_COMPLETED.equals(action) && !Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)) return;
         try {
-            if (!D2Store.enabled(context)) return;
+            if (!D2Store.enabled(context)) {
+                EarlyRootBoot.request(context, action);
+                return;
+            }
             PendingResult pending = goAsync();
-            try { D2Runtime.request(context, action, true, pending::finish); }
+            try { D2Runtime.request(context, action, true, () -> {
+                try { EarlyRootBoot.request(context, action); }
+                finally { pending.finish(); }
+            }); }
             catch (Exception error) { pending.finish(); throw error; }
         } catch (Exception error) {
             Log.w("RMGUD2", "Boot request failed: " + error.getClass().getSimpleName());

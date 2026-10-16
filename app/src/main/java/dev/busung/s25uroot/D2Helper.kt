@@ -30,6 +30,7 @@ internal data class D2Status(
     val busy: Boolean = false,
     val current: Boolean = false,
     val verified: Boolean = false,
+    val earlyRootEnabled: Boolean = false,
 )
 
 internal data class D2SetupResult(val ok: Boolean, val committed: Boolean, val rootRequired: Boolean = false)
@@ -90,10 +91,10 @@ internal object D2Helper {
         }
         val reply = call("status")
         val needsReboot = reply.getString("source") != installed.source || reply.getInt("version") != installed.version
-        require(method != "configure" || enabled != true || !needsReboot) {
+        require(method !in setOf("configure", "configure_root") || enabled != true || !needsReboot) {
             "Install the matching helper and fully reboot before enabling D2"
         }
-        val result = if (method == "status" || (needsReboot && !(method == "configure" && enabled == false))) reply
+        val result = if (method == "status" || (needsReboot && !(method in setOf("configure", "configure_root") && enabled == false))) reply
             else call(method, enabled)
         val timeout = result.getBoolean("timed_out")
         return installed.status.copy(
@@ -101,7 +102,18 @@ internal object D2Helper {
             activated = result.getBoolean("activated") && !installed.stopped,
             enabled = result.getBoolean("enabled"), busy = result.getBoolean("busy"),
             current = result.getBoolean("current"), verified = result.getBoolean("verified") && !timeout,
+            earlyRootEnabled = result.getBoolean("early_root_enabled"),
         )
+    }
+
+    suspend fun setEarlyRoot(context: Context, enabled: Boolean): D2Status = withContext(Dispatchers.IO) {
+        val installed = installed(context)
+        check(installed.status.identityVerified && !installed.status.needsUpdate && !installed.status.needsReboot) {
+            "Update the boot helper in Recovery Management, fully reboot, then activate it"
+        }
+        D2ControlClient.use(context) { status(installed, it, "configure_root", enabled) }.also {
+            check(it.earlyRootEnabled == enabled) { "The helper did not confirm the early root setting" }
+        }
     }
 
     suspend fun query(context: Context, refresh: Boolean = false, enabled: Boolean? = null): D2Status =

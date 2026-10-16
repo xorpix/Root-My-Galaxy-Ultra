@@ -1,0 +1,118 @@
+name: Early Root Test Build
+
+on:
+  push:
+    branches: [feat/early-root-before-unlock]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: early-root-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Early root test build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-37.0 build-tools;36.0.0 cmake;3.22.1'
+          accept-android-sdk-licenses: true
+
+      - name: Setup NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r28
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          : "${KEYSTORE_BASE64:?Repository secret KEYSTORE_BASE64 is not set}"
+          : "${KEYSTORE_PASSWORD:?Repository secret KEYSTORE_PASSWORD is not set}"
+          : "${KEY_ALIAS:?Repository secret KEY_ALIAS is not set}"
+          : "${KEY_PASSWORD:?Repository secret KEY_PASSWORD is not set}"
+
+          KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH"
+
+          {
+            echo "KEYSTORE_FILE=$KEYSTORE_PATH"
+            echo "KEYSTORE_TYPE=PKCS12"
+            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "KEY_ALIAS=$KEY_ALIAS"
+            echo "KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      # Before the APKs, so a failing test reports as a failing test rather than as a build that
+      # stopped somewhere. The release workflow runs the same task for the same reason: a stable
+      # release is not a way past the suite.
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest --no-daemon
+
+      - name: Build APKs
+        run: ./gradlew assembleDebug assembleRelease --no-daemon
+
+      - name: Verify embedded D2 companions
+        run: |
+          python3 -m unittest discover -s tools/backend-refresh -p test_d2_signing.py
+          python3 tools/verify_d2_helper.py app/build/outputs/apk/debug/app-debug.apk
+          python3 tools/verify_d2_helper.py app/build/outputs/apk/release/app-release.apk
+
+      - name: Verify release APK signature
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BUILD_TOOLS="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)"
+          APK="$(ls app/build/outputs/apk/release/*.apk | head -n 1)"
+
+          CERT="$("$BUILD_TOOLS/apksigner" verify --print-certs "$APK")"
+          SIGNED_DN="$(echo "$CERT" | grep -m 1 'certificate DN' | cut -d: -f2- | sed 's/^ *//')"
+          SIGNED_SHA256="$(echo "$CERT" | grep -m 1 'SHA-256 digest' | awk '{print $NF}' | tr 'A-F' 'a-f')"
+          EXPECTED_SHA256="$(keytool -list -v -keystore "$KEYSTORE_FILE" -storepass "$KEYSTORE_PASSWORD" \
+            -alias "$KEY_ALIAS" | grep -m 1 'SHA256:' | awk '{print $2}' | tr -d ':' | tr 'A-F' 'a-f')"
+
+          if [ "$SIGNED_SHA256" != "$EXPECTED_SHA256" ]; then
+            echo "::error::Release APK is not signed with the repository key (got $SIGNED_SHA256, expected $EXPECTED_SHA256)."
+            exit 1
+          fi
+
+          {
+            echo "### Release APK signature"
+            echo
+            echo "- DN: \`$SIGNED_DN\`"
+            echo "- SHA-256: \`$SIGNED_SHA256\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: early-root-test-apks
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 14
+

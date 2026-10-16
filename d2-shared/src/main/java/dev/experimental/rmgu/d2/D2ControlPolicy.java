@@ -10,10 +10,10 @@ public final class D2ControlPolicy {
         if (deadline <= now || deadline - now > 8000) {
             throw new IllegalStateException("D2 request expired; check status before retrying");
         }
-        if ("configure".equals(method)) {
+        if ("configure".equals(method) || "configure_root".equals(method)) {
             if (enabled == null) throw new IllegalArgumentException("Missing switch value");
             if (enabled && (!runningSource.equals(source) || version != runningVersion)) {
-                throw new IllegalStateException("Fully reboot to load the matching helper before enabling D2");
+                throw new IllegalStateException("Fully reboot to load the matching helper before enabling this feature");
             }
         } else if (!("status".equals(method) || "refresh".equals(method)) || enabled != null) {
             throw new IllegalArgumentException("Unknown D2 operation or unexpected switch value");

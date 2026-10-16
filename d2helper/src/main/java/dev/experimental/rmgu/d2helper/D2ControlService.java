@@ -70,10 +70,13 @@ public final class D2ControlService extends Service {
                     throw new IllegalStateException("D2 switch was not saved: " + error.getMessage(), error);
                 }
                 if (enabled) D2Runtime.request(this, "enabled", true, () -> {});
+            } else if ("configure_root".equals(method)) {
+                EarlyRootBoot.configure(this, enabled);
             } else if ("refresh".equals(method)) {
                 D2Runtime.request(this, "status", false, () -> {});
             }
             reply = D2Store.snapshot(this);
+            reply.putBoolean("early_root_enabled", EarlyRootBoot.enabled());
             reply.putBoolean("busy", D2Runtime.busy());
             reply.putBoolean("timed_out", D2Runtime.timedOut());
             if (D2Runtime.timedOut()) reply.putBoolean("verified", false);

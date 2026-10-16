@@ -56,6 +56,16 @@ class AutoRootBootReceiver : BroadcastReceiver() {
             }
         }
 
+        if (EarlyRootStore.requested(context)) {
+            try {
+                EarlyRootService.start(context)
+                AppLog.info(AppLogTags.BOOT, "Continuing the Direct Boot root worker after unlock")
+                return
+            } catch (error: Exception) {
+                AppLog.warn(AppLogTags.BOOT, "Early root service unavailable; using normal boot root: ${error.message}")
+            }
+        }
+
         if (rootActive) {
             AppLog.info(AppLogTags.BOOT, "Root is already active, so no install is started")
             return

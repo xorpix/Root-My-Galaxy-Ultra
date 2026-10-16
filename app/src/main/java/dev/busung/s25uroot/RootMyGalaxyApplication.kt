@@ -23,12 +23,19 @@ class RootMyGalaxyApplication : Application() {
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
 
+        if (Application.getProcessName() == base.packageName + EarlyRootService.PROCESS_SUFFIX) return
+
         isShizukuProviderProcess = Application.getProcessName() == base.packageName
         ShizukuProvider.enableMultiProcessSupport(isShizukuProviderProcess)
     }
 
     override fun onCreate() {
         super.onCreate()
+
+        if (Application.getProcessName() == packageName + EarlyRootService.PROCESS_SUFFIX) {
+            AppLog.install(createDeviceProtectedStorageContext())
+            return
+        }
 
         // Every process, including the two services: the Logs tab is where a boot install explains
         // itself, and a boot install has no screen to be explained on at the time.

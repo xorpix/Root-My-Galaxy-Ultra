@@ -210,6 +210,7 @@ object AppPreferences {
         prefs(context).edit()
             .putBoolean(DISABLE_KSU_MODULES, enabled)
             .apply()
+        EarlyRootStore.syncOptions(context)
     }
 
     /**
@@ -228,6 +229,7 @@ object AppPreferences {
         prefs(context).edit()
             .putBoolean(WIPE_MODULE_STATE, enabled)
             .apply()
+        EarlyRootStore.syncOptions(context)
     }
 
     /**
@@ -266,6 +268,7 @@ object AppPreferences {
         prefs(context).edit()
             .putString(KERNEL_SU_FLAVOR, flavor.id)
             .apply()
+        EarlyRootStore.syncOptions(context)
     }
 
     fun hasKernelsuFlavorChoice(context: Context): Boolean =
@@ -373,6 +376,7 @@ object AppPreferences {
         prefs(context).edit()
             .putBoolean(BOOT_ROOT_MODE, enabled)
             .apply()
+        EarlyRootStore.syncOptions(context)
     }
 
     /**
@@ -573,6 +577,7 @@ object AppPreferences {
         prefs(context).edit()
             .putInt(AUTO_ROOT_SETTLE_SECONDS, BootSettle.normalize(seconds))
             .apply()
+        EarlyRootStore.syncOptions(context)
     }
 
     /**
@@ -606,6 +611,7 @@ object AppPreferences {
         prefs(context).edit()
             .putBoolean(PARTITION_READ_ONLY_MODE, enabled)
             .apply()
+        EarlyRootStore.syncOptions(context)
     }
 
     private const val SUSFS_AUTO_ENABLE = "susfs_auto_enable"
