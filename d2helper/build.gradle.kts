@@ -10,7 +10,7 @@ val keystoreProperties = Properties().apply {
 fun signingProperty(env: String, property: String): String? =
     System.getenv(env)?.takeIf(String::isNotBlank) ?: keystoreProperties.getProperty(property)
 
-val helperCode = 2
+val helperCode = 3
 val sourceInputs = files(
     fileTree("src/main"),
     fileTree(rootProject.file("d2-shared/src/main/java")),
@@ -51,7 +51,7 @@ android {
         minSdk = 33
         targetSdk = 36
         versionCode = helperCode
-        versionName = "2.0"
+        versionName = "3.0"
         buildConfigField("String", "SOURCE_SHA256", "\"$sourceFingerprint\"")
         manifestPlaceholders["d2SourceSha256"] = sourceFingerprint
     }

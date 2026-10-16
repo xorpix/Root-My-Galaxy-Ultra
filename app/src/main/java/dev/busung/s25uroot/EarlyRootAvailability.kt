@@ -20,9 +20,6 @@ internal enum class EarlyRootAvailability {
         ): EarlyRootAvailability = when {
             !rootOnBoot -> NeedsBootRoot
             !loadKernelSu -> NeedsKernelLoading
-            device == EarlyRootDeviceSupport.Checking -> Checking
-            device == EarlyRootDeviceSupport.Unavailable -> DeviceUnavailable
-            device == EarlyRootDeviceSupport.Unsupported -> Unsupported
             helperReadFailed -> HelperUnavailable
             helper == null -> Checking
             !helper.installed -> NeedsHelper
@@ -31,6 +28,9 @@ internal enum class EarlyRootAvailability {
             helper.needsReboot -> NeedsReboot
             !helper.controllable -> HelperUnavailable
             !helper.activated -> NeedsActivation
+            device == EarlyRootDeviceSupport.Checking -> Checking
+            device == EarlyRootDeviceSupport.Unavailable -> DeviceUnavailable
+            device == EarlyRootDeviceSupport.Unsupported -> Unsupported
             else -> Ready
         }
     }

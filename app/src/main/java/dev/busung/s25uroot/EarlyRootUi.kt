@@ -55,19 +55,20 @@ internal fun EarlyRootSection(rootOnBoot: Boolean, loadKernelSu: Boolean, positi
             coroutineScope {
                 launch {
                     while (true) {
-                        val support = withContext(Dispatchers.IO) {
-                            try {
-                                if (DfPort.matches(EarlyRootDevice.current())) EarlyRootDeviceSupport.Supported
-                                else EarlyRootDeviceSupport.Unsupported
-                            } catch (error: CancellationException) { throw error }
-                            catch (_: Exception) { EarlyRootDeviceSupport.Unavailable }
-                        }
-                        device = support
                         if (!running) {
                             helper = try { D2Helper.query(context).also { helperReadFailed = false } }
                             catch (error: CancellationException) { throw error }
                             catch (_: Exception) { helperReadFailed = true; null }
                         }
+                        val currentHelper = helper
+                        val support = withContext(Dispatchers.IO) {
+                            try {
+                                if (DfPort.matches(EarlyRootDevice.current(currentHelper))) EarlyRootDeviceSupport.Supported
+                                else EarlyRootDeviceSupport.Unsupported
+                            } catch (error: CancellationException) { throw error }
+                            catch (_: Exception) { EarlyRootDeviceSupport.Unavailable }
+                        }
+                        device = support
                         delay(3000)
                     }
                 }

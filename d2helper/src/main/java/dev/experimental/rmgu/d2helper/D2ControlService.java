@@ -16,6 +16,7 @@ import android.os.SystemClock;
 import android.util.Log;
 import dev.experimental.rmgu.d2.D2ControlPolicy;
 import dev.experimental.rmgu.d2.D2Protocol;
+import dev.experimental.rmgu.d2.KernelIdentity;
 
 /** Explicit bound-only control: sideloaded system-process providers are skipped at boot. */
 public final class D2ControlService extends Service {
@@ -76,6 +77,9 @@ public final class D2ControlService extends Service {
                 D2Runtime.request(this, "status", false, () -> {});
             }
             reply = D2Store.snapshot(this);
+            // The regular controller app may not read these proc files. The authenticated
+            // system helper reports a bounded, kernel-owned value without changing anything.
+            reply.putString("kernel_release", KernelIdentity.read());
             reply.putBoolean("early_root_enabled", EarlyRootBoot.enabled());
             reply.putBoolean("busy", D2Runtime.busy());
             reply.putBoolean("timed_out", D2Runtime.timedOut());

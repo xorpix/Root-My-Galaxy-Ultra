@@ -1,24 +1,26 @@
 package dev.busung.s25uroot
 
 import java.io.File
+import dev.experimental.rmgu.d2.KernelIdentity
 
 /** The persistent boot profile must not record a temporary SusFS uname override. */
 internal object EarlyRootDevice {
-    fun current(): DeviceSnapshot {
+    fun current(helper: D2Status? = null): DeviceSnapshot {
         val snapshot = DeviceSnapshot.current()
-        return snapshot.copy(kernelRelease = originalKernelRelease())
+        return snapshot.copy(kernelRelease = originalKernelRelease(helper))
     }
 
-    /** Retry the independent proc source after an unreadable, empty or malformed sysctl. */
-    internal fun originalKernelRelease(read: (String) -> String = { File(it).readText() }): String {
-        fun valid(value: String) = value.isNotBlank() && value.length <= 64 &&
-            value.none { it.isWhitespace() || it.isISOControl() }
-
-        val sysctl = runCatching { read("/proc/sys/kernel/osrelease").trim() }.getOrNull()
-        if (sysctl != null && valid(sysctl)) return sysctl
-        val fields = runCatching { read("/proc/version").trim().split(Regex("\\s+"), limit = 4) }.getOrNull()
-        val release = fields?.takeIf { it.size >= 3 && it[0] == "Linux" && it[1] == "version" }?.get(2)
-        check(release != null && valid(release)) { "Cannot read the original kernel release for the boot profile" }
-        return release
+    /** Only an authenticated, matching running helper can supply the otherwise restricted read. */
+    internal fun originalKernelRelease(
+        helper: D2Status? = null,
+        read: (String) -> String = { File(it).readText() },
+    ): String {
+        if (helper != null && helper.installed && helper.identityVerified && helper.controllable &&
+            !helper.needsUpdate && !helper.needsReboot && KernelIdentity.valid(helper.kernelRelease)) {
+            return requireNotNull(helper.kernelRelease)
+        }
+        return checkNotNull(KernelIdentity.read { read(it) }) {
+            "The boot helper could not read the original kernel release. Update the helper and fully reboot."
+        }
     }
 }

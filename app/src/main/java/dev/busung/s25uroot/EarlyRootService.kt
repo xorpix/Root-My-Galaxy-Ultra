@@ -120,7 +120,7 @@ class EarlyRootService : Service() {
             return
         }
         val current = requireNotNull(EarlyRootStore.config(this))
-        val snapshot = EarlyRootDevice.current()
+        val snapshot = EarlyRootDevice.current(helper)
         val profile = DfCatalog.load(this, snapshot).singleOrNull { current.matches(snapshot, it) }
             ?: error("Firmware or bundled backend changed. Complete a manual root run and enable early root again.")
         check(kernelBootToken() == bootToken) { "The kernel boot changed" }

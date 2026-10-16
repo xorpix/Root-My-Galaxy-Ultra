@@ -11,7 +11,7 @@
     <string name="early_root_needs_activation">Activate the updated boot helper to enable root before first unlock.</string>
     <string name="early_root_activate_helper">Activate boot helper</string>
     <string name="early_root_helper_unavailable">The boot helper is not responding. Retrying automatically… If this continues, activate it under Keep Odin reachable.</string>
-    <string name="early_root_device_unavailable">Could not read the kernel identity. Retrying automatically…</string>
+    <string name="early_root_device_unavailable">The boot helper could not read the kernel identity. Update it under Keep Odin reachable, then fully reboot.</string>
     <string name="early_root_unsupported">Available with the bundled DirtyFrag backend on supported S26 Ultra firmware.</string>
     <string name="early_root_starting">Restoring root…</string>
     <string name="early_root_waiting">Waiting for the configured boot delay.</string>

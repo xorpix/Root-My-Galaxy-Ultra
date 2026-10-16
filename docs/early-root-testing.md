@@ -1,9 +1,15 @@
-# Early root test 2
+# Early root test 3
 
-Test 2 refreshes helper readiness when settings resume and retries temporary helper or
-kernel-read failures while the screen is open. The row shows the specific missing step,
-and offers **Activate boot helper** directly when activation is required. The helper
-itself is unchanged from test 1, so its successful update does not need to be repeated.
+Test 3 moves the genuine kernel-release query into the authenticated system helper.
+Normal app access to the two proc sources can be denied on the phone. Settings,
+enable-time validation and the Direct Boot worker now use the same helper response;
+the spoofable uname syscall is never used as a substitute for the genuine release.
+The fixed query reads at most 4 KiB per source and accepts no caller-supplied paths.
+An unavailable kernel read does not prevent Odin status or control from working.
+
+**This build requires updating the helper to version 3 and fully rebooting.** Existing
+certificate preparation and Odin settings are retained. The row shows the helper
+update, reboot or activation step before reporting a kernel-read problem.
 
 This test adds **Root before first unlock** to Root Management. It is off by default and
 requires Root on boot, a previously verified bundled DirtyFrag backend, and the matching

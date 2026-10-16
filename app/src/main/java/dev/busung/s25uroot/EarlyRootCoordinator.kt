@@ -13,7 +13,11 @@ internal object EarlyRootCoordinator {
             return@withContext
         }
         check(AppPreferences.bootRootMode(context)) { "Enable Root on boot first" }
-        val snapshot = EarlyRootDevice.current()
+        val helper = D2Helper.query(context)
+        check(helper.controllable && helper.activated && !helper.needsUpdate && !helper.needsReboot) {
+            "Update the boot helper in Recovery Management, fully reboot, then activate it"
+        }
+        val snapshot = EarlyRootDevice.current(helper)
         check(AutoRootSupport.hasVerifiedInstall(context, snapshot)) { "Complete a verified root run before enabling early root" }
         val cached = KnownGoodPayloadStore.profileFor(context, snapshot = snapshot)
         check(DfCatalog.isDfPayload(cached)) { "Early root currently requires the bundled DirtyFrag backend" }
@@ -21,10 +25,6 @@ internal object EarlyRootCoordinator {
             it.flavor == AppPreferences.kernelsuFlavor(context) && it.matches(snapshot) &&
                 it.kernelSu.sha256 == cached.kernelSu.sha256 && it.flavor == cached.flavor
         } ?: error("Run the selected bundled backend on this firmware before enabling early root")
-        val helper = D2Helper.query(context)
-        check(helper.controllable && helper.activated && !helper.needsUpdate && !helper.needsReboot) {
-            "Update the boot helper in Recovery Management, fully reboot, then activate it"
-        }
         val config = EarlyRootConfig(false, true, profile.flavor.id, snapshot.model, snapshot.device,
             snapshot.incremental, snapshot.kernelRelease, requireNotNull(profile.kernelSu.sha256),
             AppPreferences.autoRootSettleSeconds(context), AppPreferences.disableKsuModules(context),

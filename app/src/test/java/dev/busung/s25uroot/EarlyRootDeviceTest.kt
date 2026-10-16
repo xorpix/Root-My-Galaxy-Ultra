@@ -7,6 +7,25 @@ import org.junit.Test
 class EarlyRootDeviceTest {
     private val genuine = "6.12.69-android16-6-pb4d3caf-abogkiS948BXXS4BZIG-4k"
     private val procVersion = "Linux version $genuine (builder@host) #1 SMP PREEMPT"
+    private val trusted = D2Status(installed = true, identityVerified = true, controllable = true,
+        activated = true, kernelRelease = genuine)
+
+    @Test fun restrictedAppUsesTheAuthenticatedHelpersOriginalReleaseWithoutReadingProc() {
+        assertEquals(genuine, EarlyRootDevice.originalKernelRelease(trusted) {
+            throw AssertionError("The app must not need its restricted proc files")
+        })
+    }
+
+    @Test fun untrustedStaleOrMalformedHelperDataCannotBypassTheGenuineIdentityCheck() {
+        for (helper in listOf(trusted.copy(installed = false), trusted.copy(identityVerified = false),
+            trusted.copy(controllable = false), trusted.copy(needsUpdate = true), trusted.copy(needsReboot = true),
+            trusted.copy(kernelRelease = null), trusted.copy(kernelRelease = "Linux version fake"),
+            trusted.copy(kernelRelease = genuine + "\n"), trusted.copy(kernelRelease = "x".repeat(65)))) {
+            assertThrows(IllegalStateException::class.java) {
+                EarlyRootDevice.originalKernelRelease(helper) { throw IOException("Permission denied") }
+            }
+        }
+    }
 
     @Test fun originalSysctlIsPreferredWithoutReadingAnotherSource() {
         assertEquals(genuine, EarlyRootDevice.originalKernelRelease { path ->

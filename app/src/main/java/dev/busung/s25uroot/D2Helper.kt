@@ -11,6 +11,7 @@ import android.provider.Settings
 import androidx.core.content.FileProvider
 import dev.busung.s25uroot.d2.setup.SetupCommand
 import dev.experimental.rmgu.d2.D2Protocol
+import dev.experimental.rmgu.d2.KernelIdentity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -31,6 +32,7 @@ internal data class D2Status(
     val current: Boolean = false,
     val verified: Boolean = false,
     val earlyRootEnabled: Boolean = false,
+    val kernelRelease: String? = null,
 )
 
 internal data class D2SetupResult(val ok: Boolean, val committed: Boolean, val rootRequired: Boolean = false)
@@ -103,6 +105,7 @@ internal object D2Helper {
             enabled = result.getBoolean("enabled"), busy = result.getBoolean("busy"),
             current = result.getBoolean("current"), verified = result.getBoolean("verified") && !timeout,
             earlyRootEnabled = result.getBoolean("early_root_enabled"),
+            kernelRelease = result.getString("kernel_release")?.takeIf { !needsReboot && KernelIdentity.valid(it) },
         )
     }
 

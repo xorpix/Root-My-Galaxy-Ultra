@@ -48,6 +48,18 @@ class EarlyRootAvailabilityTest {
             availability(readyHelper.copy(needsReboot = true, activated = false)))
     }
 
+    @Test fun restrictedAppReadsDoNotHideTheHelperUpdateRebootOrActivationStep() {
+        val denied = EarlyRootDeviceSupport.Unavailable
+        assertEquals(EarlyRootAvailability.NeedsHelperUpdate,
+            availability(readyHelper.copy(needsUpdate = true), denied))
+        assertEquals(EarlyRootAvailability.NeedsReboot,
+            availability(readyHelper.copy(needsReboot = true), denied))
+        assertEquals(EarlyRootAvailability.NeedsActivation,
+            availability(readyHelper.copy(activated = false), denied))
+        assertEquals(EarlyRootAvailability.DeviceUnavailable, availability(readyHelper, denied))
+        assertEquals(EarlyRootAvailability.Ready, availability(readyHelper, EarlyRootDeviceSupport.Supported))
+    }
+
     @Test fun aFailedRefreshDoesNotReuseAnEarlierReadyStatusOrPretendTheHelperWasUninstalled() {
         assertEquals(EarlyRootAvailability.HelperUnavailable, EarlyRootAvailability.current(
             true, true, EarlyRootDeviceSupport.Supported, readyHelper, helperReadFailed = true))
