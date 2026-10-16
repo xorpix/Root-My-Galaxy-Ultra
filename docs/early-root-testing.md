@@ -1,4 +1,9 @@
-# Early root test 1
+# Early root test 2
+
+Test 2 refreshes helper readiness when settings resume and retries temporary helper or
+kernel-read failures while the screen is open. The row shows the specific missing step,
+and offers **Activate boot helper** directly when activation is required. The helper
+itself is unchanged from test 1, so its successful update does not need to be repeated.
 
 This test adds **Root before first unlock** to Root Management. It is off by default and
 requires Root on boot, a previously verified bundled DirtyFrag backend, and the matching

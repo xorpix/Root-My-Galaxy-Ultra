@@ -1,5 +1,8 @@
 package dev.busung.s25uroot
 
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -26,6 +29,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -38,24 +42,50 @@ internal fun EarlyRootSection(rootOnBoot: Boolean, loadKernelSu: Boolean, positi
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     var enabled by remember { mutableStateOf(false) }
     var running by remember { mutableStateOf(false) }
-    var helperReady by remember { mutableStateOf(false) }
+    var helper by remember { mutableStateOf<D2Status?>(null) }
+    var helperReadFailed by remember { mutableStateOf(false) }
+    var device by remember { mutableStateOf(EarlyRootDeviceSupport.Checking) }
     var report by remember { mutableStateOf<JSONObject?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
-    val supported = remember { runCatching { DfPort.matches(EarlyRootDevice.current()) }.getOrDefault(false) }
 
-    LaunchedEffect(rootOnBoot, lifecycle) {
-      lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-        val helper = D2Helper.query(context)
-        helperReady = helper.controllable && helper.activated && !helper.needsUpdate && !helper.needsReboot
-        while (true) {
-            val (armed, result) = withContext(Dispatchers.IO) {
-                runCatching { EarlyRootStore.config(context)?.enabled == true }.getOrDefault(false) to EarlyRootStore.result(context)
+    LaunchedEffect(lifecycle) {
+        // Returning from the helper's NoDisplay activation can resume without another STARTED
+        // transition. Also retry transient connection/read failures while settings stay open.
+        lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            coroutineScope {
+                launch {
+                    while (true) {
+                        val support = withContext(Dispatchers.IO) {
+                            try {
+                                if (DfPort.matches(EarlyRootDevice.current())) EarlyRootDeviceSupport.Supported
+                                else EarlyRootDeviceSupport.Unsupported
+                            } catch (error: CancellationException) { throw error }
+                            catch (_: Exception) { EarlyRootDeviceSupport.Unavailable }
+                        }
+                        device = support
+                        if (!running) {
+                            helper = try { D2Helper.query(context).also { helperReadFailed = false } }
+                            catch (error: CancellationException) { throw error }
+                            catch (_: Exception) { helperReadFailed = true; null }
+                        }
+                        delay(3000)
+                    }
+                }
+                while (true) {
+                    val (armed, result) = withContext(Dispatchers.IO) {
+                        runCatching { EarlyRootStore.config(context)?.enabled == true }.getOrDefault(false) to EarlyRootStore.result(context)
+                    }
+                    if (!running) enabled = armed
+                    report = result
+                    delay(2000)
+                }
             }
-            enabled = armed
-            report = result
-            delay(2000)
         }
-      }
+    }
+
+    val availability = EarlyRootAvailability.current(rootOnBoot, loadKernelSu, device, helper, helperReadFailed)
+    val activate = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if (it.resultCode != Activity.RESULT_OK) message = context.getString(R.string.d2_activation_failed)
     }
 
     message?.let { text ->
@@ -67,13 +97,21 @@ internal fun EarlyRootSection(rootOnBoot: Boolean, loadKernelSu: Boolean, positi
     Column {
         SettingsSwitchCard(icon = Icons.Rounded.Lock,
             title = stringResource(R.string.early_root_title),
-            description = stringResource(when {
-                !supported -> R.string.early_root_unsupported
-                !rootOnBoot -> R.string.early_root_needs_boot_root
-                !helperReady -> R.string.early_root_needs_helper
-                else -> R.string.early_root_summary
+            description = stringResource(when (availability) {
+                EarlyRootAvailability.Checking -> R.string.early_root_checking
+                EarlyRootAvailability.NeedsBootRoot -> R.string.early_root_needs_boot_root
+                EarlyRootAvailability.NeedsKernelLoading -> R.string.settings_boot_root_needs_load
+                EarlyRootAvailability.DeviceUnavailable -> R.string.early_root_device_unavailable
+                EarlyRootAvailability.Unsupported -> R.string.early_root_unsupported
+                EarlyRootAvailability.NeedsHelper -> R.string.early_root_needs_helper
+                EarlyRootAvailability.UntrustedHelper -> R.string.early_root_untrusted_helper
+                EarlyRootAvailability.NeedsHelperUpdate -> R.string.early_root_needs_helper_update
+                EarlyRootAvailability.NeedsReboot -> R.string.early_root_needs_reboot
+                EarlyRootAvailability.NeedsActivation -> R.string.early_root_needs_activation
+                EarlyRootAvailability.HelperUnavailable -> R.string.early_root_helper_unavailable
+                EarlyRootAvailability.Ready -> R.string.early_root_summary
             }),
-            checked = enabled, enabled = !running && (enabled || (supported && rootOnBoot && loadKernelSu && helperReady)),
+            checked = enabled, enabled = availability.canChange(enabled, running),
             position = position,
             onCheckedChange = { value ->
                 running = true
@@ -86,6 +124,17 @@ internal fun EarlyRootSection(rootOnBoot: Boolean, loadKernelSu: Boolean, positi
                     finally { running = false }
                 }
             })
+        if (availability == EarlyRootAvailability.NeedsActivation) {
+            TextButton(enabled = !running, onClick = {
+                running = true
+                scope.launch {
+                    try { activate.launch(D2Helper.activation(context)) }
+                    catch (error: CancellationException) { throw error }
+                    catch (error: Exception) { message = error.message ?: context.getString(R.string.d2_activation_failed) }
+                    finally { running = false }
+                }
+            }) { Text(stringResource(R.string.early_root_activate_helper)) }
+        }
         val current = report?.takeIf { it.optString("boot") == kernelBootToken() }
         if (current != null) {
             val state = current.optString("state")
