@@ -123,4 +123,9 @@ internal object EarlyRootStore {
         val current = result(context) ?: return
         write(context, "result", current.put("finalized", true))
     }
+
+    @Synchronized fun finalizationFailed(context: Context, detail: String) {
+        val current = result(context) ?: return
+        write(context, "result", current.put("postUnlockDetail", detail.take(1600)))
+    }
 }

@@ -32,7 +32,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 @Composable
-internal fun EarlyRootSection(rootOnBoot: Boolean, loadKernelSu: Boolean) {
+internal fun EarlyRootSection(rootOnBoot: Boolean, loadKernelSu: Boolean, position: SettingsCardPosition) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -74,7 +74,7 @@ internal fun EarlyRootSection(rootOnBoot: Boolean, loadKernelSu: Boolean) {
                 else -> R.string.early_root_summary
             }),
             checked = enabled, enabled = !running && (enabled || (supported && rootOnBoot && loadKernelSu && helperReady)),
-            position = SettingsCardPosition.Middle,
+            position = position,
             onCheckedChange = { value ->
                 running = true
                 scope.launch {
@@ -95,10 +95,11 @@ internal fun EarlyRootSection(rootOnBoot: Boolean, loadKernelSu: Boolean) {
                     else R.string.early_root_verified_unlocked, current.optLong("uptimeMs") / 1000)
                 "waiting" -> context.getString(R.string.early_root_waiting)
                 "running" -> context.getString(R.string.early_root_starting)
+                "skipped" -> context.getString(R.string.early_root_skipped)
                 else -> context.getString(R.string.early_root_failed) + "\n" + current.optString("detail")
             }
             Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                shape = settingsCardRestingShape(position = SettingsCardPosition.Middle)) {
+                shape = settingsCardRestingShape(position = position)) {
                 Text(text, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium)
             }
         }

@@ -11,7 +11,10 @@ internal class KernelBootClaim(private val file: File) {
         private val tokenPattern = Regex("[A-Za-z0-9_.-]{1,128}")
     }
 
-    fun claimed(token: String): Boolean = access(token, false)
+    fun claimed(token: String): Boolean {
+        require(tokenPattern.matches(token)) { "The kernel boot identity is unavailable" }
+        return file.exists() && access(token, false)
+    }
     fun claim(token: String): Boolean = access(token, true)
 
     private fun access(token: String, write: Boolean): Boolean = synchronized(monitor) {

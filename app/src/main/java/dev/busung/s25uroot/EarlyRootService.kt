@@ -58,8 +58,13 @@ class EarlyRootService : Service() {
                 } while (again)
             } catch (error: Exception) {
                 AppLog.error(AppLogTags.BOOT, "Early root stopped", error)
-                runCatching { EarlyRootStore.record(this@EarlyRootService, bootToken, "failed",
-                    error.message ?: error.javaClass.simpleName, startedLocked, !unlocked()) }
+                runCatching {
+                    val result = EarlyRootStore.result(this@EarlyRootService)
+                    if (result?.optString("boot") == bootToken && result.optString("state") == "verified") {
+                        EarlyRootStore.finalizationFailed(this@EarlyRootService, error.message ?: error.javaClass.simpleName)
+                    } else EarlyRootStore.record(this@EarlyRootService, bootToken, "failed",
+                        error.message ?: error.javaClass.simpleName, startedLocked, !unlocked())
+                }
             } finally {
                 handler.removeCallbacks(watchdog)
                 runCatching { if (wakeLock?.isHeld == true) wakeLock?.release() }
@@ -84,9 +89,9 @@ class EarlyRootService : Service() {
         }
         val prior = EarlyRootStore.result(this)
         if (RootStatusProbe.isActive()) {
-            if (prior?.optString("boot") == bootToken && prior.optString("state") == "verified") {
+            if (prior != null && prior.optString("boot") == bootToken && prior.optString("state") == "verified") {
                 finishAfterUnlock(config)
-            }
+            } else EarlyRootStore.record(this, bootToken, "skipped", "Root was already active", startedLocked)
             return
         }
         if (DfBootAttempt.claimed(this, bootToken)) return
@@ -103,11 +108,17 @@ class EarlyRootService : Service() {
         EarlyRootStore.record(this, bootToken, "waiting", "Waiting for the configured boot delay", startedLocked)
         while (true) {
             val policy = EarlyRootStore.config(this) ?: return
-            if (!policy.requested) return
+            if (!policy.requested) {
+                EarlyRootStore.record(this, bootToken, "skipped", "Automatic root was switched off", startedLocked)
+                return
+            }
             if (BootSettle.remainingMillis(policy.settleSeconds, BootSettle.elapsedMillis()) <= 0) break
             delay(500)
         }
-        if (!EarlyRootStore.requested(this) || RootStatusProbe.isActive()) return
+        if (!EarlyRootStore.requested(this) || RootStatusProbe.isActive()) {
+            EarlyRootStore.record(this, bootToken, "skipped", "Root is no longer needed or was switched off", startedLocked)
+            return
+        }
         val current = requireNotNull(EarlyRootStore.config(this))
         val snapshot = EarlyRootDevice.current()
         val profile = DfCatalog.load(this, snapshot).singleOrNull { current.matches(snapshot, it) }

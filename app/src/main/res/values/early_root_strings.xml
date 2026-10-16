@@ -8,6 +8,7 @@
     <string name="early_root_starting">Restoring root…</string>
     <string name="early_root_waiting">Waiting for the configured boot delay.</string>
     <string name="early_root_failed">Early root did not finish.</string>
+    <string name="early_root_skipped">Automatic root was skipped this boot.</string>
     <string name="early_root_verified_locked">Root verified before first unlock, %1$d seconds after boot.</string>
     <string name="early_root_verified_unlocked">Root verified after first unlock, %1$d seconds after boot.</string>
 </resources>
