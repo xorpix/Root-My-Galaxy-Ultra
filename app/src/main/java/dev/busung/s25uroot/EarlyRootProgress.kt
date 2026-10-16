@@ -36,10 +36,6 @@ internal class EarlyRootProgress(private val result: JSONObject) {
             .put("restartUptimeMs", uptimeMs)
     }
 
-    fun recordOdinWait(elapsedMs: Long, idle: Boolean) {
-        result.put("odinWaitBeforeRestartMs", elapsedMs).put("odinIdleBeforeRestart", idle)
-    }
-
     fun recordRestartRequest(locked: Boolean, uptimeMs: Long) {
         check(restartAttempted) { "Module restart was not claimed" }
         result.put("restartRequestLocked", locked).put("restartRequestedUptimeMs", uptimeMs)

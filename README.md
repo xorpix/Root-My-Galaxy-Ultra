@@ -2,7 +2,8 @@
 
 Temporary root for **Samsung Galaxy S26 Ultra (m3q) regional and carrier variants**, with a choice
 of **KernelSU**, **KernelSU-Next** or **BakaSU (former ReSukiSU)**. Root is lost after a full
-reboot; activate it again through the app.
+reboot; activate it again through the app or enable optional automatic restoration,
+including [root before first unlock](docs/root-before-unlock.md) on supported DirtyFrag setups.
 
 [Download the latest release](https://github.com/xorpix/Root-My-Galaxy-Ultra/releases/latest)
 · [Release notes](https://github.com/xorpix/Root-My-Galaxy-Ultra/releases)
@@ -129,6 +130,7 @@ Useful controls in Settings:
 | Recovery Management | Module reload and framework/reboot actions for an already rooted session. A framework restart does not replace the full reboot required for a fresh attempt or backend change. |
 | Keep Odin reachable | Helps keep Download Mode available with a screen lock. An optional signed helper runs automatically after one-time root setup, independently of root on boot. [Setup guide](docs/d2-fix.md). |
 | Root on boot | Optional automation. Establish a working manual setup first; Android background-service restrictions and transport availability can prevent automatic startup. |
+| Root before first unlock | Restore root at the first PIN/password screen using the activated boot helper. Requires Root on boot and a previously verified bundled DirtyFrag setup. Configured SusFS and the module soft restart can also run before unlock. [Setup guide](docs/root-before-unlock.md). |
 
 The **Shizuku start token** is optional and only applies to Shizuku builds that
 support authenticated start requests. It must be the actual token from that
@@ -144,7 +146,7 @@ that feature.
 | Root works, but a module does not | Check the module's requirements and its manager logs. Successful root does not confirm that every module or injection framework has initialized. |
 | Manager works, but this app's root actions fail | Grant this app superuser permission in the selected manager. |
 | “Invalid auth token” from Shizuku | Delete the saved start token if unused, or replace it with the token supplied by your Shizuku build. |
-| Root disappears after reboot | Expected: this is temporary root. Run the app again using the setup for your firmware. |
+| Root disappears after reboot | This is temporary root. Run the app again or configure Root on boot. For automatic restoration at the first PIN screen, follow the [before-unlock setup guide](docs/root-before-unlock.md). |
 
 For a bug report, export the affected run from **History** and include the app
 version/build code, firmware, selected backend, last successful stage and whether

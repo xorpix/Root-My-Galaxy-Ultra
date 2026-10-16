@@ -10,17 +10,14 @@ class EarlyRootProgressTest {
 
     private fun active() = SusfsStatus(SusfsState.Active, "v2.1.0", "GKI", detail = "Active")
 
-    @Test fun restartRequestTimeIsSeparateFromWaitingForRemainingOdinChecks() {
+    @Test fun restartRequestIsPreservedSeparatelyFromItsEarlierClaim() {
         val saved = rootProof()
         val progress = EarlyRootProgress(saved)
         progress.claimRestart(true, 64000)
-        progress.recordOdinWait(1400, true)
         progress.recordRestartRequest(true, 65900)
         val resumed = JSONObject(saved.toString())
         assertEquals(64000, resumed.getLong("restartStartedUptimeMs"))
         assertEquals(65900, resumed.getLong("restartRequestedUptimeMs"))
-        assertEquals(1400, resumed.getLong("odinWaitBeforeRestartMs"))
-        assertTrue(resumed.getBoolean("odinIdleBeforeRestart"))
         assertTrue(resumed.getBoolean("restartRequestLocked"))
         assertFalse(EarlyRootProgress(resumed).claimRestart(false, 90000))
     }

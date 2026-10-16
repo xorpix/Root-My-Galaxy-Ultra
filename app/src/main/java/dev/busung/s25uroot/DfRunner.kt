@@ -60,10 +60,6 @@ internal class DfRunner(
     /** Whether the module's pre-load image protection landed this run. */
     var roPreloadProtected = false
         private set
-    var postTriggerWaitMs: Long? = null
-        private set
-    var postTriggerReady = false
-        private set
 
     suspend fun execute(payloads: VerifiedPayloads, expectRoPreload: Boolean = false): DfOutcome {
         currentCoroutineContext().ensureActive()
@@ -85,10 +81,6 @@ internal class DfRunner(
             override fun report(text: String) { log(text.trim()) }
             override fun rootReady(timeoutMillis: Long): Boolean =
                 adaptiveWait && RootReadyProbe.check(timeoutMillis)
-            override fun readyWaitFinished(elapsedMillis: Long, ready: Boolean) {
-                postTriggerWaitMs = elapsedMillis
-                postTriggerReady = ready
-            }
         }
         val rc = try {
             withTimeout(DF_RUN_TIMEOUT_MS) {

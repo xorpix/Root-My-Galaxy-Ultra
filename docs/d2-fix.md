@@ -3,7 +3,9 @@
 This optional setting implements the DMC AT-flag workaround described by
 [polygraphene/DFReroot](https://github.com/polygraphene/DFReroot/blob/main/D2_Error.md)
 and used by Root My Galaxy Next. It is **off by default** and needs a separate,
-release-signed companion. It does not run a root exploit or enable autoroot.
+release-signed companion. Keep Odin reachable does not enable autoroot. The same
+helper can separately wake RMGU for optional [root before first unlock](root-before-unlock.md);
+the helper itself does not run a root exploit.
 
 Samsung's newer bootloaders can reject Download Mode with D2 when the DMC flags
 are `[lock=1, maintenance=0, at=0]`. Samsung resets AT during Android startup.

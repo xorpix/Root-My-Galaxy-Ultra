@@ -24,7 +24,7 @@
 #include <time.h>
 
 static jmethodID report_mid;
-static jmethodID root_ready_mid, ready_wait_finished_mid;
+static jmethodID root_ready_mid;
 
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved __attribute__((unused))) {
     JNIEnv *env;
@@ -32,8 +32,7 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved __attribute__((unused))) {
     jclass clz = (*env)->FindClass(env, "dev/busung/s25uroot/dirtyfrag/DfReporter");
     report_mid = (*env)->GetMethodID(env, clz, "report", "(Ljava/lang/String;)V");
     root_ready_mid = (*env)->GetMethodID(env, clz, "rootReady", "(J)Z");
-    ready_wait_finished_mid = (*env)->GetMethodID(env, clz, "readyWaitFinished", "(JZ)V");
-    if (!report_mid || !root_ready_mid || !ready_wait_finished_mid) return JNI_ERR;
+    if (!report_mid || !root_ready_mid) return JNI_ERR;
     return JNI_VERSION_1_4;
 }
 
@@ -633,11 +632,7 @@ Java_dev_busung_s25uroot_dirtyfrag_DfExploitRunner_nativeRunAll(JNIEnv *env, jcl
     // slow daemon retains the original window. Cleanup and final proof still run below.
     const struct df_ready_ops ready_ops = {ready_now, ready_sleep, ready_probe};
     struct df_ready_result waited = df_wait_ready(&ready_ops, reporter);
-    REPORTLN("* post-trigger wait: %lld ms (%s)", (long long)waited.elapsed_ms,
-             waited.ready ? "root ready" : "five-second fallback");
-    (*env)->CallVoidMethod(env, reporter_obj, ready_wait_finished_mid,
-                          (jlong)waited.elapsed_ms, waited.ready ? JNI_TRUE : JNI_FALSE);
-    if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
+    REPORTLN("* %s", waited.ready ? "root readiness confirmed" : "readiness window complete; verifying backend");
     for (size_t j = 0; j < sizeof(markers)/sizeof(markers[0]); j++) {
         if (has_marker(markers[j].path)) {
             REPORTLN("%s", markers[j].msg);
