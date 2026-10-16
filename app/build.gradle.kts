@@ -52,7 +52,7 @@ val appVersionCode =
         (providers.of(BuildClockValueSource::class) {}.get() / 1000L - 1_767_225_600L).toInt()
 
 // The version name is the base version alone: 1.1, 1.1.1, ...
-val appVersionName = "$appVersionBase-early-root-test3"
+val appVersionName = "$appVersionBase-early-root-test4"
 
 android {
     namespace = "dev.busung.s25uroot"

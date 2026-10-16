@@ -5,6 +5,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.util.Log;
+import android.os.SystemClock;
+import android.os.UserManager;
 import dev.experimental.rmgu.d2.D2Configuration;
 import dev.experimental.rmgu.d2.D2Protocol;
 import java.io.IOException;
@@ -35,8 +37,14 @@ final class EarlyRootBoot {
             if (pm.checkSignatures(D2Protocol.CONTROLLER, D2Protocol.HELPER) != PackageManager.SIGNATURE_MATCH) {
                 throw new SecurityException("Controller signature changed");
             }
-            context.startForegroundService(new Intent(D2Protocol.EARLY_ROOT_ACTION).setComponent(
-                    new ComponentName(D2Protocol.CONTROLLER, D2Protocol.EARLY_ROOT_SERVICE)));
+            long uptime = SystemClock.elapsedRealtime();
+            boolean unlocked = context.getSystemService(UserManager.class).isUserUnlocked();
+            Log.i("RMGUEarlyRoot", "Wake requested: event=" + action + " uptimeMs=" + uptime + " userUnlocked=" + unlocked);
+            context.startForegroundService(new Intent(D2Protocol.EARLY_ROOT_ACTION)
+                    .putExtra(D2Protocol.EARLY_ROOT_EVENT, action)
+                    .putExtra(D2Protocol.EARLY_ROOT_REQUEST_UPTIME, uptime)
+                    .putExtra(D2Protocol.EARLY_ROOT_REQUEST_UNLOCKED, unlocked)
+                    .setComponent(new ComponentName(D2Protocol.CONTROLLER, D2Protocol.EARLY_ROOT_SERVICE)));
         } catch (Exception error) { Log.w("RMGUEarlyRoot", "Could not wake the root worker", error); }
     }
 }

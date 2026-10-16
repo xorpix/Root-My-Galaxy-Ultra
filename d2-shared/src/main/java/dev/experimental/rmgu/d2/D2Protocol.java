@@ -20,4 +20,7 @@ public final class D2Protocol {
     public static final String EARLY_ROOT_PERMISSION = CONTROLLER + ".permission.START_EARLY_ROOT";
     public static final String EARLY_ROOT_SERVICE = "dev.busung.s25uroot.EarlyRootService";
     public static final String EARLY_ROOT_ACTION = CONTROLLER + ".action.EARLY_ROOT";
+    public static final String EARLY_ROOT_EVENT = CONTROLLER + ".extra.BOOT_EVENT";
+    public static final String EARLY_ROOT_REQUEST_UPTIME = CONTROLLER + ".extra.REQUEST_UPTIME";
+    public static final String EARLY_ROOT_REQUEST_UNLOCKED = CONTROLLER + ".extra.REQUEST_UNLOCKED";
 }

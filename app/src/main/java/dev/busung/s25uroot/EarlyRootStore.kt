@@ -112,11 +112,12 @@ internal object EarlyRootStore {
     }
 
     @Synchronized fun record(context: Context, token: String, state: String, detail: String,
-        startedLocked: Boolean, finishedLocked: Boolean = false, finalized: Boolean = false) {
+        startedLocked: Boolean, finishedLocked: Boolean = false, finalized: Boolean = false,
+        evidence: JSONObject? = null) {
         write(context, "result", JSONObject().put("boot", token).put("state", state)
             .put("detail", detail.take(1600)).put("startedLocked", startedLocked)
             .put("finishedLocked", finishedLocked).put("uptimeMs", BootSettle.elapsedMillis())
-            .put("finalized", finalized))
+            .put("finalized", finalized).apply { evidence?.let { put("launch", it) } })
     }
 
     @Synchronized fun finalized(context: Context) {

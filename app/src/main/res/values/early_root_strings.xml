@@ -19,4 +19,5 @@
     <string name="early_root_skipped">Automatic root was skipped this boot.</string>
     <string name="early_root_verified_locked">Root verified before first unlock, %1$d seconds after boot.</string>
     <string name="early_root_verified_unlocked">Root verified after first unlock, %1$d seconds after boot.</string>
+    <string name="early_root_verified_unknown">Root verified %1$d seconds after boot; timing relative to first unlock is unconfirmed.</string>
 </resources>

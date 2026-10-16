@@ -141,8 +141,11 @@ internal fun EarlyRootSection(rootOnBoot: Boolean, loadKernelSu: Boolean, positi
             val state = current.optString("state")
             val text = when (state) {
                 "verified" -> context.getString(
-                    if (current.optBoolean("finishedLocked")) R.string.early_root_verified_locked
-                    else R.string.early_root_verified_unlocked, current.optLong("uptimeMs") / 1000)
+                    when (current.optJSONObject("launch")?.optString("verificationTiming")) {
+                        EarlyRootTiming.BEFORE -> R.string.early_root_verified_locked
+                        EarlyRootTiming.AFTER -> R.string.early_root_verified_unlocked
+                        else -> R.string.early_root_verified_unknown
+                    }, current.optLong("uptimeMs") / 1000)
                 "waiting" -> context.getString(R.string.early_root_waiting)
                 "running" -> context.getString(R.string.early_root_starting)
                 "skipped" -> context.getString(R.string.early_root_skipped)

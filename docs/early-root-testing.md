@@ -1,15 +1,30 @@
-# Early root test 3
+# Early root test 4: launch and verification
 
-Test 3 moves the genuine kernel-release query into the authenticated system helper.
-Normal app access to the two proc sources can be denied on the phone. Settings,
-enable-time validation and the Direct Boot worker now use the same helper response;
-the spoofable uname syscall is never used as a substitute for the genuine release.
-The fixed query reads at most 4 KiB per source and accepts no caller-supplied paths.
-An unavailable kernel read does not prevent Odin status or control from working.
+The phone test has **not** established working root before PIN entry. This build
+fixes a concrete startup timeout bug and records the missing timing evidence;
+it is a candidate for a new phone test, not a confirmed solution.
 
-**This build requires updating the helper to version 3 and fully rebooting.** Existing
-certificate preparation and Odin settings are retained. The row shows the helper
-update, reboot or activation step before reporting a kernel-read problem.
+`SuProbe` previously read `su` output to EOF before reaching its three-second
+`waitFor` timeout. A child waiting for a grant or another boot condition could
+therefore block the automatic worker without a deadline. The probe now uses a
+reader thread while the deadline runs. A timed-out child is killed and cannot
+count as root proof, even if it printed `uid=0` before hanging. Root-command
+output continues to be captured completely.
+
+Helper version 4 passes the originating boot event, request uptime and its unlock
+reading to the worker. The worker logs service entry, probe duration, helper
+query, exploit start and verification with monotonic uptime and lock state.
+The saved result adds a `launch` object with those times and verification state.
+
+A before-unlock label requires a locked-boot origin, a locked helper request,
+a not-yet-unlocked user and a locked device at root verification. A post-unlock
+boot event or any positive unlock evidence produces an after-unlock result.
+Missing evidence and legacy results are shown as timing unconfirmed. This is
+stronger reporting; real phone behavior remains the acceptance criterion.
+
+**This build requires updating the helper to version 4 and fully rebooting.**
+Existing certificate preparation is retained. The SusFS/module-startup extension
+is separate and is not included in this candidate.
 
 This test adds **Root before first unlock** to Root Management. It is off by default and
 requires Root on boot, a previously verified bundled DirtyFrag backend, and the matching
@@ -18,16 +33,18 @@ activated boot helper. Keep Odin reachable remains independent.
 ## Update and enable
 
 1. Install the signed test APK over the existing RMGU app.
-2. Under Recovery Management → Keep Odin reachable, use **Update helper**. Existing
+2. Under Recovery Management → Keep Odin reachable, use **Update helper** to install version 4. Existing
    certificate preparation is retained. Fully reboot to replace the system process's
    cached helper code, then activate the helper if requested.
 3. Root manually through RMGU once if the app requests a verified payload. Enable
    **Root on boot**, then **Root before first unlock** under Root Management.
 4. Fully reboot. Leave the phone at its first PIN/password screen for the configured
-   automatic boot delay plus about one minute. Do not unlock it during that interval.
+   automatic boot delay plus about two minutes. Do not unlock it during that interval.
 5. Unlock, open RMGU settings, and read the boot result beneath the new switch. Success
    must say **Root verified before first unlock**. A result after unlock does not qualify
-   the pre-unlock path. Confirm Working in the selected backend's manager as well.
+   the pre-unlock path. Timing unconfirmed does not qualify either. If the new
+   result still conflicts with observed phone behavior, retain the report and do
+   not declare success. Confirm Working in the selected backend's manager as well.
 
 ## Behavior and limits
 

@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -22,6 +23,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 /** Runs in :early_root under the app UID, never in the helper's Android system process. */
 class EarlyRootService : Service() {
@@ -30,6 +32,7 @@ class EarlyRootService : Service() {
     private var active = false
     private var again = false
     private var latestStartId = 0
+    private var latestLaunch: Intent? = null
     private var wakeLock: PowerManager.WakeLock? = null
     @Volatile private var bootToken = ""
     @Volatile private var startedLocked = false
@@ -47,6 +50,7 @@ class EarlyRootService : Service() {
         if (intent?.action != D2Protocol.EARLY_ROOT_ACTION) { stopSelf(startId); return START_NOT_STICKY }
         if (!EarlyRootStore.requested(this)) { stopSelf(startId); return START_NOT_STICKY }
         latestStartId = startId
+        latestLaunch = Intent(intent)
         notifyProgress(getString(R.string.early_root_starting), start = true)
         if (active) { again = true; return START_NOT_STICKY }
         active = true
@@ -54,7 +58,8 @@ class EarlyRootService : Service() {
             try {
                 do {
                     again = false
-                    withContext(Dispatchers.IO) { runBoot() }
+                    val launch = requireNotNull(latestLaunch)
+                    withContext(Dispatchers.IO) { runBoot(launch) }
                 } while (again)
             } catch (error: Exception) {
                 AppLog.error(AppLogTags.BOOT, "Early root stopped", error)
@@ -78,17 +83,36 @@ class EarlyRootService : Service() {
 
     private fun unlocked(): Boolean = getSystemService(UserManager::class.java).isUserUnlocked
 
-    private suspend fun runBoot() {
+    private fun lockEvidence(): Pair<Boolean?, Boolean?> =
+        runCatching { unlocked() }.getOrNull() to
+            runCatching { getSystemService(KeyguardManager::class.java).isDeviceLocked }.getOrNull()
+
+    private fun trace(stage: String, trigger: String) {
+        val (userUnlocked, deviceLocked) = lockEvidence()
+        AppLog.info(AppLogTags.BOOT, "Early root $stage: event=$trigger uptimeMs=${BootSettle.elapsedMillis()} " +
+            "userUnlocked=$userUnlocked deviceLocked=$deviceLocked")
+    }
+
+    private suspend fun runBoot(launch: Intent) {
         val config = EarlyRootStore.config(this) ?: return
         if (!config.requested) return
         bootToken = requireNotNull(kernelBootToken()) { "The kernel boot identity is unavailable" }
+        val trigger = launch.getStringExtra(D2Protocol.EARLY_ROOT_EVENT) ?: "unknown"
+        val requestUptime = launch.getLongExtra(D2Protocol.EARLY_ROOT_REQUEST_UPTIME, -1)
+        val serviceUptime = BootSettle.elapsedMillis()
+        trace("worker-start", trigger)
         startedLocked = !unlocked()
         if (packageManager.isSafeMode) {
             EarlyRootStore.record(this, bootToken, "blocked", "Automatic root is skipped in Android safe mode.", startedLocked)
             return
         }
         val prior = EarlyRootStore.result(this)
-        if (RootStatusProbe.isActive()) {
+        val probeStart = BootSettle.elapsedMillis()
+        trace("root-probe-start", trigger)
+        val alreadyActive = RootStatusProbe.isActive()
+        val initialProbeMs = BootSettle.elapsedMillis() - probeStart
+        trace("root-probe-finished active=$alreadyActive durationMs=$initialProbeMs", trigger)
+        if (alreadyActive) {
             if (prior != null && prior.optString("boot") == bootToken && prior.optString("state") == "verified") {
                 finishAfterUnlock(config)
             } else EarlyRootStore.record(this, bootToken, "skipped", "Root was already active", startedLocked)
@@ -96,7 +120,9 @@ class EarlyRootService : Service() {
         }
         if (DfBootAttempt.claimed(this, bootToken)) return
 
+        trace("helper-query-start", trigger)
         val helper = D2Helper.query(this)
+        trace("helper-query-finished", trigger)
         if (!helper.controllable || !helper.activated || helper.needsUpdate || helper.needsReboot || !helper.earlyRootEnabled) {
             EarlyRootStore.record(this, bootToken, "blocked", "Update and activate the boot helper, then enable early root again.", startedLocked)
             // The normal after-unlock path remains available when an older helper cannot do Direct Boot.
@@ -131,12 +157,26 @@ class EarlyRootService : Service() {
         val payloads = DfCatalog.stage(this, profile, current.stageOptions) {
             AppLog.info(AppLogTags.BOOT, it)
         }
+        val exploitUptime = BootSettle.elapsedMillis()
+        trace("exploit-start", trigger)
         val runner = DfRunner(this, { AppLog.info(AppLogTags.BOOT, it) }, {}, {
             check(EarlyRootStore.requested(this)) { "Early root was switched off" }
         })
         val outcome = runner.execute(payloads, current.protectImages)
         check(outcome is DfOutcome.Verified) { "Root could not be verified. Check the manager after unlocking and fully reboot before retrying." }
-        EarlyRootStore.record(this, bootToken, "verified", outcome.report, startedLocked, !unlocked())
+        val (verificationUnlocked, verificationDeviceLocked) = lockEvidence()
+        val helperRequestUnlocked = if (launch.hasExtra(D2Protocol.EARLY_ROOT_REQUEST_UNLOCKED))
+            launch.getBooleanExtra(D2Protocol.EARLY_ROOT_REQUEST_UNLOCKED, true) else null
+        val timing = EarlyRootTiming.classify(trigger, helperRequestUnlocked, verificationUnlocked, verificationDeviceLocked)
+        val evidence = JSONObject().put("event", trigger).put("requestUptimeMs", requestUptime)
+            .put("serviceUptimeMs", serviceUptime).put("initialProbeMs", initialProbeMs)
+            .put("exploitUptimeMs", exploitUptime).put("verificationTiming", timing)
+            .put("userUnlocked", verificationUnlocked ?: JSONObject.NULL)
+            .put("deviceLocked", verificationDeviceLocked ?: JSONObject.NULL)
+        evidence.put("helperRequestUserUnlocked", helperRequestUnlocked ?: JSONObject.NULL)
+        EarlyRootStore.record(this, bootToken, "verified", outcome.report, startedLocked,
+            timing == EarlyRootTiming.BEFORE, evidence = evidence)
+        trace("root-verified timing=$timing", trigger)
         handler.removeCallbacks(watchdog)
         finishAfterUnlock(current)
     }
@@ -189,7 +229,10 @@ class EarlyRootService : Service() {
         private const val CHANNEL = "early_root"
         private const val NOTIFICATION = 2104
         fun start(context: Context) {
-            context.startForegroundService(Intent(context, EarlyRootService::class.java).setAction(D2Protocol.EARLY_ROOT_ACTION))
+            context.startForegroundService(Intent(context, EarlyRootService::class.java)
+                .setAction(D2Protocol.EARLY_ROOT_ACTION)
+                .putExtra(D2Protocol.EARLY_ROOT_EVENT, Intent.ACTION_BOOT_COMPLETED)
+                .putExtra(D2Protocol.EARLY_ROOT_REQUEST_UPTIME, BootSettle.elapsedMillis()))
         }
     }
 }
