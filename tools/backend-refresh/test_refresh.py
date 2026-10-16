@@ -49,6 +49,15 @@ def plan_for(source):
 
 
 class RefreshTests(unittest.TestCase):
+    def test_release_labels_follow_the_actual_pinned_daemon_tag(self):
+        for full, expected in [('3.3.1-12-g0faec0cc', '3.3.1'),
+                               ('3.4.2-35-g204f0071', '3.4.2'),
+                               ('4.2.0-rc3-58-gd7260ca1', '4.2.0-rc3'),
+                               ('3.3.1', '3.3.1')]:
+            self.assertEqual(expected, common.daemon_release({'daemon_version': full}))
+        with self.assertRaisesRegex(ValueError, 'release name'):
+            common.daemon_release({'daemon_version': 'unrecognized-tag'})
+
     def test_new_upstream_tags_cannot_rename_a_patch_only_rebuild(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

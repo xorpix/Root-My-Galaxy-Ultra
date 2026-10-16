@@ -19,6 +19,7 @@ REVIEWED_UAPIS = {'kernelsu': {5, 6}, 'kernelsu-next': {5}, 'resukisu': {5}}
 ASSETS = Path('app/src/main/assets')
 JNI = Path('app/src/main/jniLibs/arm64-v8a')
 JAVA = Path('app/src/main/java/dev/busung/s25uroot')
+FLAVOR_ENUMS = {'kernelsu': 'KernelSu', 'kernelsu-next': 'KernelSuNext', 'resukisu': 'ReSukiSU'}
 
 
 def capture(args, cwd=None):
@@ -70,6 +71,49 @@ def reviewed_uapi(header, name):
     if not re.search(r"KSU_IOCTL_GET_INFO\s*(?:=|,)\s*_IOR\(\s*'K'\s*,\s*2\s*,\s*struct ksu_get_info_cmd\s*\)", clean):
         raise ValueError(f'{name}: GET_INFO ioctl requires review')
     return int(versions[0])
+
+
+def daemon_release(target):
+    version = re.sub(r'-\d+-g[0-9a-f]+$', '', target['daemon_version'])
+    if not re.fullmatch(r'\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?', version):
+        raise ValueError('Unrecognized daemon release name')
+    return version
+
+
+def catalog_releases(project):
+    versions = {}
+    for family in ('azhl', 'df'):
+        profiles = json.loads((project / ASSETS / family / 'catalog.json').read_text())['payloads']
+        for profile in profiles:
+            name, version = profile['flavor'], profile['kernelsu']['version']
+            if name in versions and versions[name] != version:
+                raise ValueError('Bundled catalogs disagree on the backend release')
+            versions[name] = version
+    if set(versions) != set(REPOSITORIES):
+        raise ValueError('Missing backend release metadata')
+    return versions
+
+
+def release_label_edit(text, previous, targets):
+    for name, target in targets.items():
+        before = f'KernelSuFlavor.{FLAVOR_ENUMS[name]} -> "{previous[name]}"'
+        if text.count(before) != 1:
+            raise ValueError(f'Expected one backend release label: {name}')
+        text = text.replace(before, f'KernelSuFlavor.{FLAVOR_ENUMS[name]} -> "{daemon_release(target)}"')
+    return text
+
+
+def sync_release_labels(project, targets):
+    """Update version labels together without touching payload hashes or firmware identities."""
+    previous = catalog_releases(project)
+    source = project / JAVA / 'AzhlCatalog.kt'
+    source.write_text(release_label_edit(source.read_text(), previous, targets))
+    for family in ('azhl', 'df'):
+        path = project / ASSETS / family / 'catalog.json'
+        catalog = json.loads(path.read_text())
+        for profile in catalog['payloads']:
+            profile['kernelsu']['version'] = daemon_release(targets[profile['flavor']])
+        write_json(path, catalog)
 
 
 def baseline(project, config=None, clean=True):

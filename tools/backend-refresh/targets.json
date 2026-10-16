@@ -1,31 +1,31 @@
 {
   "schema": 3,
-  "app_base": "bf48dd62b8b33b380be55b3fe04b4ff9f2bd2687",
-  "checked_date": "2026-10-15",
+  "app_base": "763db1a30ea8c2e07804eb1cfd12686454945385",
+  "checked_date": "2026-10-16",
   "build_status": "built",
   "backends": {
     "kernelsu": {
       "repository": "tiann/KernelSU",
-      "commit": "0c0fdb960178fa12d80d6cbcfdcb6ad8be6a865d",
-      "commit_count": 2680,
-      "version": 32680,
-      "daemon_version": "3.3.0-79-g0c0fdb96",
+      "commit": "0faec0cc7b5f655170d89bf9c4d28bb5ca271fa2",
+      "commit_count": 2692,
+      "version": 32692,
+      "daemon_version": "3.3.1-12-g0faec0cc",
       "rust": "1.98.1",
       "rebuild": false,
       "compat_sha256": "7a9fdcad255cf7687366c9cdd8e08d361cfb380b716edb86c05f5ad4c7aa70d9",
       "branch": "main",
       "version_offset": 30000,
-      "uapi": 5
+      "uapi": 6
     },
     "kernelsu-next": {
       "repository": "KernelSU-Next/KernelSU-Next",
-      "commit": "3157e7822190eba628ca6796242db970405e440a",
-      "commit_count": 3354,
-      "version": 33354,
-      "daemon_version": "3.4.1-21-g3157e782",
+      "commit": "204f007164905395e280e9290cc7774f57af8c61",
+      "commit_count": 3390,
+      "version": 33390,
+      "daemon_version": "3.4.2-35-g204f0071",
       "rust": "1.98.1",
       "rebuild": false,
-      "compat_sha256": "1693254b58106f684fe39ee7f2bef889af221c4738132dc7343a35bc3a4cded5",
+      "compat_sha256": "2707d5d62ce2268731780e20e8640ef2b6237405f21a43dcf35049c7017410f1",
       "branch": "dev",
       "version_offset": 30000,
       "uapi": 5

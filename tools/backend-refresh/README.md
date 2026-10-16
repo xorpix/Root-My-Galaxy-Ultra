@@ -94,7 +94,7 @@ artifact's `apk-input.apk` has a disposable signature and is not the release APK
 Build-only mode also accepts a non-default branch, so you can test the workflow
 on a pull request branch before merging it. Publishing requires the default branch.
 Choose **force_rebuild** to rebuild all three pairs even when an upstream source
-pin is unchanged. Backend-kit pull requests rebuild all three pairs automatically.
+pin is unchanged. Backend-kit pull requests build the changed pairs without publishing.
 Repository pull requests that change the backend kit automatically run the
 compatibility check and the build-only weekly workflow. Changed backends are
 compiled and the Android tests/APK build run with a disposable key. These PR

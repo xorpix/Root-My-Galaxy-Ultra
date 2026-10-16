@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 HERE = Path(__file__).resolve().parent
-from common import baseline, load_config, reviewed_uapi
+from common import baseline, load_config, reviewed_uapi, sync_release_labels
 CONFIG = load_config()
 JAVA = Path('app/src/main/java/dev/busung/s25uroot')
 ASSETS = Path('app/src/main/assets')
@@ -169,6 +169,7 @@ def main(project, work, config=None):
         replace(launch,
                 f'"{name}" -> Backend(id, {old["driver_version"]}, {old["uapi_version"]}, "{old["outputs"]["helper"]["sha256"]}")',
                 f'"{name}" -> Backend(id, {target["version"]}, {target["uapi"]}, "{helpers[name]["sha256"]}")')
+    sync_release_labels(project, config['backends'])
     for name, target in config['backends'].items():
         daemon, patch, hashes, module_record = inputs[name]
         folder = project / 'backends' / name

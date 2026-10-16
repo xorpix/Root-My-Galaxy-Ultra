@@ -59,7 +59,7 @@ jobs:
       - name: Snapshot the official upstream branches
         id: probe
         env:
-          FORCE_REBUILD: ${{ github.event_name == 'pull_request' || inputs.force_rebuild }}
+          FORCE_REBUILD: ${{ inputs.force_rebuild }}
         run: |
           FLAGS=()
           if [ "$FORCE_REBUILD" = true ]; then FLAGS+=(--force-rebuild); fi

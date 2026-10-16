@@ -1472,7 +1472,7 @@ index 1a76dbd784767c5a819bde5e8dc46d83152f4272..7f8ed68a8d3b00dfcb8093fe295a2521
 +    ksu_samsung_defex_sync_current();
  }
 diff --git a/userspace/ksud/src/late_load.rs b/userspace/ksud/src/late_load.rs
-index 5381571f3ce58d913ae9e77e3d0f319f0081020a..1dc640d0c42ab2e2c1504c7eda7b93f3125391cf 100644
+index c086df0939dde1ce345d9282262871ee13fb93b1..031a85d9ccb4a4d4bdf9fdc82bfec9000fc524d5 100644
 --- a/userspace/ksud/src/late_load.rs
 +++ b/userspace/ksud/src/late_load.rs
 @@ -1,7 +1,7 @@
@@ -1508,9 +1508,9 @@ index 5381571f3ce58d913ae9e77e3d0f319f0081020a..1dc640d0c42ab2e2c1504c7eda7b93f3
 -    utils::install(None).context("Failed to install ksud")?;
 +    utils::finish_install(None).context("Failed to finish ksud installation")?;
  
-     // 5. Handle module updates
-     if let Err(e) = handle_updated_modules() {
-@@ -133,16 +136,5 @@ pub fn run(package_name: &String, kmi: Option<String>, allow_shell: bool) -> Res
+     crate::hot_install::clean_trash();
+ 
+@@ -135,16 +138,5 @@ pub fn run(package_name: &String, kmi: Option<String>, allow_shell: bool) -> Res
      // 13. Execute boot-completed stage scripts (non-blocking)
      init_event::run_stage("boot-completed", ScriptWait::NoWait);
  
@@ -1884,7 +1884,7 @@ index 6ecd033d5ff3e4375ce5bc692f3aad00b6c6cd11..38ba81ce2c92c221cbce8f1453dac034
          .context("Failed to unload SUSFS guard LKM")?;
      println!("Unloaded SUSFS guard LKM");
 diff --git a/userspace/ksud/src/utils.rs b/userspace/ksud/src/utils.rs
-index 9365663cefe124422bea71e12e1b37b70928ce75..408389c69bea4265cd7b13c0f3ad72b846ad5a42 100644
+index c5eedb71c64b5c7aeaddfd13e29a1eba3fb74cf0..942e379c1e4bdc07bb97f0cbbd5dc942efbd15b3 100644
 --- a/userspace/ksud/src/utils.rs
 +++ b/userspace/ksud/src/utils.rs
 @@ -1,7 +1,8 @@
@@ -1897,7 +1897,7 @@ index 9365663cefe124422bea71e12e1b37b70928ce75..408389c69bea4265cd7b13c0f3ad72b8
  use std::{
      ffi::{CStr, CString, c_char, c_void},
      fs::{File, OpenOptions, create_dir_all, remove_file, write},
-@@ -228,13 +229,42 @@ fn link_ksud_to_bin() -> Result<()> {
+@@ -229,13 +230,42 @@ fn link_ksud_to_bin() -> Result<()> {
      Ok(())
  }
  
@@ -1946,7 +1946,7 @@ index 9365663cefe124422bea71e12e1b37b70928ce75..408389c69bea4265cd7b13c0f3ad72b8
      restorecon::lsetfilecon(defs::DAEMON_PATH, restorecon::KSU_CON)?;
      // install binary assets
      assets::ensure_binaries(false).with_context(|| "Failed to extract assets")?;
-@@ -247,9 +277,18 @@ pub fn install(libadbroot: Option<PathBuf>) -> Result<()> {
+@@ -248,9 +278,18 @@ pub fn install(libadbroot: Option<PathBuf>) -> Result<()> {
          let _ = std::fs::copy(libadbroot, defs::LIBADBROOT_PATH);
      }
  
@@ -1965,7 +1965,7 @@ index 9365663cefe124422bea71e12e1b37b70928ce75..408389c69bea4265cd7b13c0f3ad72b8
  pub fn uninstall(package_name: &str) -> Result<()> {
      if Path::new(defs::MODULE_DIR).exists() {
          println!("- Uninstall modules..");
-@@ -294,10 +333,6 @@ pub fn daemonize_with<F: FnOnce() -> Result<()>>(use_init_pgrp: bool, configure:
+@@ -295,10 +334,6 @@ pub fn daemonize_with<F: FnOnce() -> Result<()>>(use_init_pgrp: bool, configure:
      Ok(())
  }
  

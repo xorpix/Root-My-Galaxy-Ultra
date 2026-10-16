@@ -75,6 +75,7 @@ class AzhlBundleTest {
         assertEquals(version, verifiedAzhlControl("$report\n$marker", flavor)?.version)
         assertNull(verifiedAzhlControl(report, flavor))
         assertNull(verifiedAzhlControl(marker, flavor))
+        assertNull(verifiedAzhlControl("${report.replace("uapi=5", "uapi=6")}\n$marker", flavor))
         assertNull(verifiedAzhlControl("${report.replace(version.toString(), azhlDriverVersion(KernelSuFlavor.KernelSu).toString())}\n$marker", flavor))
         listOf("0x1", "0x4").forEach { flags ->
             assertNull(verifiedAzhlControl("${report.replace("0x5", flags)}\n$marker", flavor))

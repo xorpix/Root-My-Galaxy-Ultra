@@ -34,9 +34,8 @@ enum class KernelSuFlavor(
      * builds from rather than the newest that exists - it is the manager for the daemon this project's
      * payloads stage when the feed is silent about which KernelSU that is.
      *
-     * The three are not the same number: this project's KernelSU-Next payload pins 3.4.0 (upstream's
-     * newest there), KernelSU is still 3.3.0, which is the newest release tiann/KernelSU has published,
-     * and ReSukiSU's is the pre-release its own payload was built against.
+     * Development drivers can require an official CI manager with a newer UAPI than a tagged
+     * release. An empty default asset opens the official build listing for that case.
      *
      * Nothing checks this against the version on the phone - a newer manager installs and is used exactly
      * the same, and one picked by hand takes precedence.
@@ -64,8 +63,9 @@ enum class KernelSuFlavor(
         label = "KernelSU",
         managerPackage = "me.weishu.kernelsu",
         repository = "tiann/KernelSU",
-        defaultManagerVersion = "3.3.0",
-        defaultManagerAsset = "KernelSU_v3.3.0_32601-release.apk",
+        // The bundled development driver uses UAPI 6; use an official CI manager.
+        defaultManagerVersion = "3.3.1",
+        defaultManagerAsset = "",
         summaryRes = R.string.flavor_kernelsu_summary,
     ),
     KernelSuNext(
