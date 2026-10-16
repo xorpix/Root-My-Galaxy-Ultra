@@ -394,6 +394,7 @@ object AppPreferences {
         prefs(context).edit()
             .putBoolean(RESTART_AFTER_ROOT, enabled)
             .apply()
+        EarlyRootStore.syncOptions(context)
     }
 
     /**
@@ -628,6 +629,7 @@ object AppPreferences {
         prefs(context).edit()
             .putBoolean(SUSFS_AUTO_ENABLE, enabled)
             .apply()
+        EarlyRootStore.syncOptions(context)
     }
 
     /** Last SusFS activation result: "active" or anything else means not proven. */

@@ -36,9 +36,11 @@ class EarlyRootService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     @Volatile private var bootToken = ""
     @Volatile private var startedLocked = false
+    private var launchEvidence: JSONObject? = null
     private val watchdog = Runnable {
         runCatching { EarlyRootStore.record(this, bootToken, "failed",
-            "Early root timed out. Fully reboot before another attempt.", startedLocked, !unlocked()) }
+            "Early root timed out. Fully reboot before another attempt.", startedLocked, !unlocked(),
+            evidence = launchEvidence) }
         stopForeground(STOP_FOREGROUND_REMOVE)
         // Coroutine cancellation cannot interrupt a stuck JNI call. Only this dedicated worker dies.
         android.os.Process.killProcess(android.os.Process.myPid())
@@ -68,7 +70,8 @@ class EarlyRootService : Service() {
                     if (result?.optString("boot") == bootToken && result.optString("state") == "verified") {
                         EarlyRootStore.finalizationFailed(this@EarlyRootService, error.message ?: error.javaClass.simpleName)
                     } else EarlyRootStore.record(this@EarlyRootService, bootToken, "failed",
-                        error.message ?: error.javaClass.simpleName, startedLocked, !unlocked())
+                        error.message ?: error.javaClass.simpleName, startedLocked, !unlocked(),
+                        evidence = launchEvidence)
                 }
             } finally {
                 handler.removeCallbacks(watchdog)
@@ -89,7 +92,7 @@ class EarlyRootService : Service() {
 
     private fun trace(stage: String, trigger: String) {
         val (userUnlocked, deviceLocked) = lockEvidence()
-        AppLog.info(AppLogTags.BOOT, "Early root $stage: event=$trigger uptimeMs=${BootSettle.elapsedMillis()} " +
+        AppLog.info(AppLogTags.BOOT, "Early root $stage: boot=$bootToken event=$trigger uptimeMs=${BootSettle.elapsedMillis()} " +
             "userUnlocked=$userUnlocked deviceLocked=$deviceLocked")
     }
 
@@ -100,10 +103,19 @@ class EarlyRootService : Service() {
         val trigger = launch.getStringExtra(D2Protocol.EARLY_ROOT_EVENT) ?: "unknown"
         val requestUptime = launch.getLongExtra(D2Protocol.EARLY_ROOT_REQUEST_UPTIME, -1)
         val serviceUptime = BootSettle.elapsedMillis()
+        val helperRequestUnlocked = if (launch.hasExtra(D2Protocol.EARLY_ROOT_REQUEST_UNLOCKED))
+            launch.getBooleanExtra(D2Protocol.EARLY_ROOT_REQUEST_UNLOCKED, true) else null
+        val (workerUnlocked, workerDeviceLocked) = lockEvidence()
+        launchEvidence = JSONObject().put("event", trigger).put("requestUptimeMs", requestUptime)
+            .put("serviceUptimeMs", serviceUptime)
+            .put("helperRequestUserUnlocked", helperRequestUnlocked ?: JSONObject.NULL)
+            .put("workerUserUnlocked", workerUnlocked ?: JSONObject.NULL)
+            .put("workerDeviceLocked", workerDeviceLocked ?: JSONObject.NULL)
         trace("worker-start", trigger)
         startedLocked = !unlocked()
         if (packageManager.isSafeMode) {
-            EarlyRootStore.record(this, bootToken, "blocked", "Automatic root is skipped in Android safe mode.", startedLocked)
+            EarlyRootStore.record(this, bootToken, "blocked", "Automatic root is skipped in Android safe mode.",
+                startedLocked, evidence = launchEvidence)
             return
         }
         val prior = EarlyRootStore.result(this)
@@ -111,11 +123,14 @@ class EarlyRootService : Service() {
         trace("root-probe-start", trigger)
         val alreadyActive = RootStatusProbe.isActive()
         val initialProbeMs = BootSettle.elapsedMillis() - probeStart
+        launchEvidence?.put("initialProbeMs", initialProbeMs)
         trace("root-probe-finished active=$alreadyActive durationMs=$initialProbeMs", trigger)
         if (alreadyActive) {
             if (prior != null && prior.optString("boot") == bootToken && prior.optString("state") == "verified") {
-                finishAfterUnlock(config)
-            } else EarlyRootStore.record(this, bootToken, "skipped", "Root was already active", startedLocked)
+                holdAwake()
+                finishBootSetup(config)
+            } else EarlyRootStore.record(this, bootToken, "skipped", "Root was already active", startedLocked,
+                evidence = launchEvidence)
             return
         }
         if (DfBootAttempt.claimed(this, bootToken)) return
@@ -124,25 +139,28 @@ class EarlyRootService : Service() {
         val helper = D2Helper.query(this)
         trace("helper-query-finished", trigger)
         if (!helper.controllable || !helper.activated || helper.needsUpdate || helper.needsReboot || !helper.earlyRootEnabled) {
-            EarlyRootStore.record(this, bootToken, "blocked", "Update and activate the boot helper, then enable early root again.", startedLocked)
+            EarlyRootStore.record(this, bootToken, "blocked", "Update and activate the boot helper, then enable early root again.",
+                startedLocked, evidence = launchEvidence)
             // The normal after-unlock path remains available when an older helper cannot do Direct Boot.
             if (unlocked()) AutoRootService.start(this)
             return
         }
-        wakeLock = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
-            "$packageName:EarlyRoot").apply { acquire(17 * 60_000L) }
-        EarlyRootStore.record(this, bootToken, "waiting", "Waiting for the configured boot delay", startedLocked)
+        holdAwake()
+        EarlyRootStore.record(this, bootToken, "waiting", "Waiting for the configured boot delay", startedLocked,
+            evidence = launchEvidence)
         while (true) {
             val policy = EarlyRootStore.config(this) ?: return
             if (!policy.requested) {
-                EarlyRootStore.record(this, bootToken, "skipped", "Automatic root was switched off", startedLocked)
+                EarlyRootStore.record(this, bootToken, "skipped", "Automatic root was switched off", startedLocked,
+                    evidence = launchEvidence)
                 return
             }
             if (BootSettle.remainingMillis(policy.settleSeconds, BootSettle.elapsedMillis()) <= 0) break
             delay(500)
         }
         if (!EarlyRootStore.requested(this) || RootStatusProbe.isActive()) {
-            EarlyRootStore.record(this, bootToken, "skipped", "Root is no longer needed or was switched off", startedLocked)
+            EarlyRootStore.record(this, bootToken, "skipped", "Root is no longer needed or was switched off", startedLocked,
+                evidence = launchEvidence)
             return
         }
         val current = requireNotNull(EarlyRootStore.config(this))
@@ -151,13 +169,15 @@ class EarlyRootService : Service() {
             ?: error("Firmware or bundled backend changed. Complete a manual root run and enable early root again.")
         check(kernelBootToken() == bootToken) { "The kernel boot changed" }
         startedLocked = !unlocked()
-        EarlyRootStore.record(this, bootToken, "running", "Starting ${profile.flavor.label}", startedLocked)
+        EarlyRootStore.record(this, bootToken, "running", "Starting ${profile.flavor.label}", startedLocked,
+            evidence = launchEvidence)
         notifyProgress(getString(R.string.early_root_starting))
         handler.postDelayed(watchdog, 6 * 60_000L)
         val payloads = DfCatalog.stage(this, profile, current.stageOptions) {
             AppLog.info(AppLogTags.BOOT, it)
         }
         val exploitUptime = BootSettle.elapsedMillis()
+        launchEvidence?.put("exploitUptimeMs", exploitUptime)
         trace("exploit-start", trigger)
         val runner = DfRunner(this, { AppLog.info(AppLogTags.BOOT, it) }, {}, {
             check(EarlyRootStore.requested(this)) { "Early root was switched off" }
@@ -165,23 +185,80 @@ class EarlyRootService : Service() {
         val outcome = runner.execute(payloads, current.protectImages)
         check(outcome is DfOutcome.Verified) { "Root could not be verified. Check the manager after unlocking and fully reboot before retrying." }
         val (verificationUnlocked, verificationDeviceLocked) = lockEvidence()
-        val helperRequestUnlocked = if (launch.hasExtra(D2Protocol.EARLY_ROOT_REQUEST_UNLOCKED))
-            launch.getBooleanExtra(D2Protocol.EARLY_ROOT_REQUEST_UNLOCKED, true) else null
         val timing = EarlyRootTiming.classify(trigger, helperRequestUnlocked, verificationUnlocked, verificationDeviceLocked)
-        val evidence = JSONObject().put("event", trigger).put("requestUptimeMs", requestUptime)
-            .put("serviceUptimeMs", serviceUptime).put("initialProbeMs", initialProbeMs)
-            .put("exploitUptimeMs", exploitUptime).put("verificationTiming", timing)
+        val evidence = requireNotNull(launchEvidence).put("verificationTiming", timing)
             .put("userUnlocked", verificationUnlocked ?: JSONObject.NULL)
             .put("deviceLocked", verificationDeviceLocked ?: JSONObject.NULL)
-        evidence.put("helperRequestUserUnlocked", helperRequestUnlocked ?: JSONObject.NULL)
         EarlyRootStore.record(this, bootToken, "verified", outcome.report, startedLocked,
             timing == EarlyRootTiming.BEFORE, evidence = evidence)
         trace("root-verified timing=$timing", trigger)
         handler.removeCallbacks(watchdog)
-        finishAfterUnlock(current)
+        finishBootSetup(current, snapshot)
     }
 
-    /** CE-dependent optional work waits for first unlock; the kernel root is already verified. */
+    /** Use only DE policy, bundled bytes and the saved su grant until credential storage is open. */
+    private suspend fun finishBootSetup(config: EarlyRootConfig, snapshot: DeviceSnapshot? = null) {
+        val policy = EarlyRootStore.config(this)?.takeIf { it.requested && it.flavor == config.flavor } ?: return
+        notifyProgress(getString(R.string.early_root_setup))
+        if (policy.susfsAutoEnable) {
+            val claimed = EarlyRootStore.updateVerified(this, bootToken) {
+                it.claimSusfs(!unlocked(), BootSettle.elapsedMillis())
+            }
+            val recovering = EarlyRootStore.result(this)?.let { EarlyRootProgress(it).susfsInProgress } == true
+            if (claimed || recovering) {
+                val outcome = runCatching {
+                    val device = snapshot ?: EarlyRootDevice.current(D2Helper.query(this))
+                    val storage = createDeviceProtectedStorageContext()
+                    if (claimed) SusfsRuntime.activate(storage, device, SuShell::run)
+                    else SusfsRuntime.query(storage, device, SuShell::run)
+                }.getOrElse { error ->
+                    SusfsOutcome(SusfsStatus(SusfsState.Unavailable,
+                        detail = error.message ?: "SusFS activation could not finish."), "")
+                }
+                EarlyRootStore.updateVerified(this, bootToken) {
+                    it.recordSusfs(outcome.status, !unlocked(), BootSettle.elapsedMillis())
+                }
+                AppLog.info(AppLogTags.BOOT, "Early SusFS: ${outcome.status.detail}")
+            }
+        }
+        // Re-read after activation so disabling automatic root or the restart takes effect now.
+        val latest = EarlyRootStore.config(this)
+        if (latest?.requested == true && latest.flavor == config.flavor && latest.restartAfterRoot) {
+            val claimed = EarlyRootStore.updateVerified(this, bootToken) {
+                it.claimRestart(!unlocked(), BootSettle.elapsedMillis())
+            }
+            if (claimed) {
+                // Persist before launching: the restart can kill us before the daemon acknowledges it.
+                val outcome = try { restartModules(config) }
+                catch (error: Exception) { RecoveryOutcome(false, error.message ?: "Module restart could not finish.") }
+                EarlyRootStore.updateVerified(this, bootToken) {
+                    it.recordRestart(outcome, !unlocked(), BootSettle.elapsedMillis())
+                }
+                AppLog.info(AppLogTags.BOOT, "Early module restart accepted=${outcome.accepted}: ${outcome.detail}")
+            }
+        }
+        finishAfterUnlock(config)
+    }
+
+    private suspend fun restartModules(config: EarlyRootConfig): RecoveryOutcome {
+        check(kernelBootToken() == bootToken) { "The kernel boot changed" }
+        check(isRootAnswer(SuShell.run("id", 15))) { "The app's saved root permission is unavailable" }
+        val shell: (String) -> ShizukuController.ShellResult = { command ->
+            SuShell.run(command, 90) ?: ShizukuController.ShellResult(127, "The root shell did not answer")
+        }
+        val daemon = RootRecovery.softRebootDaemon(applicationInfo.nativeLibraryDir,
+            M3qLaunch.backend(config.flavor), shell)
+        val capabilities = RootRecovery.capabilities(shell, daemon) ?: KsudCapabilities()
+        return RootRecovery.softReboot(shell, bootToken, capabilities, daemon)
+    }
+
+    private fun holdAwake() {
+        if (wakeLock?.isHeld == true) return
+        wakeLock = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
+            "$packageName:EarlyRoot").apply { acquire(17 * 60_000L) }
+    }
+
+    /** Only UI bookkeeping, manager refresh and Shizuku still require CE settings. */
     private suspend fun finishAfterUnlock(config: EarlyRootConfig) {
         if (!unlocked()) return
         val result = EarlyRootStore.result(this) ?: return
@@ -191,18 +268,18 @@ class EarlyRootService : Service() {
         AutoRootSupport.markVerifiedForBoot(this, bootToken)
         runCatching { KernelSuManagerRefresh.afterLoad(this, flavor) }
             .onFailure { AppLog.warn(AppLogTags.BOOT, "Manager refresh after early root: ${it.message}") }
-        if (AppPreferences.susfsAutoEnable(this)) {
-            runCatching { SusfsRuntime.activate(this) }.onSuccess { SusfsRuntime.recordActivation(this, it.status) }
-                .onFailure { AppLog.warn(AppLogTags.BOOT, "SusFS after early root: ${it.message}") }
+        if (result.has("susfsState")) {
+            AppPreferences.recordSusfsActivation(this,
+                if (result.optString("susfsState") == "active") "active" else "other",
+                result.optString("susfsVersion"), bootToken)
         }
-        if (AppPreferences.shizukuBootMode(this)) ShizukuBootService.start(this)
+        if (AppPreferences.shizukuBootMode(this)) {
+            runCatching { ShizukuBootService.start(this) }
+                .onFailure { AppLog.warn(AppLogTags.BOOT, "Shizuku after early root: ${it.message}") }
+        }
         runCatching { StagingSweep.sweepWhenQuiet(this) }
             .onFailure { AppLog.warn(AppLogTags.BOOT, "Cleanup after early root: ${it.message}") }
         EarlyRootStore.finalized(this)
-        if (AppPreferences.restartAfterRoot(this)) {
-            runCatching { runRecoveryAction(this, RecoveryTool.SoftReboot) }
-                .onFailure { AppLog.warn(AppLogTags.BOOT, "Module restart after early root: ${it.message}") }
-        }
     }
 
     private fun notifyProgress(text: String, start: Boolean = false) {

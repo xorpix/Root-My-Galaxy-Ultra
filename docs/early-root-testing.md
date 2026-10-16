@@ -1,8 +1,15 @@
-# Early root test 4: launch and verification
+# Early root test 5: finish setup before unlock
 
-The phone test has **not** established working root before PIN entry. This build
-fixes a concrete startup timeout bug and records the missing timing evidence;
-it is a candidate for a new phone test, not a confirmed solution.
+The test4 phone log records the locked-boot worker starting at 55 seconds,
+obtaining a root shell at 62 seconds while both unlock readings were locked,
+and receiving its first unlocked boot event at 88 seconds. The user still
+observed the expected root behavior only after unlock. Test4 explicitly deferred
+SusFS and the configured module soft restart until then. Its retained process
+exit history contained idle-process cleanup, not a crash trace.
+
+Test5 moves the enabled SusFS activation and module soft restart into the Direct
+Boot worker. It is a candidate for phone validation; the full before-unlock
+experience is not yet confirmed.
 
 `SuProbe` previously read `su` output to EOF before reaching its three-second
 `waitFor` timeout. A child waiting for a grant or another boot condition could
@@ -22,9 +29,18 @@ boot event or any positive unlock evidence produces an after-unlock result.
 Missing evidence and legacy results are shown as timing unconfirmed. This is
 stronger reporting; real phone behavior remains the acceptance criterion.
 
-**This build requires updating the helper to version 4 and fully rebooting.**
-Existing certificate preparation is retained. The SusFS/module-startup extension
-is separate and is not included in this candidate.
+The helper remains version 4, with the same source identity as test4. An existing
+matching helper needs no update. Open RMGU once after upgrading so existing SusFS
+and Auto Soft reboot choices are copied into device-protected boot policy.
+
+Each setup attempt is saved before its side effect. A restarted worker may query
+an interrupted SusFS activation, but cannot repeat the load or the automatic soft
+restart in that kernel boot. Root verification, SusFS status and restart request
+have separate timing fields. A restart request is not proof that modules work.
+
+Later skipped checks retain an existing attempt's result and are recorded as
+bounded observations. When a new boot replaces the report, the old report is
+retained as `early-root-previous-result.json`. Stage logs now include boot IDs.
 
 This test adds **Root before first unlock** to Root Management. It is off by default and
 requires Root on boot, a previously verified bundled DirtyFrag backend, and the matching
@@ -33,18 +49,20 @@ activated boot helper. Keep Odin reachable remains independent.
 ## Update and enable
 
 1. Install the signed test APK over the existing RMGU app.
-2. Under Recovery Management → Keep Odin reachable, use **Update helper** to install version 4. Existing
-   certificate preparation is retained. Fully reboot to replace the system process's
-   cached helper code, then activate the helper if requested.
+2. Open RMGU. If Recovery Management requests it, update the helper to version 4,
+   fully reboot, then activate it. A matching activated helper from test4 can stay.
 3. Root manually through RMGU once if the app requests a verified payload. Enable
    **Root on boot**, then **Root before first unlock** under Root Management.
-4. Fully reboot. Leave the phone at its first PIN/password screen for the configured
-   automatic boot delay plus about two minutes. Do not unlock it during that interval.
+4. Retain the desired **SusFS · experimental** and **Auto Soft reboot** choices.
+   Fully reboot. Leave the phone at its first PIN/password screen for the configured
+   automatic boot delay plus about three minutes, including any module soft restart.
+   Do not unlock it during that interval.
 5. Unlock, open RMGU settings, and read the boot result beneath the new switch. Success
    must say **Root verified before first unlock**. A result after unlock does not qualify
    the pre-unlock path. Timing unconfirmed does not qualify either. If the new
    result still conflicts with observed phone behavior, retain the report and do
-   not declare success. Confirm Working in the selected backend's manager as well.
+   not declare success. Check the separate SusFS and restart lines, then confirm
+   Working in the selected backend's manager and actual module behavior.
 
 ## Behavior and limits
 
@@ -62,8 +80,12 @@ activated boot helper. Keep Odin reachable remains independent.
 - Boot broadcasts only wake the worker. Its foreground service has a wake lock and a
   watchdog; a stuck JNI call terminates that separate process rather than the helper.
   Android safe mode skips early automatic rooting.
-- Manager refresh, optional SusFS activation, staging cleanup and any configured module
-  restart run after first unlock, when credential-protected app settings are available.
+- Enabled SusFS activation and the configured module soft restart use only a
+  device-protected settings snapshot, bundled bytes and the saved `su` grant.
+  Manager refresh, Shizuku startup, staging cleanup and UI bookkeeping remain
+  after first unlock. SusFS activation is serialized across app processes.
+- With Root on boot off, the dependent before-unlock switch is shown off and
+  disabled. Its saved preference is retained for when the master is re-enabled.
 - This still uses the existing temporary-root exploit. Android must reach Direct Boot;
   there is no recovery guarantee for failures before that stage.
 

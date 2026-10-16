@@ -17,9 +17,18 @@ class EarlyRootConfigTest {
     }
 
     @Test fun bootOptionsSurviveRoundTripWithoutCredentialStorage() {
-        val config = sample().copy(disableModules = true, wipeModules = true, protectImages = false)
+        val config = sample().copy(disableModules = true, wipeModules = true, protectImages = false,
+            susfsAutoEnable = true, restartAfterRoot = true)
         assertEquals(config, EarlyRootConfig.parse(JSONObject(config.json().toString())))
         assertEquals(DfStageOptions(true, true, false), config.stageOptions)
+    }
+
+    @Test fun oldPoliciesDoNotInventSusfsOrRestartOptIns() {
+        val json = sample().json().apply { remove("susfsAutoEnable"); remove("restartAfterRoot") }
+        val config = EarlyRootConfig.parse(json)
+        assertTrue(config.requested)
+        assertFalse(config.susfsAutoEnable)
+        assertFalse(config.restartAfterRoot)
     }
 
     @Test fun unknownFormatsBackendsHashesAndDelayAreRejected() {

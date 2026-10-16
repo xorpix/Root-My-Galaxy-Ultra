@@ -112,7 +112,7 @@ internal fun EarlyRootSection(rootOnBoot: Boolean, loadKernelSu: Boolean, positi
                 EarlyRootAvailability.HelperUnavailable -> R.string.early_root_helper_unavailable
                 EarlyRootAvailability.Ready -> R.string.early_root_summary
             }),
-            checked = enabled, enabled = availability.canChange(enabled, running),
+            checked = enabled && rootOnBoot, enabled = availability.canChange(enabled && rootOnBoot, running),
             position = position,
             onCheckedChange = { value ->
                 running = true
@@ -139,7 +139,7 @@ internal fun EarlyRootSection(rootOnBoot: Boolean, loadKernelSu: Boolean, positi
         val current = report?.takeIf { it.optString("boot") == kernelBootToken() }
         if (current != null) {
             val state = current.optString("state")
-            val text = when (state) {
+            val rootText = when (state) {
                 "verified" -> context.getString(
                     when (current.optJSONObject("launch")?.optString("verificationTiming")) {
                         EarlyRootTiming.BEFORE -> R.string.early_root_verified_locked
@@ -151,6 +151,26 @@ internal fun EarlyRootSection(rootOnBoot: Boolean, loadKernelSu: Boolean, positi
                 "skipped" -> context.getString(R.string.early_root_skipped)
                 else -> context.getString(R.string.early_root_failed) + "\n" + current.optString("detail")
             }
+            val text = buildList {
+                add(rootText)
+                if (state == "verified") {
+                    when (current.optString("susfsState")) {
+                        "active" -> add(context.getString(if (current.optBoolean("susfsFinishedLocked"))
+                            R.string.early_root_susfs_locked else R.string.early_root_susfs_unlocked))
+                        "running" -> add(context.getString(R.string.early_root_susfs_running))
+                        "partial", "absent", "unavailable" -> add(context.getString(
+                            R.string.early_root_susfs_failed, current.optString("susfsDetail")))
+                    }
+                    when (current.optString("restartState")) {
+                        "accepted" -> add(context.getString(if (current.optBoolean("restartFinishedLocked"))
+                            R.string.early_root_restart_locked else R.string.early_root_restart_unlocked))
+                        "attempting" -> add(context.getString(if (current.optBoolean("restartStartedLocked"))
+                            R.string.early_root_restart_attempted_locked else R.string.early_root_restart_attempted_unlocked))
+                        "failed" -> add(context.getString(R.string.early_root_restart_failed,
+                            current.optString("restartDetail")))
+                    }
+                }
+            }.joinToString("\n")
             Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceContainerHighest,
                 shape = settingsCardRestingShape(position = position)) {
                 Text(text, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium)

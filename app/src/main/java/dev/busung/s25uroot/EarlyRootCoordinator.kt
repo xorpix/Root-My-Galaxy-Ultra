@@ -28,7 +28,8 @@ internal object EarlyRootCoordinator {
         val config = EarlyRootConfig(false, true, profile.flavor.id, snapshot.model, snapshot.device,
             snapshot.incremental, snapshot.kernelRelease, requireNotNull(profile.kernelSu.sha256),
             AppPreferences.autoRootSettleSeconds(context), AppPreferences.disableKsuModules(context),
-            AppPreferences.wipeModuleState(context), AppPreferences.partitionReadOnlyMode(context))
+            AppPreferences.wipeModuleState(context), AppPreferences.partitionReadOnlyMode(context),
+            AppPreferences.susfsAutoEnable(context), AppPreferences.restartAfterRoot(context))
         EarlyRootStore.save(context, config)
         D2Helper.setEarlyRoot(context, true)
         EarlyRootStore.save(context, config.copy(enabled = true))

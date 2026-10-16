@@ -20,6 +20,8 @@ internal data class EarlyRootConfig(
     val disableModules: Boolean,
     val wipeModules: Boolean,
     val protectImages: Boolean,
+    val susfsAutoEnable: Boolean = false,
+    val restartAfterRoot: Boolean = false,
 ) {
     val requested: Boolean get() = enabled && rootOnBoot
     val stageOptions get() = DfStageOptions(disableModules, wipeModules, protectImages)
@@ -33,6 +35,7 @@ internal data class EarlyRootConfig(
         .put("flavor", flavor).put("model", model).put("device", device).put("incremental", incremental)
         .put("kernel", kernel).put("daemonHash", daemonHash).put("settleSeconds", settleSeconds)
         .put("disableModules", disableModules).put("wipeModules", wipeModules).put("protectImages", protectImages)
+        .put("susfsAutoEnable", susfsAutoEnable).put("restartAfterRoot", restartAfterRoot)
 
     companion object {
         fun parse(json: JSONObject): EarlyRootConfig {
@@ -41,7 +44,8 @@ internal data class EarlyRootConfig(
                 json.getString("flavor"), json.getString("model"), json.getString("device"),
                 json.getString("incremental"), json.getString("kernel"), json.getString("daemonHash"),
                 json.getInt("settleSeconds"), json.getBoolean("disableModules"),
-                json.getBoolean("wipeModules"), json.getBoolean("protectImages"))
+                json.getBoolean("wipeModules"), json.getBoolean("protectImages"),
+                json.optBoolean("susfsAutoEnable", false), json.optBoolean("restartAfterRoot", false))
             require(KernelSuFlavor.fromId(config.flavor) != null)
             require(config.daemonHash.matches(Regex("[0-9a-f]{64}")))
             require(config.settleSeconds in BootSettle.allowedSeconds)
@@ -98,6 +102,8 @@ internal object EarlyRootStore {
             disableModules = AppPreferences.disableKsuModules(context),
             wipeModules = AppPreferences.wipeModuleState(context),
             protectImages = AppPreferences.partitionReadOnlyMode(context),
+            susfsAutoEnable = AppPreferences.susfsAutoEnable(context),
+            restartAfterRoot = AppPreferences.restartAfterRoot(context),
         ))
     }
 
@@ -114,15 +120,31 @@ internal object EarlyRootStore {
     @Synchronized fun record(context: Context, token: String, state: String, detail: String,
         startedLocked: Boolean, finishedLocked: Boolean = false, finalized: Boolean = false,
         evidence: JSONObject? = null) {
-        write(context, "result", JSONObject().put("boot", token).put("state", state)
+        val next = JSONObject().put("boot", token).put("state", state)
             .put("detail", detail.take(1600)).put("startedLocked", startedLocked)
             .put("finishedLocked", finishedLocked).put("uptimeMs", BootSettle.elapsedMillis())
-            .put("finalized", finalized).apply { evidence?.let { put("launch", it) } })
+            .put("finalized", finalized).apply { evidence?.let { put("launch", it) } }
+        val previous = result(context)
+        if (previous != null && previous.optString("boot") != token) {
+            write(context, "previous-result", previous)
+        }
+        write(context, "result", EarlyRootResult.merge(previous, next))
     }
 
     @Synchronized fun finalized(context: Context) {
         val current = result(context) ?: return
         write(context, "result", current.put("finalized", true))
+    }
+
+    /** Only the worker updates setup progress, preserving the original root/unlock evidence. */
+    @Synchronized fun <T> updateVerified(context: Context, token: String, update: (EarlyRootProgress) -> T): T {
+        val current = checkNotNull(result(context)) { "The early root result is unavailable" }
+        check(current.optString("boot") == token && current.optString("state") == "verified") {
+            "The verified kernel boot changed"
+        }
+        val value = update(EarlyRootProgress(current))
+        write(context, "result", current)
+        return value
     }
 
     @Synchronized fun finalizationFailed(context: Context, detail: String) {
