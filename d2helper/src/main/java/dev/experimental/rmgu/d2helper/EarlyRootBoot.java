@@ -29,22 +29,26 @@ final class EarlyRootBoot {
         configuration.setEnabled(enabled);
     }
 
-    static void request(Context context, String action) {
-        if (!(Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action) || Intent.ACTION_BOOT_COMPLETED.equals(action)) || !enabled()) return;
+    static boolean request(Context context, String action, long received, String reason) {
+        if (!(Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action) || Intent.ACTION_BOOT_COMPLETED.equals(action)) || !enabled()) return false;
         try {
             PackageManager pm = context.getPackageManager();
-            if (pm.isSafeMode()) return;
+            if (pm.isSafeMode()) return false;
             if (pm.checkSignatures(D2Protocol.CONTROLLER, D2Protocol.HELPER) != PackageManager.SIGNATURE_MATCH) {
                 throw new SecurityException("Controller signature changed");
             }
             long uptime = SystemClock.elapsedRealtime();
             boolean unlocked = context.getSystemService(UserManager.class).isUserUnlocked();
-            Log.i("RMGUEarlyRoot", "Wake requested: event=" + action + " uptimeMs=" + uptime + " userUnlocked=" + unlocked);
+            Log.i("RMGUEarlyRoot", "Wake requested: event=" + action + " receivedUptimeMs=" + received +
+                    " uptimeMs=" + uptime + " reason=" + reason + " userUnlocked=" + unlocked);
             context.startForegroundService(new Intent(D2Protocol.EARLY_ROOT_ACTION)
                     .putExtra(D2Protocol.EARLY_ROOT_EVENT, action)
                     .putExtra(D2Protocol.EARLY_ROOT_REQUEST_UPTIME, uptime)
+                    .putExtra(D2Protocol.EARLY_ROOT_BROADCAST_UPTIME, received)
+                    .putExtra(D2Protocol.EARLY_ROOT_HANDOFF, reason)
                     .putExtra(D2Protocol.EARLY_ROOT_REQUEST_UNLOCKED, unlocked)
                     .setComponent(new ComponentName(D2Protocol.CONTROLLER, D2Protocol.EARLY_ROOT_SERVICE)));
-        } catch (Exception error) { Log.w("RMGUEarlyRoot", "Could not wake the root worker", error); }
+            return true;
+        } catch (Exception error) { Log.w("RMGUEarlyRoot", "Could not wake the root worker", error); return false; }
     }
 }

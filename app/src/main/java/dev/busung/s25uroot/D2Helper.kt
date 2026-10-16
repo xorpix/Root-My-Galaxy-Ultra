@@ -119,8 +119,10 @@ internal object D2Helper {
         }
     }
 
-    suspend fun query(context: Context, refresh: Boolean = false, enabled: Boolean? = null): D2Status =
+    suspend fun query(context: Context, refresh: Boolean = false, enabled: Boolean? = null,
+        waitForIdle: Boolean = true): D2Status =
         withContext(Dispatchers.IO) {
+            require(waitForIdle || (!refresh && enabled == null)) { "Configuration must wait for helper checks" }
             val installed = installed(context)
             val base = installed.status
             if (!base.identityVerified || base.needsUpdate || base.needsReboot) {
@@ -132,7 +134,7 @@ internal object D2Helper {
                     var result = status(installed, client, if (enabled != null) "configure" else if (refresh) "refresh" else "status", enabled)
                     // IPC never waits for a Samsung vault call; that work has its own bounded worker.
                     repeat(9) {
-                        if (!result.busy || result.needsReboot) return@use result
+                        if (!waitForIdle || !result.busy || result.needsReboot) return@use result
                         delay(1000)
                         result = status(installed, client, "status")
                     }

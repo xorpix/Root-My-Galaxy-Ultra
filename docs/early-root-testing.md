@@ -1,15 +1,32 @@
-# Early root test 5: finish setup before unlock
+# Early root test 6: overlap Odin checks and shorten the exploit wait
 
-The test4 phone log records the locked-boot worker starting at 55 seconds,
-obtaining a root shell at 62 seconds while both unlock readings were locked,
-and receiving its first unlocked boot event at 88 seconds. The user still
-observed the expected root behavior only after unlock. Test4 explicitly deferred
-SusFS and the configured module soft restart until then. Its retained process
-exit history contained idle-process cleanup, not a crash trace.
+Test5 is the phone-confirmed baseline on SM-S948B / S948BXXS4BZIG. The user
+confirmed an automatic soft restart into a rooted state at the first PIN screen.
+Its report recorded the helper request at 55.279 seconds, exploit start at
+55.603 seconds, root verification at 62.181 seconds and SusFS active at 64.212
+seconds. Root, SusFS and the restart attempt were all recorded before unlock.
 
-Test5 moves the enabled SusFS activation and module soft restart into the Direct
-Boot worker. It is a candidate for phone validation; the full before-unlock
-experience is not yet confirmed.
+Test6 implements two speed candidates. Actual savings still need phone testing:
+
+- Helper version 5 wakes root after the first verified Odin observation. All
+  four scheduled checks at 0, 0.5, 2 and 6 seconds remain, as does the eight-second
+  watchdog/completion fallback. Requests joining an already busy worker share
+  its verified/completion signals instead of starting root without an observation.
+- The Direct Boot worker reads helper status without waiting for later rechecks.
+  Root and SusFS overlap them; the automatic soft restart waits for helper idle
+  so it cannot interrupt the planned Odin checks. A stuck helper refuses that restart.
+- After DirtyFrag's trigger, a completed saved-grant command reporting UID 0 can
+  shorten the five-second wait. The one-second orphan trigger window is retained.
+  Missing/denied root, stalled commands and probe errors retain the old five-second
+  fallback. Manual runs retain that full window. Native cleanup and the existing
+  final root/backend verification always run; readiness alone never verifies a run.
+
+The report now adds `launch.broadcastUptimeMs`, `launch.helperHandoff`,
+`launch.postTriggerWaitMs` and `launch.postTriggerReady`. Compare broadcast-to-request
+time separately from request-to-root time. `odinWaitBeforeRestartMs` records any
+remaining helper wait, and `restartRequestedUptimeMs` records the actual handoff
+time separately from the earlier restart claim. The final framework restart's
+duration is not measured by these fields.
 
 `SuProbe` previously read `su` output to EOF before reaching its three-second
 `waitFor` timeout. A child waiting for a grant or another boot condition could
@@ -18,7 +35,7 @@ reader thread while the deadline runs. A timed-out child is killed and cannot
 count as root proof, even if it printed `uid=0` before hanging. Root-command
 output continues to be captured completely.
 
-Helper version 4 passes the originating boot event, request uptime and its unlock
+The helper passes the originating boot event, request uptime and its unlock
 reading to the worker. The worker logs service entry, probe duration, helper
 query, exploit start and verification with monotonic uptime and lock state.
 The saved result adds a `launch` object with those times and verification state.
@@ -29,9 +46,9 @@ boot event or any positive unlock evidence produces an after-unlock result.
 Missing evidence and legacy results are shown as timing unconfirmed. This is
 stronger reporting; real phone behavior remains the acceptance criterion.
 
-The helper remains version 4, with the same source identity as test4. An existing
-matching helper needs no update. Open RMGU once after upgrading so existing SusFS
-and Auto Soft reboot choices are copied into device-protected boot policy.
+**Update the helper to version 5 and fully reboot.** Existing certificate
+preparation and stored choices are retained. Open RMGU once after upgrading so
+SusFS and Auto Soft reboot choices are copied into device-protected boot policy.
 
 Each setup attempt is saved before its side effect. A restarted worker may query
 an interrupted SusFS activation, but cannot repeat the load or the automatic soft
@@ -49,8 +66,8 @@ activated boot helper. Keep Odin reachable remains independent.
 ## Update and enable
 
 1. Install the signed test APK over the existing RMGU app.
-2. Open RMGU. If Recovery Management requests it, update the helper to version 4,
-   fully reboot, then activate it. A matching activated helper from test4 can stay.
+2. Open RMGU. Under Recovery Management, update the helper to version 5 and fully
+   reboot. Activate it afterward if requested, then reboot again for the timing test.
 3. Root manually through RMGU once if the app requests a verified payload. Enable
    **Root on boot**, then **Root before first unlock** under Root Management.
 4. Retain the desired **SusFS · experimental** and **Auto Soft reboot** choices.

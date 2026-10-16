@@ -47,6 +47,7 @@ internal class DfRunner(
     private val log: (String) -> Unit,
     private val stage: (RunStage) -> Unit,
     private val checkStop: () -> Unit,
+    private val adaptiveWait: Boolean = false,
 ) {
     companion object {
         /** Patch loop plus sleeps plus the marker poll, with headroom. */
@@ -58,6 +59,10 @@ internal class DfRunner(
 
     /** Whether the module's pre-load image protection landed this run. */
     var roPreloadProtected = false
+        private set
+    var postTriggerWaitMs: Long? = null
+        private set
+    var postTriggerReady = false
         private set
 
     suspend fun execute(payloads: VerifiedPayloads, expectRoPreload: Boolean = false): DfOutcome {
@@ -76,7 +81,15 @@ internal class DfRunner(
         val softReboot = false
         stage(RunStage.Exploit)
         log("[*] DirtyFrag single exploit launch; backend ${flavor.label}; soft reboot ${if (softReboot) "on" else "off"}")
-        val reporter = DfReporter { text -> log(text.trim()) }
+        val reporter = object : DfReporter {
+            override fun report(text: String) { log(text.trim()) }
+            override fun rootReady(timeoutMillis: Long): Boolean =
+                adaptiveWait && RootReadyProbe.check(timeoutMillis)
+            override fun readyWaitFinished(elapsedMillis: Long, ready: Boolean) {
+                postTriggerWaitMs = elapsedMillis
+                postTriggerReady = ready
+            }
+        }
         val rc = try {
             withTimeout(DF_RUN_TIMEOUT_MS) {
                 withContext(Dispatchers.IO) {

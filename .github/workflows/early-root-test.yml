@@ -71,6 +71,9 @@ jobs:
       - name: Check root probe deadlines and unlock evidence
         run: python3 tools/test_su_process.py
 
+      - name: Check early Odin handoff and adaptive exploit wait
+        run: python3 tools/test_early_root_speed.py
+
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --no-daemon
 

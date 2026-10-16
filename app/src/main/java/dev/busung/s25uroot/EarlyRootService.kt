@@ -108,6 +108,8 @@ class EarlyRootService : Service() {
         val (workerUnlocked, workerDeviceLocked) = lockEvidence()
         launchEvidence = JSONObject().put("event", trigger).put("requestUptimeMs", requestUptime)
             .put("serviceUptimeMs", serviceUptime)
+            .put("broadcastUptimeMs", launch.getLongExtra(D2Protocol.EARLY_ROOT_BROADCAST_UPTIME, -1))
+            .put("helperHandoff", launch.getStringExtra(D2Protocol.EARLY_ROOT_HANDOFF) ?: "controller")
             .put("helperRequestUserUnlocked", helperRequestUnlocked ?: JSONObject.NULL)
             .put("workerUserUnlocked", workerUnlocked ?: JSONObject.NULL)
             .put("workerDeviceLocked", workerDeviceLocked ?: JSONObject.NULL)
@@ -136,7 +138,7 @@ class EarlyRootService : Service() {
         if (DfBootAttempt.claimed(this, bootToken)) return
 
         trace("helper-query-start", trigger)
-        val helper = D2Helper.query(this)
+        val helper = D2Helper.query(this, waitForIdle = false)
         trace("helper-query-finished", trigger)
         if (!helper.controllable || !helper.activated || helper.needsUpdate || helper.needsReboot || !helper.earlyRootEnabled) {
             EarlyRootStore.record(this, bootToken, "blocked", "Update and activate the boot helper, then enable early root again.",
@@ -181,8 +183,10 @@ class EarlyRootService : Service() {
         trace("exploit-start", trigger)
         val runner = DfRunner(this, { AppLog.info(AppLogTags.BOOT, it) }, {}, {
             check(EarlyRootStore.requested(this)) { "Early root was switched off" }
-        })
+        }, adaptiveWait = true)
         val outcome = runner.execute(payloads, current.protectImages)
+        launchEvidence?.put("postTriggerWaitMs", runner.postTriggerWaitMs ?: JSONObject.NULL)
+            ?.put("postTriggerReady", runner.postTriggerReady)
         check(outcome is DfOutcome.Verified) { "Root could not be verified. Check the manager after unlocking and fully reboot before retrying." }
         val (verificationUnlocked, verificationDeviceLocked) = lockEvidence()
         val timing = EarlyRootTiming.classify(trigger, helperRequestUnlocked, verificationUnlocked, verificationDeviceLocked)
@@ -207,7 +211,7 @@ class EarlyRootService : Service() {
             val recovering = EarlyRootStore.result(this)?.let { EarlyRootProgress(it).susfsInProgress } == true
             if (claimed || recovering) {
                 val outcome = runCatching {
-                    val device = snapshot ?: EarlyRootDevice.current(D2Helper.query(this))
+                    val device = snapshot ?: EarlyRootDevice.current(D2Helper.query(this, waitForIdle = false))
                     val storage = createDeviceProtectedStorageContext()
                     if (claimed) SusfsRuntime.activate(storage, device, SuShell::run)
                     else SusfsRuntime.query(storage, device, SuShell::run)
@@ -242,6 +246,15 @@ class EarlyRootService : Service() {
 
     private suspend fun restartModules(config: EarlyRootConfig): RecoveryOutcome {
         check(kernelBootToken() == bootToken) { "The kernel boot changed" }
+        // Root/SusFS overlap the repeated Odin checks, but our planned restart must not kill them.
+        val waitStart = BootSettle.elapsedMillis()
+        val helper = D2Helper.query(this)
+        val waited = BootSettle.elapsedMillis() - waitStart
+        val helperIdle = helper.controllable && !helper.needsUpdate && !helper.needsReboot && !helper.busy
+        EarlyRootStore.updateVerified(this, bootToken) { it.recordOdinWait(waited, helperIdle) }
+        check(helperIdle) {
+            "The boot helper has not finished its Odin checks; the automatic restart was not started"
+        }
         check(isRootAnswer(SuShell.run("id", 15))) { "The app's saved root permission is unavailable" }
         val shell: (String) -> ShizukuController.ShellResult = { command ->
             SuShell.run(command, 90) ?: ShizukuController.ShellResult(127, "The root shell did not answer")
@@ -249,6 +262,11 @@ class EarlyRootService : Service() {
         val daemon = RootRecovery.softRebootDaemon(applicationInfo.nativeLibraryDir,
             M3qLaunch.backend(config.flavor), shell)
         val capabilities = RootRecovery.capabilities(shell, daemon) ?: KsudCapabilities()
+        val latest = EarlyRootStore.config(this)
+        check(latest?.requested == true && latest.flavor == config.flavor && latest.restartAfterRoot) {
+            "Automatic root or the module restart was switched off"
+        }
+        EarlyRootStore.updateVerified(this, bootToken) { it.recordRestartRequest(!unlocked(), BootSettle.elapsedMillis()) }
         return RootRecovery.softReboot(shell, bootToken, capabilities, daemon)
     }
 

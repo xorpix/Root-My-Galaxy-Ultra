@@ -23,4 +23,6 @@ public final class D2Protocol {
     public static final String EARLY_ROOT_EVENT = CONTROLLER + ".extra.BOOT_EVENT";
     public static final String EARLY_ROOT_REQUEST_UPTIME = CONTROLLER + ".extra.REQUEST_UPTIME";
     public static final String EARLY_ROOT_REQUEST_UNLOCKED = CONTROLLER + ".extra.REQUEST_UNLOCKED";
+    public static final String EARLY_ROOT_BROADCAST_UPTIME = CONTROLLER + ".extra.BROADCAST_UPTIME";
+    public static final String EARLY_ROOT_HANDOFF = CONTROLLER + ".extra.HANDOFF";
 }
