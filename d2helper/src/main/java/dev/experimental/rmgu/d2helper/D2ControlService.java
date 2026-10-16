@@ -16,6 +16,7 @@ import android.os.SystemClock;
 import android.util.Log;
 import dev.experimental.rmgu.d2.D2ControlPolicy;
 import dev.experimental.rmgu.d2.D2Protocol;
+import dev.experimental.rmgu.d2.KernelIdentity;
 
 /** Explicit bound-only control: sideloaded system-process providers are skipped at boot. */
 public final class D2ControlService extends Service {
@@ -70,10 +71,16 @@ public final class D2ControlService extends Service {
                     throw new IllegalStateException("D2 switch was not saved: " + error.getMessage(), error);
                 }
                 if (enabled) D2Runtime.request(this, "enabled", true, () -> {});
+            } else if ("configure_root".equals(method)) {
+                EarlyRootBoot.configure(this, enabled);
             } else if ("refresh".equals(method)) {
                 D2Runtime.request(this, "status", false, () -> {});
             }
             reply = D2Store.snapshot(this);
+            // The regular controller app may not read these proc files. The authenticated
+            // system helper reports a bounded, kernel-owned value without changing anything.
+            reply.putString("kernel_release", KernelIdentity.read());
+            reply.putBoolean("early_root_enabled", EarlyRootBoot.enabled());
             reply.putBoolean("busy", D2Runtime.busy());
             reply.putBoolean("timed_out", D2Runtime.timedOut());
             if (D2Runtime.timedOut()) reply.putBoolean("verified", false);

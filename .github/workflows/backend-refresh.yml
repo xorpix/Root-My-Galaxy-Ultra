@@ -11,6 +11,11 @@ on:
         type: boolean
         default: true
         required: true
+      force_rebuild:
+        description: Rebuild all three matched driver/daemon pairs even when source pins are unchanged
+        type: boolean
+        default: false
+        required: false
   pull_request:
     paths:
       - '.github/workflows/backend-refresh.yml'
@@ -53,7 +58,12 @@ jobs:
           python3 tools/backend-refresh/test_managers.py
       - name: Snapshot the official upstream branches
         id: probe
-        run: python3 tools/backend-refresh/probe.py --output "$RUNNER_TEMP/upstream-heads.json"
+        env:
+          FORCE_REBUILD: ${{ github.event_name == 'pull_request' || inputs.force_rebuild }}
+        run: |
+          FLAGS=()
+          if [ "$FORCE_REBUILD" = true ]; then FLAGS+=(--force-rebuild); fi
+          python3 tools/backend-refresh/probe.py --output "$RUNNER_TEMP/upstream-heads.json" "${FLAGS[@]}"
       - name: Check release configuration before spending build time
         if: steps.probe.outputs.changed == 'true' && (github.event_name == 'schedule' || inputs.publish)
         env:
@@ -107,7 +117,7 @@ jobs:
           sudo ln -s "$RUNNER_TEMP/rmgu-backends/ddk-root/opt/ddk" /opt/ddk
       - name: Build and validate matched drivers and daemons
         run: python3 tools/backend-refresh/refresh.py --work "$RUNNER_TEMP/rmgu-backends" --snapshot "$RUNNER_TEMP/snapshot/upstream-heads.json" --release
-      - name: Refresh verified UAPI 5 manager download links
+      - name: Refresh verified compatible manager download links
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -131,6 +141,11 @@ jobs:
             ln -s "$RUNNER_TEMP/rmgu-backends/android-ndk-r28c" "$ANDROID_HOME/ndk/28.2.13676358"
           fi
       - uses: gradle/actions/setup-gradle@v4
+      - name: Check boot handoff and root process deadlines
+        working-directory: ${{ runner.temp }}/rmgu-backends/source
+        run: |
+          python3 tools/test_su_process.py
+          python3 tools/test_early_root_speed.py
       - name: Create a disposable build key
         # Backend build scripts never receive the real release key. The APK is re-signed below.
         run: |

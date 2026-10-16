@@ -1,7 +1,6 @@
 package dev.busung.s25uroot
 
 import android.util.Log
-import java.util.concurrent.TimeUnit
 
 /**
  * A root shell the app opens for itself, by asking KernelSU's `su` directly.
@@ -40,30 +39,15 @@ internal object SuShell {
         timeoutSeconds: Long = COMMAND_TIMEOUT_SECONDS,
     ): ShizukuController.ShellResult? {
         val process = start(command) ?: return null
-        val output = StringBuilder()
-        // Read on its own thread: the pipe is what blocks, not the process, and a `su` waiting on a
-        // grant prompt writes nothing at all, so reading inline would wait on a decision forever.
-        val reader = Thread {
-            runCatching {
-                process.inputStream.bufferedReader().forEachLine { line ->
-                    synchronized(output) { output.appendLine(line) }
-                }
-            }
-        }.apply {
-            isDaemon = true
-            start()
+        return readProcess(process, timeoutSeconds * 1000).also {
+            if (it == null) Log.i(TAG, "su did not answer within ${timeoutSeconds}s; treating it as no root shell")
         }
-        val answered = runCatching { process.waitFor(timeoutSeconds, TimeUnit.SECONDS) }
-            .getOrDefault(false)
-        if (!answered) {
-            Log.i(TAG, "su did not answer within ${timeoutSeconds}s; treating it as no root shell")
-            runCatching { process.destroyForcibly() }
-            reader.join(READER_GRACE_MILLIS)
-            return null
-        }
-        reader.join(READER_GRACE_MILLIS)
-        val exitCode = runCatching { process.exitValue() }.getOrNull() ?: return null
-        return ShizukuController.ShellResult(exitCode, synchronized(output) { output.toString().trim() })
+    }
+
+    /** No Android services: the real pipe/deadline behavior can be exercised by host JVM tests. */
+    internal fun readProcess(process: Process, timeoutMillis: Long): ShizukuController.ShellResult? {
+        val result = BoundedProcess.read(process, timeoutMillis) ?: return null
+        return ShizukuController.ShellResult(result.exitCode, result.output)
     }
 
     /** Whether this app can get a root shell of its own right now. */
@@ -98,7 +82,6 @@ internal object SuShell {
      * it says so.
      */
     internal const val COMMAND_TIMEOUT_SECONDS = 30L
-    private const val READER_GRACE_MILLIS = 500L
 }
 
 /**

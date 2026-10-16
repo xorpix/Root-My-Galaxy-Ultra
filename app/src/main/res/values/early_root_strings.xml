@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="early_root_title">Root before first unlock</string>
+    <string name="early_root_summary">Restore root automatically while the phone is still locked. Uses your boot delay and selected backend.</string>
+    <string name="early_root_needs_boot_root">Enable Root on boot first.</string>
+    <string name="early_root_checking">Checking boot helper readiness…</string>
+    <string name="early_root_needs_helper">Install the boot helper under Keep Odin reachable in Recovery Management.</string>
+    <string name="early_root_untrusted_helper">Set up the matching boot helper under Keep Odin reachable in Recovery Management.</string>
+    <string name="early_root_needs_helper_update">Update the boot helper under Keep Odin reachable in Recovery Management.</string>
+    <string name="early_root_needs_reboot">Fully reboot the phone to finish the helper update.</string>
+    <string name="early_root_needs_activation">Activate the updated boot helper to enable root before first unlock.</string>
+    <string name="early_root_activate_helper">Activate boot helper</string>
+    <string name="early_root_helper_unavailable">The boot helper is not responding. Retrying automatically… If this continues, activate it under Keep Odin reachable.</string>
+    <string name="early_root_device_unavailable">The boot helper could not read the kernel identity. Update it under Keep Odin reachable, then fully reboot.</string>
+    <string name="early_root_unsupported">Available with the bundled DirtyFrag backend on supported S26 Ultra firmware.</string>
+    <string name="early_root_starting">Restoring root…</string>
+    <string name="early_root_setup">Finishing root setup…</string>
+    <string name="early_root_waiting">Waiting for the configured boot delay.</string>
+    <string name="early_root_failed">Early root did not finish.</string>
+    <string name="early_root_skipped">Automatic root was skipped this boot.</string>
+    <string name="early_root_verified_locked">Root verified before first unlock, %1$d seconds after boot.</string>
+    <string name="early_root_verified_unlocked">Root verified after first unlock, %1$d seconds after boot.</string>
+    <string name="early_root_verified_unknown">Root verified %1$d seconds after boot; timing relative to first unlock is unconfirmed.</string>
+    <string name="early_root_susfs_locked">SusFS verified before first unlock.</string>
+    <string name="early_root_susfs_unlocked">SusFS verified after first unlock.</string>
+    <string name="early_root_susfs_running">SusFS activation is in progress.</string>
+    <string name="early_root_susfs_failed">SusFS was not verified: %1$s</string>
+    <string name="early_root_restart_locked">Module restart requested before first unlock.</string>
+    <string name="early_root_restart_unlocked">Module restart requested after first unlock.</string>
+    <string name="early_root_restart_attempted_locked">Module restart attempted before first unlock. Check that your modules are working.</string>
+    <string name="early_root_restart_attempted_unlocked">Module restart attempted after first unlock. Check that your modules are working.</string>
+    <string name="early_root_restart_failed">Module restart could not be confirmed: %1$s</string>
+</resources>

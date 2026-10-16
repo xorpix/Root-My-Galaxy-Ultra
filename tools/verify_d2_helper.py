@@ -141,7 +141,8 @@ def verify(apk, project=ROOT, signatures=True):
         metadata = json.loads(parent.read('assets/d2/helper.json'))
         payload = parent.read('assets/d2/helper.apk')
         host = manifest(parent.read('AndroidManifest.xml'))
-    require(metadata['api'] == 1 and metadata['package'] == HELPER and metadata['version'] == 1, 'Helper identity mismatch')
+    helper_code = int(re.search(r'val helperCode = (\d+)', (project / 'd2helper/build.gradle.kts').read_text()).group(1))
+    require(metadata['api'] == 1 and metadata['package'] == HELPER and metadata['version'] == helper_code, 'Helper identity mismatch')
     require(metadata['size'] == len(payload) and metadata['sha256'] == hashlib.sha256(payload).hexdigest(), 'Embedded helper digest/size mismatch')
     require(len(payload) <= 256 * 1024, 'Companion unexpectedly exceeds 256 KiB')
     require(metadata['source'] == source_fingerprint(project), 'Helper source fingerprint mismatch')
@@ -169,7 +170,7 @@ def verify(apk, project=ROOT, signatures=True):
         identity = [n for n in children(app, 'meta-data') if attribute(n, 'name') == HELPER + '.source']
         require(len(identity) == 1 and attribute(identity[0], 'value') == metadata['source'], 'Installed helper source identity mismatch')
         requested = {attribute(p, 'name') for p in children(xml, 'uses-permission')}
-        require(requested == {'android.permission.RECEIVE_BOOT_COMPLETED'}, 'Unexpected helper permissions')
+        require(requested == {'android.permission.RECEIVE_BOOT_COMPLETED', CONTROLLER + '.permission.START_EARLY_ROOT'}, 'Unexpected helper permissions')
         components = [n for n in app['children'] if n['name'] in ('activity', 'activity-alias', 'service', 'receiver', 'provider')]
         names = {attribute(n, 'name'): n for n in components}
         expected = {NAMESPACE + '.' + n for n in ('D2ControlService', 'ActivateActivity', 'D2BootReceiver')}
@@ -185,6 +186,20 @@ def verify(apk, project=ROOT, signatures=True):
         control = names[NAMESPACE + '.D2ControlService']
         require(control['name'] == 'service' and attribute(control, 'directBootAware') is True,
                 'Control must use a direct-boot aware bound service, not a system-process provider')
+        early_permission = CONTROLLER + '.permission.START_EARLY_ROOT'
+        permissions = [p for p in children(host, 'permission') if attribute(p, 'name') == early_permission]
+        require(len(permissions) == 1 and attribute(permissions[0], 'protectionLevel') in (2, 'signature'),
+                'Early root must have its own signature permission')
+        host_apps = children(host, 'application')
+        workers = [s for a in host_apps for s in children(a, 'service')
+                   if attribute(s, 'name') == 'dev.busung.s25uroot.EarlyRootService']
+        require(len(workers) == 1, 'Expected exactly one early root worker')
+        early = workers[0]
+        require(attribute(early, 'directBootAware') is True and attribute(early, 'exported') is True and
+                attribute(early, 'process') == ':early_root' and attribute(early, 'permission') == early_permission,
+                'Early root must use a protected Direct Boot service in a separate app process')
+        require(attribute(early, 'foregroundServiceType') in ('specialUse', 0x40000000),
+                'The early root worker must use its declared foreground service type')
         if signatures:
             sdk = os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT')
             require(bool(sdk), 'Android SDK is required to verify APK signatures')

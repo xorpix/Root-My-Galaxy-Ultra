@@ -6,7 +6,7 @@ from pathlib import Path
 import unittest
 import zlib
 
-from prepare_m3q_helpers import VERSIONS, UAPI_VERSION, LIBRARIES
+from prepare_m3q_helpers import VERSIONS, UAPI_VERSIONS, LIBRARIES
 
 PROJECT = Path(__file__).resolve().parents[1]
 
@@ -48,8 +48,8 @@ class BackendBundleTests(unittest.TestCase):
                 folder = PROJECT / "backends" / flavor
                 manifest = json.loads((folder / "build-manifest.json").read_text())
                 self.assertEqual(manifest["driver_version"], version)
-                self.assertEqual(manifest["uapi_version"], UAPI_VERSION)
-                self.assertEqual(manifest["manager_required_uapi"], UAPI_VERSION)
+                self.assertEqual(manifest["uapi_version"], UAPI_VERSIONS[flavor])
+                self.assertEqual(manifest["manager_required_uapi"], UAPI_VERSIONS[flavor])
                 data = (PROJECT / "app/src/main/assets/azhl" / flavor / "ksud").read_bytes()
                 self.assertEqual(manifest["outputs"]["ksud"], {"size": len(data), "sha256": sha256(data)})
                 self.assertEqual(data[:6], b"\x7fELF\x02\x01")

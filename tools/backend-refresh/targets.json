@@ -1,7 +1,6 @@
 {
-  "schema": 2,
+  "schema": 3,
   "app_base": "bf48dd62b8b33b380be55b3fe04b4ff9f2bd2687",
-  "uapi": 5,
   "checked_date": "2026-10-15",
   "build_status": "built",
   "backends": {
@@ -13,9 +12,10 @@
       "daemon_version": "3.3.0-79-g0c0fdb96",
       "rust": "1.98.1",
       "rebuild": false,
-      "compat_sha256": "2e4181ae838b8bb4d2b9a126f31d762bf502f8b114d42d10ce5131690744b6c6",
+      "compat_sha256": "7a9fdcad255cf7687366c9cdd8e08d361cfb380b716edb86c05f5ad4c7aa70d9",
       "branch": "main",
-      "version_offset": 30000
+      "version_offset": 30000,
+      "uapi": 5
     },
     "kernelsu-next": {
       "repository": "KernelSU-Next/KernelSU-Next",
@@ -27,7 +27,8 @@
       "rebuild": false,
       "compat_sha256": "1693254b58106f684fe39ee7f2bef889af221c4738132dc7343a35bc3a4cded5",
       "branch": "dev",
-      "version_offset": 30000
+      "version_offset": 30000,
+      "uapi": 5
     },
     "resukisu": {
       "repository": "Baka-SU/BakaSU",
@@ -39,7 +40,8 @@
       "rebuild": false,
       "compat_sha256": "937a76935534953ea9ad5269c21b3174806bf0dc7ea571f82a5ce0377143aed6",
       "branch": "main",
-      "version_offset": 30700
+      "version_offset": 30700,
+      "uapi": 5
     }
   }
 }

@@ -20,14 +20,19 @@
 #include "reporter.h"
 #include "aes256.h"
 #include "hmac_sha256.h"
+#include "ready_wait.h"
+#include <time.h>
 
 static jmethodID report_mid;
+static jmethodID root_ready_mid;
 
 JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved __attribute__((unused))) {
     JNIEnv *env;
     (*vm)->GetEnv(vm, (void **)&env, JNI_VERSION_1_4);
     jclass clz = (*env)->FindClass(env, "dev/busung/s25uroot/dirtyfrag/DfReporter");
     report_mid = (*env)->GetMethodID(env, clz, "report", "(Ljava/lang/String;)V");
+    root_ready_mid = (*env)->GetMethodID(env, clz, "rootReady", "(J)Z");
+    if (!report_mid || !root_ready_mid) return JNI_ERR;
     return JNI_VERSION_1_4;
 }
 
@@ -537,6 +542,25 @@ static int createOrphanProcess(struct Reporter *reporter) {
 
 static int has_marker(const char *p) { return access(p, F_OK) == 0; }
 
+static int64_t ready_now(void *context __attribute__((unused))) {
+    struct timespec now;
+    if (clock_gettime(CLOCK_MONOTONIC, &now)) return -1;
+    return (int64_t)now.tv_sec * 1000 + now.tv_nsec / 1000000;
+}
+static void ready_sleep(void *context __attribute__((unused)), int64_t millis) {
+    struct timespec remaining = {.tv_sec = millis / 1000, .tv_nsec = (millis % 1000) * 1000000};
+    while (nanosleep(&remaining, &remaining) && errno == EINTR) {}
+}
+static int ready_probe(void *context, int64_t budget_ms) {
+    struct Reporter *reporter = context;
+    jboolean ready = (*reporter->env)->CallBooleanMethod(reporter->env, reporter->obj, root_ready_mid, (jlong)budget_ms);
+    if ((*reporter->env)->ExceptionCheck(reporter->env)) {
+        (*reporter->env)->ExceptionClear(reporter->env);
+        return 0;
+    }
+    return ready == JNI_TRUE;
+}
+
 JNIEXPORT jint JNICALL
 Java_dev_busung_s25uroot_dirtyfrag_DfExploitRunner_nativeRunAll(JNIEnv *env, jclass clz __attribute__((unused)),
                                                jobject reporter_obj,
@@ -604,11 +628,11 @@ Java_dev_busung_s25uroot_dirtyfrag_DfExploitRunner_nativeRunAll(JNIEnv *env, jcl
     };
     // Single-shot stat below; no seen[] needed without a poll loop.
 
-    // No marker wait: the daemon is proven by the manager, not by /dev
-    // markers (late-load hangs after the daemon is up, and app SELinux blinds
-    // sysfs). One single stat keeps the dfm0/dfm1 fast path; otherwise return
-    // so the app verifies via su grant or an explicit manager confirmation.
-    usleep(5000000);
+    // A completed saved-grant root probe may shorten the wait. A missing grant or
+    // slow daemon retains the original window. Cleanup and final proof still run below.
+    const struct df_ready_ops ready_ops = {ready_now, ready_sleep, ready_probe};
+    struct df_ready_result waited = df_wait_ready(&ready_ops, reporter);
+    REPORTLN("* %s", waited.ready ? "root readiness confirmed" : "readiness window complete; verifying backend");
     for (size_t j = 0; j < sizeof(markers)/sizeof(markers[0]); j++) {
         if (has_marker(markers[j].path)) {
             REPORTLN("%s", markers[j].msg);

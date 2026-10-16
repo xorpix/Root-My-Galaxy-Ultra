@@ -119,6 +119,11 @@ class RefreshTests(unittest.TestCase):
         self.assertFalse(refresh.reviewed_history_transition('kernelsu-next', old, new))
         self.assertFalse(refresh.reviewed_history_transition('resukisu', 'a' * 40, new))
         self.assertFalse(refresh.reviewed_history_transition('resukisu', old, 'b' * 40))
+        previous_next = '3157e7822190eba628ca6796242db970405e440a'
+        current_next = '204f007164905395e280e9290cc7774f57af8c61'
+        self.assertTrue(refresh.reviewed_history_transition('kernelsu-next', previous_next, current_next))
+        self.assertFalse(refresh.reviewed_history_transition('kernelsu-next', previous_next, 'b' * 40))
+        self.assertFalse(refresh.reviewed_history_transition('kernelsu', previous_next, current_next))
 
     def snapshot(self, changed_heads=(), changed_patches=()):
         config = common.load_config()
@@ -179,14 +184,46 @@ class RefreshTests(unittest.TestCase):
         self.assertEqual('1.1.9', common.next_version('1.1.5', ['1.1.6', 'v1.1.8', 'ci-1.1.99']))
         self.assertEqual('1.2.1', common.next_version('1.2.0', ['1.1.99']))
 
-    def test_new_uapi_stops_before_native_build(self):
+    def test_unreviewed_uapi_stops_before_native_build(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / 'uapi').mkdir()
-            (root / 'uapi/supercall.h').write_text('static const __u32 KERNEL_SU_UAPI_VERSION = 6;')
+            (root / 'uapi/supercall.h').write_text('static const __u32 KERNEL_SU_UAPI_VERSION = 7;')
             with patch.object(refresh, 'capture', return_value='false'):
                 with self.assertRaisesRegex(ValueError, 'new UAPI'):
                     refresh.verify_upstream(root, 'kernelsu', common.load_config()['backends']['kernelsu'])
+
+    def test_reviewed_uapi_is_backend_specific_and_requires_unchanged_get_info(self):
+        header = '''static const __u32 KERNEL_SU_UAPI_VERSION = 6;
+struct ksu_get_info_cmd {
+    __u32 version; /* output */
+    __u32 flags;
+    __u32 features;
+    __u32 uapi_version;
+};
+static const __u32 KSU_IOCTL_GET_INFO = _IOR('K', 2, struct ksu_get_info_cmd);
+'''
+        self.assertEqual(6, common.reviewed_uapi(header, 'kernelsu'))
+        for name in ('kernelsu-next', 'resukisu'):
+            with self.assertRaisesRegex(ValueError, 'new UAPI'):
+                common.reviewed_uapi(header, name)
+        with self.assertRaisesRegex(ValueError, 'control layout'):
+            common.reviewed_uapi(header.replace('__u32 flags;', '__u64 flags;'), 'kernelsu')
+        with self.assertRaisesRegex(ValueError, 'ioctl'):
+            common.reviewed_uapi(header.replace("_IOR('K', 2", "_IOR('K', 3"), 'kernelsu')
+
+    def test_force_rebuild_refreshes_every_pair_without_changed_upstream_pins(self):
+        config = common.load_config()
+        manifests = common.baseline(PROJECT)
+        for name, target in config['backends'].items():
+            target['compat_sha256'] = manifests[name]['rebased_patch']['sha256']
+        replies = {'https://github.com/' + t['repository'] + '.git': t['commit']
+                   for t in config['backends'].values()}
+        with patch.object(probe, 'load_config', return_value=config), \
+                patch.object(probe, 'baseline', return_value=manifests):
+            snapshot = probe.probe(PROJECT, lambda url, ref: replies[url] + '\t' + ref, force_rebuild=True)
+        self.assertTrue(snapshot['force_rebuild'])
+        self.assertEqual(list(config['backends']), snapshot['changed'])
 
     def test_incomplete_native_build_cannot_replace_assets(self):
         with tempfile.TemporaryDirectory() as directory:

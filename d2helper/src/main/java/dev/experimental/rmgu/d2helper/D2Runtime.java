@@ -6,31 +6,41 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 import dev.experimental.rmgu.d2.VaultOperation;
+import dev.experimental.rmgu.d2.D2BootCycle;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** One bounded worker, no root run, permanent poller, alarm, or main-thread vault call. */
 final class D2Runtime {
-    private static final AtomicBoolean BUSY = new AtomicBoolean();
+    private static final AtomicReference<D2BootCycle> ACTIVE = new AtomicReference<>();
     private static final AtomicBoolean AGAIN = new AtomicBoolean();
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static volatile boolean timedOut;
     private static final long[] ATTEMPTS = {0, 500, 2000, 6000};
-    static boolean busy() { return BUSY.get(); }
+    static boolean busy() { return ACTIVE.get() != null; }
     static boolean timedOut() { return timedOut; }
 
     static void request(Context context, String event, boolean apply, Runnable complete) {
+        request(context, event, apply, () -> {}, complete);
+    }
+
+    static void request(Context context, String event, boolean apply, Runnable verified, Runnable complete) {
         Context stored = context.createDeviceProtectedStorageContext();
-        if (!BUSY.compareAndSet(false, true)) {
-            if (apply && D2Store.enabled(stored)) AGAIN.set(true);
-            complete.run();
-            return;
+        D2BootCycle cycle = new D2BootCycle();
+        while (true) {
+            D2BootCycle current = ACTIVE.get();
+            if (current != null) {
+                if (apply && D2Store.enabled(stored)) AGAIN.set(true);
+                current.subscribe(verified, complete);
+                return;
+            }
+            if (ACTIVE.compareAndSet(null, cycle)) break;
         }
-        AtomicBoolean finished = new AtomicBoolean();
+        cycle.subscribe(verified, complete);
         AtomicBoolean expired = new AtomicBoolean();
         timedOut = false;
-        Runnable finish = () -> { if (finished.compareAndSet(false, true)) complete.run(); };
         long start = SystemClock.elapsedRealtime();
-        Runnable watchdog = () -> { expired.set(true); timedOut = true; finish.run(); };
+        Runnable watchdog = () -> { expired.set(true); timedOut = true; cycle.finish(); };
         MAIN.postDelayed(watchdog, 8000);
         Thread worker = new Thread(() -> {
             try {
@@ -52,6 +62,7 @@ final class D2Runtime {
                     }
                     D2Store.record(stored, event, result);
                     Log.i("RMGUD2", event + ": " + result.state + " - " + result.detail);
+                    if (result.verified()) cycle.verified();
                     if (!apply || result.state == VaultOperation.State.UNSUPPORTED || result.state == VaultOperation.State.FAILED) {
                         AGAIN.set(false);
                         break;
@@ -66,8 +77,8 @@ final class D2Runtime {
                 Log.w("RMGUD2", "D2 worker failed: " + error.getClass().getSimpleName());
             } finally {
                 MAIN.removeCallbacks(watchdog);
-                BUSY.set(false);
-                finish.run();
+                ACTIVE.compareAndSet(cycle, null);
+                cycle.finish();
                 if (AGAIN.getAndSet(false) && !timedOut && D2Store.enabled(stored)) request(stored, "recheck", true, () -> {});
             }
         }, "RMGU-D2");
@@ -75,9 +86,9 @@ final class D2Runtime {
         try { worker.start(); }
         catch (RuntimeException error) {
             MAIN.removeCallbacks(watchdog);
-            BUSY.set(false);
+            ACTIVE.compareAndSet(cycle, null);
             timedOut = true;
-            finish.run();
+            cycle.finish();
             throw error;
         }
     }

@@ -64,7 +64,7 @@ class FakeGitHub:
                        'repository': {'full_name': repo}, 'head_repository': {'full_name': repo},
                        'path': '.github/workflows/' + managers.MANAGERS[name][1]}
                 self.runs[run_id] = run
-                data = bundle(name, version)
+                data = bundle(name, version, uapi=target['uapi'])
                 artifact_name = managers.MANAGERS[name][2]
                 self.artifacts[run_id] = {'id': run_id + 1000, 'name': artifact_name,
                                          'expired': False, 'size_in_bytes': len(data),
@@ -115,7 +115,7 @@ class ManagerTests(unittest.TestCase):
         for name, record in report['managers'].items():
             self.assertEqual('matched', record['status'])
             self.assertEqual(self.config['backends'][name]['version'], record['manager_version'])
-            self.assertEqual(5, record['uapi'])
+            self.assertEqual(self.config['backends'][name]['uapi'], record['uapi'])
             self.assertIn(record['download_url'], after)
         self.assertEqual([], report['warnings'])
         self.assertEqual(self.readme.split('## Backends and manager apps')[0],
@@ -157,8 +157,20 @@ class ManagerTests(unittest.TestCase):
         result = report['managers']['kernelsu']
         self.assertEqual('compatible', result['status'])
         self.assertEqual(self.config['backends']['kernelsu']['version'] + 1, result['manager_version'])
-        self.assertEqual(5, result['uapi'])
+        self.assertEqual(self.config['backends']['kernelsu']['uapi'], result['uapi'])
         self.assertEqual('c' * 40, result['source_commit'])
+
+    def test_mixed_api_bundle_verifies_each_manager_against_its_backend(self):
+        self.config['backends']['kernelsu']['uapi'] = 6
+        common.write_json(self.project / 'tools/backend-refresh/targets.json', self.config)
+        self.client = FakeGitHub(self.config, self.readme)
+        report = self.update()
+        self.assertEqual({'kernelsu': 6, 'kernelsu-next': 5, 'resukisu': 5}, report['required_uapi'])
+        self.assertTrue(all(r['status'] == 'matched' for r in report['managers'].values()))
+        for name, record in report['managers'].items():
+            self.assertEqual(self.config['backends'][name]['uapi'], record['uapi'])
+        with self.assertRaisesRegex(ValueError, 'UAPI 5'):
+            managers.verify_archive(bundle('kernelsu', 123, uapi=5), 'kernelsu', 6)
 
     def test_expired_current_and_previous_artifacts_remove_broken_download(self):
         for run_id, run in self.client.runs.items():

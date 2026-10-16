@@ -2,7 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     android:sharedUserId="android.uid.system">
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <application android:label="RMGU Odin Helper" android:allowBackup="false"
+    <uses-permission android:name="dev.experimental.azhlroot.permission.START_EARLY_ROOT" />
+    <application android:label="RMGU Boot Helper" android:allowBackup="false"
         android:process="system" android:directBootAware="true"
         android:theme="@android:style/Theme.NoDisplay">
         <meta-data android:name="dev.experimental.azhlroot.d2helper.source"

@@ -141,9 +141,9 @@ internal object AutoRootSupport {
     fun currentBootToken(): String? = kernelBootToken()
 
     /** Whether an install has been verified on this device at all, which is what a boot run needs. */
-    fun hasVerifiedInstall(context: Context): Boolean =
+    fun hasVerifiedInstall(context: Context, snapshot: DeviceSnapshot = DeviceSnapshot.current()): Boolean =
         context.getSharedPreferences(RECEIPT, Context.MODE_PRIVATE)
-            .getBoolean(RECEIPT_VERIFIED, false) && KnownGoodPayloadStore.hasValid(context)
+            .getBoolean(RECEIPT_VERIFIED, false) && KnownGoodPayloadStore.hasValid(context, snapshot)
 
     /**
      * Whether the payload this boot is about to run says it needs a shell.
@@ -203,7 +203,7 @@ internal object AutoRootSupport {
     }
 
     fun hasAttemptedBoot(context: Context, bootToken: String): Boolean =
-        context.getSharedPreferences(STATE, Context.MODE_PRIVATE)
+        DfBootAttempt.claimed(context, bootToken) || context.getSharedPreferences(STATE, Context.MODE_PRIVATE)
             .getString(LAST_ATTEMPT_TOKEN, null) == bootToken
 
     /**

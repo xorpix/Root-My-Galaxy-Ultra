@@ -1,5 +1,5 @@
 diff --git a/kernel/Kbuild b/kernel/Kbuild
-index 6c92a0130cdc796b137292d4dd107fe960d90e1d..a5f20681c7e25b916905f5e783a0c99105452671 100644
+index ee5af0ba2e8ceb2af3c3b7aeddbe3305864fb6eb..29d3436dd9200db95988d3418e04613c13e2bda7 100644
 --- a/kernel/Kbuild
 +++ b/kernel/Kbuild
 @@ -1,5 +1,8 @@
@@ -41,9 +41,9 @@ index 6c92a0130cdc796b137292d4dd107fe960d90e1d..a5f20681c7e25b916905f5e783a0c991
 -ccflags-y += -I$(KSU_KERNEL_DIR) -I$(KSU_KERNEL_DIR)/include
 +ccflags-y += -I$(KSU_KERNEL_DIR) -I$(KSU_KERNEL_DIR)/include -I$(KSU_KERNEL_DIR)/..
  
- obj-$(CONFIG_KSU) += kernelsu.o
- 
-@@ -125,7 +141,9 @@ ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
+ # preinit runner: a static nolibc binary embedded into kernelsu, see preinit/.
+ # It is built against the installed UAPI headers of the target kernel
+@@ -160,7 +176,9 @@ ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
  else
  # If there is no .git directory, use default version
  $(warning "KSU_GIT_VERSION not defined! It is better to make KernelSU a git repository!")
@@ -415,7 +415,7 @@ index 0000000000000000000000000000000000000000..2104f2e9a82be77e46603bec3c4292dc
 +#endif
 +}
 diff --git a/kernel/core/init.c b/kernel/core/init.c
-index 0ca7529f89312b813fa4e07fda26b0f6751dc8cf..f7da66e5cdb51dc8e8b1d89878c81f31008c56f8 100644
+index 6ee1c35de07c806c5c4c5b1710bb97852580585b..08a0972157991295938443c4dc8fb17f01739458 100644
 --- a/kernel/core/init.c
 +++ b/kernel/core/init.c
 @@ -8,6 +8,7 @@
@@ -426,15 +426,15 @@ index 0ca7529f89312b813fa4e07fda26b0f6751dc8cf..f7da66e5cdb51dc8e8b1d89878c81f31
  #include "policy/app_profile.h"
  #include "policy/feature.h"
  #include "klog.h" // IWYU pragma: keep
-@@ -28,6 +29,7 @@
- #include "feature/module_blacklist.h"
+@@ -29,6 +30,7 @@
  #include "feature/shell_su_adb_only.h"
  #include "infra/symbol_resolver.h"
+ #include "preinit/preinit.h"
 +#include "compat/samsung_defex.h"
  
  #if defined(__x86_64__) && !defined(CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER)
  #include <asm/cpufeature.h>
-@@ -128,13 +130,36 @@ int __init kernelsu_init(void)
+@@ -129,13 +131,36 @@ int __init kernelsu_init(void)
          pr_alert("shell is allowed at init!");
      }
  
@@ -472,7 +472,7 @@ index 0ca7529f89312b813fa4e07fda26b0f6751dc8cf..f7da66e5cdb51dc8e8b1d89878c81f31
      ksu_syscall_hook_init();
  
      // Block modules early, before vendor modules are loaded in second stage.
-@@ -229,7 +254,9 @@ void __exit kernelsu_exit(void)
+@@ -234,7 +259,9 @@ void __exit kernelsu_exit(void)
      ksu_feature_exit();
      ksu_module_blacklist_exit();
  
@@ -846,10 +846,10 @@ index 459f99f920b7b995e8f3b53d7da931dcbd79f932..7a9e14c6f6efae3d9bbded103d96e0b1
          orig_sel_open_handle_status = NULL;
      }
 diff --git a/kernel/feature/sucompat.c b/kernel/feature/sucompat.c
-index f5cd7bf232a4ae9dca5b215c935c11f47c779469..3be0d58773de507159d6460999cda66c873e4b9d 100644
+index 003f86b615ffa26f4e50da452d5dcba2cd5ea6f9..f0acd5007942c027639ec72c3ce1297fb2b7ce12 100644
 --- a/kernel/feature/sucompat.c
 +++ b/kernel/feature/sucompat.c
-@@ -276,7 +276,7 @@ void __init ksu_sucompat_init()
+@@ -267,7 +267,7 @@ void __init ksu_sucompat_init()
      }
  }
  
@@ -1427,7 +1427,7 @@ index e5dcc4d3c1e2dec98459d7af27deb880be4e346f..7c6033a0c901588150bfd3c14e449b36
 +    ksu_samsung_defex_sync_current();
  }
 diff --git a/userspace/ksud/src/late_load.rs b/userspace/ksud/src/late_load.rs
-index a7434d020984f77f833d752b270738f73004f357..37936c0236caab998a4801508d3e2fa080e1b575 100644
+index 92ad73fd7062b2de8c4e58fbd065d01a852c554f..81b56e027853868eafbbfaf3e5f3a2ca08189189 100644
 --- a/userspace/ksud/src/late_load.rs
 +++ b/userspace/ksud/src/late_load.rs
 @@ -1,7 +1,7 @@
@@ -1463,9 +1463,9 @@ index a7434d020984f77f833d752b270738f73004f357..37936c0236caab998a4801508d3e2fa0
 -    utils::install(None, None).context("Failed to install ksud")?;
 +    utils::finish_install(None, None).context("Failed to finish ksud installation")?;
  
-     // 5. Handle module updates
-     if let Err(e) = handle_updated_modules() {
-@@ -132,18 +135,5 @@ pub fn run(package_name: &String, kmi: Option<String>, allow_shell: bool) -> Res
+     crate::hot_install::clean_trash();
+ 
+@@ -134,18 +137,5 @@ pub fn run(package_name: &String, kmi: Option<String>, allow_shell: bool) -> Res
      // 13. Execute boot-completed stage scripts (non-blocking)
      init_event::run_stage("boot-completed", ScriptWait::NoWait);
  
@@ -1786,7 +1786,7 @@ index d9eb492bf637ae36456fbd77577aa85c8a7ff122..9ec84d074bdbe44532e98c1f5d70d5d3
 +    Ok(())
 +}
 diff --git a/userspace/ksud/src/utils.rs b/userspace/ksud/src/utils.rs
-index 33653c511885d6851cb0b0459aac5a874cc2ad67..6c034ca9652e5f4a69981f67c6b3261a11987ef7 100644
+index 39a1800f3a94e4c0c477bc4746d29a5f2dcc9b1a..dbc8499c86c81a0b59bba6411ce5e34a25168af3 100644
 --- a/userspace/ksud/src/utils.rs
 +++ b/userspace/ksud/src/utils.rs
 @@ -1,7 +1,8 @@
@@ -1799,7 +1799,7 @@ index 33653c511885d6851cb0b0459aac5a874cc2ad67..6c034ca9652e5f4a69981f67c6b3261a
  use std::{
      ffi::{CStr, CString, c_char, c_void},
      fs::{File, OpenOptions, create_dir_all, remove_file, write},
-@@ -229,15 +230,54 @@ fn link_ksud_to_bin() -> Result<()> {
+@@ -230,15 +231,54 @@ fn link_ksud_to_bin() -> Result<()> {
      Ok(())
  }
  
@@ -1862,7 +1862,7 @@ index 33653c511885d6851cb0b0459aac5a874cc2ad67..6c034ca9652e5f4a69981f67c6b3261a
      restorecon::lsetfilecon(defs::DAEMON_PATH, restorecon::KSU_CON)?;
      // install binary assets
      assets::ensure_binaries(false).with_context(|| "Failed to extract assets")?;
-@@ -272,9 +312,19 @@ pub fn install(libadbroot: Option<PathBuf>, data_path: Option<PathBuf>) -> Resul
+@@ -273,9 +313,19 @@ pub fn install(libadbroot: Option<PathBuf>, data_path: Option<PathBuf>) -> Resul
          }
      }
  
@@ -1882,7 +1882,7 @@ index 33653c511885d6851cb0b0459aac5a874cc2ad67..6c034ca9652e5f4a69981f67c6b3261a
  pub fn uninstall(package_name: &str) -> Result<()> {
      if Path::new(defs::MODULE_DIR).exists() {
          println!("- Uninstall modules..");
-@@ -319,10 +369,6 @@ pub fn daemonize_with<F: FnOnce() -> Result<()>>(use_init_pgrp: bool, configure:
+@@ -321,10 +371,6 @@ pub fn daemonize_with<F: FnOnce() -> Result<()>>(use_init_pgrp: bool, configure:
      Ok(())
  }
  

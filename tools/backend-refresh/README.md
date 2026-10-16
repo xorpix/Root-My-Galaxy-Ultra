@@ -26,7 +26,7 @@ BakaSU selects the ARM64 release APK rather than a debug or spoofed manager.
 
 If the exact manager build is not ready or has been removed, it checks the latest
 successful official manager builds on that source branch for a compatible UAPI.
-If none pass, it rechecks and retains the previous verified UAPI 5 manager and
+If none pass, it rechecks and retains a previous verified manager with the same UAPI and
 reports a warning. A temporary API/download outage
 also preserves the previous link. A known expired or incompatible previous
 artifact is replaced with an official-builds link instead of a broken download.
@@ -93,6 +93,8 @@ an update artifact without the signing secrets, git push, or release. That
 artifact's `apk-input.apk` has a disposable signature and is not the release APK.
 Build-only mode also accepts a non-default branch, so you can test the workflow
 on a pull request branch before merging it. Publishing requires the default branch.
+Choose **force_rebuild** to rebuild all three pairs even when an upstream source
+pin is unchanged. Backend-kit pull requests rebuild all three pairs automatically.
 Repository pull requests that change the backend kit automatically run the
 compatibility check and the build-only weekly workflow. Changed backends are
 compiled and the Android tests/APK build run with a disposable key. These PR
@@ -126,10 +128,15 @@ Samsung setup blocks, so upstream edits to the startup banner do not invalidate
 those changes. Three-way checks use a private Git index; missing base blobs and
 conflicts stop before source is changed. There is no whitespace/fuzz relaxation
 or automatic conflict resolution. The complete merged source patch is retained
-as build provenance and becomes the next build's reviewed template. UAPI 5,
-upstream version calculation, complete source history, and the helper's existing
-version encoding must also remain compatible. A new UAPI requires review of the
-app, helper, and control-channel contracts before automation can accept it.
+as build provenance and becomes the next build's reviewed template. The UAPI
+recorded for each backend, upstream version calculation, complete source history,
+and the helper's existing version encoding must remain compatible. KernelSU UAPI 6
+was reviewed with its unchanged four-field GET_INFO layout and ioctl; the new
+symbol lookup command and preinit flag are additive. KernelSU-Next and BakaSU
+remain at UAPI 5. The generator patches each helper's expected UAPI and success
+message together, and the app requires that exact backend/API pair. Upstream UAPI
+headers remain unmodified. A new API number, control layout or GET_INFO ioctl
+requires further review before automation accepts it.
 
 All changed native builds must succeed before any app bundle is staged. The
 exact built driver must be recoverable from its daemon. Catalogs, JNI copies,
