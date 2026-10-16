@@ -1,0 +1,54 @@
+name: Stage verified 1.2.11 backend artifacts
+on:
+  push:
+    branches: [build/finalize-1.2.11-backends]
+    paths: [.github/workflows/stage-verified-backends.yml]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  stage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy the exact verified backend artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api repos/xorpix/Root-My-Galaxy-Ultra/actions/artifacts/12078787341/zip > "$RUNNER_TEMP/matched.zip"
+          echo "b4ba85e9b9505752b2a1d126839707547ab6e1ea9d384db7ed0340a6c1ef87e9  $RUNNER_TEMP/matched.zip" | sha256sum --check
+          mkdir "$RUNNER_TEMP/matched"
+          unzip -q "$RUNNER_TEMP/matched.zip" -d "$RUNNER_TEMP/matched"
+          git apply --binary \
+            --include='app/src/main/assets/azhl/kernelsu-next/ksud' \
+            --include='app/src/main/assets/azhl/kernelsu/ksud' \
+            --include='app/src/main/assets/azhl/resukisu/ksud' \
+            --include='app/src/main/jniLibs/arm64-v8a/libm3qksud_kernelsu.so' \
+            --include='app/src/main/jniLibs/arm64-v8a/libm3qksud_kernelsu_next.so' \
+            --include='app/src/main/jniLibs/arm64-v8a/libm3qksud_resukisu.so' \
+            --include='app/src/main/jniLibs/arm64-v8a/libm3qroot_kernelsu.so' \
+            --include='app/src/main/jniLibs/arm64-v8a/libm3qroot_kernelsu_next.so' \
+            "$RUNNER_TEMP/matched/apply-matched-backends.patch"
+          git add -- \
+            'app/src/main/assets/azhl/kernelsu-next/ksud' \
+            'app/src/main/assets/azhl/kernelsu/ksud' \
+            'app/src/main/assets/azhl/resukisu/ksud' \
+            'app/src/main/jniLibs/arm64-v8a/libm3qksud_kernelsu.so' \
+            'app/src/main/jniLibs/arm64-v8a/libm3qksud_kernelsu_next.so' \
+            'app/src/main/jniLibs/arm64-v8a/libm3qksud_resukisu.so' \
+            'app/src/main/jniLibs/arm64-v8a/libm3qroot_kernelsu.so' \
+            'app/src/main/jniLibs/arm64-v8a/libm3qroot_kernelsu_next.so'
+          python3 - <<'PY_VERIFY'
+          import subprocess
+          expected = {'app/src/main/assets/azhl/kernelsu-next/ksud': 'b04b050eee65a3b36443c54b4121ed76d6146433', 'app/src/main/assets/azhl/kernelsu/ksud': '06deb0fcb1b158fa5cc0ac65365565126dcfaa6d', 'app/src/main/assets/azhl/resukisu/ksud': 'f6c2add39855ce493186f85466f2423612805776', 'app/src/main/jniLibs/arm64-v8a/libm3qksud_kernelsu.so': '06deb0fcb1b158fa5cc0ac65365565126dcfaa6d', 'app/src/main/jniLibs/arm64-v8a/libm3qksud_kernelsu_next.so': 'b04b050eee65a3b36443c54b4121ed76d6146433', 'app/src/main/jniLibs/arm64-v8a/libm3qksud_resukisu.so': 'f6c2add39855ce493186f85466f2423612805776', 'app/src/main/jniLibs/arm64-v8a/libm3qroot_kernelsu.so': '4d5f041679f1c352c0c7ce964cb764f3ddaa2640', 'app/src/main/jniLibs/arm64-v8a/libm3qroot_kernelsu_next.so': '9a215f39db34291960dcf1e21aecec0cabce340b'}
+          for path, sha in expected.items():
+              actual = subprocess.check_output(["git", "rev-parse", ":" + path], text=True).strip()
+              assert actual == sha, (path, actual, sha)
+          print("All eight artifact file hashes match the verified release tree")
+          PY_VERIFY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "Stage verified 1.2.11 backend binaries [skip ci]"
+          git push origin HEAD:refs/heads/build/finalize-1.2.11-backends
