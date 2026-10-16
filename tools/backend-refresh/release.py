@@ -131,7 +131,7 @@ def apply_checked_update(result):
             raise ValueError('Release notes differ from the trusted template and backend table')
     targets = info['targets']['backends']
     for name, target in targets.items():
-        for key in ('repository', 'branch', 'commit', 'commit_count', 'version', 'rust', 'daemon_version'):
+        for key in ('repository', 'branch', 'commit', 'commit_count', 'version', 'rust', 'daemon_version', 'uapi'):
             if config['backends'][name][key] != target[key]:
                 raise ValueError('Release metadata differs from the staged targets')
     for path, text in originals.items():
@@ -141,18 +141,24 @@ def apply_checked_update(result):
         elif path.name == 'M3qLaunch.kt':
             variants = json.loads((PROJECT / ASSETS / 'm3q/helper-variants.json').read_text())['variants']
             for name, target in targets.items():
-                before = f'"{name}" -> Backend(id, {old[name]["driver_version"]}, "{old[name]["outputs"]["helper"]["sha256"]}")'
-                after = f'"{name}" -> Backend(id, {target["version"]}, "{variants[name]["sha256"]}")'
+                before = f'"{name}" -> Backend(id, {old[name]["driver_version"]}, {old[name]["uapi_version"]}, "{old[name]["outputs"]["helper"]["sha256"]}")'
+                after = f'"{name}" -> Backend(id, {target["version"]}, {target["uapi"]}, "{variants[name]["sha256"]}")'
                 if text.count(before) != 1:
                     raise ValueError('Unexpected base helper declaration')
                 text = text.replace(before, after)
         else:
             for name, target in targets.items():
                 text = re.sub(r'\b' + str(old[name]['driver_version']) + r'\b', str(target['version']), text)
+            if path.name == 'prepare_m3q_helpers.py':
+                text, count = re.subn(r'^UAPI_VERSIONS = .+$',
+                    'UAPI_VERSIONS = ' + repr({n: t['uapi'] for n, t in targets.items()}), text, flags=re.M)
+                if count != 1:
+                    raise ValueError('Unexpected helper UAPI declaration')
         if (PROJECT / path).read_text() != text:
             raise ValueError(f'Unexpected control/build logic change: {path}')
     original = (PROJECT / ASSETS / 'm3q/libm3qroot.so').read_bytes()
     helpers.VERSIONS = {n: t['version'] for n, t in targets.items()}
+    helpers.UAPI_VERSIONS = {n: t['uapi'] for n, t in targets.items()}
     for name in targets:
         generated, _ = helpers.variant(original, name)
         if (PROJECT / JNI / helpers.LIBRARIES[name]).read_bytes() != generated:

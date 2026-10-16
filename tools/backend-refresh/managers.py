@@ -242,24 +242,24 @@ def update(project, receipt, client=None, now=None):
         if len(matches) != 1:
             raise ValueError(f'Expected exactly one README manager row for {label}')
         match = matches[0]
-        result, problems = resolve(client, name, target, match[1], config['uapi'], now)
+        result, problems = resolve(client, name, target, match[1], target['uapi'], now)
         records[name] = result
         warnings.extend(f'{label}: {message}' for message in problems)
         if result['status'] in ('matched', 'compatible', 'retained'):
             caption = 'Manager APKs (ZIP)' if name == 'resukisu' else 'Manager APK (ZIP)'
             cell = f'[{caption}]({result["download_url"]}) · [Official build]({result["build_url"]})'
-            row = f'| {label} | `{target["version"]} / {config["uapi"]}` | {cell} |'
+            row = f'| {label} | `{target["version"]} / {target["uapi"]}` | {cell} |'
             text = text[:match.start()] + row + text[match.end():]
         elif result['status'] == 'unavailable':
             builds = f'https://github.com/{target["repository"]}/actions/workflows/{MANAGERS[name][1]}'
             cell = f'Verified download unavailable · [Official builds]({builds})'
-            row = f'| {label} | `{target["version"]} / {config["uapi"]}` | {cell} |'
+            row = f'| {label} | `{target["version"]} / {target["uapi"]}` | {cell} |'
             text = text[:match.start()] + row + text[match.end():]
     start = text.index('Download the ZIP, extract it, and install the APK.')
     end = text.index('These are pinned upstream development revisions', start)
     guidance = ('Download the ZIP, extract it, and install the APK. For BakaSU on a Samsung phone,\n'
                 'choose the APK ending in `-arm64-v8a-release.apk` from the archive.\n'
-                'These are official upstream development builds verified to use UAPI 5.\n'
+                'These official upstream development builds are verified against each backend\'s UAPI.\n'
                 'A manager build number can differ from the bundled driver version.\n'
                 'The weekly backend build prefers managers from its selected source revisions;\n'
                 'otherwise it verifies a current UAPI-compatible official manager or retains\n'
@@ -268,7 +268,8 @@ def update(project, receipt, client=None, now=None):
                 'to retrieve the original GitHub artifacts without a GitHub login; **Official build**\n'
                 'opens their upstream source and artifact records. GitHub artifacts can expire.\n\n')
     text = text[:start] + guidance + text[end:]
-    report = {'schema': 1, 'checked_utc': now.isoformat(), 'required_uapi': config['uapi'],
+    report = {'schema': 2, 'checked_utc': now.isoformat(),
+              'required_uapi': {n: t['uapi'] for n, t in config['backends'].items()},
               'readme_changed': text != original, 'managers': records, 'warnings': warnings}
     write_json(receipt, report)
     if text != original:

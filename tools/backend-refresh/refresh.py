@@ -12,7 +12,7 @@ import subprocess
 import sys
 import urllib.request
 
-from common import HERE, PROJECT, app_version, baseline, capture, load_config, next_version, write_json
+from common import HERE, PROJECT, app_version, baseline, capture, load_config, next_version, reviewed_uapi, write_json
 from probe import needs_rebuild, probe
 import patching
 
@@ -23,6 +23,11 @@ import patching
 REVIEWED_HISTORY_TRANSITIONS = {
     ('resukisu', '6200478dd76fc63093a8226d360f5072c46aea26',
      'd7260ca1e5c128061122924d0d48754e361e135c'),
+    # Next rewrote its last two pinned commits. The replacement autoload
+    # commit 96bf7ff9 has identical runtime sources; only README text differs.
+    # Subsequent changes retain UAPI 5 and merge with our Samsung patch cleanly.
+    ('kernelsu-next', '3157e7822190eba628ca6796242db970405e440a',
+     '204f007164905395e280e9290cc7774f57af8c61'),
 }
 
 
@@ -86,8 +91,7 @@ def verify_upstream(repo, name, target):
     if capture(['git', 'rev-parse', '--is-shallow-repository'], repo) != 'false':
         raise ValueError('Complete upstream history is required for version calculation')
     header = (repo / 'uapi/supercall.h').read_text()
-    if not re.search(r'KERNEL_SU_UAPI_VERSION\s*=\s*5\s*;', header):
-        raise ValueError(f'{name}: new UAPI requires a reviewed helper/control-channel update')
+    uapi = reviewed_uapi(header, name)
     kbuild = (repo / 'kernel/Kbuild').read_text()
     formula = (r'expr 30000 \+ \$\(KSU_LOCAL_VERSION\) \+ 700' if name == 'resukisu'
                else r'expr 30000 \+ \$\(KSU_GIT_VERSION\)')
@@ -102,7 +106,7 @@ def verify_upstream(repo, name, target):
     describe = capture(['git', 'describe', '--tags', '--always'], repo).removeprefix('v')
     if not re.fullmatch(r'[0-9A-Za-z.+-]+', describe):
         raise ValueError('Unexpected upstream version name')
-    return count, version, describe
+    return count, version, describe, uapi
 
 
 def discover(project, work, snapshot):
@@ -121,7 +125,7 @@ def discover(project, work, snapshot):
         if not re.fullmatch(r'[0-9a-f]{40}', sha):
             raise ValueError('Expected a full commit SHA in snapshot')
         source_changed = sha != target['commit']
-        target['rebuild'] = needs_rebuild(target, sha, manifests[name])
+        target['rebuild'] = snapshot.get('force_rebuild') is True or needs_rebuild(target, sha, manifests[name])
         if not target['rebuild']:
             continue
         repo = work / name
@@ -163,13 +167,13 @@ def discover(project, work, snapshot):
         if not source_changed:
             restore_pinned_version_tags(repo, target['daemon_version'],
                                         logs / f'{name}-pinned-version-tags.log')
-        count, version, describe = verify_upstream(repo, name, target)
+        count, version, describe, uapi = verify_upstream(repo, name, target)
         if source_changed and version <= target['version']:
             raise ValueError('Upstream version must increase when the pinned commit changes')
         if not source_changed and (count, version, describe) != (
                 target['commit_count'], target['version'], target['daemon_version']):
             raise ValueError('Patch-only rebuild must retain the pinned upstream version')
-        target.update(commit=sha, commit_count=count, version=version, daemon_version=describe)
+        target.update(commit=sha, commit_count=count, version=version, daemon_version=describe, uapi=uapi)
         method = patching.check(repo, HERE / f'{name}-compat.patch',
                                 logs / f'{name}-patch-check.log')
         print(f'{name}: compatibility check passed ({method})', flush=True)
@@ -222,7 +226,7 @@ def package_result(source, work):
         'git apply --check apply-matched-backends.patch\n'
         'git apply apply-matched-backends.patch\n'
         'Keep tools/backend-refresh and backends/ in git for future builds.\n'
-        'Use a UAPI 5 manager. Fully reboot after APK installation before activation.\n'
+        'Use a manager matching the UAPI recorded for its backend. Fully reboot after APK installation.\n'
         'These automated checks are not hardware testing or new firmware support.\n')
 
 
@@ -234,7 +238,7 @@ def render_curated_notes(template, config):
     for name, target in config['backends'].items():
         label = {'kernelsu': 'KernelSU', 'kernelsu-next': 'KernelSU-Next', 'resukisu': 'BakaSU'}[name]
         status = 'updated' if target['rebuild'] else 'unchanged'
-        table.append(f'| {label} ({status}) | {target["version"]} / 5 | '
+        table.append(f'| {label} ({status}) | {target["version"]} / {target["uapi"]} | '
                      f'[{target["commit"][:8]}](https://github.com/{target["repository"]}/commit/{target["commit"]}) | '
                      f'{target["daemon_version"]} |')
     return template.replace(marker, '\n'.join(table))
@@ -250,12 +254,12 @@ def prepare_release(source, work, config):
                 'version': version, 'changed': changed, 'targets': config})
     rows = ["## What's new", '', '### Refreshed backends', '',
             'Rebuilt the changed backends from pinned official source commits, with the existing',
-            'Samsung compatibility changes. Each daemon embeds its matching driver. All three use **UAPI 5**.', '',
+            'Samsung compatibility changes. Each daemon embeds its matching driver. Use the manager UAPI shown below.', '',
             '| Backend | Driver / UAPI | Upstream commit | Daemon |', '|---|---|---|---|']
     for name, t in config['backends'].items():
         label = {'kernelsu': 'KernelSU', 'kernelsu-next': 'KernelSU-Next', 'resukisu': 'BakaSU'}[name]
         status = 'updated' if name in changed else 'unchanged'
-        rows.append(f'| {label} ({status}) | {t["version"]} / 5 | '
+        rows.append(f'| {label} ({status}) | {t["version"]} / {t["uapi"]} | '
                     f'[{t["commit"][:8]}](https://github.com/{t["repository"]}/commit/{t["commit"]}) | '
                     f'{t["daemon_version"]} |')
     rows += ['', '## Validation and current limits', '',
@@ -266,7 +270,7 @@ def prepare_release(source, work, config):
              f'1. Install **RootMyGalaxyUltra-{version}.apk** over the existing app; it uses the same package and release signing key.',
              '2. Perform a **full reboot** to replace the loaded backend and SusFS module. A soft reboot keeps the existing kernel modules loaded.',
              '3. Activate root again through Root My Galaxy Ultra and enable SusFS in the updated app.', '',
-             'Use a **UAPI 5-compatible manager** for your selected backend. Updating the manager alone does not replace the loaded driver.', '']
+             'Use a manager matching the UAPI shown for your selected backend. Updating the manager alone does not replace the loaded driver.', '']
     notes = '\n'.join(rows)
     curated = source / 'docs/release-notes' / f'{version}.md'
     if curated.is_file():

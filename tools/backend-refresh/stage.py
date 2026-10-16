@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 HERE = Path(__file__).resolve().parent
-from common import baseline, load_config
+from common import baseline, load_config, reviewed_uapi
 CONFIG = load_config()
 JAVA = Path('app/src/main/java/dev/busung/s25uroot')
 ASSETS = Path('app/src/main/assets')
@@ -78,12 +78,12 @@ def backend_readme(config):
             '|---|---|---|---|']
     for name, t in config['backends'].items():
         url = 'https://github.com/' + t['repository'] + '/commit/' + t['commit']
-        rows.append(f'| {labels[name]} | {t["version"]} / {config["uapi"]} | '
+        rows.append(f'| {labels[name]} | {t["version"]} / {t["uapi"]} | '
                     f'[{t["commit"][:8]}]({url}) | {t["daemon_version"]} |')
     rows += ['', 'Each folder contains the exact driver/daemon hashes and the complete Samsung',
              'compatibility patch for that revision. Keep these records in git: they are used',
              'by the weekly build and by `tools/test_backend_bundle.py`.', '',
-             'Use a UAPI 5 manager. BakaSU retains the internal `resukisu` id.',
+             'Use a manager matching the UAPI shown for its backend. BakaSU retains the internal `resukisu` id.',
              'After installing a new APK, fully reboot and activate root to load its driver.',
              'A manager APK update alone does not replace the running driver.', '',
              'Build and bundle validation is not phone testing. Firmware support, exploit',
@@ -121,14 +121,14 @@ def main(project, work, config=None):
             raise ValueError(f'Wrong source revision: {name}')
         if int(git(repo, 'rev-list', '--count', 'HEAD')) != target['commit_count']:
             raise ValueError(f'Incomplete source history: {name}')
-        if 'KERNEL_SU_UAPI_VERSION = 5;' not in (repo / 'uapi/supercall.h').read_text():
+        if reviewed_uapi((repo / 'uapi/supercall.h').read_text(), name) != target['uapi']:
             raise ValueError(f'Unexpected source UAPI: {name}')
         subprocess.run(['git', '-C', str(repo), 'diff', '--exit-code', 'HEAD', '--', 'uapi'], check=True)
         built = work / 'built' / name
         daemon, module = (built / 'ksud').read_bytes(), (built / 'kernelsu.ko').read_bytes()
         receipt = json.loads((built / 'build-receipt.json').read_text())
         if receipt != {'commit': target['commit'], 'driver_version': target['version'],
-                       'uapi': config['uapi'], 'ksud': record(daemon), 'kernelsu.ko': record(module)}:
+                       'uapi': target['uapi'], 'ksud': record(daemon), 'kernelsu.ko': record(module)}:
             raise ValueError(f'Native build receipt mismatch: {name}')
         verify_pair(daemon, module, target)
         actual_patch, hashes = source_patch(repo, patch)
@@ -153,6 +153,13 @@ def main(project, work, config=None):
             if count == 0:
                 raise ValueError(f'Expected version literal missing: {relative}/{name}')
         path.write_text(text)
+    generator = project / 'tools/prepare_m3q_helpers.py'
+    text, count = re.subn(r'^UAPI_VERSIONS = .+$',
+                         'UAPI_VERSIONS = ' + repr({n: t['uapi'] for n, t in config['backends'].items()}),
+                         generator.read_text(), flags=re.M)
+    if count != 1:
+        raise ValueError('Expected one helper UAPI declaration')
+    generator.write_text(text)
     subprocess.run([sys.executable, project / 'tools/prepare_m3q_helpers.py'], check=True,
                    stdout=subprocess.DEVNULL)
     helpers = json.loads((project / ASSETS / 'm3q/helper-variants.json').read_text())['variants']
@@ -160,8 +167,8 @@ def main(project, work, config=None):
     for name, target in config['backends'].items():
         old = previous[name]
         replace(launch,
-                f'"{name}" -> Backend(id, {old["driver_version"]}, "{old["outputs"]["helper"]["sha256"]}")',
-                f'"{name}" -> Backend(id, {target["version"]}, "{helpers[name]["sha256"]}")')
+                f'"{name}" -> Backend(id, {old["driver_version"]}, {old["uapi_version"]}, "{old["outputs"]["helper"]["sha256"]}")',
+                f'"{name}" -> Backend(id, {target["version"]}, {target["uapi"]}, "{helpers[name]["sha256"]}")')
     for name, target in config['backends'].items():
         daemon, patch, hashes, module_record = inputs[name]
         folder = project / 'backends' / name
@@ -176,8 +183,8 @@ def main(project, work, config=None):
                             upstream_repository='https://github.com/' + target['repository'],
                             previous_upstream_commit=previous[name]['upstream_commit'],
                             upstream_commit=target['commit'], upstream_commit_count=target['commit_count'],
-                            driver_version=target['version'], uapi_version=config['uapi'],
-                            manager_required_uapi=config['uapi'], daemon_version=target['daemon_version'],
+                            driver_version=target['version'], uapi_version=target['uapi'],
+                            manager_required_uapi=target['uapi'], daemon_version=target['daemon_version'],
                             validation={'kernel_build': 'passed', 'daemon_build': 'passed',
                                         'exact_driver_in_daemon': 'passed',
                                         'apk_build': 'not run', 'device_test': 'not run'})
@@ -193,8 +200,19 @@ def main(project, work, config=None):
         write_json(folder / 'build-manifest.json', manifest)
     readme = project / 'README.md'
     text = readme.read_text()
+    labels = {'kernelsu': 'KernelSU', 'kernelsu-next': 'KernelSU-Next', 'resukisu': 'BakaSU'}
     for name, target in config['backends'].items():
-        text = text.replace(f'`{previous[name]["driver_version"]} / 5`', f'`{target["version"]} / 5`')
+        text = text.replace(f'`{previous[name]["driver_version"]} / {previous[name]["uapi_version"]}`',
+                            f'`{target["version"]} / {target["uapi"]}`')
+        if target['uapi'] != previous[name]['uapi_version']:
+            # A known old-API manager link must not survive an API migration,
+            # including a later outage while finding the new manager build.
+            builds = f'https://github.com/{target["repository"]}/actions'
+            text, count = re.subn(r'^\| ' + re.escape(labels[name]) + r' \| [^\n]+$',
+                f'| {labels[name]} | `{target["version"]} / {target["uapi"]}` | '
+                f'Verified download unavailable · [Official builds]({builds}) |', text, flags=re.M)
+            if count != 1:
+                raise ValueError('Expected one manager row for UAPI migration')
     readme.write_text(text)
     (project / 'backends/README.md').write_text(backend_readme(config))
     write_json(project / 'tools/backend-refresh/targets.json', dict(

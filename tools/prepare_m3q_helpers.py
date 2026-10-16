@@ -13,7 +13,7 @@ import struct
 
 ORIGINAL_SHA256 = '39b018c3648c26fc7e801f6ec7a25018b3ef8544033afadbad4b36dd714d9d59'
 VERSIONS = {'kernelsu': 32680, 'kernelsu-next': 33354, 'resukisu': 35229}
-UAPI_VERSION = 5
+UAPI_VERSIONS = {'kernelsu': 5, 'kernelsu-next': 5, 'resukisu': 5}
 LIBRARIES = {key: 'libm3qroot_' + key.replace('-', '_') + '.so' for key in VERSIONS}
 
 
@@ -43,12 +43,13 @@ def variant(original, backend):
     if len(original) != 24232 or sha(original) != ORIGINAL_SHA256:
         raise ValueError('Refusing to patch an unrecognized M3Q helper')
     version = VERSIONS[backend]
+    uapi = UAPI_VERSIONS[backend]
     edits = [(0x6c94, mov_w(9, 32636), mov_w(9, version)),
              (0x6cc8, mov_w(2, 32636), mov_w(2, version)),
-             # CMP W6, #4 -> #5; the rejection branch remains unchanged.
-             (0x6ca0, 0x710010DF, 0x710000DF | UAPI_VERSION << 10),
+             # Change only the expected UAPI; the rejection branch remains unchanged.
+             (0x6ca0, 0x710010DF, 0x710000DF | uapi << 10),
              # The success message must report the same UAPI that was checked.
-             (0x6cd0, mov_w(4, 4), mov_w(4, UAPI_VERSION))]
+             (0x6cd0, mov_w(4, 4), mov_w(4, uapi))]
     # Original: add x5, x5, #0x7ca ("--package-name"). For forks, x5=NULL
     # terminates execl after --kmi android16-6.12; no package string is spoofed.
     if backend != 'kernelsu':
@@ -76,7 +77,7 @@ def prepare(project):
         data, changes = variant(original, backend)
         name = LIBRARIES[backend]
         (jni / name).write_bytes(data)
-        records[backend] = dict(library=name, driverVersion=VERSIONS[backend], uapiVersion=UAPI_VERSION,
+        records[backend] = dict(library=name, driverVersion=VERSIONS[backend], uapiVersion=UAPI_VERSIONS[backend],
                                 size=len(data), sha256=sha(data), changes=changes)
     payload = (assets / 'libm3qpayload.so').read_bytes()
     if sha(payload) != '9ceb86833b9ae5da350dc04bc1a77d992680931973da1e9172b4ddd999b404dc':

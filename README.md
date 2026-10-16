@@ -72,7 +72,7 @@ A failure or timeout needs a full reboot before another attempt.
 
 The current source bundles these driver/daemon pairs:
 
-| Backend | Driver / UAPI | Verified UAPI 5 manager downloads |
+| Backend | Driver / UAPI | Verified compatible manager downloads |
 |---|---|---|
 | KernelSU | `32680 / 5` | [Manager APK (ZIP)](https://nightly.link/tiann/KernelSU/actions/runs/38193657837/manager.zip) · [Official build](https://github.com/tiann/KernelSU/actions/runs/38193657837) |
 | KernelSU-Next | `33354 / 5` | [Manager APK (ZIP)](https://nightly.link/KernelSU-Next/KernelSU-Next/actions/runs/38466620063/manager.zip) · [Official build](https://github.com/KernelSU-Next/KernelSU-Next/actions/runs/38466620063) |
@@ -80,7 +80,7 @@ The current source bundles these driver/daemon pairs:
 
 Download the ZIP, extract it, and install the APK. For BakaSU on a Samsung phone,
 choose the APK ending in `-arm64-v8a-release.apk` from the archive.
-These are official upstream development builds verified to use UAPI 5.
+These official upstream development builds are verified against each backend's UAPI.
 A manager build number can differ from the bundled driver version.
 The weekly backend build prefers managers from its selected source revisions;
 otherwise it verifies a current UAPI-compatible official manager or retains
@@ -98,10 +98,10 @@ release through **Manager version control**. Complete the download and Android
 installation prompts yourself. Manager APKs are separate from the bundled root
 payloads.
 
-**These pairs require a manager built for UAPI 5.** A release tag such as
+**Use a manager matching the UAPI shown for its backend.** A release tag such as
 `v4.2.0-rc3` or `v3.4.0` alone does not establish compatibility; check the UAPI
 number shown by the manager. The existing release picker may still offer a
-manager with an older UAPI. Use the verified UAPI 5 manager downloads in the
+manager with an older UAPI. Use the verified compatible manager downloads in the
 table above for these development snapshots.
 
 - **Use one backend per boot.** Fully reboot before activating a different one.
