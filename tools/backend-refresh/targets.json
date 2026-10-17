@@ -25,7 +25,7 @@
       "daemon_version": "3.4.2-35-g204f0071",
       "rust": "1.98.1",
       "rebuild": false,
-      "compat_sha256": "2707d5d62ce2268731780e20e8640ef2b6237405f21a43dcf35049c7017410f1",
+      "compat_sha256": "029a86c1f1f307e46344cfbb6966d3676a19c1b169e823c1b6739b688ac3451e",
       "branch": "dev",
       "version_offset": 30000,
       "uapi": 5

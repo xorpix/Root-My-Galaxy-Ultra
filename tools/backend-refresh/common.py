@@ -15,7 +15,7 @@ REPOSITORIES = {
 }
 # KernelSU 6 adds symbol lookup and a preinit flag. Its GET_INFO layout,
 # install-fd magic and existing flag meanings are unchanged. Forks remain at 5.
-REVIEWED_UAPIS = {'kernelsu': {5, 6}, 'kernelsu-next': {5}, 'resukisu': {5}}
+REVIEWED_UAPIS = {'kernelsu': {5, 6}, 'kernelsu-next': {5, 6}, 'resukisu': {5}}
 ASSETS = Path('app/src/main/assets')
 JNI = Path('app/src/main/jniLibs/arm64-v8a')
 JAVA = Path('app/src/main/java/dev/busung/s25uroot')

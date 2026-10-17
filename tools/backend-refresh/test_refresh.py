@@ -198,9 +198,10 @@ class RefreshTests(unittest.TestCase):
             root = Path(directory)
             (root / 'uapi').mkdir()
             (root / 'uapi/supercall.h').write_text('static const __u32 KERNEL_SU_UAPI_VERSION = 7;')
-            with patch.object(refresh, 'capture', return_value='false'):
-                with self.assertRaisesRegex(ValueError, 'new UAPI'):
-                    refresh.verify_upstream(root, 'kernelsu', common.load_config()['backends']['kernelsu'])
+            for name in common.REPOSITORIES:
+                with self.subTest(backend=name), patch.object(refresh, 'capture', return_value='false'):
+                    with self.assertRaisesRegex(ValueError, 'new UAPI'):
+                        refresh.verify_upstream(root, name, common.load_config()['backends'][name])
 
     def test_reviewed_uapi_is_backend_specific_and_requires_unchanged_get_info(self):
         header = '''static const __u32 KERNEL_SU_UAPI_VERSION = 6;
@@ -212,14 +213,14 @@ struct ksu_get_info_cmd {
 };
 static const __u32 KSU_IOCTL_GET_INFO = _IOR('K', 2, struct ksu_get_info_cmd);
 '''
-        self.assertEqual(6, common.reviewed_uapi(header, 'kernelsu'))
-        for name in ('kernelsu-next', 'resukisu'):
-            with self.assertRaisesRegex(ValueError, 'new UAPI'):
-                common.reviewed_uapi(header, name)
-        with self.assertRaisesRegex(ValueError, 'control layout'):
-            common.reviewed_uapi(header.replace('__u32 flags;', '__u64 flags;'), 'kernelsu')
-        with self.assertRaisesRegex(ValueError, 'ioctl'):
-            common.reviewed_uapi(header.replace("_IOR('K', 2", "_IOR('K', 3"), 'kernelsu')
+        for name in ('kernelsu', 'kernelsu-next'):
+            self.assertEqual(6, common.reviewed_uapi(header, name))
+            with self.assertRaisesRegex(ValueError, 'control layout'):
+                common.reviewed_uapi(header.replace('__u32 flags;', '__u64 flags;'), name)
+            with self.assertRaisesRegex(ValueError, 'ioctl'):
+                common.reviewed_uapi(header.replace("_IOR('K', 2", "_IOR('K', 3"), name)
+        with self.assertRaisesRegex(ValueError, 'new UAPI'):
+            common.reviewed_uapi(header, 'resukisu')
 
     def test_force_rebuild_refreshes_every_pair_without_changed_upstream_pins(self):
         config = common.load_config()
