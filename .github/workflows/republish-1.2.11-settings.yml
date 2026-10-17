@@ -1,0 +1,326 @@
+name: Republish 1.2.11
+
+on:
+  push:
+    branches: [build/republish-1.2.11-settings]
+    paths: [.github/workflows/republish-1.2.11-settings.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Release Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: c4f76aee0ea3b54f680eddc24ec1b3c4d24401d7
+
+      - name: Configure Git identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-37.0 build-tools;36.0.0 cmake;3.22.1'
+          accept-android-sdk-licenses: true
+
+      - name: Setup NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r28
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          : "${KEYSTORE_BASE64:?Repository secret KEYSTORE_BASE64 is not set}"
+          : "${KEYSTORE_PASSWORD:?Repository secret KEYSTORE_PASSWORD is not set}"
+          : "${KEY_ALIAS:?Repository secret KEY_ALIAS is not set}"
+          : "${KEY_PASSWORD:?Repository secret KEY_PASSWORD is not set}"
+
+          KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH"
+
+          {
+            echo "KEYSTORE_FILE=$KEYSTORE_PATH"
+            echo "KEYSTORE_TYPE=PKCS12"
+            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "KEY_ALIAS=$KEY_ALIAS"
+            echo "KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      # Before the tag, deliberately: this runs on the commit that is about to be tagged, and a
+      # failure here leaves nothing behind. The other order leaves a tag with no release on it, which
+      # is a mess to clean up by hand. The same suite gates the CI workflow's pre-releases.
+      - name: Check boot handoff and root process deadlines
+        run: |
+          python3 tools/test_su_process.py
+          python3 tools/test_early_root_speed.py
+
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest --no-daemon
+
+      - name: Verify bundled driver and daemon pairs
+        run: python3 tools/test_backend_bundle.py
+
+      - name: Resolve release tag
+        id: release_tag
+        shell: bash
+        env:
+          INPUT_TAG_NAME: '1.2.11'
+          EXPECTED_MAIN_SHA: c4f76aee0ea3b54f680eddc24ec1b3c4d24401d7
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          git fetch --tags --force
+          # The base version, not versionName: the built app's version name is
+          # the bare base, while a release tag is always `<base>`.
+          VERSION_NAME="$(grep -oE 'appVersionBase[[:space:]]*=[[:space:]]*"[^"]+"' app/build.gradle.kts | head -n 1 | cut -d'"' -f2)"
+          EXPECTED_TAG="$VERSION_NAME"
+
+          if [ -n "$INPUT_TAG_NAME" ]; then
+            TAG_NAME="$INPUT_TAG_NAME"
+          else
+            TAG_NAME="$EXPECTED_TAG"
+          fi
+
+          if [ -z "$TAG_NAME" ]; then
+            echo "No release tag found." >&2
+            exit 1
+          fi
+
+          if [ "$TAG_NAME" != "$EXPECTED_TAG" ]; then
+            echo "Tag $TAG_NAME does not match app version $VERSION_NAME (expected $EXPECTED_TAG)." >&2
+            exit 1
+          fi
+
+          # The user deleted this release and requested the same version rebuilt.
+          # Move only its known old tag, after the normal pre-tag test suite passes.
+          test "$TAG_NAME" = 1.2.11
+          test "$(git rev-parse HEAD)" = "$EXPECTED_MAIN_SHA"
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$EXPECTED_MAIN_SHA"
+          OLD_TAG_SHA=2b28999da7f02bec3d9ca0d80eed26666d7d1e9a
+          test "$(git rev-parse "refs/tags/$TAG_NAME")" = "$OLD_TAG_SHA"
+          python3 - <<'PY_RELEASE_GUARD'
+          import os
+          import urllib.request
+          import urllib.error
+          url = "https://api.github.com/repos/xorpix/Root-My-Galaxy-Ultra/releases/tags/1.2.11"
+          request = urllib.request.Request(url, headers={
+              "Authorization": "Bearer " + os.environ["GH_TOKEN"],
+              "Accept": "application/vnd.github+json",
+          })
+          try:
+              with urllib.request.urlopen(request, timeout=30):
+                  pass
+          except urllib.error.HTTPError as error:
+              if error.code != 404:
+                  raise
+          else:
+              raise SystemExit("Release 1.2.11 exists; refusing to move its published tag")
+          PY_RELEASE_GUARD
+          git tag -f -a "$TAG_NAME" -m "Release $TAG_NAME"
+          git push --force-with-lease="refs/tags/$TAG_NAME:$OLD_TAG_SHA" origin "refs/tags/$TAG_NAME"
+
+          TAG_COMMIT="$(git rev-list -n 1 "$TAG_NAME")"
+          PREVIOUS_TAG="$(git tag --list '[0-9]*' --sort=-v:refname | grep -Fxv "$TAG_NAME" | head -n 1 || true)"
+
+          {
+            echo "tag_name=$TAG_NAME"
+            echo "version_name=$VERSION_NAME"
+            echo "tag_commit=$TAG_COMMIT"
+            echo "previous_tag=$PREVIOUS_TAG"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Preserve curated release notes
+        shell: bash
+        env:
+          TAG_NAME: ${{ steps.release_tag.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+          if [ -f "docs/release-notes/${TAG_NAME}.md" ]; then
+            cp "docs/release-notes/${TAG_NAME}.md" "$RUNNER_TEMP/curated-release-notes.md"
+          fi
+
+      - name: Checkout release tag
+        shell: bash
+        env:
+          TAG_NAME: ${{ steps.release_tag.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+          git checkout --force "$TAG_NAME"
+
+      - name: Build release APK
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Verify embedded D2 companion
+        run: python3 tools/verify_d2_helper.py app/build/outputs/apk/release/app-release.apk
+
+      - name: Verify APK payload integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          import zipfile
+
+          apks = list(Path('app/build/outputs/apk/release').glob('*.apk'))
+          if len(apks) != 1:
+              raise SystemExit('Expected exactly one production APK')
+          assets = Path('app/src/main/assets')
+          jni = Path('app/src/main/jniLibs/arm64-v8a')
+          with zipfile.ZipFile(apks[0]) as archive:
+              names = archive.namelist()
+              if len(names) != len(set(names)):
+                  raise SystemExit('Duplicate APK ZIP entries')
+              checked = 0
+              for path in sorted(assets.rglob('*')):
+                  if path.is_file():
+                      entry = 'assets/' + path.relative_to(assets).as_posix()
+                      if archive.read(entry) != path.read_bytes():
+                          raise SystemExit('Packaged asset differs from source: ' + entry)
+                      checked += 1
+              for path in sorted(jni.glob('*.so')):
+                  if path.name.startswith(('libm3q', 'librmgususfs')):
+                      entry = 'lib/arm64-v8a/' + path.name
+                      if archive.read(entry) != path.read_bytes():
+                          raise SystemExit('Packaged helper differs from source: ' + entry)
+                      checked += 1
+              module = archive.read('assets/susfs/bzig/susfs_guard_lkm.ko')
+              digest = hashlib.sha256(module).hexdigest()
+              for profile in ('bzig', 'bzid'):
+                  metadata = json.loads(archive.read('assets/susfs/' + profile + '/profile.json'))
+                  if metadata['module']['sha256'] != digest:
+                      raise SystemExit('SusFS module/profile hash mismatch: ' + profile)
+          print('Verified', checked, 'bundled files; SusFS SHA-256:', digest)
+          PY
+
+      # Public releases carry only the production APK.
+      - name: Verify APK signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BUILD_TOOLS="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)"
+          EXPECTED_SHA256="$(keytool -list -v -keystore "$KEYSTORE_FILE" -storepass "$KEYSTORE_PASSWORD" \
+            -alias "$KEY_ALIAS" | grep -m 1 'SHA256:' | awk '{print $2}' | tr -d ':' | tr 'A-F' 'a-f')"
+
+          for APK in app/build/outputs/apk/release/*.apk; do
+            CERT="$("$BUILD_TOOLS/apksigner" verify --print-certs "$APK")"
+            SIGNED_SHA256="$(echo "$CERT" | grep -m 1 'SHA-256 digest' | awk '{print $NF}' | tr 'A-F' 'a-f')"
+            if [ "$SIGNED_SHA256" != "$EXPECTED_SHA256" ]; then
+              echo "::error::$APK is not signed with the repository key (got $SIGNED_SHA256, expected $EXPECTED_SHA256)."
+              exit 1
+            fi
+            "$BUILD_TOOLS/zipalign" -c 4 "$APK"
+            echo "$APK: $SIGNED_SHA256"
+          done
+
+      - name: Stage release APK
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION_NAME="$(grep -oE 'appVersionBase[[:space:]]*=[[:space:]]*"[^"]+"' app/build.gradle.kts | head -n 1 | cut -d'"' -f2)"
+          mkdir -p release-assets
+          cp app/build/outputs/apk/release/*.apk "release-assets/RootMyGalaxyUltra-${VERSION_NAME}.apk"
+          (cd release-assets && sha256sum "RootMyGalaxyUltra-${VERSION_NAME}.apk" > SHA256SUMS)
+
+      - name: Upload release build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: release-assets/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Generate release notes
+        shell: bash
+        env:
+          TAG_NAME: ${{ steps.release_tag.outputs.tag_name }}
+          VERSION_NAME: ${{ steps.release_tag.outputs.version_name }}
+          TAG_COMMIT: ${{ steps.release_tag.outputs.tag_commit }}
+          PREVIOUS_TAG: ${{ steps.release_tag.outputs.previous_tag }}
+        run: |
+          set -euo pipefail
+
+          if [ -f "$RUNNER_TEMP/curated-release-notes.md" ]; then
+            cp "$RUNNER_TEMP/curated-release-notes.md" release-notes.md
+            exit 0
+          fi
+
+          {
+            echo "## What's new"
+            echo
+            echo "### App update"
+            echo
+            if [ -n "$PREVIOUS_TAG" ]; then
+              git log --format='- %s' "$PREVIOUS_TAG..$TAG_NAME"
+            else
+              echo "- First tagged release."
+            fi
+            echo
+            echo "## Validation and current limits"
+            echo
+            echo "- Android unit tests, APK build and release-signature checks passed."
+            echo "- [Build and validation run](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})."
+            echo "- Automated validation does not establish device compatibility or phone-test coverage. SusFS LKM remains experimental."
+            echo
+            echo "## Updating"
+            echo
+            echo "1. Install **RootMyGalaxyUltra-${VERSION_NAME}.apk** over the existing app; it uses the same package and release signing key."
+            echo "2. Perform a **full reboot** to replace the loaded backend and SusFS module. A soft reboot keeps the existing kernel modules loaded."
+            echo "3. Activate root again through Root My Galaxy Ultra and enable SusFS in the updated app."
+            echo
+            echo "Use a **UAPI 5-compatible manager** for your selected backend. Updating the manager alone does not replace the loaded driver."
+          } > release-notes.md
+
+      - name: Create or update GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ steps.release_tag.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release edit "$TAG_NAME" \
+              --title "Root My Galaxy Ultra $TAG_NAME" \
+              --notes-file release-notes.md \
+              --latest
+            gh release upload "$TAG_NAME" release-assets/*.apk release-assets/SHA256SUMS --clobber
+          else
+            gh release create "$TAG_NAME" release-assets/*.apk release-assets/SHA256SUMS \
+              --title "Root My Galaxy Ultra $TAG_NAME" \
+              --notes-file release-notes.md \
+              --latest
+          fi
