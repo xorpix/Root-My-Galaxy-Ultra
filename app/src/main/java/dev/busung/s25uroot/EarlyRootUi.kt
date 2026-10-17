@@ -4,13 +4,9 @@ import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -20,10 +16,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
@@ -33,7 +27,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 
 @Composable
 internal fun EarlyRootSection(rootOnBoot: Boolean, loadKernelSu: Boolean, position: SettingsCardPosition) {
@@ -45,7 +38,6 @@ internal fun EarlyRootSection(rootOnBoot: Boolean, loadKernelSu: Boolean, positi
     var helper by remember { mutableStateOf<D2Status?>(null) }
     var helperReadFailed by remember { mutableStateOf(false) }
     var device by remember { mutableStateOf(EarlyRootDeviceSupport.Checking) }
-    var report by remember { mutableStateOf<JSONObject?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(lifecycle) {
@@ -73,11 +65,10 @@ internal fun EarlyRootSection(rootOnBoot: Boolean, loadKernelSu: Boolean, positi
                     }
                 }
                 while (true) {
-                    val (armed, result) = withContext(Dispatchers.IO) {
-                        runCatching { EarlyRootStore.config(context)?.enabled == true }.getOrDefault(false) to EarlyRootStore.result(context)
+                    val armed = withContext(Dispatchers.IO) {
+                        runCatching { EarlyRootStore.config(context)?.enabled == true }.getOrDefault(false)
                     }
                     if (!running) enabled = armed
-                    report = result
                     delay(2000)
                 }
             }
@@ -135,46 +126,6 @@ internal fun EarlyRootSection(rootOnBoot: Boolean, loadKernelSu: Boolean, positi
                     finally { running = false }
                 }
             }) { Text(stringResource(R.string.early_root_activate_helper)) }
-        }
-        val current = report?.takeIf { it.optString("boot") == kernelBootToken() }
-        if (current != null) {
-            val state = current.optString("state")
-            val rootText = when (state) {
-                "verified" -> context.getString(
-                    when (current.optJSONObject("launch")?.optString("verificationTiming")) {
-                        EarlyRootTiming.BEFORE -> R.string.early_root_verified_locked
-                        EarlyRootTiming.AFTER -> R.string.early_root_verified_unlocked
-                        else -> R.string.early_root_verified_unknown
-                    }, current.optLong("uptimeMs") / 1000)
-                "waiting" -> context.getString(R.string.early_root_waiting)
-                "running" -> context.getString(R.string.early_root_starting)
-                "skipped" -> context.getString(R.string.early_root_skipped)
-                else -> context.getString(R.string.early_root_failed) + "\n" + current.optString("detail")
-            }
-            val text = buildList {
-                add(rootText)
-                if (state == "verified") {
-                    when (current.optString("susfsState")) {
-                        "active" -> add(context.getString(if (current.optBoolean("susfsFinishedLocked"))
-                            R.string.early_root_susfs_locked else R.string.early_root_susfs_unlocked))
-                        "running" -> add(context.getString(R.string.early_root_susfs_running))
-                        "partial", "absent", "unavailable" -> add(context.getString(
-                            R.string.early_root_susfs_failed, current.optString("susfsDetail")))
-                    }
-                    when (current.optString("restartState")) {
-                        "accepted" -> add(context.getString(if (current.optBoolean("restartFinishedLocked"))
-                            R.string.early_root_restart_locked else R.string.early_root_restart_unlocked))
-                        "attempting" -> add(context.getString(if (current.optBoolean("restartStartedLocked"))
-                            R.string.early_root_restart_attempted_locked else R.string.early_root_restart_attempted_unlocked))
-                        "failed" -> add(context.getString(R.string.early_root_restart_failed,
-                            current.optString("restartDetail")))
-                    }
-                }
-            }.joinToString("\n")
-            Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                shape = settingsCardRestingShape(position = position)) {
-                Text(text, Modifier.padding(16.dp), style = MaterialTheme.typography.bodyMedium)
-            }
         }
     }
 }

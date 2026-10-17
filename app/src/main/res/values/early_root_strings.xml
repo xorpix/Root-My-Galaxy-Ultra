@@ -15,19 +15,5 @@
     <string name="early_root_unsupported">Available with the bundled DirtyFrag backend on supported S26 Ultra firmware.</string>
     <string name="early_root_starting">Restoring root…</string>
     <string name="early_root_setup">Finishing root setup…</string>
-    <string name="early_root_waiting">Waiting for the configured boot delay.</string>
     <string name="early_root_failed">Early root did not finish.</string>
-    <string name="early_root_skipped">Automatic root was skipped this boot.</string>
-    <string name="early_root_verified_locked">Root verified before first unlock, %1$d seconds after boot.</string>
-    <string name="early_root_verified_unlocked">Root verified after first unlock, %1$d seconds after boot.</string>
-    <string name="early_root_verified_unknown">Root verified %1$d seconds after boot; timing relative to first unlock is unconfirmed.</string>
-    <string name="early_root_susfs_locked">SusFS verified before first unlock.</string>
-    <string name="early_root_susfs_unlocked">SusFS verified after first unlock.</string>
-    <string name="early_root_susfs_running">SusFS activation is in progress.</string>
-    <string name="early_root_susfs_failed">SusFS was not verified: %1$s</string>
-    <string name="early_root_restart_locked">Module restart requested before first unlock.</string>
-    <string name="early_root_restart_unlocked">Module restart requested after first unlock.</string>
-    <string name="early_root_restart_attempted_locked">Module restart attempted before first unlock. Check that your modules are working.</string>
-    <string name="early_root_restart_attempted_unlocked">Module restart attempted after first unlock. Check that your modules are working.</string>
-    <string name="early_root_restart_failed">Module restart could not be confirmed: %1$s</string>
 </resources>

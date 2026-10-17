@@ -23,9 +23,8 @@ superuser grant for RMGU, and the matching activated boot helper.
 5. Fully reboot and leave the phone at its first PIN/password screen. The app
    starts after Android delivers its locked-boot event and the configured delay
    has elapsed. If Auto Soft reboot is enabled, a framework restart may follow.
-6. After unlocking, check the result beneath **Root before first unlock**. It
-   should say **Root verified before first unlock**. Check the separate SusFS
-   and module restart statuses, the selected manager, and your modules' behavior.
+6. After unlocking, confirm root in your selected manager and check that SusFS
+   and your modules are working as expected.
 
 Root on boot is the master switch. Turning it off disables both automatic root
 paths; the dependent before-unlock switch appears off and disabled while retaining
