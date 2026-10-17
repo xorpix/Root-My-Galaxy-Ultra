@@ -21,6 +21,11 @@ import patching
 # The runtime source delta was reviewed for 1.2.5. This exception covers only
 # this exact pair; any later history rewrite still requires another review.
 REVIEWED_HISTORY_TRANSITIONS = {
+    # The previous Renovate-only tip was replaced by its spelling correction;
+    # 2489b385 then updates libc in Cargo.lock. Kernel/UAPI sources are identical
+    # to b8754b20. Reviewed for 1.2.12; retain the exact-pair lineage guard.
+    ('resukisu', 'b8754b203edfc03342d0f58adfc582719b31363c',
+     '2489b38582a08fee7b586d05185da5e5d12c6a5c'),
     ('resukisu', '6200478dd76fc63093a8226d360f5072c46aea26',
      'd7260ca1e5c128061122924d0d48754e361e135c'),
     # Next rewrote its last two pinned commits. The replacement autoload

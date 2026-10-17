@@ -1,7 +1,7 @@
 {
   "schema": 3,
-  "app_base": "763db1a30ea8c2e07804eb1cfd12686454945385",
-  "checked_date": "2026-10-16",
+  "app_base": "1f20812a58dd9c3dbddf118d31b636b6bb234915",
+  "checked_date": "2026-10-17",
   "build_status": "built",
   "backends": {
     "kernelsu": {
@@ -19,26 +19,26 @@
     },
     "kernelsu-next": {
       "repository": "KernelSU-Next/KernelSU-Next",
-      "commit": "204f007164905395e280e9290cc7774f57af8c61",
-      "commit_count": 3390,
-      "version": 33390,
-      "daemon_version": "3.4.2-35-g204f0071",
+      "commit": "b28fce510568ba0b7584b38492cabfaaeb61ac37",
+      "commit_count": 3396,
+      "version": 33396,
+      "daemon_version": "3.4.2-41-gb28fce51",
       "rust": "1.98.1",
       "rebuild": false,
-      "compat_sha256": "2707d5d62ce2268731780e20e8640ef2b6237405f21a43dcf35049c7017410f1",
+      "compat_sha256": "81e68f967596fb7044e416c8886be1e09f6b485031eab00b4cea090566af4b99",
       "branch": "dev",
       "version_offset": 30000,
-      "uapi": 5
+      "uapi": 6
     },
     "resukisu": {
       "repository": "Baka-SU/BakaSU",
-      "commit": "d7260ca1e5c128061122924d0d48754e361e135c",
-      "commit_count": 4529,
-      "version": 35229,
-      "daemon_version": "4.2.0-rc3-58-gd7260ca1",
+      "commit": "2489b38582a08fee7b586d05185da5e5d12c6a5c",
+      "commit_count": 4531,
+      "version": 35231,
+      "daemon_version": "4.2.0-rc3-60-g2489b385",
       "rust": "nightly-2026-09-25",
       "rebuild": false,
-      "compat_sha256": "937a76935534953ea9ad5269c21b3174806bf0dc7ea571f82a5ce0377143aed6",
+      "compat_sha256": "4eb03e67ecc0bbf3e5467582d46047c0983a72a2b5aab2ac888e5000ebf07f8b",
       "branch": "main",
       "version_offset": 30700,
       "uapi": 5

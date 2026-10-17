@@ -1,5 +1,5 @@
 diff --git a/kernel/Kbuild b/kernel/Kbuild
-index c32fa7cde0c942c08e441ba05f68e5a96a39845d..b1675c3152e449d7460bbe23a2b7913352a09926 100644
+index f8fc9a9cd17e7beadbf171e981be328b3b89a1e3..8bcd12f9f8fa56e8678e3b76719c64558aac1bf3 100644
 --- a/kernel/Kbuild
 +++ b/kernel/Kbuild
 @@ -1,5 +1,8 @@
@@ -41,8 +41,8 @@ index c32fa7cde0c942c08e441ba05f68e5a96a39845d..b1675c3152e449d7460bbe23a2b79133
 -ccflags-y += -I$(KSU_KERNEL_DIR) -I$(KSU_KERNEL_DIR)/include
 +ccflags-y += -I$(KSU_KERNEL_DIR) -I$(KSU_KERNEL_DIR)/include -I$(KSU_KERNEL_DIR)/..
  
- obj-$(CONFIG_KSU) += kernelsu.o
- 
+ # preinit runner: a static nolibc binary embedded into kernelsu, see preinit/.
+ # It is built against the installed UAPI headers of the target kernel
 diff --git a/kernel/Kconfig b/kernel/Kconfig
 index 88e228117f102e86708efbab11629f552671557c..6a65714b188d292e100f50f1a1764d3d2eb7be25 100644
 --- a/kernel/Kconfig
@@ -443,13 +443,13 @@ index 0000000000000000000000000000000000000000..2104f2e9a82be77e46603bec3c4292dc
 +#endif
 +}
 diff --git a/kernel/core/init.c b/kernel/core/init.c
-index 87a17ef0feddae45aed26189d0e825d442969ac5..f5930de0a474a520c2ad296e90d5ddcde46a9a0b 100644
+index a5e95e7cf78f3c223c0e288bce225ebf6a829cff..33098c457b3c8e6d94bcdd60414c8e47dac2bd17 100644
 --- a/kernel/core/init.c
 +++ b/kernel/core/init.c
-@@ -27,6 +27,13 @@
- #include "feature/shell_su_adb_only.h"
+@@ -28,6 +28,13 @@
  #include "feature/sulog.h"
  #include "infra/symbol_resolver.h"
+ #include "preinit/preinit.h"
 +#include "ksu_samsung_kdp.h"
 +#include "compat/samsung_defex.h"
 +
@@ -460,7 +460,7 @@ index 87a17ef0feddae45aed26189d0e825d442969ac5..f5930de0a474a520c2ad296e90d5ddcd
  
  #if defined(__x86_64__) && !defined(CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER)
  #include <asm/cpufeature.h>
-@@ -133,13 +140,35 @@ int __init kernelsu_init(void)
+@@ -134,13 +141,35 @@ int __init kernelsu_init(void)
  		pr_alert("shell is allowed at init!");
  	}
  
@@ -497,7 +497,7 @@ index 87a17ef0feddae45aed26189d0e825d442969ac5..f5930de0a474a520c2ad296e90d5ddcd
  	ksu_syscall_hook_init();
  
  	// Block modules early, before vendor modules are loaded in second stage.
-@@ -177,6 +206,10 @@ int __init kernelsu_init(void)
+@@ -178,6 +207,10 @@ int __init kernelsu_init(void)
  		ksu_file_wrapper_init();
  
  		ksu_boot_completed = true;
@@ -508,7 +508,7 @@ index 87a17ef0feddae45aed26189d0e825d442969ac5..f5930de0a474a520c2ad296e90d5ddcd
  		track_throne(false);
  
  		ksu_feature_apply_forced();
-@@ -234,7 +267,9 @@ void __exit kernelsu_exit(void)
+@@ -239,7 +272,9 @@ void __exit kernelsu_exit(void)
  	ksu_feature_exit();
  	ksu_module_blacklist_exit();
  
@@ -882,10 +882,10 @@ index 459f99f920b7b995e8f3b53d7da931dcbd79f932..7a9e14c6f6efae3d9bbded103d96e0b1
          orig_sel_open_handle_status = NULL;
      }
 diff --git a/kernel/feature/sucompat.c b/kernel/feature/sucompat.c
-index 6dae885c5428071c25da086d9c44514eaebcc892..4fb5a41420875ece7ce228fa0b20a68b09654a13 100644
+index 6274c47dadf9d94081170a77f5fd70544dbcb16b..d579a676d12d4adcbd1bad30a158cefd972d4996 100644
 --- a/kernel/feature/sucompat.c
 +++ b/kernel/feature/sucompat.c
-@@ -278,7 +278,7 @@ void __init ksu_sucompat_init()
+@@ -269,7 +269,7 @@ void __init ksu_sucompat_init()
  	}
  }
  
@@ -1884,7 +1884,7 @@ index 6ecd033d5ff3e4375ce5bc692f3aad00b6c6cd11..38ba81ce2c92c221cbce8f1453dac034
          .context("Failed to unload SUSFS guard LKM")?;
      println!("Unloaded SUSFS guard LKM");
 diff --git a/userspace/ksud/src/utils.rs b/userspace/ksud/src/utils.rs
-index c5eedb71c64b5c7aeaddfd13e29a1eba3fb74cf0..942e379c1e4bdc07bb97f0cbbd5dc942efbd15b3 100644
+index 129d4262f270752fdaa7a993032f339443cf3685..55addae360abd84c2e48827baf9b45221715ea23 100644
 --- a/userspace/ksud/src/utils.rs
 +++ b/userspace/ksud/src/utils.rs
 @@ -1,7 +1,8 @@
@@ -1965,7 +1965,7 @@ index c5eedb71c64b5c7aeaddfd13e29a1eba3fb74cf0..942e379c1e4bdc07bb97f0cbbd5dc942
  pub fn uninstall(package_name: &str) -> Result<()> {
      if Path::new(defs::MODULE_DIR).exists() {
          println!("- Uninstall modules..");
-@@ -295,10 +334,6 @@ pub fn daemonize_with<F: FnOnce() -> Result<()>>(use_init_pgrp: bool, configure:
+@@ -296,10 +335,6 @@ pub fn daemonize_with<F: FnOnce() -> Result<()>>(use_init_pgrp: bool, configure:
      Ok(())
  }
  
@@ -1977,27 +1977,47 @@ index c5eedb71c64b5c7aeaddfd13e29a1eba3fb74cf0..942e379c1e4bdc07bb97f0cbbd5dc942
      create_daemon_with(use_init_pgrp, || Ok(()))
  }
 diff --git a/userspace/ksuinit/src/lib.rs b/userspace/ksuinit/src/lib.rs
-index 1a62d4c2b18197d338451a4c809edd1308acc481..8af9bffd729926053f7c31674cc5db4975ce8953 100644
+index 21ce82d15df78bc385d59751418affe224194a54..51b98e4f2b17ff43cf4ab953debe86bc3a3c0b63 100644
 --- a/userspace/ksuinit/src/lib.rs
 +++ b/userspace/ksuinit/src/lib.rs
-@@ -339,6 +339,7 @@ pub fn load_module(data: &[u8], params: &CStr) -> Result<()> {
+@@ -365,6 +365,9 @@ pub fn resolve_kallsyms(names: &[&str]) -> Result<Vec<Option<u64>>> {
  
-     if !unresolved_symbols.is_empty() {
+     if !pending.is_empty() {
          for_each_kernel_symbols(|(symbol, addr)| {
-+            if *addr == 0 { return Ok(true); }
-             if let Some((mut sym, offset)) = unresolved_symbols.remove(symbol) {
-                 sym.st_shndx = section_header::SHN_ABS as usize;
-                 sym.st_value = *addr;
-@@ -350,8 +351,10 @@ pub fn load_module(data: &[u8], params: &CStr) -> Result<()> {
-         .context("Cannot parse kallsyms")?;
++            if *addr == 0 {
++                return Ok(true);
++            }
+             if let Some(i) = pending.remove(symbol.as_str()) {
+                 addrs[i] = Some(*addr);
+             }
+@@ -385,8 +388,8 @@ pub fn load_module(data: &[u8], params: &CStr) -> Result<()> {
+ 
+ /// Relocate undefined symbols in an ELF kernel module buffer with `resolve`,
+ /// then load it via init_module syscall. `resolve` gets all undefined symbol
+-/// names at once and returns one address per name; symbols it does not know
+-/// are left undefined for the kernel to bind against its exports.
++/// names at once and returns one address per name. Samsung loads require every
++/// address to be nonzero before entering init_module.
+ pub fn load_module_with_resolver<F>(data: &[u8], params: &CStr, resolve: F) -> Result<()>
+ where
+     F: FnOnce(&[&str]) -> Result<Vec<Option<u64>>>,
+@@ -405,12 +408,17 @@ where
+             );
+         }
+ 
++        let mut missing = Vec::new();
+         for (name, addr) in names.iter().zip(addrs) {
+             match addr {
+-                Some(addr) => bind_symbol(&mut buffer, unresolved_symbols[*name], addr, ctx)?,
+-                None => log::warn!("Cannot find symbol: {}", name),
++                Some(addr) if addr != 0 => bind_symbol(&mut buffer, unresolved_symbols[*name], addr, ctx)?,
++                _ => missing.push(*name),
+             }
+         }
++        if !missing.is_empty() {
++            missing.sort_unstable();
++            bail!("AZHL: unresolved kernel symbols; refusing module initialization: {}", missing.join(", "));
++        }
      }
  
--    for name in unresolved_symbols.keys() {
--        log::warn!("Cannot find symbol: {}", name);
-+    if !unresolved_symbols.is_empty() {
-+        let mut missing: Vec<_> = unresolved_symbols.keys().cloned().collect();
-+        missing.sort();
-+        bail!("AZHL: unresolved kernel symbols; refusing module initialization: {}", missing.join(", "));
-     }
- 
-     let mut kmsg = match open_kmsg_at_end() {
+     init_module_buffer(buffer, params)
