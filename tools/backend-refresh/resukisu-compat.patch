@@ -1505,18 +1505,6 @@ index bf9ba1f6dc1b80f0c92f16a3a448822a6d3cc3ce..a7ae4571b609d829aee2a0b648b71187
 +     * enforcing against the task it still believes is a root task. */
 +    ksu_samsung_defex_sync_current();
  }
-diff --git a/userspace/ksud/Cargo.lock b/userspace/ksud/Cargo.lock
-index 2268723e5c28c516db07c9a744560f284e94eec8..961dd5637cf3e216459ae63ff68e8a7941ab9719 100644
---- a/userspace/ksud/Cargo.lock
-+++ b/userspace/ksud/Cargo.lock
-@@ -992,6 +992,7 @@ dependencies = [
-  "memmap2",
-  "nom 8.0.0",
-  "num_enum",
-+ "prettyplease",
-  "prop-rs-android",
-  "regex-lite",
-  "rust-embed",
 diff --git a/userspace/ksud/build.rs b/userspace/ksud/build.rs
 index 76a5ea70d2a5355956b02480b9209cb3dd193395..3ab21a547224e35efc322d1cada64ba47407bf5f 100644
 --- a/userspace/ksud/build.rs

@@ -1,15 +1,15 @@
 {
   "schema": 2,
   "created_utc": "2026-10-17",
-  "app_version": "1.2.12",
-  "app_base_commit": "ea832daed568e27edcf02fd980c8986fa23f936f",
+  "app_version": "1.2.13",
+  "app_base_commit": "1f20812a58dd9c3dbddf118d31b636b6bb234915",
   "upstream_repository": "https://github.com/KernelSU-Next/KernelSU-Next",
-  "upstream_commit": "16be0f72041985de893bcea4e3de7ee1bc32eb2d",
-  "previous_upstream_commit": "204f007164905395e280e9290cc7774f57af8c61",
-  "upstream_commit_count": 3391,
-  "driver_version": 33391,
+  "upstream_commit": "b28fce510568ba0b7584b38492cabfaaeb61ac37",
+  "previous_upstream_commit": "16be0f72041985de893bcea4e3de7ee1bc32eb2d",
+  "upstream_commit_count": 3396,
+  "driver_version": 33396,
   "uapi_version": 6,
-  "daemon_version": "3.4.2-36-g16be0f72",
+  "daemon_version": "3.4.2-41-gb28fce51",
   "source_provenance": "Existing complete Samsung compatibility patch rebased onto the pinned UAPI 5 upstream; late-load Rust hunks carried forward with current ScriptWait API.",
   "companion_patch": {
     "repository": "https://github.com/rushiranpise/Root-My-Galaxy-Payloads",
@@ -36,19 +36,19 @@
   "outputs": {
     "ksud": {
       "size": 4381992,
-      "sha256": "38856ccaedd5690de2943a853d29b936ccb1a0068d46540d1c3d9b33150dfe23"
+      "sha256": "11c7c34d7ce96fdf252569bc608e6f97a875e2416ccf424bf9b99761244f5702"
     },
     "kernelsu.ko": {
-      "size": 555504,
-      "sha256": "e3b2c998a2dfe147e55e7c2ae0c08c36ce7d3b82a7125c6865b0b2aa3b504b46"
+      "size": 555808,
+      "sha256": "b1263c276cf2af71f8732102a1a47b68fbc3d0050ecb9e481808fb94eeaeb70b"
     },
     "helper": {
       "size": 24232,
-      "sha256": "de62add495ded6dda514e7473f0107604d4a7254f6a61fd9cc0c6d82232fde21"
+      "sha256": "026428c0f84aa3afff4a3e8388fdb73a13c9cc429c5237dd1754b7af2ac0dfa2"
     }
   },
   "rebased_patch": {
-    "path": "samsung-compat-33391.patch",
+    "path": "samsung-compat-33396.patch",
     "size": 72632,
     "sha256": "81e68f967596fb7044e416c8886be1e09f6b485031eab00b4cea090566af4b99"
   },

@@ -79,6 +79,6 @@
     "userspace/ksud/src/soft_reboot.rs": "3b4de8e7112f43240969ad16c0e4e6938713c814d77f832e7932d75e547af407",
     "userspace/ksud/src/utils.rs": "f1300cad6f81900e7cfb04dad768bc0125c8538c39634835c9f0f677479922bb"
   },
-  "app_version": "1.2.12",
+  "app_version": "1.2.13",
   "previous_upstream_commit": "0c0fdb960178fa12d80d6cbcfdcb6ad8be6a865d"
 }
