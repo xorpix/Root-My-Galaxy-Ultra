@@ -68,17 +68,21 @@ class AzhlBundleTest {
     }
 
     @Test fun driverReportAndMarkerMustBothConfirmTheChosenBackend() {
-        val flavor = KernelSuFlavor.KernelSuNext
-        val version = azhlDriverVersion(flavor)
-        val report = "KernelSU control verified version=$version flags=0x5 uapi=5 features=0x3"
-        val marker = "AZHL_BACKEND_VERIFIED kernelsu-next $version"
-        assertEquals(version, verifiedAzhlControl("$report\n$marker", flavor)?.version)
-        assertNull(verifiedAzhlControl(report, flavor))
-        assertNull(verifiedAzhlControl(marker, flavor))
-        assertNull(verifiedAzhlControl("${report.replace("uapi=5", "uapi=6")}\n$marker", flavor))
-        assertNull(verifiedAzhlControl("${report.replace(version.toString(), azhlDriverVersion(KernelSuFlavor.KernelSu).toString())}\n$marker", flavor))
-        listOf("0x1", "0x4").forEach { flags ->
-            assertNull(verifiedAzhlControl("${report.replace("0x5", flags)}\n$marker", flavor))
+        KernelSuFlavor.entries.forEach { flavor ->
+            val version = azhlDriverVersion(flavor)
+            val uapi = M3qLaunch.backend(flavor.id).uapi
+            val report = "KernelSU control verified version=$version flags=0x5 uapi=$uapi features=0x3"
+            val marker = "AZHL_BACKEND_VERIFIED ${flavor.id} $version"
+            assertEquals(version, verifiedAzhlControl("$report\n$marker", flavor)?.version)
+            assertNull(verifiedAzhlControl(report, flavor))
+            assertNull(verifiedAzhlControl(marker, flavor))
+            listOf(4, 5, 6, 7).filter { it != uapi }.forEach { other ->
+                assertNull(verifiedAzhlControl("${report.replace("uapi=$uapi", "uapi=$other")}\n$marker", flavor))
+            }
+            assertNull(verifiedAzhlControl("${report.replace(version.toString(), "1")}\n$marker", flavor))
+            listOf("0x1", "0x4").forEach { flags ->
+                assertNull(verifiedAzhlControl("${report.replace("0x5", flags)}\n$marker", flavor))
+            }
         }
     }
 
