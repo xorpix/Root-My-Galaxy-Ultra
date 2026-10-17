@@ -52,7 +52,8 @@ val appVersionCode =
         (providers.of(BuildClockValueSource::class) {}.get() / 1000L - 1_767_225_600L).toInt()
 
 // The version name is the base version alone: 1.1, 1.1.1, ...
-val appVersionName = appVersionBase
+val appVersionName = providers.gradleProperty("rmguVersionSuffix").orNull
+    ?.takeIf { it.isNotBlank() }?.let { "$appVersionBase-$it" } ?: appVersionBase
 
 android {
     namespace = "dev.busung.s25uroot"
