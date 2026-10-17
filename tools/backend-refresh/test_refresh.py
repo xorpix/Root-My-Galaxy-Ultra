@@ -122,6 +122,11 @@ class RefreshTests(unittest.TestCase):
             refresh.fetch_snapshot_commit(PROJECT, 'main', Path('/unused.log'))
 
     def test_reviewed_history_transition_is_bounded_to_the_exact_backend_and_pair(self):
+        old_baka = 'b8754b203edfc03342d0f58adfc582719b31363c'
+        new_baka = '2489b38582a08fee7b586d05185da5e5d12c6a5c'
+        self.assertTrue(refresh.reviewed_history_transition('resukisu', old_baka, new_baka))
+        self.assertFalse(refresh.reviewed_history_transition('kernelsu-next', old_baka, new_baka))
+        self.assertFalse(refresh.reviewed_history_transition('resukisu', old_baka, 'a' * 40))
         old = '6200478dd76fc63093a8226d360f5072c46aea26'
         new = 'd7260ca1e5c128061122924d0d48754e361e135c'
         self.assertTrue(refresh.reviewed_history_transition('resukisu', old, new))

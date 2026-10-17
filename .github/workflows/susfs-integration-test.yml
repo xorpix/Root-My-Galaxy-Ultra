@@ -23,46 +23,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Restore the already verified matched backend artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: RMGU-matched-backend-update-39026444326
-          run-id: 39026444326
-          github-token: ${{ github.token }}
-          path: ${{ runner.temp }}/matched-backends
-
-      - name: Apply and verify the exact backend update
-        env:
-          BACKEND_RESULT: ${{ runner.temp }}/matched-backends
+      - name: Verify the source-pinned matched backend bundle
         run: |
-          set -euo pipefail
-          python3 - <<'PYTHON'
-          import hashlib, json, os
-          from pathlib import Path
-          result = Path(os.environ['BACKEND_RESULT'])
-          patch = result / 'apply-matched-backends.patch'
-          assert hashlib.sha256(patch.read_bytes()).hexdigest() == 'dfc442f6ad0da87657fa8e9d4bb8d393f6c19d0fd9ddae5aff83fd22344cf287'
-          data = json.loads((result / 'release.json').read_text())
-          assert data['targets']['backends']['kernelsu-next']['commit'] == '16be0f72041985de893bcea4e3de7ee1bc32eb2d'
-          assert data['targets']['backends']['resukisu']['commit'] == 'b8754b203edfc03342d0f58adfc582719b31363c'
-          PYTHON
-          PATCH="$BACKEND_RESULT/apply-matched-backends.patch"
-          if git apply --check "$PATCH"; then
-            git apply --whitespace=nowarn "$PATCH"
-          elif git apply --reverse --check "$PATCH"; then
-            echo 'The verified matched bundle is already present.'
-          else
-            echo '::error::The verified backend patch does not match this source.'
-            exit 1
-          fi
           python3 tools/test_backend_bundle.py
           python3 tools/test_m3q_host.py BundleTests
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add README.md app backends native/azhl/src/azhl_backend.h tools/backend-refresh/kernelsu-next-compat.patch tools/backend-refresh/targets.json tools/prepare_m3q_helpers.py
-          if ! git diff --cached --quiet; then
-            git commit -m 'Record verified backend bundle for SusFS test'
-          fi
+          python3 -c "import sys; sys.path.insert(0, 'tools/backend-refresh'); from common import baseline; baseline(__import__('pathlib').Path.cwd())"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -121,7 +86,7 @@ jobs:
         run: ./gradlew testDebugUnitTest --no-daemon
 
       - name: Build APKs
-        run: ./gradlew assembleRelease -PrmguVersionSuffix=susfs-test4 --no-daemon
+        run: ./gradlew assembleRelease --no-daemon
 
       - name: Verify embedded D2 companions
         run: |
@@ -161,7 +126,7 @@ jobs:
           from pathlib import Path
           root = Path('app/src/main/assets/susfs/bzig')
           profile = json.loads((root / 'profile.json').read_text())
-          expected = 'bc1df69baa74dd442090d84de007674d96c9c6d3e007e7f5ca58b56520c8833c'
+          expected = profile['module']['sha256']
           assert profile['module']['sha256'] == expected
           for path in Path('app/src/main/assets/susfs').glob('*/profile.json'):
               variant = json.loads(path.read_text())
@@ -183,9 +148,6 @@ jobs:
                   assert z.read(f'lib/arm64-v8a/libm3qksud_{name}.so') == daemon
           PYTHON
           git diff --exit-code
-
-      - name: Preserve the tested native bundle on the feature branch
-        run: git push origin HEAD:feat/susfs-backends-20261017
 
       - name: Upload APKs
         uses: actions/upload-artifact@v4

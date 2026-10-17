@@ -162,6 +162,7 @@ class ManagerTests(unittest.TestCase):
 
     def test_mixed_api_bundle_verifies_each_manager_against_its_backend(self):
         self.config['backends']['kernelsu']['uapi'] = 6
+        self.config['backends']['kernelsu-next']['uapi'] = 5
         common.write_json(self.project / 'tools/backend-refresh/targets.json', self.config)
         self.client = FakeGitHub(self.config, self.readme)
         report = self.update()
