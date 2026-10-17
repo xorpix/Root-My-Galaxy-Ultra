@@ -14,8 +14,46 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  stage_reviewed_backends:
+    if: github.event_name == 'push' && github.event.head_commit.message == 'Stage reviewed backend bundle for 1.2.13'
+    name: Import the verified backend build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Apply the exact reviewed build artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(gh api repos/$GITHUB_REPOSITORY/actions/runs/39067025754 --jq .conclusion)" = success
+          test "$(gh api repos/$GITHUB_REPOSITORY/actions/artifacts/12114395154 --jq .workflow_run.id)" = 39067025754
+          gh api repos/$GITHUB_REPOSITORY/actions/artifacts/12114395154/zip > "$RUNNER_TEMP/verified-backends.zip"
+          echo 'c1f57e17da84b6b4c5ee9215b396f8ee6e55c7d8a767550fd38d74a298b6d3a0  '"$RUNNER_TEMP/verified-backends.zip" | sha256sum -c -
+          python3 - <<'PYTHON'
+          import hashlib, os, pathlib, zipfile
+          with zipfile.ZipFile(pathlib.Path(os.environ['RUNNER_TEMP']) / 'verified-backends.zip') as z:
+              patch = z.read('apply-matched-backends.patch')
+          assert hashlib.sha256(patch).hexdigest() == '450648d362351f4a475555071ea8be2737e0d45a4cb7c2b93f556a213a466aa0'
+          (pathlib.Path(os.environ['RUNNER_TEMP']) / 'reviewed-backends.patch').write_bytes(patch)
+          PYTHON
+          git apply --check "$RUNNER_TEMP/reviewed-backends.patch"
+          git apply "$RUNNER_TEMP/reviewed-backends.patch"
+          git add --all
+          VERIFY_INDEX="$RUNNER_TEMP/verified-source-index"
+          cp "$(git rev-parse --git-path index)" "$VERIFY_INDEX"
+          GIT_INDEX_FILE="$VERIFY_INDEX" git update-index --cacheinfo 100644,ea77337e95a9728f821977dc760cf159a7c178e8,.github/workflows/susfs-integration-test.yml
+          test "$(GIT_INDEX_FILE="$VERIFY_INDEX" git write-tree)" = cae46d9929150043e521750d4da5109d3c799df2
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Import verified Next and BakaSU pairs for 1.2.13'
+          git push origin "HEAD:refs/heads/$GITHUB_REF_NAME"
+
   build:
-    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'Record verified backend bundle for SusFS test')
+    if: github.event_name != 'push' || (github.event.head_commit.message != 'Stage reviewed backend bundle for 1.2.13' && !startsWith(github.event.head_commit.message, 'Record verified backend bundle for SusFS test'))
     name: SusFS update test APK
     runs-on: ubuntu-latest
     timeout-minutes: 60
