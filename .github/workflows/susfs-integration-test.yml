@@ -121,7 +121,7 @@ jobs:
         run: ./gradlew testDebugUnitTest --no-daemon
 
       - name: Build APKs
-        run: ./gradlew assembleRelease -PrmguVersionSuffix=susfs-test3 --no-daemon
+        run: ./gradlew assembleRelease -PrmguVersionSuffix=susfs-test4 --no-daemon
 
       - name: Verify embedded D2 companions
         run: |
@@ -161,7 +161,7 @@ jobs:
           from pathlib import Path
           root = Path('app/src/main/assets/susfs/bzig')
           profile = json.loads((root / 'profile.json').read_text())
-          expected = '8360a8ef61de60a0f8bf8a28054d4efdb2f601bd35ea42d3025b0fed1da035b2'
+          expected = 'bc1df69baa74dd442090d84de007674d96c9c6d3e007e7f5ca58b56520c8833c'
           assert profile['module']['sha256'] == expected
           for path in Path('app/src/main/assets/susfs').glob('*/profile.json'):
               variant = json.loads(path.read_text())
