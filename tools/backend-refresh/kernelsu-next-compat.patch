@@ -1,5 +1,5 @@
 diff --git a/kernel/Kbuild b/kernel/Kbuild
-index f8fc9a9c..8bcd12f9 100644
+index f8fc9a9cd17e7beadbf171e981be328b3b89a1e3..8bcd12f9f8fa56e8678e3b76719c64558aac1bf3 100644
 --- a/kernel/Kbuild
 +++ b/kernel/Kbuild
 @@ -1,5 +1,8 @@
@@ -44,7 +44,7 @@ index f8fc9a9c..8bcd12f9 100644
  # preinit runner: a static nolibc binary embedded into kernelsu, see preinit/.
  # It is built against the installed UAPI headers of the target kernel
 diff --git a/kernel/Kconfig b/kernel/Kconfig
-index 88e22811..6a65714b 100644
+index 88e228117f102e86708efbab11629f552671557c..6a65714b188d292e100f50f1a1764d3d2eb7be25 100644
 --- a/kernel/Kconfig
 +++ b/kernel/Kconfig
 @@ -43,4 +43,34 @@ config KSU_X86_PATCH_SYSCALL_DISPATCHER
@@ -84,7 +84,7 @@ index 88e22811..6a65714b 100644
  endmenu
 diff --git a/kernel/compat/samsung_defex.c b/kernel/compat/samsung_defex.c
 new file mode 100644
-index 00000000..a73ac302
+index 0000000000000000000000000000000000000000..a73ac30255d8ac1e2fd4abcd2585f9e03f9e2c3c
 --- /dev/null
 +++ b/kernel/compat/samsung_defex.c
 @@ -0,0 +1,124 @@
@@ -214,7 +214,7 @@ index 00000000..a73ac302
 +}
 diff --git a/kernel/compat/samsung_defex.h b/kernel/compat/samsung_defex.h
 new file mode 100644
-index 00000000..f635af65
+index 0000000000000000000000000000000000000000..f635af6581d3f89fe58dc8a951e1664407d0a1ed
 --- /dev/null
 +++ b/kernel/compat/samsung_defex.h
 @@ -0,0 +1,8 @@
@@ -228,7 +228,7 @@ index 00000000..f635af65
 +#endif
 diff --git a/kernel/compat/samsung_kdp.c b/kernel/compat/samsung_kdp.c
 new file mode 100644
-index 00000000..2104f2e9
+index 0000000000000000000000000000000000000000..2104f2e9a82be77e46603bec3c4292dcf02df7ab
 --- /dev/null
 +++ b/kernel/compat/samsung_kdp.c
 @@ -0,0 +1,210 @@
@@ -443,7 +443,7 @@ index 00000000..2104f2e9
 +#endif
 +}
 diff --git a/kernel/core/init.c b/kernel/core/init.c
-index a5e95e7c..33098c45 100644
+index a5e95e7cf78f3c223c0e288bce225ebf6a829cff..33098c457b3c8e6d94bcdd60414c8e47dac2bd17 100644
 --- a/kernel/core/init.c
 +++ b/kernel/core/init.c
 @@ -28,6 +28,13 @@
@@ -520,7 +520,7 @@ index a5e95e7c..33098c45 100644
  
  #if NEED_OWN_STACKPROTECTOR
 diff --git a/kernel/feature/selinux_hide.c b/kernel/feature/selinux_hide.c
-index 459f99f9..7a9e14c6 100644
+index 459f99f920b7b995e8f3b53d7da931dcbd79f932..7a9e14c6f6efae3d9bbded103d96e0b19716a633 100644
 --- a/kernel/feature/selinux_hide.c
 +++ b/kernel/feature/selinux_hide.c
 @@ -16,6 +16,8 @@
@@ -882,7 +882,7 @@ index 459f99f9..7a9e14c6 100644
          orig_sel_open_handle_status = NULL;
      }
 diff --git a/kernel/feature/sucompat.c b/kernel/feature/sucompat.c
-index 6274c47d..d579a676 100644
+index 6274c47dadf9d94081170a77f5fd70544dbcb16b..d579a676d12d4adcbd1bad30a158cefd972d4996 100644
 --- a/kernel/feature/sucompat.c
 +++ b/kernel/feature/sucompat.c
 @@ -269,7 +269,7 @@ void __init ksu_sucompat_init()
@@ -895,7 +895,7 @@ index 6274c47d..d579a676 100644
  	ksu_unregister_feature_handler(KSU_FEATURE_SU_COMPAT);
  }
 diff --git a/kernel/hook/arm64/patch_memory.c b/kernel/hook/arm64/patch_memory.c
-index d58f2e45..db3c0d6d 100644
+index d58f2e45ca5357b2352570688d0b94033e201f8c..db3c0d6d34138a09a36d3b7c014bb9009b2a2596 100644
 --- a/kernel/hook/arm64/patch_memory.c
 +++ b/kernel/hook/arm64/patch_memory.c
 @@ -192,6 +192,11 @@ static int ksu_patch_text_cb(void *arg)
@@ -919,7 +919,7 @@ index d58f2e45..db3c0d6d 100644
  
  /*
 diff --git a/kernel/hook/arm64/syscall_hook.c b/kernel/hook/arm64/syscall_hook.c
-index 7bd6df06..aa7d4c9d 100644
+index 7bd6df06d6379420195e426feb6cd72a6692d05f..aa7d4c9d252c0ba9adfd7cf76d5ff0931a8c7737 100644
 --- a/kernel/hook/arm64/syscall_hook.c
 +++ b/kernel/hook/arm64/syscall_hook.c
 @@ -49,13 +49,15 @@ static int patch_syscall_table(int nr, syscall_fn_t fn)
@@ -994,7 +994,7 @@ index 7bd6df06..aa7d4c9d 100644
  }
  
 diff --git a/kernel/hook/syscall_hook.h b/kernel/hook/syscall_hook.h
-index d4921bf9..5bb036ee 100644
+index d4921bf9b988aa9e8dbc1cc5423a21603824ed96..5bb036ee9b809e1c815188de7c5c92cd6aeebe92 100644
 --- a/kernel/hook/syscall_hook.h
 +++ b/kernel/hook/syscall_hook.h
 @@ -39,7 +39,7 @@ bool ksu_has_syscall_hook(int nr);
@@ -1007,7 +1007,7 @@ index d4921bf9..5bb036ee 100644
  // Restore syscall_table[@nr] to its original value recorded by
  // ksu_syscall_table_hook(), and remove the entry from the tracking list.
 diff --git a/kernel/hook/syscall_hook_manager.c b/kernel/hook/syscall_hook_manager.c
-index cf21fed8..4f57b6fb 100644
+index cf21fed88a7ae2704d2950b00295472f31b28674..4f57b6fb3b5d9dfa0ce6545d796464357a927085 100644
 --- a/kernel/hook/syscall_hook_manager.c
 +++ b/kernel/hook/syscall_hook_manager.c
 @@ -5,6 +5,7 @@
@@ -1366,7 +1366,7 @@ index cf21fed8..4f57b6fb 100644
      unregister_trace_sys_enter(ksu_sys_enter_handler, NULL);
      tracepoint_synchronize_unregister();
 diff --git a/kernel/hook/tp_marker.c b/kernel/hook/tp_marker.c
-index 489a0d7b..8adec125 100644
+index 489a0d7babfc70c9eec7af66f8d8da51a2862015..8adec1251fa1a99139443f3cd96829b6e97c92c8 100644
 --- a/kernel/hook/tp_marker.c
 +++ b/kernel/hook/tp_marker.c
 @@ -7,6 +7,7 @@
@@ -1388,7 +1388,7 @@ index 489a0d7b..8adec125 100644
  }
 diff --git a/kernel/include/ksu_samsung_kdp.h b/kernel/include/ksu_samsung_kdp.h
 new file mode 100644
-index 00000000..9cdbc812
+index 0000000000000000000000000000000000000000..9cdbc8122de8f12a7240f065ec2f13c70514246a
 --- /dev/null
 +++ b/kernel/include/ksu_samsung_kdp.h
 @@ -0,0 +1,24 @@
@@ -1417,7 +1417,7 @@ index 00000000..9cdbc812
 +
 +#endif
 diff --git a/kernel/policy/app_profile.c b/kernel/policy/app_profile.c
-index 6336a222..8ecb0730 100644
+index 6336a2227f9b7ac3c05b07a41853af9f7f675254..8ecb073095fedc701f3855311ed30f103c3012b2 100644
 --- a/kernel/policy/app_profile.c
 +++ b/kernel/policy/app_profile.c
 @@ -18,6 +18,8 @@
@@ -1452,7 +1452,7 @@ index 6336a222..8ecb0730 100644
  
  void __init ksu_app_profile_init(void)
 diff --git a/kernel/selinux/selinux.c b/kernel/selinux/selinux.c
-index 1a76dbd7..7f8ed68a 100644
+index 1a76dbd784767c5a819bde5e8dc46d83152f4272..7f8ed68a8d3b00dfcb8093fe295a25217cc84b56 100644
 --- a/kernel/selinux/selinux.c
 +++ b/kernel/selinux/selinux.c
 @@ -5,6 +5,7 @@
@@ -1472,7 +1472,7 @@ index 1a76dbd7..7f8ed68a 100644
 +    ksu_samsung_defex_sync_current();
  }
 diff --git a/userspace/ksud/src/late_load.rs b/userspace/ksud/src/late_load.rs
-index c086df09..031a85d9 100644
+index c086df0939dde1ce345d9282262871ee13fb93b1..031a85d9ccb4a4d4bdf9fdc82bfec9000fc524d5 100644
 --- a/userspace/ksud/src/late_load.rs
 +++ b/userspace/ksud/src/late_load.rs
 @@ -1,7 +1,7 @@
@@ -1528,7 +1528,7 @@ index c086df09..031a85d9 100644
      Ok(())
  }
 diff --git a/userspace/ksud/src/soft_reboot.rs b/userspace/ksud/src/soft_reboot.rs
-index d9eb492b..1fb6ed45 100644
+index d9eb492bf637ae36456fbd77577aa85c8a7ff122..1fb6ed45c923daba7660b812993f046462d2a174 100644
 --- a/userspace/ksud/src/soft_reboot.rs
 +++ b/userspace/ksud/src/soft_reboot.rs
 @@ -204,6 +204,17 @@ pub fn soft_reboot() -> Result<()> {
@@ -1829,7 +1829,7 @@ index d9eb492b..1fb6ed45 100644
 +    Ok(())
 +}
 diff --git a/userspace/ksud/src/susfsd.rs b/userspace/ksud/src/susfsd.rs
-index 6ecd033d..38ba81ce 100644
+index 6ecd033d5ff3e4375ce5bc692f3aad00b6c6cd11..38ba81ce2c92c221cbce8f1453dac03491083c97 100644
 --- a/userspace/ksud/src/susfsd.rs
 +++ b/userspace/ksud/src/susfsd.rs
 @@ -16,6 +16,9 @@ const SUSFS_MAX_VERSION_BUFSIZE: usize = 16;
@@ -1884,7 +1884,7 @@ index 6ecd033d..38ba81ce 100644
          .context("Failed to unload SUSFS guard LKM")?;
      println!("Unloaded SUSFS guard LKM");
 diff --git a/userspace/ksud/src/utils.rs b/userspace/ksud/src/utils.rs
-index 129d4262..55addae3 100644
+index 129d4262f270752fdaa7a993032f339443cf3685..55addae360abd84c2e48827baf9b45221715ea23 100644
 --- a/userspace/ksud/src/utils.rs
 +++ b/userspace/ksud/src/utils.rs
 @@ -1,7 +1,8 @@
@@ -1977,7 +1977,7 @@ index 129d4262..55addae3 100644
      create_daemon_with(use_init_pgrp, || Ok(()))
  }
 diff --git a/userspace/ksuinit/src/lib.rs b/userspace/ksuinit/src/lib.rs
-index 21ce82d1..51b98e4f 100644
+index 21ce82d15df78bc385d59751418affe224194a54..51b98e4f2b17ff43cf4ab953debe86bc3a3c0b63 100644
 --- a/userspace/ksuinit/src/lib.rs
 +++ b/userspace/ksuinit/src/lib.rs
 @@ -365,6 +365,9 @@ pub fn resolve_kallsyms(names: &[&str]) -> Result<Vec<Option<u64>>> {

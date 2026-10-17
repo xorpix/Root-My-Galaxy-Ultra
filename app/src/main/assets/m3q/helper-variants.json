@@ -36,34 +36,34 @@
     },
     "kernelsu-next": {
       "library": "libm3qroot_kernelsu_next.so",
-      "driverVersion": 33390,
-      "uapiVersion": 5,
+      "driverVersion": 33391,
+      "uapiVersion": 6,
       "size": 24232,
-      "sha256": "832bc6d5c9eaa9048f8735fb4e91ed4af47f4b32215ff8a41e89f394823e4fc6",
+      "sha256": "de62add495ded6dda514e7473f0107604d4a7254f6a61fd9cc0c6d82232fde21",
       "changes": [
         {
           "virtual_address": "0x6c94",
           "file_offset": 11412,
           "before": "528fef89",
-          "after": "52904dc9"
+          "after": "52904de9"
         },
         {
           "virtual_address": "0x6cc8",
           "file_offset": 11464,
           "before": "528fef82",
-          "after": "52904dc2"
+          "after": "52904de2"
         },
         {
           "virtual_address": "0x6ca0",
           "file_offset": 11424,
           "before": "710010df",
-          "after": "710014df"
+          "after": "710018df"
         },
         {
           "virtual_address": "0x6cd0",
           "file_offset": 11472,
           "before": "52800084",
-          "after": "528000a4"
+          "after": "528000c4"
         },
         {
           "virtual_address": "0x7234",
@@ -75,22 +75,22 @@
     },
     "resukisu": {
       "library": "libm3qroot_resukisu.so",
-      "driverVersion": 35229,
+      "driverVersion": 35230,
       "uapiVersion": 5,
       "size": 24232,
-      "sha256": "8236c0a03dc6bb287f3a4f7c2dcb8559832610a68c80bef53a50822a242c5498",
+      "sha256": "f48472b4cdf0af491ab3eba8e23184e45ebcd6647f9ce397807f171370cd63ef",
       "changes": [
         {
           "virtual_address": "0x6c94",
           "file_offset": 11412,
           "before": "528fef89",
-          "after": "529133a9"
+          "after": "529133c9"
         },
         {
           "virtual_address": "0x6cc8",
           "file_offset": 11464,
           "before": "528fef82",
-          "after": "529133a2"
+          "after": "529133c2"
         },
         {
           "virtual_address": "0x6ca0",
