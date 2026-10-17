@@ -121,7 +121,7 @@ jobs:
         run: ./gradlew testDebugUnitTest --no-daemon
 
       - name: Build APKs
-        run: ./gradlew assembleRelease -PrmguVersionSuffix=susfs-test1 --no-daemon
+        run: ./gradlew assembleRelease -PrmguVersionSuffix=susfs-test2 --no-daemon
 
       - name: Verify embedded D2 companions
         run: |
@@ -161,7 +161,7 @@ jobs:
           from pathlib import Path
           root = Path('app/src/main/assets/susfs/bzig')
           profile = json.loads((root / 'profile.json').read_text())
-          expected = 'f5d6c2aac361205263220f4033cd5f8df3894926aab487a2e09d223a3b84ceae'
+          expected = '260393eabb621ffedd95b187f62678bb5e2cb61c306ff81e39c2e9957235f247'
           assert profile['module']['sha256'] == expected
           assert hashlib.sha256((root / 'susfs_guard_lkm.ko').read_bytes()).hexdigest() == expected
           apk = Path('app/build/outputs/apk/release/app-release.apk')
