@@ -121,7 +121,7 @@ jobs:
         run: ./gradlew testDebugUnitTest --no-daemon
 
       - name: Build APKs
-        run: ./gradlew assembleRelease -PrmguVersionSuffix=susfs-test2 --no-daemon
+        run: ./gradlew assembleRelease -PrmguVersionSuffix=susfs-test3 --no-daemon
 
       - name: Verify embedded D2 companions
         run: |
@@ -161,13 +161,20 @@ jobs:
           from pathlib import Path
           root = Path('app/src/main/assets/susfs/bzig')
           profile = json.loads((root / 'profile.json').read_text())
-          expected = '260393eabb621ffedd95b187f62678bb5e2cb61c306ff81e39c2e9957235f247'
+          expected = '8360a8ef61de60a0f8bf8a28054d4efdb2f601bd35ea42d3025b0fed1da035b2'
           assert profile['module']['sha256'] == expected
+          for path in Path('app/src/main/assets/susfs').glob('*/profile.json'):
+              variant = json.loads(path.read_text())
+              assert variant['module'] == profile['module'], str(path)
+              assert variant['sourceCommit'] == profile['sourceCommit'], str(path)
           assert hashlib.sha256((root / 'susfs_guard_lkm.ko').read_bytes()).hexdigest() == expected
           apk = Path('app/build/outputs/apk/release/app-release.apk')
           with zipfile.ZipFile(apk) as z:
               assert hashlib.sha256(z.read('assets/susfs/bzig/susfs_guard_lkm.ko')).hexdigest() == expected
               assert json.loads(z.read('assets/susfs/bzig/profile.json')) == profile
+              for path in Path('app/src/main/assets/susfs').glob('*/profile.json'):
+                  name = str(path.relative_to('app/src/main/assets'))
+                  assert json.loads(z.read('assets/' + name)) == json.loads(path.read_text())
               for backend in ('kernelsu', 'kernelsu-next', 'resukisu'):
                   manifest = json.loads(Path(f'backends/{backend}/build-manifest.json').read_text())
                   daemon = z.read(f'assets/azhl/{backend}/ksud')
