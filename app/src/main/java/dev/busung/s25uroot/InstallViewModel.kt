@@ -72,7 +72,6 @@ enum class InstallPhase {
 data class InstallUiState(
     val phase: InstallPhase = InstallPhase.Probing,
     val message: String = "",
-    val probeOutput: String = "",
     val log: String = "",
     /** Set when [phase] is [InstallPhase.Failed], so the screen can name the stage and the cause. */
     val failure: RunFailure? = null,
@@ -354,14 +353,11 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         // after the write it was meant to prevent.
         val claim = publishClaim.claim()
         discoveryJob = viewModelScope.launch(Dispatchers.IO) {
-            val probe = NativeProbe.run()
             if (detectInstalled()) {
                 if (!publishClaim.holds(claim)) return@launch
                 mutableState.value = InstallUiState(
                     phase = InstallPhase.Installed,
                     message = app.getString(R.string.status_ksu_active),
-                    probeOutput = probe,
-                    log = probe,
                 )
                 return@launch
             }
@@ -371,8 +367,7 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                 mutableState.value = InstallUiState(
                     phase = InstallPhase.Ready,
                     message = app.getString(R.string.status_not_installed),
-                    probeOutput = probe,
-                    log = "$probe\n${app.getString(R.string.log_profile, profile.profileId)}",
+                    log = app.getString(R.string.log_profile, profile.profileId),
                 )
             } catch (error: Throwable) {
                 if (!publishClaim.holds(claim)) return@launch
@@ -388,8 +383,7 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                             R.string.status_support_failed
                         },
                     ),
-                    probeOutput = probe,
-                    log = "$probe\n[-] ${error.message ?: error.javaClass.simpleName}",
+                    log = "[-] ${error.message ?: error.javaClass.simpleName}",
                 )
             }
         }
@@ -680,7 +674,6 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
             mutableState.value = InstallUiState(
                 phase = InstallPhase.Failed,
                 message = initialRefusal,
-                probeOutput = mutableState.value.probeOutput,
                 failure = RunFailure.of(stage = RunStage.Target, reason = initialRefusal),
             )
             appendLog(initialRefusal)
@@ -702,7 +695,6 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
             mutableState.value = InstallUiState(
                 phase = InstallPhase.Failed,
                 message = app.getString(R.string.status_run_in_flight),
-                probeOutput = mutableState.value.probeOutput,
                 failure = RunFailure.of(
                     stage = RunStage.Transport,
                     reason = app.getString(R.string.install_run_in_flight),
@@ -738,7 +730,6 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
             mutableState.value = InstallUiState(
                 phase = InstallPhase.Ready,
                 message = app.getString(R.string.status_shizuku_hold),
-                probeOutput = mutableState.value.probeOutput,
                 transportPrompt = TransportPrompt(),
             )
             AppLog.warn(RUN_LOG_TAG, "Run held: Use Shizuku is on and Shizuku is not running")
@@ -765,7 +756,6 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
             mutableState.value = InstallUiState(
                 phase = InstallPhase.Checking,
                 message = app.getString(R.string.status_checking_device),
-                probeOutput = mutableState.value.probeOutput,
             )
             startHistory()
             // Said before anything is staged, so a sweep in the app's other process cannot take the

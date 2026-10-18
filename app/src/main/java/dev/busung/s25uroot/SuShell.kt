@@ -57,10 +57,9 @@ internal object SuShell {
         ProcessBuilder("su", "-c", "$command 2>&1")
             .redirectErrorStream(true)
             .start()
-    } catch (error: Throwable) {
+    } catch (_: Throwable) {
         // How a device with no `su` at all reports itself, and also how KernelSU's layer reports a
         // caller it refuses: the exec itself fails. Neither is an error worth a stack trace.
-        Log.d(TAG, "su unavailable: ${error.javaClass.simpleName}")
         null
     }
 

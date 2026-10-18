@@ -203,6 +203,8 @@ object AppLog {
      * way rather than under a lock every process would have to take to write a log line.
      */
     private fun trimIfOversized(target: File) {
+        // UTF-8 uses at least one byte per character. A smaller file cannot need trimming.
+        if (target.length() <= MAX_FILE_CHARS) return
         val text = runCatching { target.readText() }.getOrNull() ?: return
         if (text.length <= MAX_FILE_CHARS) return
         runCatching {

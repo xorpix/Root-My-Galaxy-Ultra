@@ -103,18 +103,13 @@ internal class M3qRunner(
         val prepared = app(helper, listOf("-c", prepareCommand))
         // Surface the script's own removal markers before the stage check,
         // so they survive in the log even when the stage itself then fails.
-        val lateMarkers = prepared.output.lineSequence()
-
-            .filter { it.startsWith("MOUNTIFY_REMOVED ") || it.startsWith("MODULE_STATE_WIPED ") || it.startsWith("ADB_TOP ") || it.startsWith("ADB_CHILD ") || it.startsWith("ADB_HUNT ") || it.startsWith("WIPE_DEBUG ") }
-            .toList()
-        lateMarkers
-            .filter { !it.startsWith("ADB_HUNT ") }
+        prepared.output.lineSequence()
+            .filter { it.startsWith("MOUNTIFY_REMOVED ") || it.startsWith("MODULE_STATE_WIPED ") }
             .forEach { line ->
                 if (line.startsWith("MOUNTIFY_REMOVED ")) {
                     log("[!] Mountify footprint removed before loading: ${line.removePrefix("MOUNTIFY_REMOVED ")}")
                 } else {
-
-                    if (line.startsWith("MODULE_STATE_WIPED ")) log("[!] Module state wiped before loading: ${line.removePrefix("MODULE_STATE_WIPED ")}") else log("[*] $line")
+                    log("[!] Module state wiped before loading: ${line.removePrefix("MODULE_STATE_WIPED ")}")
                 }
             }
         val marker = "M3Q_STAGE_OK:${flavor.id}:${daemonArtifact.sha256}"
@@ -122,15 +117,11 @@ internal class M3qRunner(
             "Backend preparation failed (exit ${prepared.code}). Modules and files were preserved; fully reboot."
         }
         log("[*] Activating ${flavor.label} once through the app's root helper")
-        // Hunt hits and the top-level inventory print here - after the load
-        // starts - so a panic at late-load leaves them as the last lines.
-        lateMarkers
-            .filter { it.startsWith("ADB_HUNT ") || it.startsWith("ADB_TOP ") || it.startsWith("WIPE_DEBUG ") }
-            .forEach { log("[*] $it") }
         val loaded = app(helper, listOf("--late-load"), M3qLaunch.LOAD_TIMEOUT_MS, kernelOperation = true)
-        // The native helper writes useful daemon diagnostics to this separate log.
-        val detail = shell("if [ -f ${shellQuote(M3qLaunch.LOAD_LOG)} ]; then tail -c 32768 ${shellQuote(M3qLaunch.LOAD_LOG)}; fi")
-        if (detail.code != 0) log("[*] The native activation log could not be read.")
+        if (loaded.code != 0) {
+            val detail = shell("if [ -f ${shellQuote(M3qLaunch.LOAD_LOG)} ]; then tail -c 32768 ${shellQuote(M3qLaunch.LOAD_LOG)}; fi")
+            if (detail.code != 0) log("[*] The native activation log could not be read.")
+        }
         check(loaded.code == 0) { "${flavor.label} activation failed (exit ${loaded.code}). Fully reboot before another attempt." }
         stage(RunStage.Verify)
         // Successful late-load stops the bootstrap server and unlinks its socket.
