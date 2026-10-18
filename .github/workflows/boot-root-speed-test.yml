@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build:
-    name: Signed boot speed candidate
+    name: Signed 1.2.14 release candidate
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -84,8 +84,8 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --no-daemon
 
-      - name: Build APKs
-        run: ./gradlew assembleRelease --no-daemon -PrmguVersionSuffix=boot-speed-test1
+      - name: Build release APK
+        run: ./gradlew assembleRelease --no-daemon
 
       - name: Verify embedded D2 companions
         run: |

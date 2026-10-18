@@ -633,8 +633,7 @@ Java_dev_busung_s25uroot_dirtyfrag_DfExploitRunner_nativeRunAll(JNIEnv *env, jcl
     // slow daemon retains the original window. Cleanup and final proof still run below.
     const struct df_ready_ops ready_ops = {ready_now, ready_sleep, ready_probe};
     struct df_ready_result waited = df_wait_ready(&ready_ops, reporter);
-    REPORTLN("* %s after %lld ms", waited.ready ? "root readiness confirmed" : "readiness window complete; verifying backend",
-             (long long)waited.elapsed_ms);
+    REPORTLN("* %s", waited.ready ? "root readiness confirmed" : "readiness window complete; verifying backend");
     for (size_t j = 0; j < sizeof(markers)/sizeof(markers[0]); j++) {
         if (has_marker(markers[j].path)) {
             REPORTLN("%s", markers[j].msg);
