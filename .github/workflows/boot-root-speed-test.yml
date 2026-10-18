@@ -1,0 +1,159 @@
+name: Boot Root Speed Test
+
+on:
+  push:
+    branches: [feat/boot-root-speed-20261018]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: boot-root-speed-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Signed boot speed candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify the source-pinned matched backend bundle
+        run: |
+          python3 tools/test_backend_bundle.py
+          python3 tools/test_m3q_host.py BundleTests
+          python3 -c "import sys; sys.path.insert(0, 'tools/backend-refresh'); from common import baseline; baseline(__import__('pathlib').Path.cwd())"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-37.0 build-tools;36.0.0 cmake;3.22.1'
+          accept-android-sdk-licenses: true
+
+      - name: Setup NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r28
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode signing keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          : "${KEYSTORE_BASE64:?Repository secret KEYSTORE_BASE64 is not set}"
+          : "${KEYSTORE_PASSWORD:?Repository secret KEYSTORE_PASSWORD is not set}"
+          : "${KEY_ALIAS:?Repository secret KEY_ALIAS is not set}"
+          : "${KEY_PASSWORD:?Repository secret KEY_PASSWORD is not set}"
+
+          KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH"
+
+          {
+            echo "KEYSTORE_FILE=$KEYSTORE_PATH"
+            echo "KEYSTORE_TYPE=PKCS12"
+            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "KEY_ALIAS=$KEY_ALIAS"
+            echo "KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      # Before the APKs, so a failing test reports as a failing test rather than as a build that
+      # stopped somewhere. The release workflow runs the same task for the same reason: a stable
+      # release is not a way past the suite.
+      - name: Check root probe deadlines and unlock evidence
+        run: python3 tools/test_su_process.py
+
+      - name: Check early Odin handoff and adaptive exploit wait
+        run: python3 tools/test_early_root_speed.py
+
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest --no-daemon
+
+      - name: Build APKs
+        run: ./gradlew assembleRelease --no-daemon -PrmguVersionSuffix=boot-speed-test1
+
+      - name: Verify embedded D2 companions
+        run: |
+          python3 -m unittest discover -s tools/backend-refresh -p test_d2_signing.py
+          python3 tools/verify_d2_helper.py app/build/outputs/apk/release/app-release.apk
+
+      - name: Verify release APK signature
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BUILD_TOOLS="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)"
+          APK="$(ls app/build/outputs/apk/release/*.apk | head -n 1)"
+
+          CERT="$("$BUILD_TOOLS/apksigner" verify --print-certs "$APK")"
+          SIGNED_DN="$(echo "$CERT" | grep -m 1 'certificate DN' | cut -d: -f2- | sed 's/^ *//')"
+          SIGNED_SHA256="$(echo "$CERT" | grep -m 1 'SHA-256 digest' | awk '{print $NF}' | tr 'A-F' 'a-f')"
+          EXPECTED_SHA256="$(keytool -list -v -keystore "$KEYSTORE_FILE" -storepass "$KEYSTORE_PASSWORD" \
+            -alias "$KEY_ALIAS" | grep -m 1 'SHA256:' | awk '{print $2}' | tr -d ':' | tr 'A-F' 'a-f')"
+
+          if [ "$SIGNED_SHA256" != "$EXPECTED_SHA256" ]; then
+            echo "::error::Release APK is not signed with the repository key (got $SIGNED_SHA256, expected $EXPECTED_SHA256)."
+            exit 1
+          fi
+
+          {
+            echo "### Release APK signature"
+            echo
+            echo "- DN: \`$SIGNED_DN\`"
+            echo "- SHA-256: \`$SIGNED_SHA256\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify the final module bytes and APK contents
+        run: |
+          python3 - <<'PYTHON'
+          import hashlib, json, zipfile
+          from pathlib import Path
+          root = Path('app/src/main/assets/susfs/bzig')
+          profile = json.loads((root / 'profile.json').read_text())
+          expected = profile['module']['sha256']
+          assert profile['module']['sha256'] == expected
+          for path in Path('app/src/main/assets/susfs').glob('*/profile.json'):
+              variant = json.loads(path.read_text())
+              assert variant['module'] == profile['module'], str(path)
+              assert variant['sourceCommit'] == profile['sourceCommit'], str(path)
+          assert hashlib.sha256((root / 'susfs_guard_lkm.ko').read_bytes()).hexdigest() == expected
+          apk = Path('app/build/outputs/apk/release/app-release.apk')
+          with zipfile.ZipFile(apk) as z:
+              assert hashlib.sha256(z.read('assets/susfs/bzig/susfs_guard_lkm.ko')).hexdigest() == expected
+              assert json.loads(z.read('assets/susfs/bzig/profile.json')) == profile
+              for path in Path('app/src/main/assets/susfs').glob('*/profile.json'):
+                  name = str(path.relative_to('app/src/main/assets'))
+                  assert json.loads(z.read('assets/' + name)) == json.loads(path.read_text())
+              for backend in ('kernelsu', 'kernelsu-next', 'resukisu'):
+                  manifest = json.loads(Path(f'backends/{backend}/build-manifest.json').read_text())
+                  daemon = z.read(f'assets/azhl/{backend}/ksud')
+                  assert hashlib.sha256(daemon).hexdigest() == manifest['outputs']['ksud']['sha256']
+                  name = backend.replace('-', '_')
+                  assert z.read(f'lib/arm64-v8a/libm3qksud_{name}.so') == daemon
+          PYTHON
+          git diff --exit-code
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-root-speed-test-apk
+          path: |
+            app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 14
+

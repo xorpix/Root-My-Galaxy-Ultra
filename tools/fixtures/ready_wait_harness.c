@@ -13,7 +13,7 @@ static void sleep_ms(void *opaque, int64_t millis) {
 }
 static int probe(void *opaque, int64_t budget) {
     struct clock_state *s = opaque;
-    assert(s->now >= DF_READY_MIN_MS && budget > 0 && budget <= DF_READY_PROBE_MS);
+    assert(s->now >= 0 && budget > 0 && budget <= DF_READY_PROBE_MS);
     s->calls++;
     s->now += s->cost < budget ? s->cost : budget;
     return s->ready_at >= 0 && s->now >= s->ready_at;
@@ -22,7 +22,10 @@ int main(void) {
     const struct df_ready_ops ops = {now, sleep_ms, probe};
     struct clock_state immediate = {.ready_at = 0};
     struct df_ready_result r = df_wait_ready(&ops, &immediate);
-    assert(r.ready && r.elapsed_ms == 1000 && immediate.calls == 1);
+    assert(r.ready && r.elapsed_ms == 0 && immediate.calls == 1);
+    struct clock_state early = {.ready_at = 100, .cost = 20};
+    r = df_wait_ready(&ops, &early);
+    assert(r.ready && r.elapsed_ms >= 100 && r.elapsed_ms < 1000);
     struct clock_state delayed = {.ready_at = 2100, .cost = 20};
     r = df_wait_ready(&ops, &delayed);
     assert(r.ready && r.elapsed_ms >= 2100 && r.elapsed_ms < 2400);
@@ -38,5 +41,5 @@ int main(void) {
     struct clock_state missing_clock = {.ready_at = 0, .fail_clock = 1};
     r = df_wait_ready(&ops, &missing_clock);
     assert(!r.ready && missing_clock.now == 5000 && missing_clock.calls == 0);
-    puts("Adaptive native wait: PASS (6 clock/probe cases)");
+    puts("Adaptive native wait: PASS (7 clock/probe cases)");
 }
