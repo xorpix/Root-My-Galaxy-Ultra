@@ -73,12 +73,16 @@ class KernelSuFlavorTest {
     fun `each flavour names its own manager package and release`() {
         assertEquals("me.weishu.kernelsu", KernelSuFlavor.KernelSu.managerPackage)
         assertEquals("com.rifsxd.ksunext", KernelSuFlavor.KernelSuNext.managerPackage)
-        // KernelSU's UAPI 6 driver needs an official CI manager. The user can still name a version.
+        // Both UAPI 6 development drivers need official CI managers. A named version still wins.
         assertEquals("3.3.1", KernelSuFlavor.KernelSu.defaultManagerVersion)
-        assertEquals("3.4.0", KernelSuFlavor.KernelSuNext.defaultManagerVersion)
+        assertEquals("3.4.2", KernelSuFlavor.KernelSuNext.defaultManagerVersion)
         assertEquals(
             "https://github.com/tiann/KernelSU/actions",
             KernelSuFlavor.KernelSu.defaultManagerRelease.url,
+        )
+        assertEquals(
+            "https://github.com/KernelSU-Next/KernelSU-Next/actions",
+            KernelSuFlavor.KernelSuNext.defaultManagerRelease.url,
         )
 
         // ReSukiSU's own, and the one that is not shaped like the other two: it publishes every release
@@ -101,7 +105,6 @@ class KernelSuFlavorTest {
         // under, and the file inside it.
         for (flavor in KernelSuFlavor.entries) {
             if (flavor.defaultManagerAsset.isEmpty()) {
-                assertTrue(flavor == KernelSuFlavor.ReSukiSU || flavor == KernelSuFlavor.KernelSu)
                 assertEquals("https://github.com/${flavor.repository}/actions", flavor.defaultManagerRelease.url)
                 continue
             }
