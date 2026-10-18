@@ -284,7 +284,7 @@ jobs:
             echo "2. Perform a **full reboot** to replace the loaded backend and SusFS module. A soft reboot keeps the existing kernel modules loaded."
             echo "3. Activate root again through Root My Galaxy Ultra and enable SusFS in the updated app."
             echo
-            echo "Use a **UAPI 5-compatible manager** for your selected backend. Updating the manager alone does not replace the loaded driver."
+            echo "Use a manager compatible with the UAPI of your selected backend. Verified manager downloads are in the README. Updating the manager alone does not replace the loaded driver."
           } > release-notes.md
 
       - name: Create or update GitHub release

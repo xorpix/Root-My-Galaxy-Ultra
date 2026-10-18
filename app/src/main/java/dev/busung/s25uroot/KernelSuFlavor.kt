@@ -73,8 +73,9 @@ enum class KernelSuFlavor(
         label = "KernelSU-Next",
         managerPackage = "com.rifsxd.ksunext",
         repository = "KernelSU-Next/KernelSU-Next",
-        defaultManagerVersion = "3.4.0",
-        defaultManagerAsset = "KernelSU_Next_v3.4.0_33294-release.apk",
+        // The old 3.4.0 APK uses UAPI 4; the bundled development driver needs UAPI 6.
+        defaultManagerVersion = "3.4.2",
+        defaultManagerAsset = "",
         summaryRes = R.string.flavor_kernelsu_next_summary,
     ),
     ReSukiSU(

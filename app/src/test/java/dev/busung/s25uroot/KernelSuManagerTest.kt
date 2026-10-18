@@ -170,16 +170,15 @@ class KernelSuManagerTest {
     }
 
     @Test
-    fun `the offered release is the flavour's own default until one is named`() {
-        assertEquals(
-            "KernelSU_Next_v3.4.0_33294-release.apk",
-            KernelSuFlavor.KernelSuNext.defaultManagerRelease.assetName,
-        )
-        assertEquals(
-            "https://github.com/KernelSU-Next/KernelSU-Next/releases/download/v3.4.0/" +
-                "KernelSU_Next_v3.4.0_33294-release.apk",
-            KernelSuFlavor.KernelSuNext.defaultManagerRelease.url,
-        )
+    fun `bundled development drivers offer official CI managers by default`() {
+        for (flavor in KernelSuFlavor.entries) {
+            assertEquals("", flavor.defaultManagerAsset)
+            assertEquals(
+                "https://github.com/${flavor.repository}/actions",
+                flavor.defaultManagerRelease.url,
+            )
+        }
+        assertEquals("3.4.2", KernelSuFlavor.KernelSuNext.defaultManagerVersion)
     }
 
     /**
