@@ -5,7 +5,5 @@ object NativeProbe {
         System.loadLibrary("s25u_native")
     }
 
-    external fun run(): String
-
     external fun isKernelSuActive(): Boolean
 }

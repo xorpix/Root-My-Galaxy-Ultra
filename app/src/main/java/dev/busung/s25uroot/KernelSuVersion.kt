@@ -312,11 +312,6 @@ internal object KernelSuVersionProbe {
             cached?.let { return it }
         }
         val reading = runCatching { readNow() }.getOrNull() ?: KernelSuVersionReading()
-        AppLog.debug(
-            AppLogTags.KERNEL_SU,
-            "Read the running KernelSU: " +
-                "daemon=${reading.daemon ?: "no answer"}, kernel=${reading.kernelCode ?: "no answer"}",
-        )
         if (bootToken != null && reading.isRead) {
             cachedBootToken = bootToken
             cached = reading

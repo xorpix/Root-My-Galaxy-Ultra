@@ -1,7 +1,5 @@
 package dev.busung.s25uroot
 
-import android.util.Log
-
 /**
  * Asks KernelSU itself whether root is live, by running `su`.
  *
@@ -45,18 +43,15 @@ internal object SuProbe {
                 return false
             }
             val rooted = isRootAnswer(result)
-            Log.d(TAG, "su probe: exit=${result.exitCode} rooted=$rooted")
             if (!rooted) lastFailure = Failure.DENIED
             rooted
-        } catch (error: Throwable) {
+        } catch (_: Throwable) {
             // A refused start is how a non-manager app sees this: KernelSU's layer only answers
             // callers it allows, and everyone else gets ENOENT or EACCES from the exec itself.
-            Log.d(TAG, "su probe unavailable: ${error.javaClass.simpleName}")
             lastFailure = Failure.ABSENT
             false
         }
     }
 
-    private const val TAG = "RootMyGalaxySu"
     private const val PROBE_TIMEOUT_SECONDS = 3L
 }

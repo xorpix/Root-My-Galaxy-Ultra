@@ -224,7 +224,7 @@ class LocalAdbClient(
                         write(A_CLSE, localId, remoteId)
                         break
                     }
-                    A_OKAY -> AppLog.debug(AppLogTags.WIRELESS_ADB, "shell: stray OKAY ignored")
+                    A_OKAY -> Unit
                     else -> error(
                         "Unexpected message in shell: ${commandName(message.command)} arg0=${message.arg0}",
                     )
@@ -296,7 +296,7 @@ class LocalAdbClient(
                         write(A_CLSE, localId, remoteId)
                         break
                     }
-                    A_OKAY -> AppLog.debug(AppLogTags.WIRELESS_ADB, "shellStreaming: stray OKAY ignored")
+                    A_OKAY -> Unit
                     else -> error(
                         "Unexpected message in shellStreaming: " +
                             "${commandName(message.command)} arg0=${message.arg0}",

@@ -54,39 +54,6 @@ if [ -f /data/adb/ksud ] && [ ! -L /data/adb/ksud ]; then
         echo 'installed ksud unreadable; treating as mismatch' >&2
     fi
 fi
-# Read-only inventory of /data/adb for late-load panic forensics. Unconditional:
-# when a run panics at late-load, the exported log is cut short, so the state
-# the load saw must already be on screen. Names only, never contents; bounded,
-# and never fails the run.
-if [ -d /data/adb ] && [ ! -L /data/adb ]; then
-    adb_state_count=0
-    for entry in /data/adb/* /data/adb/.[!.]* /data/adb/..?*; do
-        if [ ! -e "$entry" ] && [ ! -L "$entry" ]; then continue; fi
-        if [ -L "$entry" ]; then
-            echo "ADB_TOP $entry symlink -> $(readlink "$entry")"
-        elif [ -d "$entry" ]; then
-            child_count=0
-            for child in "$entry"/*; do
-                if [ ! -e "$child" ] && [ ! -L "$child" ]; then continue; fi
-                child_count=$((child_count + 1))
-                if [ "$child_count" -le 12 ]; then
-                    echo "ADB_CHILD ${entry}/${child##*/}"
-                fi
-            done
-            echo "ADB_TOP $entry dir children=$child_count"
-        else
-            echo "ADB_TOP $entry file"
-        fi
-        adb_state_count=$((adb_state_count + 1))
-        if [ "$adb_state_count" -ge 40 ]; then
-            echo "ADB_TOP inventory truncated"
-            break
-        fi
-    done
-    find /data/adb -maxdepth 4 -iname '*mountify*' -o -iname '*metamount*' -o -iname '*meta*' -o -iname '*.img' 2>/dev/null | head -20 | while IFS= read -r hit; do
-        echo "ADB_HUNT $hit"
-    done
-fi
 # Recovery reset: when the wipe setting is on, remove every root leftover under
 # /data/adb itself - not just the module directories. A metamodule staged copy
 # outside modules/ re-runs and re-materializes modules after this script, and
@@ -122,7 +89,6 @@ fi
 # Fail here, loudly, instead of late-loading into a freeze-reboot.
 if [ "$wipe_requested" = 1 ]; then
     if [ "$alias_usable" != 1 ]; then
-        echo "WIPE_DEBUG alias unusable with wipe requested; refusing dirty load"
         echo 'Alias path unusable with wipe requested; refusing dirty load.' >&2
         exit 72
     fi
@@ -209,28 +175,6 @@ if [ -n "$temporary" ]; then
 else
     echo 'preparation receipt unwritable; continuing without it' >&2
 fi
-# Truth check, unconditional and last so output trimming cannot eat it: re-read
-# exactly what late-load is about to see. -1 means the directory could not even
-# be listed (access failure, not emptiness).
-nr_modules=-1; nr_update=-1
-if ls -A /data/adb/modules >/dev/null 2>&1; then
-    nr_modules=$(ls -A /data/adb/modules 2>/dev/null | wc -l)
-fi
-if ls -A /data/adb/modules_update >/dev/null 2>&1; then
-    nr_update=$(ls -A /data/adb/modules_update 2>/dev/null | wc -l)
-fi
-mm_link=$(readlink /data/adb/metamodule 2>/dev/null || echo none)
-mm_persist=$([ -e /data/adb/mountify ] && echo present || echo absent)
-al_modules=-1; al_update=-1
-if [ "$alias_usable" = 1 ]; then
-    if ls -A "$ADB_ALIAS/modules" >/dev/null 2>&1; then
-        al_modules=$(ls -A "$ADB_ALIAS/modules" 2>/dev/null | wc -l)
-    fi
-    if ls -A "$ADB_ALIAS/modules_update" >/dev/null 2>&1; then
-        al_update=$(ls -A "$ADB_ALIAS/modules_update" 2>/dev/null | wc -l)
-    fi
-fi
-echo "WIPE_DEBUG modules_remaining=$nr_modules update_remaining=$nr_update metamodule_link=$mm_link mountify_persist=$mm_persist alias_usable=$alias_usable alias_modules=$al_modules alias_update=$al_update"
 # Alias served its purpose; unmount on the normal path so no mirror outlives
 # this script. A panic-reboot clears mounts anyway; the next run clears stale.
 if [ "$alias_usable" = 1 ]; then

@@ -296,8 +296,7 @@ class EarlyRootService : Service() {
         fun start(context: Context) {
             context.startForegroundService(Intent(context, EarlyRootService::class.java)
                 .setAction(D2Protocol.EARLY_ROOT_ACTION)
-                .putExtra(D2Protocol.EARLY_ROOT_EVENT, Intent.ACTION_BOOT_COMPLETED)
-                .putExtra(D2Protocol.EARLY_ROOT_REQUEST_UPTIME, BootSettle.elapsedMillis()))
+                .putExtra(D2Protocol.EARLY_ROOT_EVENT, Intent.ACTION_BOOT_COMPLETED))
         }
     }
 }
