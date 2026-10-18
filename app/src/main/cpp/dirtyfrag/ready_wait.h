@@ -2,7 +2,6 @@
 #include <stdint.h>
 
 #define DF_READY_LIMIT_MS 5000
-#define DF_READY_MIN_MS 1000
 #define DF_READY_PROBE_MS 150
 #define DF_READY_INTERVAL_MS 250
 
@@ -13,14 +12,13 @@ struct df_ready_ops {
 };
 struct df_ready_result { int64_t elapsed_ms; int ready; };
 
-/** Keep the orphan's one-second trigger window; readiness may shorten only the old five-second wait. */
+/** Reparenting gates the trigger; only a completed root command may end this five-second window. */
 static inline struct df_ready_result df_wait_ready(const struct df_ready_ops *ops, void *context) {
     int64_t start = ops->now_ms(context), elapsed = 0;
     if (start < 0) {
         ops->sleep_ms(context, DF_READY_LIMIT_MS);
         return (struct df_ready_result){DF_READY_LIMIT_MS, 0};
     }
-    ops->sleep_ms(context, DF_READY_MIN_MS);
     while (1) {
         int64_t now = ops->now_ms(context);
         if (now < start + elapsed) {

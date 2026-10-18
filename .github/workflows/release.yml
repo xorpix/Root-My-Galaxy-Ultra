@@ -3,7 +3,7 @@ name: Release Build
 on:
   push:
     branches: [main]
-    paths: ['docs/release-notes/1.2.13.md']
+    paths: ['docs/release-notes/1.2.14.md']
   workflow_dispatch:
     inputs:
       tag_name:
@@ -20,9 +20,9 @@ concurrency:
 
 jobs:
   build:
-    # The authorized 1.2.13 merge starts the existing checked publishing path.
+    # The authorized 1.2.14 merge starts the existing checked publishing path.
     # Ordinary note edits do not publish; manual dispatch remains available.
-    if: github.event_name != 'push' || startsWith(github.event.head_commit.message, 'Release 1.2.13')
+    if: github.event_name != 'push' || startsWith(github.event.head_commit.message, 'Release 1.2.14')
     name: Release Build
     runs-on: ubuntu-latest
     timeout-minutes: 60

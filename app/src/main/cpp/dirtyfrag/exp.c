@@ -21,6 +21,7 @@
 #include "aes256.h"
 #include "hmac_sha256.h"
 #include "ready_wait.h"
+#include "orphan_wait.h"
 #include <time.h>
 
 static jmethodID report_mid;
@@ -533,7 +534,7 @@ static int createOrphanProcess(struct Reporter *reporter) {
     if (pid < 0) { REPORTLN("fork failed: %s", strerror(errno)); return -1; }
     if (pid == 0) {
         int pid2 = fork();
-        if (pid2 == 0) { sleep(1); _exit(0); }
+        if (pid2 == 0) { df_wait_for_adopter(1); _exit(0); }
         _exit(0);
     }
     TEMP_FAILURE_RETRY(waitpid(pid, NULL, 0));

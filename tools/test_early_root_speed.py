@@ -35,6 +35,10 @@ class EarlyRootSpeedTests(unittest.TestCase):
                         '-I', str(ROOT / 'app/src/main/cpp/dirtyfrag'),
                         str(fixtures / 'ready_wait_harness.c'), '-o', str(cls.work / 'ready-wait')],
                        check=True, text=True)
+        subprocess.run([cls.cc, '-std=c11', '-Wall', '-Wextra', '-Werror',
+                        '-I', str(ROOT / 'app/src/main/cpp/dirtyfrag'),
+                        str(fixtures / 'orphan_wait_harness.c'), '-o', str(cls.work / 'orphan-wait')],
+                       check=True, text=True)
 
     def java_check(self, name, *args):
         result = subprocess.run([self.java, '-cp', str(self.work), name, *args],
@@ -45,8 +49,13 @@ class EarlyRootSpeedTests(unittest.TestCase):
     def test_uid_probe_uses_completed_commands_and_bounded_pipe_reads(self):
         self.java_check('dev.busung.s25uroot.ReadyProbeHarness')
 
-    def test_native_wait_keeps_trigger_window_and_fallback_deadline(self):
+    def test_native_wait_requires_root_proof_and_keeps_fallback_deadline(self):
         result = subprocess.run([str(self.work / 'ready-wait')], check=True, capture_output=True, text=True, timeout=2)
+        self.assertIn('PASS', result.stdout)
+        print(result.stdout.strip(), flush=True)
+
+    def test_native_trigger_observes_real_reparenting_and_keeps_fallback(self):
+        result = subprocess.run([str(self.work / 'orphan-wait')], check=True, capture_output=True, text=True, timeout=4)
         self.assertIn('PASS', result.stdout)
         print(result.stdout.strip(), flush=True)
 
