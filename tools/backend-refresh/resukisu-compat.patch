@@ -1,5 +1,5 @@
 diff --git a/kernel/Kbuild b/kernel/Kbuild
-index b7655cb3a49077678ef7055ee5fd6cb6a0b44b5d..6c0e15421293d2fc904dcf8156acfe4bd4e47076 100644
+index 518b1aece067747f6f341da44cb5f738ba749b3b..e479045bed4395c59f69d5eb42b28dc07a6b3e97 100644
 --- a/kernel/Kbuild
 +++ b/kernel/Kbuild
 @@ -18,6 +18,8 @@ kernelsu-objs += manager/manager.o
@@ -898,10 +898,10 @@ index 1ab6befecaad2fa0e7e3e2b0ecb249c26fe5d6f2..33a8787b766ea77884b5670e81891358
  
  /*
 diff --git a/kernel/hook/arm64/syscall_hook.c b/kernel/hook/arm64/syscall_hook.c
-index 5f5b32c641cccd17668fd3ef7df47c2b8345d138..d9bcb8364d779a82ae0b776fc574398ad6b0a984 100644
+index c7ef5b3f392e70cdbb9e80f41215a9b0e213f855..89c7717d3cfe05096fb5245e8a3ba4e5f475a5c0 100644
 --- a/kernel/hook/arm64/syscall_hook.c
 +++ b/kernel/hook/arm64/syscall_hook.c
-@@ -48,13 +48,21 @@ static int patch_syscall_table(int nr, syscall_fn_t fn)
+@@ -99,13 +99,21 @@ static int patch_compat_syscall_table(int nr, syscall_fn_t fn)
  
  // Direct syscall table patching: overwrite syscall_table[nr] with fn,
  // save original to *old, and record for restoration at module exit.
@@ -926,7 +926,7 @@ index 5f5b32c641cccd17668fd3ef7df47c2b8345d138..d9bcb8364d779a82ae0b776fc574398a
      }
  
      mutex_lock(&hooked_entries_lock);
-@@ -72,19 +80,26 @@ void ksu_syscall_table_hook(int nr, syscall_fn_t fn, syscall_fn_t *old)
+@@ -123,19 +131,26 @@ void ksu_syscall_table_hook(int nr, syscall_fn_t fn, syscall_fn_t *old)
              break;
          }
      }
@@ -961,8 +961,8 @@ index 5f5b32c641cccd17668fd3ef7df47c2b8345d138..d9bcb8364d779a82ae0b776fc574398a
 +    return 0;
  }
  
- // Restore syscall_table[nr] to its original value and remove from tracking list.
-@@ -216,7 +231,17 @@ void __init ksu_syscall_hook_init(void)
+ #ifdef CONFIG_COMPAT
+@@ -446,7 +461,17 @@ void __init ksu_syscall_hook_init(void)
      }
  
      ksu_dispatcher_nr = ni_slot;
@@ -979,13 +979,13 @@ index 5f5b32c641cccd17668fd3ef7df47c2b8345d138..d9bcb8364d779a82ae0b776fc574398a
 +        return;
 +    }
      pr_info("dispatcher installed at slot %d\n", ksu_dispatcher_nr);
- }
- 
+ #ifdef CONFIG_COMPAT
+ init_compat_dispatcher:
 diff --git a/kernel/hook/syscall_hook.h b/kernel/hook/syscall_hook.h
-index d4921bf9b988aa9e8dbc1cc5423a21603824ed96..5088b344255fea8ec078fa3baa49aac60e65d572 100644
+index 47df6b9136f668607310cdf8afe005466a43d398..cfa270897abdc3592b0fc308ebd3d051eeb279b7 100644
 --- a/kernel/hook/syscall_hook.h
 +++ b/kernel/hook/syscall_hook.h
-@@ -39,7 +39,10 @@ bool ksu_has_syscall_hook(int nr);
+@@ -49,7 +49,10 @@ bool ksu_has_syscall_hook(int nr);
  // Saves the original handler to *@old (if non-NULL) and records the entry
  // for restoration at module exit. Use this for boot-time hooks that replace
  // a real syscall entry (e.g. ksud hooking __NR_execve/__NR_read/__NR_fstat).
@@ -998,7 +998,7 @@ index d4921bf9b988aa9e8dbc1cc5423a21603824ed96..5088b344255fea8ec078fa3baa49aac6
  // Restore syscall_table[@nr] to its original value recorded by
  // ksu_syscall_table_hook(), and remove the entry from the tracking list.
 diff --git a/kernel/hook/syscall_hook_manager.c b/kernel/hook/syscall_hook_manager.c
-index 30c23726d5932bc502ed65a2a3f15e0e36aa4800..0519679120578cbe79c0b12da5d2e0f2b996e1a4 100644
+index 5dd1f2be2299c99fcf6425133353bc0d764b0708..15394f18f5c1373f12bae69aa79d09ad0563112c 100644
 --- a/kernel/hook/syscall_hook_manager.c
 +++ b/kernel/hook/syscall_hook_manager.c
 @@ -5,6 +5,7 @@
@@ -1009,7 +1009,7 @@ index 30c23726d5932bc502ed65a2a3f15e0e36aa4800..0519679120578cbe79c0b12da5d2e0f2
  #include <trace/events/syscalls.h>
  
  #include <linux/version.h>
-@@ -24,6 +25,327 @@
+@@ -26,6 +27,327 @@
  #if defined(__riscv)
  #include "hook/riscv64/syscall_regs.h"
  #endif
@@ -1337,7 +1337,7 @@ index 30c23726d5932bc502ed65a2a3f15e0e36aa4800..0519679120578cbe79c0b12da5d2e0f2
  
  #ifdef CONFIG_KRETPROBES
  
-@@ -132,6 +454,31 @@ void __init ksu_syscall_hook_manager_init(void)
+@@ -160,6 +482,31 @@ void __init ksu_syscall_hook_manager_init(void)
      int ret;
      pr_info("hook_manager: ksu_hook_manager_init called\n");
  
@@ -1369,7 +1369,7 @@ index 30c23726d5932bc502ed65a2a3f15e0e36aa4800..0519679120578cbe79c0b12da5d2e0f2
  #ifdef CONFIG_KRETPROBES
      syscall_regfunc_rp = init_kretprobe("syscall_regfunc", syscall_regfunc_handler);
      syscall_unregfunc_rp = init_kretprobe("syscall_unregfunc", syscall_unregfunc_handler);
-@@ -163,6 +510,23 @@ void __init ksu_syscall_hook_manager_init(void)
+@@ -199,6 +546,23 @@ void __init ksu_syscall_hook_manager_init(void)
  void __exit ksu_syscall_hook_manager_exit(void)
  {
      pr_info("hook_manager: ksu_hook_manager_exit called\n");
