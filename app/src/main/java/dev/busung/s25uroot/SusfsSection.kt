@@ -7,6 +7,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -17,17 +18,25 @@ private data class SusfsRow(
 )
 
 private fun rowState(context: android.content.Context): SusfsRow {
-    if (!AppPreferences.susfsAutoEnable(context)) return SusfsRow("Off", false)
+    val automatic = AppPreferences.susfsAutoEnable(context)
     val boot = AutoRootSupport.currentBootToken()
     val active = AppPreferences.susfsState(context) == "active" &&
         AppPreferences.susfsBootToken(context) != null &&
         AppPreferences.susfsBootToken(context) == boot
-    return if (active) {
-        val version = AppPreferences.susfsVersion(context).ifBlank { "unknown version" }
-        SusfsRow("Active · $version", true)
-    } else {
-        SusfsRow("Unknown — enables on the next run", false)
+    val version = AppPreferences.susfsVersion(context)
+        .ifBlank { context.getString(R.string.settings_susfs_version_unknown) }
+    val state = SettingsPresentation.susfsState(automatic, active)
+    val value = when (state) {
+        SettingsPresentation.SusfsState.ACTIVE ->
+            context.getString(R.string.settings_susfs_active, version)
+        SettingsPresentation.SusfsState.ACTIVE_UNTIL_REBOOT ->
+            context.getString(R.string.settings_susfs_active_until_reboot, version)
+        SettingsPresentation.SusfsState.PENDING ->
+            context.getString(R.string.settings_susfs_pending)
+        SettingsPresentation.SusfsState.OFF ->
+            context.getString(R.string.settings_susfs_off)
     }
+    return SusfsRow(value, active)
 }
 
 @Composable
@@ -72,12 +81,11 @@ internal fun SusfsSection() {
 
     SettingsSwitchCard(
         icon = Icons.Rounded.VisibilityOff,
-        title = "SusFS · experimental",
-        description = "Enable SusFS automatically after rooting. A full reboot clears it; turning it off " +
-            "while active takes effect on reboot.",
+        title = stringResource(R.string.settings_susfs_title),
+        description = stringResource(R.string.settings_susfs_summary),
         checked = autoEnabled,
         position = SettingsCardPosition.Top,
-        enabled = !busy && compatibility == null,
+        enabled = SettingsPresentation.canChangeSusfs(autoEnabled, busy, compatibility == null),
         onCheckedChange = { enabled ->
             if (enabled) {
                 AppPreferences.setSusfsAutoEnable(context, true)
@@ -95,11 +103,11 @@ internal fun SusfsSection() {
     )
     SettingsCard(
         icon = Icons.Rounded.VisibilityOff,
-        title = "SusFS status",
-        description = "Last activation result on this device. No live checks run from here.",
+        title = stringResource(R.string.settings_susfs_status_title),
+        description = stringResource(R.string.settings_susfs_status_summary),
         value = row.value,
         notice = compatibility
-            ?: untested?.let { "Untested kernel — attempt only, verified by feature check." },
+            ?: untested?.let { stringResource(R.string.settings_susfs_untested) },
         position = SettingsCardPosition.Bottom,
         busy = busy,
         enabled = false,
@@ -108,12 +116,10 @@ internal fun SusfsSection() {
     if (confirmOff) {
         AlertDialog(
             onDismissRequest = { confirmOff = false },
-            title = { Text("Turn SusFS off?") },
+            title = { Text(stringResource(R.string.settings_susfs_off_title)) },
             text = {
                 Text(
-                    "SusFS cannot unload while running: it stays active until you reboot. " +
-                        "Before rebooting, turn off any modules that interact with SusFS " +
-                        "(hiding, mounts), or they may misbehave on a SusFS-less boot.",
+                    stringResource(R.string.settings_susfs_off_body),
                 )
             },
             confirmButton = {
@@ -122,11 +128,12 @@ internal fun SusfsSection() {
                     autoEnabled = false
                     confirmOff = false
                     refreshRow()
-                }) { Text("Turn off") }
+                }) { Text(stringResource(R.string.settings_susfs_turn_off)) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmOff = false }) { Text("Cancel") }
+                TextButton(onClick = { confirmOff = false }) { Text(stringResource(R.string.action_cancel)) }
             },
         )
     }
 }
+

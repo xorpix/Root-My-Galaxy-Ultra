@@ -484,7 +484,7 @@ class MainActivity : ComponentActivity() {
                     },
                     onBootSettleChanged = { seconds ->
                         AppPreferences.setBootSettleSeconds(this, seconds)
-                        bootSettleSeconds = seconds
+                        bootSettleSeconds = AppPreferences.bootSettleSeconds(this)
                     },
                     onAutoRootSettleChanged = { seconds ->
                         AppPreferences.setAutoRootSettleSeconds(this, seconds)
@@ -936,64 +936,38 @@ private fun RootApp(
     LaunchedEffect(installState.phase) {
         cachedPayload = withContext(Dispatchers.IO) { KnownGoodPayloadStore.describe(context) }
     }
-    // Built on demand rather than on every recomposition: it reads the boot id to report the
-    // cached offset, and only the run-plan dialog needs it.
+    // A presentation-only summary of the selected bundled profile.
     val runPlan: () -> RunPlanDisplay = {
-        // Offline mode resolves nothing: the run it is about to start is the cached payload, so the
-        // plan describes that one. Reading the catalog here would describe a run the mode exists to
-        // avoid, and an offline plan that named some other target's source would be a plan about
-        // another app's run.
-        val resolved = if (payloadMode == PayloadMode.Offline) {
-            cachedPayload?.profile()
-        } else {
-            targetCatalog.profiles.resolveFor(device)
-        }
-        val freshSession = resolved?.requiresFreshP0Session == true
-        val cachedOffset = installViewModel.cachedOffsetForThisBoot()
+        val resolved = selectedProfile?.takeIf {
+            it.flavor == kernelsuFlavor && it.matches(device)
+        } ?: targetCatalog.profiles.resolveFor(device, kernelsuFlavor)
+        val azhl = resolved?.let { AzhlCatalog.isM3qPayload(it) } == true
+        val dirtyFrag = resolved?.let { DfCatalog.isDfPayload(it) } == true
         RunPlanDisplay(
-            deviceLabel = "${device.model} \u00b7 ${device.kernelRelease}",
-            targetLabel = resolved?.let { "${it.displayName} (${it.profileId})" },
-            // The revision is named when the catalog resolved one, because "which branch" and "which
-            // revision of it" are different answers and only the second one is reproducible.
-            sourceLabel = resolved?.sourceLabel?.takeIf(String::isNotBlank)?.let { label ->
-                resolved.sourceCommit.takeIf(String::isNotBlank)
-                    ?.let { "$label @ ${it.take(7)}" }
-                    ?: label
-            },
-            unresolvedNote = if (resolved != null) {
-                null
-            } else when {
-                payloadMode == PayloadMode.Offline ->
-                    context.getString(R.string.run_plan_offline_no_cache)
+            deviceLabel = device.model + " · " + device.kernelRelease,
+            backendLabel = kernelsuFlavor.label,
+            targetLabel = resolved?.let { it.displayName + " (" + it.profileId + ")" },
+            sourceLabel = resolved?.sourceLabel?.takeIf(String::isNotBlank),
+            unresolvedNote = if (resolved != null) null else when {
                 targetCatalog.loading -> context.getString(R.string.run_plan_catalog_loading)
                 targetCatalog.error != null -> targetCatalog.error
-                targetCatalog.profiles.isEmpty() -> context.getString(R.string.run_plan_catalog_empty)
                 else -> context.getString(R.string.run_plan_no_target)
             },
-            freshSession = freshSession,
-            shizuku = shizukuMode,
-            payloadMode = payloadMode,
+            methodLabel = context.getString(when {
+                azhl -> R.string.settings_plan_method_azhl
+                dirtyFrag -> R.string.settings_plan_method_df
+                else -> R.string.settings_plan_method_unavailable
+            }),
+            transportLabel = context.getString(when {
+                azhl -> R.string.settings_plan_transport_azhl
+                dirtyFrag -> R.string.settings_plan_transport_df
+                else -> R.string.settings_plan_method_unavailable
+            }),
             partitionReadOnly = partitionReadOnly,
-            cachedOffset = cachedOffset,
-            // The policy a run would actually use, resolved here from the same stored override a run
-            // reads - so the preview shows the environment the run will get and names the side that
-            // chose each of the three numbers a user can move.
-            plan = InstallViewModel.exploitPlan(
-                freshSession,
-                cachedOffset,
-                shizukuMode,
-                ExploitOverride.resolve(
-                    policy = resolved?.routePolicy ?: ExploitRoutePolicy.LEGACY,
-                    override = AppPreferences.exploitOverride(context),
-                    freshSession = freshSession,
-                ),
-                AppPreferences.bootSettleSeconds(context),
-                // The same resolution a run performs, from the same stored values: a plan that showed
-                // the defaults while the run enforced the user's choices would be a plan about another
-                // app's run.
-                RunLimits.resolve(AppPreferences.runLimits(context), freshSession),
-                resolved?.let { AzhlCatalog.isM3qPayload(it) } == true,
-            ),
+            manualSettleSeconds = if (azhl) AppPreferences.bootSettleSeconds(context) else null,
+            ceilings = if (azhl) RunLimits.resolve(
+                AppPreferences.runLimits(context), resolved?.requiresFreshP0Session == true,
+            ) else null,
         )
     }
     val startDownload: (UpdateInfo) -> Unit = { info ->
@@ -1054,6 +1028,7 @@ private fun RootApp(
         TargetSelectionSheet(
             device = device,
             catalog = targetCatalog,
+            flavor = kernelsuFlavor,
             onDismiss = { showTargetPicker = false },
             onRetry = installViewModel::loadTargetCatalog,
             onNext = { profile ->
@@ -3619,9 +3594,8 @@ private fun SettingsPage(
     val context = LocalContext.current
     val view = LocalView.current
     val scope = rememberCoroutineScope()
-    // Obsolete rows (unsettable settle, unenforced limits, run-transport
-    // Shizuku switch) stay for AZHL firmware and hide on DirtyFrag firmware, where
-    // DirtyFrag neither reads nor honors them.
+    // Settings follow the existing firmware/method match, not the Android version label.
+    val isAzhlDevice = AzhlPort.identity.matches(device)
     val isDfDevice = DfPort.matches(device)
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showFlavorDialog by remember { mutableStateOf(false) }
@@ -3642,7 +3616,6 @@ private fun SettingsPage(
         // app for exactly one reason: to compare it against what something else reports seeing.
         AppLog.info(AppLogTags.STAGING, report.logLine(context))
     }
-    var showShizukuMissingDialog by remember { mutableStateOf(false) }
     var showWipeConfirm by remember { mutableStateOf(false) }
     // Read live, not once at composition: Shizuku hands out its binder asynchronously after the
     // service starts, so a snapshot taken while the screen is being built can say "not running" about
@@ -3699,44 +3672,15 @@ private fun SettingsPage(
     val density = LocalDensity.current
     val currentLanguageTag = AppPreferences.languageTag(context)
 
-    if (showShizukuMissingDialog) {
-        AlertDialog(
-            onDismissRequest = { showShizukuMissingDialog = false },
-            icon = { Icon(Icons.Rounded.Info, contentDescription = null) },
-            title = {
-                DialogDimAmount(0.34f)
-                Text(stringResource(R.string.shizuku_not_running_title))
-            },
-            text = { Text(stringResource(R.string.shizuku_not_running_body)) },
-            confirmButton = {
-                FilledTonalButton(onClick = {
-                    clickHaptic(view)
-                    showShizukuMissingDialog = false
-                    openShizukuManager(context)
-                }) {
-                    Text(stringResource(R.string.action_download_shizuku))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    clickHaptic(view)
-                    showShizukuMissingDialog = false
-                }) {
-                    Text(stringResource(R.string.action_cancel))
-                }
-            },
-        )
-    }
-
     if (showWipeConfirm) {
         AlertDialog(
             onDismissRequest = { showWipeConfirm = false },
             icon = { Icon(Icons.Rounded.Delete, contentDescription = null) },
             title = {
                 DialogDimAmount(0.34f)
-                Text(stringResource(R.string.azhl_wipe_confirm_title))
+                Text(stringResource(if (isDfDevice) R.string.settings_reset_modules_confirm_title else R.string.azhl_wipe_confirm_title))
             },
-            text = { Text(stringResource(R.string.azhl_wipe_confirm_body)) },
+            text = { Text(stringResource(if (isDfDevice) R.string.settings_reset_modules_confirm_body else R.string.azhl_wipe_confirm_body)) },
             confirmButton = {
                 FilledTonalButton(onClick = {
                     clickHaptic(view)
@@ -4046,7 +3990,9 @@ private fun SettingsPage(
     }
 
     if (showBootSettleDialog) {
-        val settled = BootSettle.allowedSeconds
+        val settled = SettingsPresentation.manualSettleChoices(
+            BootSettle.allowedSeconds.toIntArray(), 180,
+        ).toList()
         SideChoiceMenu(
             choices = settled.map { BootSettle.label(it) },
             selectedIndex = settled.indexOf(bootSettleSeconds).coerceAtLeast(0),
@@ -4282,6 +4228,7 @@ private fun SettingsPage(
                     description = stringResource(R.string.bundled_payloads_description),
                     value = stringResource(R.string.bundled_payloads_included),
                     position = SettingsCardPosition.GroupedSingle,
+                    enabled = false,
                     onClick = {},
                 )
             }
@@ -4315,8 +4262,8 @@ private fun SettingsPage(
                 )
                 SettingsSwitchCard(
                     icon = Icons.Rounded.Delete,
-                    title = stringResource(R.string.azhl_wipe_module_state),
-                    description = stringResource(R.string.azhl_wipe_module_state_description),
+                    title = stringResource(if (isDfDevice) R.string.settings_reset_modules_title else R.string.azhl_wipe_module_state),
+                    description = stringResource(if (isDfDevice) R.string.settings_reset_modules_summary else R.string.azhl_wipe_module_state_description),
                     checked = wipeModuleState,
                     position = SettingsCardPosition.Middle,
                     enabled = loadKernelSu,
@@ -4381,7 +4328,7 @@ private fun SettingsPage(
                         },
                     )
                 }
-                if (!isDfDevice) {
+                if (isAzhlDevice) {
                     SettingsCard(
                         modifier = Modifier.onGloballyPositioned { coordinates ->
                             bootSettleMenuTop = with(density) { coordinates.positionInWindow().y.toDp() }
@@ -4397,7 +4344,7 @@ private fun SettingsPage(
                         },
                     )
                 }
-                if (!isDfDevice) {
+                if (isAzhlDevice) {
                     SettingsCard(
                         icon = Icons.Rounded.Timer,
                         title = stringResource(R.string.settings_run_limits),
@@ -4436,54 +4383,24 @@ private fun SettingsPage(
         )
         if (SettingsSection.Shizuku in openSections) item {
             SettingsSectionBody {
-                // Obsolete on DirtyFrag firmware: DirtyFrag forces app transport.
-                if (!isDfDevice) {
-                    SettingsSwitchCard(
-                    // The transport a run is handed to, which is why it sits with the other two
-                    // Shizuku decisions rather than under appearance.
-                    // A shell, matching the section heading and the app this row is about. It wore the
-                    // shield-with-a-tick, which is the Manager row's mark - the app that owns root - and
-                    // read as a second root row sitting in the Shizuku section.
-                    icon = Icons.Rounded.Terminal,
-                    title = stringResource(R.string.shizuku_mode),
-                    // The preference is the user's intent and is left alone when Shizuku cannot honour
-                    // it; what changes here is that the row stops describing an unusable preference as
-                    // if it were working. Read live, so a permission revoked in the Shizuku app - which
-                    // this app gets no callback for - shows up here rather than at the next run.
-                    description = stringResource(
-                        when {
-                            !shizukuMode -> R.string.shizuku_mode_description
-                            shizukuAvailability == ShizukuAvailability.WithoutPermission ->
-                                R.string.shizuku_mode_without_permission
-                            shizukuAvailability == ShizukuAvailability.NotRunning ->
-                                R.string.shizuku_mode_not_running
-                            else -> R.string.shizuku_mode_description
+                if (isAzhlDevice) {
+                    SettingsCard(
+                        icon = Icons.Rounded.Terminal,
+                        title = stringResource(R.string.settings_shizuku_required),
+                        description = stringResource(
+                            if (shizukuMode) R.string.settings_shizuku_required_summary
+                            else R.string.settings_shizuku_enable_required_summary,
+                        ),
+                        value = stringResource(
+                            if (shizukuMode) R.string.settings_required
+                            else R.string.settings_enable_required,
+                        ),
+                        enabled = !shizukuMode,
+                        position = SettingsCardPosition.Top,
+                        onClick = {
+                            clickHaptic(view)
+                            onShizukuModeChanged(true)
                         },
-                    ),
-                    checked = shizukuMode,
-                    position = SettingsCardPosition.Top,
-                    onCheckedChange = { enabled ->
-                        clickHaptic(view)
-                        if (!enabled) {
-                            onShizukuModeChanged(false)
-                        } else {
-                            // Read at the moment of the tap, not from what was drawn: between the two
-                            // the user may have just come back from the Shizuku app.
-                            when (shizukuModeEnableRoute(ShizukuController.availability())) {
-                                ShizukuModeEnable.Enable -> onShizukuModeChanged(true)
-                                ShizukuModeEnable.RequestPermission -> scope.launch {
-                                    // Stored only once the grant lands. Turning the preference on first
-                                    // and asking afterwards leaves the app preferring a transport it is
-                                    // not allowed to use - and leaves this switch saying it is.
-                                    if (requestShizukuPermission()) {
-                                        onShizukuModeChanged(true)
-                                    }
-                                    shizukuAvailability = ShizukuController.availability()
-                                }
-                                ShizukuModeEnable.ExplainMissing -> showShizukuMissingDialog = true
-                            }
-                        }
-                    },
                     )
                 }
                 // The row says which state Shizuku is in and offers the one action that is still
@@ -4516,7 +4433,7 @@ private fun SettingsPage(
                             stringResource(R.string.settings_shizuku_state_needs_permission)
                         else -> ""
                     },
-                    position = if (isDfDevice) SettingsCardPosition.Top else SettingsCardPosition.Middle,
+                    position = if (isAzhlDevice) SettingsCardPosition.Middle else SettingsCardPosition.Top,
                     enabled = shizukuAvailability != ShizukuAvailability.Ready,
                     onClick = {
                         // Asked again here rather than trusting what was drawn: permission can be
@@ -4587,7 +4504,11 @@ private fun SettingsPage(
                 SettingsCard(
                     icon = Icons.Rounded.Link,
                     title = stringResource(R.string.settings_wireless_adb),
-                    description = stringResource(R.string.settings_wireless_adb_summary),
+                    description = stringResource(when {
+                        isDfDevice -> R.string.settings_wireless_adb_summary_df
+                        isAzhlDevice -> R.string.settings_wireless_adb_summary_azhl
+                        else -> R.string.settings_wireless_adb_summary
+                    }),
                     value = if (snapshot == null) {
                         ""
                     } else {
@@ -4883,17 +4804,14 @@ private fun SettingsPage(
                 // The load decision follows the flavour because the rest of the group depends on it:
                 // root on boot exists to put KernelSU back after a reboot, and a boot run with
                 // nothing to load is not a boot run at all.
-                SettingsSwitchCard(
+                SettingsCard(
                     icon = Icons.Rounded.Memory,
                     title = stringResource(R.string.settings_ksu_load),
                     description = stringResource(R.string.azhl_settings_ksu_load_summary),
-                    checked = true,
+                    value = stringResource(R.string.settings_required),
                     enabled = false,
                     position = SettingsCardPosition.Middle,
-                    onCheckedChange = { enabled ->
-                        clickHaptic(view)
-                        onLoadKernelSuChanged(enabled)
-                    },
+                    onClick = {},
                 )
                 SettingsSwitchCard(
                     // The same bolt the Shizuku-at-boot row uses, because the two rows mean the same
@@ -5512,6 +5430,7 @@ private fun tempEntryLine(context: Context, entry: TempEntry): String {
 private fun TargetSelectionSheet(
     device: DeviceSnapshot,
     catalog: TargetCatalogUiState,
+    flavor: KernelSuFlavor,
     onDismiss: () -> Unit,
     onRetry: () -> Unit,
     onNext: (TargetProfile) -> Unit,
@@ -5522,24 +5441,28 @@ private fun TargetSelectionSheet(
     // the wrong target gets picked.
     var showOnlyMyDevice by remember { mutableStateOf(AppPreferences.targetFitsDeviceOnly(context)) }
     var query by rememberSaveable { mutableStateOf("") }
-    var selectedSelectionId by remember { mutableStateOf<String?>(null) }
+    var selectedSelectionId by remember(flavor) { mutableStateOf<String?>(null) }
     val view = LocalView.current
-    val visibleProfiles = remember(catalog.profiles, showOnlyMyDevice, device, query) {
+    val backendProfiles = remember(catalog.profiles, flavor) {
+        catalog.profiles.filter { it.flavor == flavor }
+    }
+    val visibleProfiles = remember(backendProfiles, showOnlyMyDevice, device, query) {
         visibleTargets(
-            profiles = catalog.profiles,
+            profiles = backendProfiles,
             device = device,
             fitsDeviceOnly = showOnlyMyDevice,
             query = query,
         )
     }
-    val selectedProfile = catalog.profiles.firstOrNull { it.selectionId == selectedSelectionId }
+    val selectedProfile = backendProfiles.firstOrNull { it.selectionId == selectedSelectionId }
+        ?.takeIf { it.matches(device) }
 
     // Preselect what the catalog prefers, so a device whose feed lists an exact kernel release
     // starts on that profile instead of an arbitrary three-part sibling. Only fills an empty
     // selection: a profile the user picked is never replaced by a catalog reload.
-    LaunchedEffect(catalog.profiles) {
-        if (selectedSelectionId == null) {
-            selectedSelectionId = catalog.profiles.resolveFor(device)?.selectionId
+    LaunchedEffect(backendProfiles, device, flavor) {
+        if (backendProfiles.none { it.selectionId == selectedSelectionId }) {
+            selectedSelectionId = backendProfiles.resolveFor(device, flavor)?.selectionId
         }
     }
 
@@ -5562,7 +5485,7 @@ private fun TargetSelectionSheet(
                     style = MaterialTheme.typography.headlineSmall,
                 )
                 Text(
-                    stringResource(R.string.select_device_description),
+                    stringResource(R.string.settings_manual_profile_help, flavor.label),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
@@ -5682,6 +5605,7 @@ private fun TargetSelectionSheet(
                 ) {
                     items(visibleProfiles, key = { it.selectionId }) { profile ->
                         val selected = selectedSelectionId == profile.selectionId
+                        val available = profile.matches(device)
                         val matchingModel = profile.models.firstOrNull {
                             it.equals(device.model, ignoreCase = true)
                         }
@@ -5706,6 +5630,7 @@ private fun TargetSelectionSheet(
                                     .fillMaxWidth()
                                     .selectable(
                                         selected = selected,
+                                        enabled = available,
                                         role = Role.RadioButton,
                                         onClick = {
                                             clickHaptic(view)
@@ -5716,7 +5641,7 @@ private fun TargetSelectionSheet(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-                                RadioButton(selected = selected, onClick = null)
+                                RadioButton(selected = selected, enabled = available, onClick = null)
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         profile.displayName,
@@ -5727,6 +5652,13 @@ private fun TargetSelectionSheet(
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
+                                    if (!available) {
+                                        Text(
+                                            stringResource(R.string.settings_profile_unavailable),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.error,
+                                        )
+                                    }
                                     Text(
                                         when (kernelMatch) {
                                             KernelMatch.Exact ->
@@ -5807,20 +5739,19 @@ private fun TargetSelectionSheet(
 }
 
 /**
- * Everything the run-plan dialog reports: which target the app would pick, which transport it
- * would use, and the environment and ceilings that go with them.
+ * The selected bundled profile, its required transport, and the settings that apply to it.
  */
 private data class RunPlanDisplay(
     val deviceLabel: String,
+    val backendLabel: String,
     val targetLabel: String?,
     val sourceLabel: String?,
     val unresolvedNote: String?,
-    val freshSession: Boolean,
-    val shizuku: Boolean,
-    val payloadMode: PayloadMode,
+    val methodLabel: String,
+    val transportLabel: String,
     val partitionReadOnly: Boolean,
-    val cachedOffset: String?,
-    val plan: ExploitPlan,
+    val manualSettleSeconds: Int?,
+    val ceilings: RunCeilings?,
 )
 
 /**
@@ -5926,39 +5857,20 @@ private fun RunPlanDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 RunPlanRow(stringResource(R.string.run_plan_device), display.deviceLabel, first = true)
+                RunPlanRow(stringResource(R.string.settings_plan_backend), display.backendLabel)
                 RunPlanRow(
                     stringResource(R.string.run_plan_target),
                     display.targetLabel ?: display.unresolvedNote.orEmpty(),
                 )
-                // Always shown, even with nothing to put in it. It used to be dropped when the profile
-                // had no source, which made a cached run look like a target from nowhere - and the
-                // question "which catalog is this from" is exactly the one the row is for.
+                RunPlanRow(stringResource(R.string.settings_plan_method), display.methodLabel)
+                RunPlanRow(stringResource(R.string.run_plan_transport), display.transportLabel)
                 RunPlanRow(
-                    stringResource(R.string.run_plan_source),
-                    display.sourceLabel
-                        ?: stringResource(R.string.run_plan_source_none),
+                    stringResource(R.string.settings_plan_payloads),
+                    stringResource(R.string.settings_plan_payloads_bundled),
                 )
-                RunPlanRow(
-                    stringResource(R.string.run_plan_transport),
-                    stringResource(
-                        if (display.shizuku) R.string.run_plan_transport_shizuku
-                        else R.string.run_plan_transport_direct,
-                    ),
-                )
-                RunPlanRow(
-                    stringResource(R.string.run_plan_boot_settle),
-                    BootSettle.label(display.plan.bootSettleSeconds),
-                )
-                RunPlanRow(
-                    stringResource(R.string.run_plan_payload_mode),
-                    stringResource(
-                        if (display.payloadMode == PayloadMode.Offline) {
-                            R.string.settings_payload_mode_offline
-                        } else {
-                            R.string.settings_payload_mode_online
-                        },
-                    ),
-                )
+                display.sourceLabel?.let {
+                    RunPlanRow(stringResource(R.string.run_plan_source), it)
+                }
                 RunPlanRow(
                     stringResource(R.string.run_plan_partition_read_only),
                     stringResource(
@@ -5966,98 +5878,26 @@ private fun RunPlanDialog(
                         else R.string.run_plan_partition_read_only_off,
                     ),
                 )
-                RunPlanRow(
-                    stringResource(R.string.run_plan_session),
-                    stringResource(
-                        if (display.freshSession) R.string.run_plan_fresh_yes
-                        else R.string.run_plan_fresh_no,
-                    ),
-                )
-                RunPlanSection(stringResource(R.string.run_plan_variables))
-                // Where these come from, said where they are shown. The second wording is the one this
-                // feature exists for: once the app supplies any of them, "set by the payload profile, not
-                // by this app" would be a lie about the run in front of the reader.
-                Text(
-                    stringResource(
-                        if (display.plan.routePolicy.anyFromApp) {
-                            R.string.run_plan_variables_note_overridden
-                        } else {
-                            R.string.run_plan_variables_note
-                        },
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                // The three a user can move, as rows carrying the side that chose them - the half of the
-                // answer the raw variables below cannot give. Their values still come from the
-                // environment the run is handed, so a row cannot show a number the payload never gets.
-                val policy = display.plan.routePolicy
-                RunPlanRow(
-                    stringResource(R.string.run_plan_attempts),
-                    display.plan.environment["EXPLOIT_ATTEMPTS"]
-                        ?: policy.policy.attempts.toString(),
-                    note = originNote(policy.attemptsOrigin),
-                )
-                RunPlanRow(
-                    stringResource(R.string.run_plan_attempt_timeout),
-                    display.plan.environment["EXPLOIT_ATTEMPT_TIMEOUT_SEC"]
-                        ?: stringResource(R.string.run_plan_value_not_applied),
-                    note = originNote(policy.attemptTimeoutOrigin),
-                )
-                RunPlanRow(
-                    stringResource(R.string.run_plan_slide_route),
-                    display.plan.environment["SLIDE_SOURCE"]
-                        ?: stringResource(R.string.run_plan_value_payload_default),
-                    note = originNote(policy.slideRouteOrigin),
-                )
-                val otherVariables = display.plan.environment
-                    .filterKeys { it !in ExploitRoutePolicy.OVERRIDABLE_ENV_NAMES }
-                if (otherVariables.isEmpty()) {
-                    // Reachable only for a fresh session, whose environment is its one attempt: the
-                    // wording used to promise "the payload uses its own defaults", which is the opposite
-                    // of what that case does.
-                    RunPlanMonospace(stringResource(R.string.run_plan_variables_none))
+                display.manualSettleSeconds?.let {
+                    RunPlanRow(stringResource(R.string.run_plan_boot_settle), BootSettle.label(it))
+                }
+                val limits = display.ceilings
+                if (limits == null) {
+                    Text(
+                        stringResource(R.string.settings_plan_fixed_limits),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 } else {
-                    otherVariables.forEach { (name, value) ->
-                        RunPlanMonospace("$name=$value")
-                    }
+                    RunPlanSection(stringResource(R.string.run_plan_limits))
+                    RunPlanRow(stringResource(R.string.run_plan_total), formatDuration(limits.totalMillis))
+                    RunPlanRow(stringResource(R.string.run_plan_stall), formatDuration(limits.stallMillis))
+                    RunPlanRow(stringResource(R.string.run_plan_helper), formatDuration(limits.helperMillis))
+                    Text(
+                        stringResource(R.string.run_plan_footnote),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                if (display.plan.shizukuArguments.isNotEmpty()) {
-                    RunPlanSection(stringResource(R.string.run_plan_shizuku_arguments))
-                    display.plan.shizukuArguments.forEach { (name, value) ->
-                        RunPlanMonospace("$name=$value")
-                    }
-                }
-                RunPlanRow(
-                    stringResource(R.string.run_plan_cached_offset),
-                    display.cachedOffset
-                        ?: stringResource(R.string.run_plan_cached_offset_none),
-                )
-                RunPlanSection(stringResource(R.string.run_plan_limits))
-                Text(
-                    stringResource(R.string.run_plan_limits_note),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                RunPlanRow(
-                    stringResource(R.string.run_plan_stall),
-                    display.plan.stallLimitMillis
-                        ?.let(::formatDuration)
-                        ?: stringResource(R.string.run_plan_stall_none),
-                )
-                RunPlanRow(
-                    stringResource(R.string.run_plan_total),
-                    formatDuration(display.plan.totalLimitMillis),
-                )
-                RunPlanRow(
-                    stringResource(R.string.run_plan_helper),
-                    formatDuration(display.plan.helperLimitMillis),
-                )
-                Text(
-                    stringResource(R.string.run_plan_footnote),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         },
         confirmButton = {
@@ -6125,7 +5965,7 @@ private fun RunLimitsDialog(
                     onChanged = onChanged,
                 )
                 Text(
-                    "This build uses one attempt per boot and requires a full reboot before another attempt. Its payload settings are fixed.",
+                    stringResource(R.string.settings_fixed_payload_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -8405,3 +8245,4 @@ private fun themeModeLabel(themeMode: AppThemeMode): String = when (themeMode) {
     AppThemeMode.Light -> stringResource(R.string.theme_light)
     AppThemeMode.Dark -> stringResource(R.string.theme_dark)
 }
+
