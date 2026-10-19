@@ -3,7 +3,7 @@ name: Release Build
 on:
   push:
     branches: [main]
-    paths: ['docs/release-notes/1.2.14.md']
+    paths: ['docs/release-notes/1.2.16.md']
   workflow_dispatch:
     inputs:
       tag_name:
@@ -20,9 +20,9 @@ concurrency:
 
 jobs:
   build:
-    # The authorized 1.2.14 merge starts the existing checked publishing path.
+    # The authorized 1.2.16 merge starts the existing checked publishing path.
     # Ordinary note edits do not publish; manual dispatch remains available.
-    if: github.event_name != 'push' || startsWith(github.event.head_commit.message, 'Release 1.2.14')
+    if: github.event_name != 'push' || startsWith(github.event.head_commit.message, 'Release 1.2.16')
     name: Release Build
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -90,6 +90,9 @@ jobs:
         run: |
           python3 tools/test_su_process.py
           python3 tools/test_early_root_speed.py
+
+      - name: Check settings presentation
+        run: python3 tools/test_settings_presentation.py
 
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --no-daemon

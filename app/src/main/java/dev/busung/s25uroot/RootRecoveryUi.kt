@@ -157,14 +157,9 @@ internal fun RootRecoverySection(
         )
     }
 
-    // No explanatory paragraph of its own: the rows say what they do, and the dialog says what each
-    // one costs. What is left is the list itself, in the same shape as the groups above it.
-    // ReloadModules can never succeed (refused on all paths) and is hidden on
-    // DirtyFrag firmware, where even the refusal dialog would be noise.
+    // The dispatcher refuses replaying module loads on every firmware.
     val tools = remember {
-        RecoveryTool.entries.filterNot {
-            DfPort.matches(DeviceSnapshot.current()) && it == RecoveryTool.ReloadModules
-        }
+        RecoveryTool.entries.filterNot { it == RecoveryTool.ReloadModules }
     }
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         tools.forEachIndexed { index, tool ->

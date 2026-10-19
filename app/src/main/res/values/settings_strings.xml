@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_required">Required</string>
+    <string name="settings_enable_required">Enable</string>
+    <string name="settings_shizuku_required">Shizuku transport</string>
+    <string name="settings_shizuku_required_summary">Required for AZHL. Start Shizuku through wireless debugging and allow this app to use it.</string>
+    <string name="settings_shizuku_enable_required_summary">Enable the required Shizuku transport before rooting on AZHL.</string>
+    <string name="settings_shizuku_hold_required">AZHL requires Shizuku. Start it through wireless debugging to continue, or cancel this run.</string>
+    <string name="settings_wireless_adb_summary_df">Optional: pair this phone to start Shizuku through wireless debugging. DirtyFrag rooting does not need pairing.</string>
+    <string name="settings_wireless_adb_summary_azhl">Pair this phone to start Shizuku through wireless debugging without a computer.</string>
+    <string name="settings_reset_modules_title">Reset module state before loading</string>
+    <string name="settings_reset_modules_summary">Recovery only: clears module state before loading. Manager data and root grants are kept. Skipped while a backend is already active. Turn this off after recovery.</string>
+    <string name="settings_reset_modules_confirm_title">Delete module state?</string>
+    <string name="settings_reset_modules_confirm_body">The next eligible DirtyFrag run will permanently clear module state before loading. Manager data and root grants are kept. This is skipped while a backend is already active. Turn this off after recovery.</string>
+    <string name="settings_manual_profile_help">Choose a bundled profile for %1$s. To use another backend, change KernelSU flavour in Settings first.</string>
+    <string name="settings_profile_unavailable">Not available for this firmware</string>
+    <string name="settings_plan_backend">Selected backend</string>
+    <string name="settings_plan_method">Root method</string>
+    <string name="settings_plan_method_azhl">AZHL / M3Q</string>
+    <string name="settings_plan_method_df">DirtyFrag</string>
+    <string name="settings_plan_method_unavailable">Unavailable for this device</string>
+    <string name="settings_plan_transport_azhl">Shizuku (required)</string>
+    <string name="settings_plan_transport_df">App process</string>
+    <string name="settings_plan_payloads">Payloads</string>
+    <string name="settings_plan_payloads_bundled">Built into this app</string>
+    <string name="settings_plan_fixed_limits">Run limits are not adjustable for this root method.</string>
+    <string name="settings_fixed_payload_note">This build uses one attempt per boot and requires a full reboot before another attempt. Payload settings are fixed.</string>
+    <string name="settings_susfs_title">SusFS · experimental</string>
+    <string name="settings_susfs_summary">Enable SusFS automatically after rooting. A full reboot clears it; turning it off while active takes effect on reboot.</string>
+    <string name="settings_susfs_status_title">SusFS status</string>
+    <string name="settings_susfs_status_summary">Last activation result on this device. No live checks run from here.</string>
+    <string name="settings_susfs_off">Off</string>
+    <string name="settings_susfs_pending">Enabled · activates after rooting</string>
+    <string name="settings_susfs_active">Active · %1$s</string>
+    <string name="settings_susfs_active_until_reboot">Active · %1$s · disables after reboot</string>
+    <string name="settings_susfs_version_unknown">unknown version</string>
+    <string name="settings_susfs_untested">Untested kernel — attempt only, verified by feature check.</string>
+    <string name="settings_susfs_off_title">Turn SusFS off?</string>
+    <string name="settings_susfs_off_body">SusFS cannot unload while running: it stays active until you reboot. Before rebooting, turn off modules that depend on SusFS, or they may misbehave without it.</string>
+    <string name="settings_susfs_turn_off">Turn off</string>
+</resources>

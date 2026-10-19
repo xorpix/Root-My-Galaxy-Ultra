@@ -167,13 +167,10 @@ class InstallActivity : ComponentActivity() {
                         startInstall -> installViewModel.install(selectionId)
                     }
                 }
-                // Asked over the run screen, because the run is what the answer is about: starting
-                // Shizuku runs the installation the screen was opened for, and running without it runs
-                // the same one the other way.
+                // AZHL requires Shizuku; offer setup or cancellation, not an unsupported fallback.
                 ShizukuHoldDialog(
                     prompt = installState.transportPrompt,
                     onStartShizuku = { installViewModel.startShizukuForHeldRun(selectionId) },
-                    onRunWithoutShizuku = { installViewModel.runHeldRunWithoutShizuku(selectionId) },
                     onDismiss = installViewModel::dismissTransportPrompt,
                 )
                 SusfsGrantNoticeDialog(
@@ -1123,7 +1120,6 @@ private fun SusfsGrantNoticeDialog(
 private fun ShizukuHoldDialog(
     prompt: TransportPrompt?,
     onStartShizuku: () -> Unit,
-    onRunWithoutShizuku: () -> Unit,
     onDismiss: () -> Unit,
 ) {
     prompt ?: return
@@ -1134,7 +1130,7 @@ private fun ShizukuHoldDialog(
         title = { Text(stringResource(R.string.status_shizuku_hold)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(stringResource(R.string.shizuku_hold_body))
+                Text(stringResource(R.string.settings_shizuku_hold_required))
                 prompt.startDetail?.let { detail ->
                     Text(
                         detail,
@@ -1164,19 +1160,14 @@ private fun ShizukuHoldDialog(
             }
         },
         dismissButton = {
-            // Deliberately live while a start is in flight. An attempt can take a minute on a device
-            // where it has several routes to try, and disabling the other answer for that minute is how
-            // this question turns into a screen with nothing to press - which is what it looked like
-            // when the start was the only thing on offer. The view model drops a start that lands after
-            // this answer was taken, so changing your mind mid-attempt cannot start two runs.
             TextButton(
                 enabled = true,
                 onClick = {
                     clickHaptic(view)
-                    onRunWithoutShizuku()
+                    onDismiss()
                 },
             ) {
-                Text(stringResource(R.string.action_run_without_shizuku))
+                Text(stringResource(R.string.action_cancel))
             }
         },
     )
