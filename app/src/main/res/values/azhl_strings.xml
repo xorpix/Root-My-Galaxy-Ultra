@@ -17,4 +17,3 @@
     <string name="azhl_wipe_confirm_title">Delete all root state?</string>
     <string name="azhl_wipe_confirm_body">The next run will permanently delete everything under /data/adb, including all modules, Mountify data and manager module state, before loading the backend. Reinstall what you need afterwards, then turn this off again.</string>
 </resources>
-

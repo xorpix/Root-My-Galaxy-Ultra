@@ -35,8 +35,8 @@
       },
       "kernelsu": {
         "url": "asset://azhl/kernelsu/ksud",
-        "size": 5301944,
-        "sha256": "1c89ca3c48952811cd9b60a8088001ab7d8752bcea1fb9733c07337127454554",
+        "size": 5302200,
+        "sha256": "c9f5b4d21d07364710feeb29996553e0c38ee99f8ea331afdf6c2895f3a4d2dd",
         "version": "3.3.1"
       }
     },
@@ -74,8 +74,8 @@
       },
       "kernelsu": {
         "url": "asset://azhl/kernelsu-next/ksud",
-        "size": 4381992,
-        "sha256": "11c7c34d7ce96fdf252569bc608e6f97a875e2416ccf424bf9b99761244f5702",
+        "size": 4382248,
+        "sha256": "2d3ac021b670ff4d603bc9792eb60b93d2290ede86e987684c2ba1283916b8b2",
         "version": "3.4.2"
       }
     },
@@ -113,8 +113,8 @@
       },
       "kernelsu": {
         "url": "asset://azhl/resukisu/ksud",
-        "size": 4380368,
-        "sha256": "7fbbb97f45a1a36054fef34718486ae3570e77893e80ac0e2e8d4124a9588e8e",
+        "size": 4383920,
+        "sha256": "3a8208cb1537cf7ca4adf7481b4e96939f1a4cfa243a3fb7b7033046213cf13b",
         "version": "4.2.0-rc3"
       }
     },
@@ -152,8 +152,8 @@
       },
       "kernelsu": {
         "url": "asset://azhl/kernelsu/ksud",
-        "size": 5301944,
-        "sha256": "1c89ca3c48952811cd9b60a8088001ab7d8752bcea1fb9733c07337127454554",
+        "size": 5302200,
+        "sha256": "c9f5b4d21d07364710feeb29996553e0c38ee99f8ea331afdf6c2895f3a4d2dd",
         "version": "3.3.1"
       }
     },
@@ -191,8 +191,8 @@
       },
       "kernelsu": {
         "url": "asset://azhl/kernelsu-next/ksud",
-        "size": 4381992,
-        "sha256": "11c7c34d7ce96fdf252569bc608e6f97a875e2416ccf424bf9b99761244f5702",
+        "size": 4382248,
+        "sha256": "2d3ac021b670ff4d603bc9792eb60b93d2290ede86e987684c2ba1283916b8b2",
         "version": "3.4.2"
       }
     },
@@ -230,8 +230,8 @@
       },
       "kernelsu": {
         "url": "asset://azhl/resukisu/ksud",
-        "size": 4380368,
-        "sha256": "7fbbb97f45a1a36054fef34718486ae3570e77893e80ac0e2e8d4124a9588e8e",
+        "size": 4383920,
+        "sha256": "3a8208cb1537cf7ca4adf7481b4e96939f1a4cfa243a3fb7b7033046213cf13b",
         "version": "4.2.0-rc3"
       }
     }

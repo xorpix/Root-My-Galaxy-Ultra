@@ -351,4 +351,3 @@ private fun RecoveryTool.acceptedRes(): Int = when (this) {
     RecoveryTool.RebootAndUnroot -> R.string.recovery_reboot_scheduled
     else -> R.string.recovery_scheduled
 }
-

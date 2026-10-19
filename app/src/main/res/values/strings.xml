@@ -890,4 +890,3 @@ Hold Power and Volume Down together for 7 seconds to restart it from there.</str
     <string name="d2_remove_failed">Removal could not finish. Restart your phone, activate root and try again.</string>
     <string name="d2_toggle_failed">Could not confirm the change. Reopen these settings before trying again.</string>
 </resources>
-
