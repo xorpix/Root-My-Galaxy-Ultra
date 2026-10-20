@@ -106,6 +106,6 @@ class DeletionUndoTest {
     private fun mainActivity(): String = listOf(
         File("src/main/java/dev/busung/s25uroot/MainActivity.kt"),
         File("app/src/main/java/dev/busung/s25uroot/MainActivity.kt"),
-    ).firstOrNull(File::isFile)?.readText()
+    ).firstOrNull(File::isFile)?.readText()?.replace("\r\n", "\n")
         ?: throw AssertionError("MainActivity was not found from ${File(".").absolutePath}")
 }

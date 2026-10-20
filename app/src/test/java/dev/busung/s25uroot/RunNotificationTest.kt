@@ -95,7 +95,9 @@ class RunNotificationTest {
             .flatMap { root -> root.walkTopDown().filter { it.isFile && it.name == name }.toList() }
             .firstOrNull()
         requireNotNull(file) { "$name was not found; the scan is looking at the wrong directory" }
-        return file.readText()
+        // Windows checkouts are CRLF via core.autocrlf, and the assertions below match
+        // multi-line literals; normalize so a passing run does not depend on the checkout OS.
+        return file.readText().replace("\r\n", "\n")
     }
 
     private fun candidateRoots(): List<File> = listOf(
