@@ -3,10 +3,10 @@
   "model": "SM-S948W",
   "firmware": "S948WVLU4BZID",
   "kernelRelease": "6.12.69-android16-6-pee899be-abogkiS948USQU4BZID-4k",
-  "sourceCommit": "a8e803f9dea7b61faaf3451669df42d12f017467",
+  "sourceCommit": "d8eadadffb758baa595e5706a47fc7c6732a4559",
   "module": {
     "file": "susfs_guard_lkm.ko",
-    "sha256": "2d9269fbd2e067dddbb905fb864e71cf4074b7544c1e074b247798e00210df0f"
+    "sha256": "8b61cf616d61b21f1f68e303b7e66010c5ab378f3133b18c5da5ffc956313300"
   },
   "loader": {
     "file": "librmgususfs_loader.so",
