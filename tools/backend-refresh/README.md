@@ -121,6 +121,15 @@ its checksum-pinned compatibility patches.
 
 ## What stops an automatic release
 
+An upstream history rewrite stops both the daily check and weekly build until
+the exact old/new revision pair has been reviewed. On 2026-10-21, Next replaced
+the history containing `d65c9db1` with `b427a3f9`. Their UAPI and version
+formulas are unchanged, the driver version increases from 33403 to 33405, and
+the Samsung compatibility patch applies directly. `refresh.py` records only
+that exact backend/revision transition; other rewrites still require review.
+The bundled targets remain pinned to their existing built binaries until the
+normal matched driver/daemon build, validation and staging steps finish.
+
 The existing Samsung compatibility patch must apply to the selected upstream
 revision directly or through a conflict-free Git three-way merge using the
 original source blobs. Samsung initialization variables are scoped inside the
