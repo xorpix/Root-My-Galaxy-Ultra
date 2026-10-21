@@ -33,6 +33,13 @@ REVIEWED_HISTORY_TRANSITIONS = {
     # Subsequent changes retain UAPI 5 and merge with our Samsung patch cleanly.
     ('kernelsu-next', '3157e7822190eba628ca6796242db970405e440a',
      '204f007164905395e280e9290cc7774f57af8c61'),
+    # Next rebased the four commits after f90d59fb, replacing their object
+    # IDs. Reviewed old/new trees: the remaining changes fix bind-mounted
+    # init.rc detection and gate the vendored SusFS control-node relabel.
+    # UAPI/version formulas are unchanged; version 33405 increases from 33403
+    # and the Samsung patch applies directly. Accept only this exact pair.
+    ('kernelsu-next', 'd65c9db1b07edcdc3ad531ad2108fc66227e502c',
+     'b427a3f9c2421a443f961007bfce66b25486643f'),
 }
 
 

@@ -138,6 +138,12 @@ class RefreshTests(unittest.TestCase):
         self.assertTrue(refresh.reviewed_history_transition('kernelsu-next', previous_next, current_next))
         self.assertFalse(refresh.reviewed_history_transition('kernelsu-next', previous_next, 'b' * 40))
         self.assertFalse(refresh.reviewed_history_transition('kernelsu', previous_next, current_next))
+        rebased_next = 'd65c9db1b07edcdc3ad531ad2108fc66227e502c'
+        reviewed_next = 'b427a3f9c2421a443f961007bfce66b25486643f'
+        self.assertTrue(refresh.reviewed_history_transition('kernelsu-next', rebased_next, reviewed_next))
+        self.assertFalse(refresh.reviewed_history_transition('kernelsu', rebased_next, reviewed_next))
+        self.assertFalse(refresh.reviewed_history_transition('kernelsu-next', rebased_next, 'b' * 40))
+        self.assertFalse(refresh.reviewed_history_transition('kernelsu-next', 'a' * 40, reviewed_next))
 
     def snapshot(self, changed_heads=(), changed_patches=()):
         config = common.load_config()
