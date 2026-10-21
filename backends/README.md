@@ -2,9 +2,9 @@
 
 | Backend | Driver / UAPI | Source | Daemon |
 |---|---|---|---|
-| KernelSU | 32699 / 6 | [b609757f](https://github.com/tiann/KernelSU/commit/b609757fad4441b88e73966c5dc12e4788be9d3b) | 3.3.1-19-gb609757f |
-| KernelSU-Next | 33403 / 6 | [d65c9db1](https://github.com/KernelSU-Next/KernelSU-Next/commit/d65c9db1b07edcdc3ad531ad2108fc66227e502c) | 3.4.2-48-gd65c9db1 |
-| BakaSU | 35234 / 5 | [896e8981](https://github.com/Baka-SU/BakaSU/commit/896e8981e0ed76ec14d1dcb39ab793438b304886) | 4.2.0-rc3-63-g896e8981 |
+| KernelSU | 32702 / 6 | [6d31a613](https://github.com/tiann/KernelSU/commit/6d31a61370838380177dc5c46fb838f6ba7d639a) | 3.3.1-22-g6d31a613 |
+| KernelSU-Next | 33405 / 6 | [b427a3f9](https://github.com/KernelSU-Next/KernelSU-Next/commit/b427a3f9c2421a443f961007bfce66b25486643f) | 3.4.2-50-gb427a3f9 |
+| BakaSU | 35236 / 5 | [dac2d186](https://github.com/Baka-SU/BakaSU/commit/dac2d186406a0d2b0ce3c67cad5a1fa1adbf9f4d) | 4.2.0-rc3-65-gdac2d186 |
 
 Each folder contains the exact driver/daemon hashes and the complete Samsung
 compatibility patch for that revision. Keep these records in git: they are used

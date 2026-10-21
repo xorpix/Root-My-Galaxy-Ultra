@@ -1,15 +1,15 @@
 {
   "schema": 2,
-  "created_utc": "2026-10-19",
-  "app_version": "1.2.15",
-  "app_base_commit": "4de5a98610200e3433b63fa1de3648cbffe64640",
+  "created_utc": "2026-10-21",
+  "app_version": "1.2.21",
+  "app_base_commit": "82139c73837f5fc52edda7710c11424c2f3f66f3",
   "upstream_repository": "https://github.com/KernelSU-Next/KernelSU-Next",
-  "upstream_commit": "d65c9db1b07edcdc3ad531ad2108fc66227e502c",
-  "previous_upstream_commit": "b28fce510568ba0b7584b38492cabfaaeb61ac37",
-  "upstream_commit_count": 3403,
-  "driver_version": 33403,
+  "upstream_commit": "b427a3f9c2421a443f961007bfce66b25486643f",
+  "previous_upstream_commit": "d65c9db1b07edcdc3ad531ad2108fc66227e502c",
+  "upstream_commit_count": 3405,
+  "driver_version": 33405,
   "uapi_version": 6,
-  "daemon_version": "3.4.2-48-gd65c9db1",
+  "daemon_version": "3.4.2-50-gb427a3f9",
   "source_provenance": "Existing complete Samsung compatibility patch rebased onto the pinned UAPI 5 upstream; late-load Rust hunks carried forward with current ScriptWait API.",
   "companion_patch": {
     "repository": "https://github.com/rushiranpise/Root-My-Galaxy-Payloads",
@@ -36,19 +36,19 @@
   "outputs": {
     "ksud": {
       "size": 4382248,
-      "sha256": "2d3ac021b670ff4d603bc9792eb60b93d2290ede86e987684c2ba1283916b8b2"
+      "sha256": "28fd939e63cfbac6b03142f41b648dd0c4073bddc72369de1b2e4832d6bfff73"
     },
     "kernelsu.ko": {
-      "size": 555840,
-      "sha256": "778a42ddf59b7d1da1e2225d9a8c57d7e732d330245990bb2c2d153ce19a4d75"
+      "size": 555696,
+      "sha256": "451aa8e18a3966a6fd624b544d798319a5b5a4e5bd9fea1e87a80b4fe7aebc29"
     },
     "helper": {
       "size": 24232,
-      "sha256": "f4c33d924c01cd1474031c23d2833cf992609a47d53047c2f67a941dcddf82da"
+      "sha256": "544d35de1de641824729c6a86945f92866c61f800e1ea76b1198bd89f5b127dc"
     }
   },
   "rebased_patch": {
-    "path": "samsung-compat-33403.patch",
+    "path": "samsung-compat-33405.patch",
     "size": 72632,
     "sha256": "81e68f967596fb7044e416c8886be1e09f6b485031eab00b4cea090566af4b99"
   },

@@ -36,7 +36,7 @@
       "kernelsu": {
         "url": "asset://azhl/kernelsu/ksud",
         "size": 5302200,
-        "sha256": "c9f5b4d21d07364710feeb29996553e0c38ee99f8ea331afdf6c2895f3a4d2dd",
+        "sha256": "0bafb54b5f05cfc23f53a4b1e622a50ba0c9a77a9adba3230c64a612ce1dac11",
         "version": "3.3.1"
       }
     },
@@ -75,7 +75,7 @@
       "kernelsu": {
         "url": "asset://azhl/kernelsu-next/ksud",
         "size": 4382248,
-        "sha256": "2d3ac021b670ff4d603bc9792eb60b93d2290ede86e987684c2ba1283916b8b2",
+        "sha256": "28fd939e63cfbac6b03142f41b648dd0c4073bddc72369de1b2e4832d6bfff73",
         "version": "3.4.2"
       }
     },
@@ -113,8 +113,8 @@
       },
       "kernelsu": {
         "url": "asset://azhl/resukisu/ksud",
-        "size": 4383920,
-        "sha256": "3a8208cb1537cf7ca4adf7481b4e96939f1a4cfa243a3fb7b7033046213cf13b",
+        "size": 4380784,
+        "sha256": "769ef38980e79533de5087fae22f62c3f2fc4a4f80aedf8e6e2cf2245bfe86b8",
         "version": "4.2.0-rc3"
       }
     },
@@ -153,7 +153,7 @@
       "kernelsu": {
         "url": "asset://azhl/kernelsu/ksud",
         "size": 5302200,
-        "sha256": "c9f5b4d21d07364710feeb29996553e0c38ee99f8ea331afdf6c2895f3a4d2dd",
+        "sha256": "0bafb54b5f05cfc23f53a4b1e622a50ba0c9a77a9adba3230c64a612ce1dac11",
         "version": "3.3.1"
       }
     },
@@ -192,7 +192,7 @@
       "kernelsu": {
         "url": "asset://azhl/kernelsu-next/ksud",
         "size": 4382248,
-        "sha256": "2d3ac021b670ff4d603bc9792eb60b93d2290ede86e987684c2ba1283916b8b2",
+        "sha256": "28fd939e63cfbac6b03142f41b648dd0c4073bddc72369de1b2e4832d6bfff73",
         "version": "3.4.2"
       }
     },
@@ -230,8 +230,8 @@
       },
       "kernelsu": {
         "url": "asset://azhl/resukisu/ksud",
-        "size": 4383920,
-        "sha256": "3a8208cb1537cf7ca4adf7481b4e96939f1a4cfa243a3fb7b7033046213cf13b",
+        "size": 4380784,
+        "sha256": "769ef38980e79533de5087fae22f62c3f2fc4a4f80aedf8e6e2cf2245bfe86b8",
         "version": "4.2.0-rc3"
       }
     }

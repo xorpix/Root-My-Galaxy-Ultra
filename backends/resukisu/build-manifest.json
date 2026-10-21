@@ -23,15 +23,15 @@
     "path": "kernelsu/patches/ReSukiSU-v4.2.0-rc3-samsung-kdp-rkp-defex.patch",
     "sha256": "6f4be33d5f558865f02e6d0010f40320f540c78f80c999ad6bf0b8f22275b4f4"
   },
-  "created_utc": "2026-10-19",
-  "app_base_commit": "4de5a98610200e3433b63fa1de3648cbffe64640",
+  "created_utc": "2026-10-21",
+  "app_base_commit": "82139c73837f5fc52edda7710c11424c2f3f66f3",
   "upstream_repository": "https://github.com/Baka-SU/BakaSU",
-  "upstream_commit": "896e8981e0ed76ec14d1dcb39ab793438b304886",
-  "upstream_commit_count": 4534,
-  "driver_version": 35234,
+  "upstream_commit": "dac2d186406a0d2b0ce3c67cad5a1fa1adbf9f4d",
+  "upstream_commit_count": 4536,
+  "driver_version": 35236,
   "uapi_version": 5,
   "manager_required_uapi": 5,
-  "daemon_version": "4.2.0-rc3-63-g896e8981",
+  "daemon_version": "4.2.0-rc3-65-gdac2d186",
   "validation": {
     "kernel_build": "passed",
     "daemon_build": "passed",
@@ -43,20 +43,20 @@
   "source_provenance": "Existing Samsung compatibility changes rebased onto pinned upstream.",
   "outputs": {
     "ksud": {
-      "size": 4383920,
-      "sha256": "3a8208cb1537cf7ca4adf7481b4e96939f1a4cfa243a3fb7b7033046213cf13b"
+      "size": 4380784,
+      "sha256": "769ef38980e79533de5087fae22f62c3f2fc4a4f80aedf8e6e2cf2245bfe86b8"
     },
     "kernelsu.ko": {
       "size": 440072,
-      "sha256": "fd5b89a5371562806ac7a6551d914d5a3c28467bd791183430bdf3b64ec04acd"
+      "sha256": "7a44b7f9a6597c9ef7d528ccd40aba808142511d0fc961ccab7a30a394b1d957"
     },
     "helper": {
       "size": 24232,
-      "sha256": "6651a2b9e764515a4cec8fe79b8cb539e7b323fe47d6afc0cb883f005d78dabb"
+      "sha256": "85778f9cfa44936cc23db56ecd8044bf279339dc6b25f94b1f548411b0d8f879"
     }
   },
   "rebased_patch": {
-    "path": "samsung-compat-35234.patch",
+    "path": "samsung-compat-35236.patch",
     "size": 76400,
     "sha256": "c873e4b3eb2adb10fc675e11798f4646a2989946f2153e129fb7e885ae803b70"
   },
@@ -83,6 +83,6 @@
     "userspace/ksud/src/android/utils.rs": "5616c4b795469abd91fc4df54de46f8a6790231baabf1caf6c51236814f67eb0",
     "userspace/ksuinit/src/lib.rs": "8e33b668dd35a23cafde56b00f49d35f832fa0ce7709733791f9e64c037c6ccc"
   },
-  "app_version": "1.2.15",
-  "previous_upstream_commit": "2489b38582a08fee7b586d05185da5e5d12c6a5c"
+  "app_version": "1.2.21",
+  "previous_upstream_commit": "896e8981e0ed76ec14d1dcb39ab793438b304886"
 }
