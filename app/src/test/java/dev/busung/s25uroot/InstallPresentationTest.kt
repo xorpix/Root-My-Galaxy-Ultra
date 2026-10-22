@@ -16,6 +16,17 @@ class InstallPresentationTest {
     private fun profiles(snapshot: DeviceSnapshot) =
         DfCatalog.forDevice(File("src/main/assets/df/catalog.json").readBytes(), snapshot)
 
+    @Test fun automaticSelectionHasNoExtraDialogForEveryAcceptedRegionalSuffix() {
+        val characters = ('A'..'Z') + ('0'..'9')
+        val suffixes = characters.map { it.toString() } +
+            characters.flatMap { first -> characters.map { second -> "$first$second" } }
+        suffixes.forEach { suffix ->
+            listOf("SM-S948$suffix", "SM-S948$suffix/DS").forEach { model ->
+                assertFalse(model, requiresInstallConfirmation(device.copy(model = model), null))
+            }
+        }
+    }
+
     @Test fun automaticAndMatchingBundledSelectionsHaveNoExtraDialogAcrossRegionalModels() {
         listOf("SM-S948B", "SM-S948B/DS", "SM-S948U", "SM-S948U1", "SM-S948W",
             "SM-S948N", "SM-S9480", "SM-S9480V", "SC-53G", "SCG37").forEach { model ->
