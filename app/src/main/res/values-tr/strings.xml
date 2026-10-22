@@ -357,7 +357,7 @@
     <string name="grant_already_message">Güvenli ayar yetkisi zaten verildi.</string>
     <string name="grant_done_message">%1$s aracılığıyla verildi. Kablosuz hata ayıklama artık kablosuz da yapılabilir.</string>
     <string name="grant_refused_message">%1$s izin veremedi: %2$s</string>
-    <string name="grant_no_transport_message">Hiçbir ulaşım aracı bu izni veremez. root yok, Shizuku çalışmıyor ve kablosuz hata ayıklama eşleştirmesi kaydedilmiyor. `adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS`\'lu bir bilgisayardan ver.</string>
+    <string name="grant_no_transport_message">Bu izni verebilecek bir çalıştırma kanalı yok. Root erişimi yok, Shizuku çalışmıyor ve kayıtlı kablosuz hata ayıklama eşleştirmesi bulunmuyor. Bir bilgisayardan `adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS` komutunu çalıştırarak izin verin.</string>
     <string name="grant_action">Güvenli ayarlara izin ver</string>
     <string name="wireless_adb_permission_note">Bu uygulamanın WRITE_SECURE_SETTINGS\'i yok, bu yüzden kendiliğinden kablosuz hata ayıklamasını etkinleştiremez. root, Shizuku veya kablosuz hata ayıklama eşleştirmesi yoluyla izin verebilir.</string>
     <string name="log_bootstrap_root">[+] Bootstrap root elde edildi</string>
@@ -600,7 +600,7 @@
     <string name="repo_using_local_payload">Yerel yük kullan: %1$s</string>
     <string name="shizuku_mode">Shizuku kullan</string>
     <string name="shizuku_mode_description">Payload\'ı çalıştırmak için Shizuku kullanın. Bu, güvenilirliği artırabilir.</string>
-    <string name="shizuku_mode_without_permission">Etkin, ama bu uygulamanın Shizuku kullanma izni yok. İzin verilene kadar yolculuklar başka bir ulaşım aracı kullanır.</string>
+    <string name="shizuku_mode_without_permission">Etkin, ancak bu uygulamanın Shizuku kullanma izni yok. İzin verilene kadar işlemler başka bir çalıştırma kanalı kullanır.</string>
     <string name="shizuku_mode_not_running">Etkin, ama Shizuku çalışmıyor.</string>
     <string name="settings_recovery">Kurtarma Yönetimi</string>
     <string name="recovery_confirm_restart_zygote">Android çalıştırma süresini yeniden başlatır mısın?</string>

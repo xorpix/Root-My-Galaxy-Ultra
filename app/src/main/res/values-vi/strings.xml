@@ -186,7 +186,7 @@
     <string name="error_shell_transport_shizuku_off">Trọng lượng này phải chạy từ một shell. Shizuku đã bị vô hiệu hóa và không có kết nối không dây được lưu. Cho phép Shizuku hoặc ghép nối thiết bị dưới Cài đặt → Không dây ADB.</string>
     <string name="log_transport_local_adb">[*] Giao thông: thiết bị này là ADB shell qua gỡ lỗi không dây</string>
     <string name="log_transport_shizuku">[*] Giao thông: Shizuku</string>
-    <string name="log_transport_app">[*] Giao thông vận tải: quy trình ứng dụng</string>
+    <string name="log_transport_app">[*] Kênh thực thi: tiến trình ứng dụng</string>
     <string name="settings_wireless_adb">Không dây ADB</string>
     <string name="settings_wireless_adb_summary">Kết nối điện thoại này để gỡ lỗi không dây để chạy có thể sử dụng một shell mà không có máy tính hoặc root.</string>
     <string name="settings_wireless_adb_none">Không ghép</string>

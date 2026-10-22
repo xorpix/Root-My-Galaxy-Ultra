@@ -114,7 +114,7 @@
     <string name="install_run_in_flight">这个设备已经运行安装,所以这个没有启动. 等到运行结束,或者重新启动手机接管它.</string>
     <string name="log_run_in_flight">[!]没有开始:另一个运行已经有这个设备.</string>
     <string name="status_run_stopped">已停止</string>
-    <string name="phase_stopped">在上图的阶段停止了跑步. 停止不会撤销已经对设备进行的更改.</string>
+    <string name="phase_stopped">运行已在上方显示的阶段停止。停止操作不会撤销已经对设备作出的更改。</string>
     <string name="log_run_stopped">[*]在%1$s阶段中停止. 任何已经启动的设备都会继续运行. 下一次运行将检查是否还活跃.</string>
     <string name="log_run_interrupted">[*] 在%1$s阶段中取消运行</string>
     <string name="retry_choice_title">重试</string>
@@ -551,8 +551,8 @@
     <string name="run_limits_reset">恢复到默认值</string>
     <string name="run_limits_reset_done">运行限制和有效载荷覆盖恢复到默认值</string>
     <string name="run_limits_helper">一个辅助命令</string>
-    <string name="run_limits_helper_note">一个助手命令可以运行多长时间. 这主要用于内部使用,很少决定跑步停止的原因.</string>
-    <string name="run_limits_payload_note">有效载荷配置决定了它得到多少次尝试,每次可能需要多长时间,以及它如何寻找幻灯片. 除非您正在测试未为此编写的设备.</string>
+    <string name="run_limits_helper_note">单个辅助命令可运行的最长时间。此限制主要供内部使用，通常不是运行停止的原因。</string>
+    <string name="run_limits_payload_note">载荷配置决定尝试次数、每次尝试的时限，以及查找滑移偏移量的方式。除非正在测试该配置原本不支持的设备，否则请保持覆盖选项关闭。</string>
     <string name="run_limits_override">取消有效载荷</string>
     <string name="run_limits_override_note">使用应用程序的号码来尝试, 每次尝试的时间止息, 对于测试 feed 尚未支持的构建有用,并且可能导致工作目标失败. 运行计划显示三人来自哪一边. 一个新来的个人资料仍然可以尝试一次,</string>
     <string name="run_limits_override_attempts">试图</string>

@@ -356,7 +356,7 @@
     <string name="grant_already_message">安全設定の許可は既に与えられています.</string>
     <string name="grant_done_message">%1$sによって認められた. 無線デバッグはケーブルなしで有効にできます</string>
     <string name="grant_refused_message">%1$s は許可を許可できない: %2$s</string>
-    <string name="grant_no_transport_message">交通機関が許可できない rootは行われず,Shizukuは実行されず,無線デバッグペアリングは保存されていません. `adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS`のコンピュータから</string>
+    <string name="grant_no_transport_message">この権限を付与できる実行経路がありません。root 権限がなく、Shizuku は停止中で、ワイヤレスデバッグのペア設定も保存されていません。パソコンから `adb shell pm grant %1$s android.permission.WRITE_SECURE_SETTINGS` を実行して権限を付与してください。</string>
     <string name="grant_action">安全な設定の許可を与える</string>
     <string name="wireless_adb_permission_note">このアプリには WRITE_SECURE_SETTINGS がありませんので,無線デバッグを自分で有効にすることはできません. root,Shizuku,または無線デバッグペアリングを通じて許可を与えることができます.</string>
     <string name="log_bootstrap_root">[+] bootstrap rootを取得</string>

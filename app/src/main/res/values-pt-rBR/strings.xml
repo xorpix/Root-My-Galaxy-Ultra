@@ -666,7 +666,7 @@
     <string name="readiness">Situação</string>
     <string name="readiness_kernelsu">KernelSU</string>
     <string name="readiness_shizuku">Shizuku</string>
-    <string name="readiness_manager_row">Gerente %1$s</string>
+    <string name="readiness_manager_row">Gerenciador %1$s</string>
     <string name="readiness_installed">Instalado</string>
     <string name="readiness_not_installed">Não instalado</string>
     <string name="readiness_ksu_active">Atividade</string>
@@ -709,7 +709,7 @@
     <string name="settings_manager_running_version">Este telefone funciona com %1$s %2$s</string>
     <string name="settings_manager_running_use">Use %1$s</string>
     <string name="settings_manager_dialog_title">Gerenciador de versão</string>
-    <string name="settings_manager_dialog_help">O gerente %1$s recomendado é %2$s.</string>
+    <string name="settings_manager_dialog_help">A versão recomendada do gerenciador %1$s é %2$s.</string>
     <string name="settings_manager_versions_heading">Versões disponíveis</string>
     <string name="settings_manager_versions_loading">Lendo as versões publicadas...</string>
     <string name="settings_manager_versions_failed">Não foi possível ler as versões: %1$s. Digite uma manualmente abaixo.</string>
@@ -747,7 +747,7 @@
     <string name="shizuku_not_running_body">Inicie o Shizuku com adb ou root primeiro.</string>
     <string name="action_download_shizuku">Baixar o Shizuku</string>
     <string name="error_shizuku_unavailable">Shizuku não está em execução. Inicie o Shizuku com adb ou root primeiro.</string>
-    <string name="status_shizuku_hold">Shizuku não está a correr</string>
+    <string name="status_shizuku_hold">Shizuku não está em execução</string>
     <string name="shizuku_hold_body">Esta execução está configurada para usar Shizuku. Comece para continuar até Shizuku, ou continue sem ele. Um alvo que precisa de um shell só pode correr sem Shizuku quando um emparelhamento sem fio é salvo.</string>
     <string name="action_run_without_shizuku">Funcionar sem Shizuku</string>
     <string name="error_shizuku_permission">Permissão do Shizuku não concedida</string>
