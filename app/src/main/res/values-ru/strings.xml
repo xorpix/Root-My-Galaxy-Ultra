@@ -565,7 +565,6 @@
     <string name="run_limits_override_route">Способ поиска смещения</string>
     <string name="run_limits_route_default">По умолчанию в пейлоаде</string>
     <string name="run_limits_route_auto">автоматически</string>
-    <string name="run_limits_route_tracefs">tracefs</string>
     <string name="run_limits_route_legacy">p0 (устаревший)</string>
     <string name="log_run_ceilings">[*] Ограничения запуска: всего %1$s, без вывода до признания зависшим — %2$s, на одну вспомогательную команду — %3$s</string>
     <string name="log_run_ceilings_fresh">[*] Ограничения запуска: всего %1$s, без ограничения по отсутствию вывода (новый сеанс сканирует без вывода), на одну вспомогательную команду — %3$s</string>
@@ -613,7 +612,7 @@
     <string name="recovery_action_reload_modules">Перезагрузить модули</string>
     <string name="recovery_reload_modules">Перезагрузить модули</string>
     <string name="recovery_reload_modules_summary">Повторно выполнить настройку модулей KernelSU через установленный демон.</string>
-    <string name="recovery_modules_reloaded">Повторная обработка жизненного цикла модулей выполнена.</string>
+    <string name="recovery_modules_reloaded">Настройка модулей выполнена повторно.</string>
     <string name="recovery_action_restart_zygote">Перезапустить Zygote</string>
     <string name="recovery_action_soft_reboot">Программная перезагрузка</string>
     <string name="recovery_action_reboot_unroot">Перезагрузить без root</string>

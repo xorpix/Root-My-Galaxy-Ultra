@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Check the complete Android catalog, format arguments, plurals and locale registration."""
+"""Check catalog structure, format arguments, plurals and locale registration.
+
+Passing these checks does not establish linguistic accuracy. See docs/localization.md.
+"""
 import argparse
 from pathlib import Path
 import re
@@ -155,7 +158,8 @@ def main():
         print('\n'.join(errors), file=sys.stderr)
         print(f'{len(errors)} translation errors', file=sys.stderr)
         return 1
-    print(f'All {count} resources are translated in {locales} locales; formats, plurals and language registration pass.')
+    print(f'Catalog structure complete: {count} resources in {locales} locales; formats, plurals and locale registration pass.')
+    print('Wording and meaning require a separate contextual review (docs/localization.md).')
     return 0
 
 
