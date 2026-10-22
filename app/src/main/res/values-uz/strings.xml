@@ -838,8 +838,8 @@
     <string name="d2_toggle_failed">O‘zgarish tasdiqlanmadi. Qayta urinishdan oldin ushbu sozlamalarni qayta oching.</string>
     <string name="azhl_app_name">Root My Galaxy Ultra</string>
     <string name="backend_choice_title">Root backendini tanlang</string>
-    <string name="backend_choice_explanation">%2$s tizimidagi %1$s uchun tajribaviy DirtyFrag yig‘ilmasi. Backendni tanlang, keyin root oling — Shizuku kerak emas. Bu yig‘ilmalar hali telefoningizda sinovdan o‘tkazilishi kerak. Faol backendni almashtirish uchun to‘liq qayta ishga tushirish zarur. Backend almashtirilganda mavjud modullar o‘chiriladi; moslarini tanlangan menejerda qayta yoqing.</string>
-    <string name="backend_choice_explanation_azhl">S948BXXS4AZHL tizimidagi SM-S948B uchun tajribaviy yig‘ilma. Backendni tanlang, keyin root olishdan oldin Shizuku’ni simsiz nosozliklarni tuzatish orqali ishga tushiring. Bu yig‘ilmalar hali telefoningizda sinovdan o‘tkazilishi kerak. Faol backendni almashtirish uchun to‘liq qayta ishga tushirish zarur. Almashtirishda mavjud modullar o‘chiriladi; moslarini tanlangan menejerda qayta yoqing.</string>
+    <string name="backend_choice_explanation">%1$s / %2$s uchun KernelSU variantini tanlang. Ishlayotgan variantni almashtirishdan oldin telefonni toʻliq qayta yuklang. Almashtirishda mavjud modullar faolsizlantiriladi; mos modullarni tanlangan menejerda qayta yoqing.</string>
+    <string name="backend_choice_explanation_azhl">Oʻrnatishdan oldin simsiz nosozliklarni tuzatish orqali Shizuku’ni ishga tushiring. Ishlayotgan KernelSU variantini almashtirishdan oldin telefonni toʻliq qayta yuklang. Almashtirishda mavjud modullar faolsizlantiriladi; mos modullarni tanlangan menejerda qayta yoqing.</string>
     <string name="backend_choice_save">Tanlovni saqlash</string>
     <string name="backend_choice_required">Boshlashdan oldin ilovani oching va root backendini tanlang.</string>
     <string name="backend_choice_saved">Keyingi root urinishiga %1$s tanlandi.</string>

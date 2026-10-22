@@ -833,8 +833,8 @@
     <string name="d2_toggle_failed">無法確認變更。再次嘗試前，請重新開啟這些設定。</string>
     <string name="azhl_app_name">Root My Galaxy Ultra</string>
     <string name="backend_choice_title">選擇 root 後端</string>
-    <string name="backend_choice_explanation">適用於 %1$s（%2$s）的實驗性 DirtyFrag 組建。請選擇後端，然後取得 root，不需要 Shizuku。這些組建仍需在您的手機上測試。切換正在運作的後端需要完整重新啟動。切換時會停用現有模組，請在所選管理器中重新啟用相容模組。</string>
-    <string name="backend_choice_explanation_azhl">適用於 SM-S948B（S948BXXS4AZHL）的實驗性組建。請選擇後端，然後在取得 root 前透過無線偵錯啟動 Shizuku。這些組建仍需在您的手機上測試。切換正在運作的後端需要完整重新啟動。切換時會停用現有模組，請在所選管理器中重新啟用相容模組。</string>
+    <string name="backend_choice_explanation">為 %1$s / %2$s 選擇 KernelSU 後端。切換正在執行的後端前，請先完整重新啟動手機。切換時會停用現有模組；請在所選管理員中重新啟用相容模組。</string>
+    <string name="backend_choice_explanation_azhl">安裝前，請透過無線偵錯啟動 Shizuku。切換正在執行的後端前，請先完整重新啟動手機。切換時會停用現有模組；請在所選管理員中重新啟用相容模組。</string>
     <string name="backend_choice_save">儲存選擇</string>
     <string name="backend_choice_required">請先開啟應用程式並選擇 root 後端，再開始執行。</string>
     <string name="backend_choice_saved">已選擇 %1$s 用於下次 root 嘗試。</string>

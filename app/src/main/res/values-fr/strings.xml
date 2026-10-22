@@ -843,8 +843,8 @@
     <string name="d2_toggle_failed">Impossible de confirmer la modification. Rouvrez ces paramètres avant de réessayer.</string>
     <string name="azhl_app_name">Root My Galaxy Ultra</string>
     <string name="backend_choice_title">Choisissez votre backend root</string>
-    <string name="backend_choice_explanation">Version DirtyFrag expérimentale pour %1$s sous %2$s. Choisissez un backend, puis lancez le root ; Shizuku n’est pas nécessaire. Ces versions doivent encore être testées sur votre téléphone. Un redémarrage complet est nécessaire pour changer de backend actif. Les modules existants sont désactivés lors du changement ; réactivez les modules compatibles dans le gestionnaire choisi.</string>
-    <string name="backend_choice_explanation_azhl">Version expérimentale pour SM-S948B sous S948BXXS4AZHL. Choisissez un backend, puis démarrez Shizuku via le débogage sans fil avant d’obtenir le root. Ces versions doivent encore être testées sur votre téléphone. Un redémarrage complet est nécessaire pour changer de backend actif. Les modules existants sont désactivés lors du changement ; réactivez les modules compatibles dans le gestionnaire choisi.</string>
+    <string name="backend_choice_explanation">Choisissez la variante de KernelSU pour %1$s avec le micrologiciel %2$s. Redémarrez complètement le téléphone avant de remplacer une variante active. Le changement désactive les modules existants ; réactivez les modules compatibles dans le gestionnaire choisi.</string>
+    <string name="backend_choice_explanation_azhl">Démarrez Shizuku via le débogage sans fil avant l’installation. Redémarrez complètement le téléphone avant de remplacer une variante active. Le changement désactive les modules existants ; réactivez les modules compatibles dans le gestionnaire choisi.</string>
     <string name="backend_choice_save">Enregistrer le choix</string>
     <string name="backend_choice_required">Ouvrez l’application et choisissez un backend root avant de démarrer.</string>
     <string name="backend_choice_saved">%1$s sélectionné pour la prochaine tentative de root.</string>

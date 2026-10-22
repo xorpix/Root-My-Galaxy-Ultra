@@ -833,8 +833,8 @@
     <string name="d2_toggle_failed">Chưa thể xác nhận thay đổi. Mở lại phần cài đặt này trước khi thử lại.</string>
     <string name="azhl_app_name">Root My Galaxy Ultra</string>
     <string name="backend_choice_title">Chọn backend root</string>
-    <string name="backend_choice_explanation">Bản dựng DirtyFrag thử nghiệm cho %1$s trên %2$s. Chọn backend rồi lấy quyền root; không cần Shizuku. Các bản dựng này vẫn cần được thử trên điện thoại của bạn. Phải khởi động lại hoàn toàn để đổi backend đang hoạt động. Các mô-đun hiện có sẽ bị tắt khi đổi backend; hãy bật lại mô-đun tương thích trong trình quản lý đã chọn.</string>
-    <string name="backend_choice_explanation_azhl">Bản dựng thử nghiệm cho SM-S948B với S948BXXS4AZHL. Chọn backend rồi khởi động Shizuku qua gỡ lỗi không dây trước khi lấy root. Các bản dựng này vẫn cần được thử trên điện thoại của bạn. Phải khởi động lại hoàn toàn để đổi backend đang hoạt động. Mô-đun hiện có sẽ bị tắt khi đổi; bật lại mô-đun tương thích trong trình quản lý đã chọn.</string>
+    <string name="backend_choice_explanation">Chọn bản KernelSU cho %1$s / %2$s. Khởi động lại hoàn toàn điện thoại trước khi thay đổi bản KernelSU đang hoạt động. Việc chuyển đổi sẽ vô hiệu hóa các mô-đun hiện có; hãy bật lại các mô-đun tương thích trong ứng dụng quản lý đã chọn.</string>
+    <string name="backend_choice_explanation_azhl">Khởi động Shizuku qua tính năng gỡ lỗi không dây trước khi cài đặt. Khởi động lại hoàn toàn điện thoại trước khi thay đổi bản KernelSU đang hoạt động. Việc chuyển đổi sẽ vô hiệu hóa các mô-đun hiện có; hãy bật lại các mô-đun tương thích trong ứng dụng quản lý đã chọn.</string>
     <string name="backend_choice_save">Lưu lựa chọn</string>
     <string name="backend_choice_required">Mở ứng dụng và chọn backend root trước khi bắt đầu.</string>
     <string name="backend_choice_saved">Đã chọn %1$s cho lần thử root tiếp theo.</string>

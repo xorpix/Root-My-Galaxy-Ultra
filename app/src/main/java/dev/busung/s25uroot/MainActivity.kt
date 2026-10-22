@@ -771,6 +771,15 @@ private fun RootApp(
     val context = LocalContext.current
     val view = LocalView.current
     val scope = rememberCoroutineScope()
+    fun requestInstall() {
+        val profile = selectedProfile
+        if (requiresInstallConfirmation(device, profile)) {
+            showInstallConfirmation = true
+        } else {
+            openInstaller(profile?.selectionId)
+            selectedProfile = null
+        }
+    }
     // One Shizuku start for the whole app, because two screens offer the button: Home's checklist when
     // Shizuku is not running, and the Shizuku rows in Settings. The request, what the attempt said and the
     // result are the same three things wherever it was pressed, and a second implementation would be a
@@ -1044,7 +1053,7 @@ private fun RootApp(
                     !profile.matchesKernelVersion(device) -> CompatibilityWarning.KernelVersion
                     else -> null
                 }
-                if (compatibilityWarning == null) showInstallConfirmation = true
+                if (compatibilityWarning == null) requestInstall()
             },
         )
     }
@@ -1095,7 +1104,7 @@ private fun RootApp(
                             CompatibilityWarning.KernelVersion -> null
                         }
                         if (compatibilityWarning == null) {
-                            showInstallConfirmation = true
+                            requestInstall()
                         }
                     },
                 ) {
@@ -1231,7 +1240,7 @@ private fun RootApp(
                                 showTargetPicker = true
                                 installViewModel.loadTargetCatalog()
                             } else {
-                                showInstallConfirmation = true
+                                requestInstall()
                             }
                         },
                     )
