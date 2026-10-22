@@ -650,6 +650,7 @@ private val languageOptions = listOf(
     LanguageOption(R.string.language_korean, "ko"),
     LanguageOption(R.string.language_english, "en"),
     LanguageOption(R.string.language_german, "de"),
+    LanguageOption(R.string.language_french, "fr"),
     LanguageOption(R.string.language_japanese, "ja"),
     LanguageOption(R.string.language_chinese, "zh-CN"),
     LanguageOption(R.string.language_chinese_traditional, "zh-TW"),

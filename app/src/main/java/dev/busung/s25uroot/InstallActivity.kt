@@ -1103,15 +1103,14 @@ private fun SusfsGrantNoticeDialog(
     if (!show) return
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("SusFS needs root permission") },
+        title = { Text(stringResource(R.string.susfs_grant_title)) },
         text = {
             Text(
-                "SusFS can only start once this app itself holds root. " +
-                    "Grant it su in the manager — SusFS will enable on the next run.",
+                stringResource(R.string.susfs_grant_body),
             )
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Got it") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_got_it)) }
         },
     )
 }

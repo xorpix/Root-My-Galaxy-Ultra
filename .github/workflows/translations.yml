@@ -1,0 +1,47 @@
+name: Translation checks
+
+on:
+  pull_request:
+    paths:
+      - 'app/src/main/res/**'
+      - 'app/src/main/java/dev/busung/s25uroot/MainActivity.kt'
+      - 'app/src/main/java/dev/busung/s25uroot/InstallActivity.kt'
+      - 'tools/check_translations.py'
+      - 'tools/test_translations.py'
+      - '.github/workflows/translations.yml'
+  push:
+    branches: [main, dev]
+    paths:
+      - 'app/src/main/res/**'
+      - 'tools/check_translations.py'
+      - 'tools/test_translations.py'
+      - '.github/workflows/translations.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: translations-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  translations:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check coverage, format arguments, plural forms and language registration
+        run: |
+          python3 tools/test_translations.py
+          python3 tools/check_translations.py
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platforms;android-37.0 build-tools;36.0.0 ndk;28.2.13676358 cmake;3.22.1'
+          accept-android-sdk-licenses: true
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile every Android resource and run the app unit tests
+        run: ./gradlew :app:processDebugResources :app:testDebugUnitTest --no-daemon --no-configuration-cache

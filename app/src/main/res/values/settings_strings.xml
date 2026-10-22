@@ -38,4 +38,7 @@
     <string name="settings_susfs_off_title">Turn SusFS off?</string>
     <string name="settings_susfs_off_body">SusFS cannot unload while running: it stays active until you reboot. Before rebooting, turn off modules that depend on SusFS, or they may misbehave without it.</string>
     <string name="settings_susfs_turn_off">Turn off</string>
+    <string name="susfs_grant_title">SusFS needs root permission</string>
+    <string name="susfs_grant_body">SusFS can only start once this app itself holds root. Grant it su in the manager — SusFS will enable on the next run.</string>
+    <string name="action_got_it">Got it</string>
 </resources>
