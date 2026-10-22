@@ -833,8 +833,8 @@
     <string name="d2_toggle_failed">変更を確認できませんでした。再試行する前に、この設定を開き直してください。</string>
     <string name="azhl_app_name">Root My Galaxy Ultra</string>
     <string name="backend_choice_title">rootバックエンドを選択</string>
-    <string name="backend_choice_explanation">%2$sを使用する%1$s向けの試験的なDirtyFragビルドです。バックエンドを選択してrootを取得してください。Shizukuは不要です。これらのビルドは実機での検証が必要です。動作中のバックエンドを変更するには完全な再起動が必要です。変更時には既存のモジュールが無効になるため、選択したマネージャーで互換性のあるモジュールを再度有効にしてください。</string>
-    <string name="backend_choice_explanation_azhl">SM-S948BのS948BXXS4AZHL向け試験的ビルドです。バックエンドを選択し、root取得前にワイヤレスデバッグでShizukuを起動してください。これらのビルドは実機での検証が必要です。動作中のバックエンドを変更するには完全な再起動が必要です。変更時には既存のモジュールが無効になるため、選択したマネージャーで互換性のあるモジュールを再度有効にしてください。</string>
+    <string name="backend_choice_explanation">%1$s / %2$s で使用する KernelSU バックエンドを選択してください。動作中のバックエンドを切り替える前に、端末を完全に再起動してください。切り替えると既存のモジュールは無効になります。互換性のあるモジュールを選択したマネージャーで再度有効にしてください。</string>
+    <string name="backend_choice_explanation_azhl">インストール前に、ワイヤレスデバッグで Shizuku を起動してください。動作中のバックエンドを切り替える前に、端末を完全に再起動してください。切り替えると既存のモジュールは無効になります。互換性のあるモジュールを選択したマネージャーで再度有効にしてください。</string>
     <string name="backend_choice_save">選択を保存</string>
     <string name="backend_choice_required">開始する前にアプリを開き、rootバックエンドを選択してください。</string>
     <string name="backend_choice_saved">次回のroot取得に%1$sを選択しました。</string>

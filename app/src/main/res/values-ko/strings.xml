@@ -833,8 +833,8 @@
     <string name="d2_toggle_failed">변경을 확인하지 못했습니다. 다시 시도하기 전에 이 설정을 다시 여세요.</string>
     <string name="azhl_app_name">Root My Galaxy Ultra</string>
     <string name="backend_choice_title">루트 백엔드 선택</string>
-    <string name="backend_choice_explanation">%2$s의 %1$s용 실험적 DirtyFrag 빌드입니다. 백엔드를 선택한 후 루트 권한을 얻으세요. Shizuku는 필요하지 않습니다. 이 빌드는 실제 휴대전화에서 테스트가 필요합니다. 활성 백엔드를 변경하려면 완전히 재부팅해야 합니다. 백엔드를 변경하면 기존 모듈이 비활성화되므로 선택한 관리자에서 호환되는 모듈을 다시 켜세요.</string>
-    <string name="backend_choice_explanation_azhl">SM-S948B의 S948BXXS4AZHL용 실험적 빌드입니다. 백엔드를 선택한 후 루트를 얻기 전에 무선 디버깅으로 Shizuku를 시작하세요. 실제 휴대전화에서 테스트가 필요합니다. 활성 백엔드를 변경하려면 완전히 재부팅해야 합니다. 변경 시 기존 모듈이 비활성화되므로 선택한 관리자에서 호환되는 모듈을 다시 켜세요.</string>
+    <string name="backend_choice_explanation">%1$s / %2$s에서 사용할 KernelSU 백엔드를 선택하세요. 실행 중인 백엔드를 전환하기 전에 휴대전화를 완전히 재부팅하세요. 전환하면 기존 모듈이 비활성화됩니다. 호환되는 모듈은 선택한 관리자에서 다시 활성화하세요.</string>
+    <string name="backend_choice_explanation_azhl">설치 전에 무선 디버깅으로 Shizuku를 시작하세요. 실행 중인 백엔드를 전환하기 전에 휴대전화를 완전히 재부팅하세요. 전환하면 기존 모듈이 비활성화됩니다. 호환되는 모듈은 선택한 관리자에서 다시 활성화하세요.</string>
     <string name="backend_choice_save">선택 저장</string>
     <string name="backend_choice_required">시작하기 전에 앱을 열고 루트 백엔드를 선택하세요.</string>
     <string name="backend_choice_saved">다음 루트 시도에 %1$s을(를) 선택했습니다.</string>

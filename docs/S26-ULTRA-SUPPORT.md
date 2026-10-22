@@ -32,6 +32,14 @@ families and 16 KB pages need matching bridges and backend builds before use.
 The exact SM-S948B / S948BXXS4AZHL identity continues to select M3Q/GhostLock
 with Shizuku. All other eligible identities select DirtyFrag directly.
 
+For eligible DirtyFrag devices and the exact AZHL identity, the Install button
+opens the installer without the extra experimental-build confirmation. The backend
+chooser still records a choice before installation. Explicit selections from other
+sources or profiles that do not match the device retain the confirmation and
+mismatch dialogs. Required permission, reboot and destructive-action prompts remain.
+These presentation changes do not change eligibility, profile validation or
+payload integrity checks.
+
 ## Profiles and payload integrity
 
 - The recorded BZIG and BZID entries retain their existing IDs and inventory facts.

@@ -838,8 +838,8 @@
     <string name="d2_toggle_failed">Değişiklik doğrulanamadı. Tekrar denemeden önce bu ayarları yeniden açın.</string>
     <string name="azhl_app_name">Root My Galaxy Ultra</string>
     <string name="backend_choice_title">Root arka ucunuzu seçin</string>
-    <string name="backend_choice_explanation">%2$s üzerindeki %1$s için deneysel DirtyFrag derlemesi. Bir arka uç seçip root işlemini başlatın; Shizuku gerekmez. Bu derlemelerin telefonunuzda hâlâ test edilmesi gerekiyor. Etkin arka ucu değiştirmek için tam yeniden başlatma gerekir. Arka uç değiştirildiğinde mevcut modüller devre dışı bırakılır; uyumlu olanları seçilen yöneticide yeniden etkinleştirin.</string>
-    <string name="backend_choice_explanation_azhl">S948BXXS4AZHL üzerindeki SM-S948B için deneysel derleme. Bir arka uç seçin, ardından root almadan önce Shizuku’yu kablosuz hata ayıklama ile başlatın. Bu derlemelerin telefonunuzda test edilmesi gerekiyor. Etkin arka ucu değiştirmek için tam yeniden başlatma gerekir. Değişiklikte mevcut modüller kapatılır; uyumlu olanları seçilen yöneticide yeniden etkinleştirin.</string>
+    <string name="backend_choice_explanation">%1$s / %2$s için KernelSU arka ucunu seçin. Etkin arka ucu değiştirmeden önce telefonu tamamen yeniden başlatın. Değişiklik mevcut modülleri devre dışı bırakır; uyumlu modülleri seçilen yöneticide yeniden etkinleştirin.</string>
+    <string name="backend_choice_explanation_azhl">Yüklemeden önce kablosuz hata ayıklama üzerinden Shizuku’yu başlatın. Etkin arka ucu değiştirmeden önce telefonu tamamen yeniden başlatın. Değişiklik mevcut modülleri devre dışı bırakır; uyumlu modülleri seçilen yöneticide yeniden etkinleştirin.</string>
     <string name="backend_choice_save">Seçimi kaydet</string>
     <string name="backend_choice_required">Başlamadan önce uygulamayı açıp bir root arka ucu seçin.</string>
     <string name="backend_choice_saved">Sonraki root denemesi için %1$s seçildi.</string>

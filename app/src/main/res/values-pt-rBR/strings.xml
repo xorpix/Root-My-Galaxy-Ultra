@@ -843,8 +843,8 @@
     <string name="d2_toggle_failed">Não foi possível confirmar a alteração. Abra estas configurações novamente antes de tentar outra vez.</string>
     <string name="azhl_app_name">Root My Galaxy Ultra</string>
     <string name="backend_choice_title">Escolha o backend de root</string>
-    <string name="backend_choice_explanation">Versão experimental do DirtyFrag para %1$s em %2$s. Escolha um backend e obtenha root; o Shizuku não é necessário. Estas versões ainda precisam ser testadas no seu telefone. Para trocar um backend ativo, é necessário reiniciar completamente. Os módulos existentes são desativados ao trocar de backend; reative os compatíveis no gerenciador escolhido.</string>
-    <string name="backend_choice_explanation_azhl">Versão experimental para SM-S948B com S948BXXS4AZHL. Escolha um backend e inicie o Shizuku pelo depurador sem fio antes de obter root. Estas versões ainda precisam ser testadas no seu telefone. Para trocar um backend ativo, é necessário reiniciar completamente. Os módulos existentes são desativados ao trocar; reative os compatíveis no gerenciador escolhido.</string>
+    <string name="backend_choice_explanation">Escolha o backend do KernelSU para %1$s com o firmware %2$s. Reinicie completamente o telefone antes de trocar um backend ativo. A troca desativa os módulos existentes; reative os compatíveis no gerenciador escolhido.</string>
+    <string name="backend_choice_explanation_azhl">Inicie o Shizuku pela depuração sem fio antes de instalar. Reinicie completamente o telefone antes de trocar um backend ativo. A troca desativa os módulos existentes; reative os compatíveis no gerenciador escolhido.</string>
     <string name="backend_choice_save">Salvar escolha</string>
     <string name="backend_choice_required">Abra o app e escolha um backend de root antes de iniciar.</string>
     <string name="backend_choice_saved">%1$s selecionado para a próxima tentativa de root.</string>

@@ -838,8 +838,8 @@
     <string name="d2_toggle_failed">Die Änderung konnte nicht bestätigt werden. Öffne diese Einstellungen erneut, bevor du es noch einmal versuchst.</string>
     <string name="azhl_app_name">Root My Galaxy Ultra</string>
     <string name="backend_choice_title">Root-Backend auswählen</string>
-    <string name="backend_choice_explanation">Experimenteller DirtyFrag-Build für %1$s auf %2$s. Wähle ein Backend und starte den Root-Vorgang; Shizuku ist nicht erforderlich. Diese Builds müssen noch auf deinem Telefon getestet werden. Zum Wechseln eines aktiven Backends ist ein vollständiger Neustart nötig. Vorhandene Module werden beim Wechsel deaktiviert. Aktiviere kompatible Module im gewählten Manager erneut.</string>
-    <string name="backend_choice_explanation_azhl">Experimenteller Build für SM-S948B mit S948BXXS4AZHL. Wähle ein Backend und starte Shizuku über drahtloses Debugging, bevor du Root-Rechte erlangst. Diese Builds müssen noch auf deinem Telefon getestet werden. Zum Wechseln eines aktiven Backends ist ein vollständiger Neustart nötig. Vorhandene Module werden beim Wechsel deaktiviert. Aktiviere kompatible Module im gewählten Manager erneut.</string>
+    <string name="backend_choice_explanation">Wählen Sie das KernelSU-Backend für %1$s mit Firmware %2$s. Starten Sie das Telefon vor dem Wechsel eines aktiven Backends vollständig neu. Beim Wechsel werden vorhandene Module deaktiviert; aktivieren Sie kompatible Module im gewählten Manager erneut.</string>
+    <string name="backend_choice_explanation_azhl">Starten Sie Shizuku vor der Installation über drahtloses Debugging. Starten Sie das Telefon vor dem Wechsel eines aktiven Backends vollständig neu. Beim Wechsel werden vorhandene Module deaktiviert; aktivieren Sie kompatible Module im gewählten Manager erneut.</string>
     <string name="backend_choice_save">Auswahl speichern</string>
     <string name="backend_choice_required">Öffne die App und wähle vor dem Start ein Root-Backend.</string>
     <string name="backend_choice_saved">%1$s für den nächsten Root-Versuch ausgewählt.</string>
