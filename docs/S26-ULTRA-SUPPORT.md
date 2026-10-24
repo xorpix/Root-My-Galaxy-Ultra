@@ -68,10 +68,10 @@ These checks do not run the exploit or establish hardware compatibility.
 
 On each new model/build, begin from a full reboot, choose one backend and run
 from Home with modules disabled. Export the run history, confirm the selected
-backend and UAPI 5 in its matching manager, and check a superuser shell. Test
-ordinary root first, then modules and root-on-boot. Fully reboot before another
-backend or a retry. Report the complete model/firmware/kernel identity with
-the logs if bootstrap or backend loading fails.
+backend and the UAPI its matching manager reports, and check a superuser shell.
+Test ordinary root first, then modules and root-on-boot. Fully reboot before
+another backend or a retry. Report the complete model/firmware/kernel identity
+with the logs if bootstrap or backend loading fails.
 
 A manufacturer mitigation can block DirtyFrag even when the family matches.
 DFRoot success is useful device evidence, but RMGU's particular backend driver

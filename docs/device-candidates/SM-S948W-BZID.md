@@ -48,8 +48,8 @@ Other kernel families and page sizes remain outside this payload bundle.
 ## Device validation
 
 Start with a full reboot, choose one backend and run from Home. Export the run
-history, confirm the selected backend and UAPI 5 in its matching manager, and
-check a superuser shell before enabling modules or root-on-boot. Record any
+history, confirm the selected backend and the UAPI its matching manager reports,
+and check a superuser shell before enabling modules or root-on-boot. Record any
 backend-load failure with its run log. Fully reboot before testing another
 backend or retrying a failed attempt.
 

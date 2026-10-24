@@ -84,7 +84,7 @@ enum class KernelSuFlavor(
         managerPackage = "org.bakasu.bakasu",
         repository = "Baka-SU/BakaSU",
         // Keep the internal id for saved preferences and existing assets.
-        // The old rc3 release APK uses UAPI 4. Use an official UAPI 5 build.
+        // The old rc3 release APK uses UAPI 4. Use an official UAPI 6 build.
         defaultManagerVersion = "4.2.0-rc3",
         defaultManagerAsset = "",
         supportsDynamicManager = true,
