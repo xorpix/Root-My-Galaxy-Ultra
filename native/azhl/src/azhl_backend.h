@@ -4,9 +4,9 @@
 #include <string.h>
 struct azhl_backend { const char *id, *version_text, *manager; uint32_t version; };
 static const struct azhl_backend azhl_backends[] = {
-  {"kernelsu", "32702", "me.weishu.kernelsu", 32702},
+  {"kernelsu", "32704", "me.weishu.kernelsu", 32704},
   {"kernelsu-next", "33405", "com.rifsxd.ksunext", 33405},
-  {"resukisu", "35236", "org.bakasu.bakasu", 35236},
+  {"resukisu", "35252", "org.bakasu.bakasu", 35252},
 };
 static inline const struct azhl_backend *azhl_backend_find(const char *id, const char *version) {
   if (!id || !version) return NULL;

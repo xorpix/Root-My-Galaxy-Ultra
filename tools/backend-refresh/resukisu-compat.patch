@@ -1,6 +1,3 @@
-warning: in the working copy of 'kernel/core/init.c', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'kernel/feature/selinux_hide.c', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'userspace/ksuinit/src/lib.rs', LF will be replaced by CRLF the next time Git touches it
 diff --git a/kernel/Kbuild b/kernel/Kbuild
 index ef9b1379dfd3a453f25fa3395bf0f4a4e830802b..88e6464a1e41a0cead005231ae32c8fe4ed6af3d 100644
 --- a/kernel/Kbuild

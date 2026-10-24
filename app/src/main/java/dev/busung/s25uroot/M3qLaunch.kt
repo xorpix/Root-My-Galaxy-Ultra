@@ -22,9 +22,9 @@ internal object M3qLaunch {
     }
 
     fun backend(id: String): Backend = when (id) {
-        "kernelsu" -> Backend(id, 32702, 6, "b621e2026586edd9f479cebbabcf73b4903b77ffe6b9dd7b43f1c4ba850b2a3c")
+        "kernelsu" -> Backend(id, 32704, 6, "49a57a953b9319cabf7dd46840cf73fabf61a609083fe40d996347dff8f82d2a")
         "kernelsu-next" -> Backend(id, 33405, 6, "544d35de1de641824729c6a86945f92866c61f800e1ea76b1198bd89f5b127dc")
-        "resukisu" -> Backend(id, 35236, 5, "85778f9cfa44936cc23db56ecd8044bf279339dc6b25f94b1f548411b0d8f879")
+        "resukisu" -> Backend(id, 35252, 6, "daca170b075e92f8372dc58960a0abc34f2e1dd29155bef890d8616e45c186c0")
         else -> error("Unknown M3Q backend: $id")
     }
 
