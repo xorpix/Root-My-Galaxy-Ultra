@@ -262,14 +262,15 @@ struct ksu_get_info_cmd {
 };
 static const __u32 KSU_IOCTL_GET_INFO = _IOR('K', 2, struct ksu_get_info_cmd);
 '''
-        for name in ('kernelsu', 'kernelsu-next'):
+        for name in ('kernelsu', 'kernelsu-next', 'resukisu'):
             self.assertEqual(6, common.reviewed_uapi(header, name))
             with self.assertRaisesRegex(ValueError, 'control layout'):
                 common.reviewed_uapi(header.replace('__u32 flags;', '__u64 flags;'), name)
             with self.assertRaisesRegex(ValueError, 'ioctl'):
                 common.reviewed_uapi(header.replace("_IOR('K', 2", "_IOR('K', 3"), name)
-        with self.assertRaisesRegex(ValueError, 'new UAPI'):
-            common.reviewed_uapi(header, 'resukisu')
+        for name in common.REPOSITORIES:
+            with self.assertRaisesRegex(ValueError, 'new UAPI'):
+                common.reviewed_uapi(header.replace('= 6;', '= 7;'), name)
 
     def test_force_rebuild_refreshes_every_pair_without_changed_upstream_pins(self):
         config = common.load_config()

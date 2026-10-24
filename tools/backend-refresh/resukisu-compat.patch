@@ -1,8 +1,11 @@
+warning: in the working copy of 'kernel/core/init.c', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'kernel/feature/selinux_hide.c', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'userspace/ksuinit/src/lib.rs', LF will be replaced by CRLF the next time Git touches it
 diff --git a/kernel/Kbuild b/kernel/Kbuild
-index 518b1aece067747f6f341da44cb5f738ba749b3b..e479045bed4395c59f69d5eb42b28dc07a6b3e97 100644
+index ef9b1379dfd3a453f25fa3395bf0f4a4e830802b..88e6464a1e41a0cead005231ae32c8fe4ed6af3d 100644
 --- a/kernel/Kbuild
 +++ b/kernel/Kbuild
-@@ -18,6 +18,8 @@ kernelsu-objs += manager/manager.o
+@@ -19,6 +19,8 @@ kernelsu-objs += manager/manager.o
  endif
  
  kernelsu-objs += compat/kernel_compat.o
@@ -11,7 +14,7 @@ index 518b1aece067747f6f341da44cb5f738ba749b3b..e479045bed4395c59f69d5eb42b28dc0
  kernelsu-objs += infra/su_mount_ns.o
  kernelsu-objs += infra/seccomp_cache.o
  kernelsu-objs += infra/file_wrapper.o
-@@ -49,6 +51,22 @@ ccflags-y += -I$(srctree)/security/selinux -I$(srctree)/security/selinux/include
+@@ -50,6 +52,22 @@ ccflags-y += -I$(srctree)/security/selinux -I$(srctree)/security/selinux/include
  ccflags-y += -I$(srctree)/$(src) -I$(srctree)/$(src)/include
  ccflags-y += -I$(src) -I$(src)/include
  
@@ -445,19 +448,19 @@ index 0000000000000000000000000000000000000000..2104f2e9a82be77e46603bec3c4292dc
 +#endif
 +}
 diff --git a/kernel/core/init.c b/kernel/core/init.c
-index 15e34108c03a54955bcc4afb8477c8484ca7c723..e6149109bf1d00e46d2e83d905d777b2c11b8a73 100644
+index 65f40a454ab0a0dd58633695cc0e27a663916f15..c07a24bd3d74845efc74277d2550aed7fa8b4ea0 100644
 --- a/kernel/core/init.c
 +++ b/kernel/core/init.c
-@@ -36,6 +36,8 @@
- #include "feature/sucompat.h"
- #include "feature/selinux_hide.h"
+@@ -38,6 +38,8 @@
  #include "infra/symbol_resolver.h"
+ #include "preinit/preinit.h"
+ #include "uapi/supercall.h"
 +#include "ksu_samsung_kdp.h"
 +#include "compat/samsung_defex.h"
  
  #ifdef CONFIG_ARM64
  #include "compat/apatch_conflict.h"
-@@ -226,13 +228,37 @@ int __init kernelsu_init(void)
+@@ -228,13 +230,37 @@ int __init kernelsu_init(void)
      ksu_start_apatch_conflict_check();
  #endif
  
@@ -496,9 +499,9 @@ index 15e34108c03a54955bcc4afb8477c8484ca7c723..e6149109bf1d00e46d2e83d905d777b2
      ksu_selinux_init();
      ksu_feature_init();
      ksu_sulog_init();
-@@ -322,7 +348,10 @@ void __exit kernelsu_exit(void)
+@@ -333,7 +359,10 @@ void __exit kernelsu_exit(void)
      ksu_feature_exit();
-     ksu_module_load_filter_hook_exit();
+     ksu_module_blacklist_exit();
  
 +    // Unwound in reverse, so the credential those two layers borrow from outlives them.
 +    ksu_samsung_defex_exit();
@@ -508,7 +511,7 @@ index 15e34108c03a54955bcc4afb8477c8484ca7c723..e6149109bf1d00e46d2e83d905d777b2
  
  #if NEED_OWN_STACKPROTECTOR
 diff --git a/kernel/feature/selinux_hide.c b/kernel/feature/selinux_hide.c
-index 9864c9cf5171311769564b682a42cc7eecc8a801..13edf69eed19dddcd807b7c77b86e2a923270888 100644
+index 91b54efc2c0e2a742829d055ac35417c6668345b..62bc063e413b1551abe96ed555e3a563b2e54567 100644
 --- a/kernel/feature/selinux_hide.c
 +++ b/kernel/feature/selinux_hide.c
 @@ -19,6 +19,8 @@
@@ -520,18 +523,18 @@ index 9864c9cf5171311769564b682a42cc7eecc8a801..13edf69eed19dddcd807b7c77b86e2a9
  
  // security/selinux/include/security.h
  #include <security.h>
-@@ -437,6 +439,10 @@ struct ksu_lsm_hook selinux_setprocattr_hook =
-     KSU_LSM_HOOK_INIT(setprocattr, "selinux_setprocattr", ksu_handle_selinux_setprocattr, 0);
+@@ -456,6 +458,10 @@ static u32 ptrace_parent_sid(void)
  #endif
+ // clang-format on
  
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 +static void *orig_selinux_setprocattr;
 +#endif
 +
- #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0) &&                                                                   \
-     (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0) || defined(KSU_COMPAT_HAS_LIST_OF_LSM_HOOKS))
- static setprocattr_fn ksu_orig_setprocattr;
-@@ -577,6 +583,216 @@ static int my_sel_open_handle_status(struct inode *inode, struct file *filp)
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0) || defined(KSU_COMPAT_SETPROCATTR_USE_NEW_PROTOTYPE)
+ int __nocfi ksu_handle_selinux_setprocattr(const char *name, void *value, size_t size)
+ #else
+@@ -590,6 +596,216 @@ static int my_sel_open_handle_status(struct inode *inode, struct file *filp)
      return ret;
  }
  
@@ -748,7 +751,7 @@ index 9864c9cf5171311769564b682a42cc7eecc8a801..13edf69eed19dddcd807b7c77b86e2a9
  static void hook_selinux_status_open()
  {
      if (orig_sel_open_handle_status)
-@@ -594,11 +810,15 @@ static void hook_selinux_status_open()
+@@ -607,11 +823,15 @@ static void hook_selinux_status_open()
          }
          sel_open_handle_status_slot = &ops->open;
      }
@@ -767,7 +770,7 @@ index 9864c9cf5171311769564b682a42cc7eecc8a801..13edf69eed19dddcd807b7c77b86e2a9
          sel_open_handle_status_slot = NULL;
          orig_sel_open_handle_status = NULL;
      }
-@@ -609,7 +829,11 @@ extern void ksu_unregister_setprocattr_lsm_hook();
+@@ -622,7 +842,11 @@ extern void ksu_unregister_setprocattr_lsm_hook();
  static void ksu_selinux_hide_unhook()
  {
      int ret;
@@ -780,7 +783,7 @@ index 9864c9cf5171311769564b682a42cc7eecc8a801..13edf69eed19dddcd807b7c77b86e2a9
          ret =
              ksu_patch_text(context_write, &orig_context_write, sizeof(orig_context_write), KSU_PATCH_TEXT_FLUSH_DCACHE);
          orig_context_write = NULL;
-@@ -617,15 +841,29 @@ static void ksu_selinux_hide_unhook()
+@@ -630,15 +854,29 @@ static void ksu_selinux_hide_unhook()
              pr_err("selinux_hide: exit: patch_text context_write err: %d\n", ret);
          }
      }
@@ -812,7 +815,7 @@ index 9864c9cf5171311769564b682a42cc7eecc8a801..13edf69eed19dddcd807b7c77b86e2a9
  #elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0) || defined(KSU_COMPAT_HAS_LIST_OF_LSM_HOOKS)
      if (ksu_orig_setprocattr) {
          ret = ksu_patch_text((void *)selinux_setprocattr_hook_ptr, &ksu_orig_setprocattr, sizeof(ksu_orig_setprocattr),
-@@ -764,28 +1002,27 @@ static int ksu_selinux_hide_enable()
+@@ -777,28 +1015,27 @@ static int ksu_selinux_hide_enable()
  
      context_write = &selinux_write_op[SEL_CONTEXT];
      pr_info("selinux_hide: context_write: 0x%lx [%pSb]\n", (unsigned long)*context_write, *context_write);
@@ -848,7 +851,7 @@ index 9864c9cf5171311769564b682a42cc7eecc8a801..13edf69eed19dddcd807b7c77b86e2a9
          goto unhook;
      }
  #elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0) || defined(KSU_COMPAT_HAS_LIST_OF_LSM_HOOKS)
-@@ -856,7 +1093,6 @@ static int selinux_hide_feature_set(u64 value)
+@@ -869,7 +1106,6 @@ static int selinux_hide_feature_set(u64 value)
      int ret = 0;
      pr_info("selinux_hide: set to %d\n", enable);
      mutex_lock(&selinux_hide_mutex);
@@ -856,7 +859,7 @@ index 9864c9cf5171311769564b682a42cc7eecc8a801..13edf69eed19dddcd807b7c77b86e2a9
      if (enable) {
          if (!ksu_selinux_hide_running) {
              ret = ksu_selinux_hide_enable();
-@@ -870,6 +1106,10 @@ static int selinux_hide_feature_set(u64 value)
+@@ -883,6 +1119,10 @@ static int selinux_hide_feature_set(u64 value)
              ksu_selinux_hide_running = false;
          }
      }
@@ -1486,7 +1489,7 @@ index 540b721a1732571b5956f74090a34a8306d78e38..8ea2ef9a2072fc779b1045e3ca1634b7
  
  void __init ksu_app_profile_init(void)
 diff --git a/kernel/selinux/selinux.c b/kernel/selinux/selinux.c
-index bf9ba1f6dc1b80f0c92f16a3a448822a6d3cc3ce..a7ae4571b609d829aee2a0b648b7118705eeb9b8 100644
+index b219c9cf42f2602c2475bfeda6ebb31a968d74f6..a5c3af9b9cc5248c5c2514421bcdf4a4966b680c 100644
 --- a/kernel/selinux/selinux.c
 +++ b/kernel/selinux/selinux.c
 @@ -5,6 +5,7 @@
@@ -1497,7 +1500,7 @@ index bf9ba1f6dc1b80f0c92f16a3a448822a6d3cc3ce..a7ae4571b609d829aee2a0b648b71187
  #include "compat/kernel_compat.h"
  
  /*
-@@ -319,4 +320,7 @@ void escape_to_root_for_adb_root(void)
+@@ -333,4 +334,7 @@ void escape_to_root_for_adb_root(void)
          return;
      }
      commit_creds(cred);
@@ -1519,7 +1522,7 @@ index 76a5ea70d2a5355956b02480b9209cb3dd193395..3ab21a547224e35efc322d1cada64ba4
      println!("cargo:rustc-env=VERSION_CODE={code}");
      println!("cargo:rustc-env=VERSION_NAME={name}");
 diff --git a/userspace/ksud/src/android/cli.rs b/userspace/ksud/src/android/cli.rs
-index ced8cb716e70a84e0cd2d150137b7eb1688b573e..691cdf2fe8e79c6ccfc88a5f4ab4aeaecf436473 100755
+index 545cbed59f76deb3df7eaa7049d40ab34c73cb08..aac89cb75c631be2175eb7be1f1f4e3815cbb3ef 100755
 --- a/userspace/ksud/src/android/cli.rs
 +++ b/userspace/ksud/src/android/cli.rs
 @@ -113,7 +113,7 @@ enum Commands {
@@ -1532,7 +1535,7 @@ index ced8cb716e70a84e0cd2d150137b7eb1688b573e..691cdf2fe8e79c6ccfc88a5f4ab4aeae
      },
  
 diff --git a/userspace/ksud/src/android/late_load/mod.rs b/userspace/ksud/src/android/late_load/mod.rs
-index 6c207857b701f42fddf5e4ee507017ba4e3a3ab6..a702ba14d9f1581af50497450c3558b5c6bacec3 100644
+index bf685fec0cfb1c72e0b76aa8f66a467a48b0bfa4..2ae84f8c9d3c887f7f0e484b6f2cff6e76150da1 100644
 --- a/userspace/ksud/src/android/late_load/mod.rs
 +++ b/userspace/ksud/src/android/late_load/mod.rs
 @@ -45,10 +45,17 @@ fn dump_process_info(label: &str) {
@@ -1561,8 +1564,8 @@ index 6c207857b701f42fddf5e4ee507017ba4e3a3ab6..a702ba14d9f1581af50497450c3558b5
 -    utils::install(None, None).context("Failed to install ksud")?;
 +    utils::finish_install(None, None).context("Failed to finish ksud installation")?;
  
-     // 5. Handle module updates
-     if let Err(e) = handle_updated_modules() {
+     crate::android::hot_install::clean_trash();
+ 
 diff --git a/userspace/ksud/src/android/soft_reboot.rs b/userspace/ksud/src/android/soft_reboot.rs
 index c44a966f6477393bb6b7aff231792c96dd0253f5..177dd237ec4f26398d6dc5f699739b8bcbe524fb 100644
 --- a/userspace/ksud/src/android/soft_reboot.rs
@@ -1865,7 +1868,7 @@ index c44a966f6477393bb6b7aff231792c96dd0253f5..177dd237ec4f26398d6dc5f699739b8b
 +    Ok(())
 +}
 diff --git a/userspace/ksud/src/android/utils.rs b/userspace/ksud/src/android/utils.rs
-index 1de7c87ba533e8cd85c46e9f39ad70daefb4d3ec..d07c854d6b6037a6fd0cf56684701bcb4234cb79 100644
+index 39a6d91b12eb2cf2c71ee0eb84df26456eba9bb1..9305f1d046fc054bc73b00ac0e5075dc13429231 100644
 --- a/userspace/ksud/src/android/utils.rs
 +++ b/userspace/ksud/src/android/utils.rs
 @@ -12,11 +12,11 @@ use std::{
@@ -1963,7 +1966,7 @@ index 1de7c87ba533e8cd85c46e9f39ad70daefb4d3ec..d07c854d6b6037a6fd0cf56684701bcb
  pub fn uninstall(package_name: &str) -> Result<()> {
      if Path::new(defs::MODULE_DIR).exists() {
          println!("- Uninstall modules..");
-@@ -321,6 +368,8 @@ pub fn daemonize_with<F: FnOnce() -> Result<()>>(use_init_pgrp: bool, configure:
+@@ -322,6 +369,8 @@ pub fn daemonize_with<F: FnOnce() -> Result<()>>(use_init_pgrp: bool, configure:
      Ok(())
  }
  
@@ -1973,27 +1976,46 @@ index 1de7c87ba533e8cd85c46e9f39ad70daefb4d3ec..d07c854d6b6037a6fd0cf56684701bcb
      daemonize_with(use_init_pgrp, || Ok(()))
  }
 diff --git a/userspace/ksuinit/src/lib.rs b/userspace/ksuinit/src/lib.rs
-index 1a62d4c2b18197d338451a4c809edd1308acc481..8af9bffd729926053f7c31674cc5db4975ce8953 100644
+index 21ce82d15df78bc385d59751418affe224194a54..b8db9885313869e6e457d63f841feb9983eb1f9f 100644
 --- a/userspace/ksuinit/src/lib.rs
 +++ b/userspace/ksuinit/src/lib.rs
-@@ -339,6 +339,7 @@ pub fn load_module(data: &[u8], params: &CStr) -> Result<()> {
+@@ -365,6 +365,7 @@ pub fn resolve_kallsyms(names: &[&str]) -> Result<Vec<Option<u64>>> {
  
-     if !unresolved_symbols.is_empty() {
+     if !pending.is_empty() {
          for_each_kernel_symbols(|(symbol, addr)| {
 +            if *addr == 0 { return Ok(true); }
-             if let Some((mut sym, offset)) = unresolved_symbols.remove(symbol) {
-                 sym.st_shndx = section_header::SHN_ABS as usize;
-                 sym.st_value = *addr;
-@@ -350,8 +351,10 @@ pub fn load_module(data: &[u8], params: &CStr) -> Result<()> {
-         .context("Cannot parse kallsyms")?;
-     }
+             if let Some(i) = pending.remove(symbol.as_str()) {
+                 addrs[i] = Some(*addr);
+             }
+@@ -385,8 +386,8 @@ pub fn load_module(data: &[u8], params: &CStr) -> Result<()> {
  
--    for name in unresolved_symbols.keys() {
--        log::warn!("Cannot find symbol: {}", name);
-+    if !unresolved_symbols.is_empty() {
-+        let mut missing: Vec<_> = unresolved_symbols.keys().cloned().collect();
-+        missing.sort();
-+        bail!("AZHL: unresolved kernel symbols; refusing module initialization: {}", missing.join(", "));
-     }
+ /// Relocate undefined symbols in an ELF kernel module buffer with `resolve`,
+ /// then load it via init_module syscall. `resolve` gets all undefined symbol
+-/// names at once and returns one address per name; symbols it does not know
+-/// are left undefined for the kernel to bind against its exports.
++/// names at once and returns one address per name; a symbol it leaves unbound
++/// aborts initialization instead of being bound against kernel exports.
+ pub fn load_module_with_resolver<F>(data: &[u8], params: &CStr, resolve: F) -> Result<()>
+ where
+     F: FnOnce(&[&str]) -> Result<Vec<Option<u64>>>,
+@@ -405,10 +406,17 @@ where
+             );
+         }
  
-     let mut kmsg = match open_kmsg_at_end() {
++        let mut missing: Vec<_> = names.iter().zip(&addrs)
++            .filter_map(|(name, addr)| if addr.is_none() { Some(*name) } else { None })
++            .collect();
++        if !missing.is_empty() {
++            missing.sort();
++            bail!("AZHL: unresolved kernel symbols; refusing module initialization: {}", missing.join(", "));
++        }
++
+         for (name, addr) in names.iter().zip(addrs) {
+-            match addr {
+-                Some(addr) => bind_symbol(&mut buffer, unresolved_symbols[*name], addr, ctx)?,
+-                None => log::warn!("Cannot find symbol: {}", name),
++            if let Some(addr) = addr {
++                bind_symbol(&mut buffer, unresolved_symbols[*name], addr, ctx)?;
+             }
+         }
+     }

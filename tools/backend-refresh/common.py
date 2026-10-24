@@ -15,8 +15,12 @@ REPOSITORIES = {
 }
 # KernelSU 6 adds symbol lookup and a preinit flag. Its GET_INFO layout,
 # install-fd magic and existing flag meanings are unchanged. Next also supports
-# the reviewed UAPI 6 contract; BakaSU remains at 5.
-REVIEWED_UAPIS = {'kernelsu': {5, 6}, 'kernelsu-next': {5, 6}, 'resukisu': {5}}
+# the reviewed UAPI 6 contract. BakaSU 6 keeps the same GET_INFO layout, install
+# fd magic, flag set and downstream ioctl numbers; its additions mirror the
+# KernelSU 6 symbol lookup command, preinit flag and shell-ADB restriction, and
+# the get_feature supported byte became zero-compatible flag bits (0 still means
+# unsupported). Reviewed for 1.2.24.
+REVIEWED_UAPIS = {'kernelsu': {5, 6}, 'kernelsu-next': {5, 6}, 'resukisu': {5, 6}}
 ASSETS = Path('app/src/main/assets')
 JNI = Path('app/src/main/jniLibs/arm64-v8a')
 JAVA = Path('app/src/main/java/dev/busung/s25uroot')

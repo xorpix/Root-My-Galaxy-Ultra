@@ -144,8 +144,12 @@ as build provenance and becomes the next build's reviewed template. The UAPI
 recorded for each backend, upstream version calculation, complete source history,
 and the helper's existing version encoding must remain compatible. KernelSU UAPI 6
 was reviewed with its unchanged four-field GET_INFO layout and ioctl; the new
-symbol lookup command and preinit flag are additive. KernelSU-Next and BakaSU
-remain at UAPI 5. The generator patches each helper's expected UAPI and success
+symbol lookup command and preinit flag are additive. BakaSU UAPI 6 was reviewed
+the same way on 2026-10-24 for 1.2.24: its additions mirror the KernelSU 6
+symbol lookup command and preinit flag, every pre-existing downstream ioctl
+number and the GET_INFO layout stay as-is, and the get_feature supported byte
+became zero-compatible flag bits. KernelSU-Next remains at the reviewed UAPI 6.
+The generator patches each helper's expected UAPI and success
 message together, and the app requires that exact backend/API pair. Upstream UAPI
 headers remain unmodified. A new API number, control layout or GET_INFO ioctl
 requires further review before automation accepts it.
