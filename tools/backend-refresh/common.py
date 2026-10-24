@@ -182,9 +182,12 @@ def app_version(project):
 
 def next_version(value, tags):
     major, minor, patch = map(int, value.split('.'))
+    latest_tagged_patch = -1
     # Never republish or move an existing release tag, including manually made tags.
     for tag in tags:
         match = re.fullmatch(r'v?(\d+)\.(\d+)\.(\d+)', tag)
         if match and tuple(map(int, match.groups()[:2])) == (major, minor):
-            patch = max(patch, int(match[3]))
-    return f'{major}.{minor}.{patch + 1}'
+            latest_tagged_patch = max(latest_tagged_patch, int(match[3]))
+    # An untagged app version is already pending. Keep it so a backend refresh
+    # joins that release and uses its existing curated notes.
+    return f'{major}.{minor}.{max(patch, latest_tagged_patch + 1)}'

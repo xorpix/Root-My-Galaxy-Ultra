@@ -48,9 +48,12 @@ that an upstream update cannot arrive immediately before the weekly build.
 
 A fresh job checks the resulting source patch and APK contents, signs the APK
 with your existing release key, and verifies its certificate. It then commits
-the source update to the default branch and creates the next numeric patch tag
-and GitHub release. For example, `1.1.5` becomes `1.1.6`. Existing tags are never
-moved or overwritten. The branch and tag are pushed together without force; if
+the source update to the default branch and creates the release tag and GitHub
+release. An untagged app version is pending and is kept: a refresh on `1.2.24`
+joins that release and renders its curated notes. Once a numeric tag exists,
+the next unused patch version is selected. CI prerelease tags do not consume
+the pending version. Existing tags are never moved or overwritten. The branch
+and tag are pushed together without force; if
 the branch advanced during the build, the run stops so your changes are retained.
 
 The release includes `RootMyGalaxyUltra-VERSION.apk`, `SHA256SUMS`, release notes

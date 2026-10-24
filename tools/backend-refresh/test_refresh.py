@@ -202,7 +202,45 @@ class RefreshTests(unittest.TestCase):
 
     def test_version_skips_existing_and_later_numeric_tags(self):
         self.assertEqual('1.1.9', common.next_version('1.1.5', ['1.1.6', 'v1.1.8', 'ci-1.1.99']))
-        self.assertEqual('1.2.1', common.next_version('1.2.0', ['1.1.99']))
+        self.assertEqual('1.2.0', common.next_version('1.2.0', ['1.1.99']))
+
+    def test_version_preserves_pending_release_despite_ci_tags(self):
+        tags = ['1.2.23', 'ci-1.2.24-31', 'ci-1.2.24-32']
+        self.assertEqual('1.2.24', common.next_version('1.2.24', tags))
+        self.assertEqual('1.2.24', common.next_version('1.2.24', []))
+
+    def test_version_respects_existing_bare_and_prefixed_tags(self):
+        for tag in ('1.2.24', 'v1.2.24'):
+            with self.subTest(tag=tag):
+                self.assertEqual('1.2.25', common.next_version('1.2.24', [tag]))
+        self.assertEqual('1.2.27', common.next_version('1.2.24', ['1.2.26', '1.2.25']))
+
+    def test_pending_release_keeps_curated_notes_and_renders_backend_table(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'source'
+            work = root / 'work'
+            (source / 'app').mkdir(parents=True)
+            (source / 'docs/release-notes').mkdir(parents=True)
+            (work / 'result').mkdir(parents=True)
+            (source / 'app/build.gradle.kts').write_text('val appVersionBase = "1.2.24"\n')
+            template = (PROJECT / 'docs/release-notes/1.2.24.md').read_text()
+            notes = source / 'docs/release-notes/1.2.24.md'
+            notes.write_text(template)
+            config = {'app_base': 'a' * 40, 'backends': {'resukisu': {
+                'rebuild': True, 'version': 12345, 'uapi': 5,
+                'commit': 'b' * 40, 'repository': 'example/backend',
+                'daemon_version': 'fixture-version'}}}
+            with patch.object(refresh, 'capture', return_value='1.2.23\nci-1.2.24-32'):
+                refresh.prepare_release(source, work, config)
+            self.assertEqual('1.2.24', common.app_version(source))
+            self.assertEqual('1.2.24', json.loads((work / 'result/release.json').read_text())['version'])
+            rendered = notes.read_text()
+            self.assertTrue(rendered.startswith(template.split('<!-- RMGU_BACKEND_TABLE -->')[0]))
+            self.assertIn('| BakaSU (updated) | 12345 / 5 |', rendered)
+            self.assertNotIn('<!-- RMGU_BACKEND_TABLE -->', rendered)
+            self.assertNotIn('The bundled backends and boot helper are unchanged from 1.2.21.', rendered)
+            self.assertEqual(rendered, (work / 'result/release-notes.md').read_text())
 
     def test_unreviewed_uapi_stops_before_native_build(self):
         with tempfile.TemporaryDirectory() as directory:
