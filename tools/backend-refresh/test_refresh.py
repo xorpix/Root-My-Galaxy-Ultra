@@ -223,23 +223,30 @@ class RefreshTests(unittest.TestCase):
             (source / 'app').mkdir(parents=True)
             (source / 'docs/release-notes').mkdir(parents=True)
             (work / 'result').mkdir(parents=True)
-            (source / 'app/build.gradle.kts').write_text('val appVersionBase = "1.2.24"\n')
-            template = (PROJECT / 'docs/release-notes/1.2.24.md').read_text()
-            notes = source / 'docs/release-notes/1.2.24.md'
+            (source / 'app/build.gradle.kts').write_text('val appVersionBase = "1.2.25"\n')
+            template = (
+                '## What is new\n\n'
+                'The pending release keeps its curated notes, which must reach the published\n'
+                'release with the backend table rendered from the built targets.\n\n'
+                '<!-- RMGU_BACKEND_TABLE -->\n\n'
+                '## Updating\n\n'
+                'Install the release APK over the existing app and fully reboot afterwards.\n'
+            )
+            notes = source / 'docs/release-notes/1.2.25.md'
             notes.write_text(template)
             config = {'app_base': 'a' * 40, 'backends': {'resukisu': {
                 'rebuild': True, 'version': 12345, 'uapi': 5,
                 'commit': 'b' * 40, 'repository': 'example/backend',
                 'daemon_version': 'fixture-version'}}}
-            with patch.object(refresh, 'capture', return_value='1.2.23\nci-1.2.24-32'):
+            tags = '1.2.23\n1.2.24\nci-1.2.24-33'
+            with patch.object(refresh, 'capture', return_value=tags):
                 refresh.prepare_release(source, work, config)
-            self.assertEqual('1.2.24', common.app_version(source))
-            self.assertEqual('1.2.24', json.loads((work / 'result/release.json').read_text())['version'])
+            self.assertEqual('1.2.25', common.app_version(source))
+            self.assertEqual('1.2.25', json.loads((work / 'result/release.json').read_text())['version'])
             rendered = notes.read_text()
             self.assertTrue(rendered.startswith(template.split('<!-- RMGU_BACKEND_TABLE -->')[0]))
             self.assertIn('| BakaSU (updated) | 12345 / 5 |', rendered)
             self.assertNotIn('<!-- RMGU_BACKEND_TABLE -->', rendered)
-            self.assertNotIn('The bundled backends and boot helper are unchanged from 1.2.21.', rendered)
             self.assertEqual(rendered, (work / 'result/release-notes.md').read_text())
 
     def test_unreviewed_uapi_stops_before_native_build(self):
@@ -401,6 +408,27 @@ static const __u32 KSU_IOCTL_GET_INFO = _IOR('K', 2, struct ksu_get_info_cmd);
             with patch.object(release, 'PROJECT', source):
                 with self.assertRaisesRegex(ValueError, 'control/build logic change'):
                     release.apply_checked_update(result)
+
+    def test_release_assets_are_verified_by_name_and_size(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            apk = work / 'RootMyGalaxyUltra-1.2.24.apk'
+            compat = work / 'apply-matched-backends.patch'
+            apk.write_bytes(b'apk')
+            compat.write_bytes(b'patchbytes')
+            expected = [apk, compat]
+            verified = json.dumps({'assets': [{'name': apk.name, 'size': apk.stat().st_size},
+                                              {'name': compat.name, 'size': compat.stat().st_size}]})
+            partial = json.dumps({'assets': [{'name': apk.name, 'size': apk.stat().st_size}]})
+            with patch.object(release, 'capture', return_value=verified):
+                release.check_release_assets('1.2.24', expected)
+            with patch.object(release, 'capture', return_value=partial):
+                with self.assertRaisesRegex(ValueError, 'apply-matched-backends.patch'):
+                    release.check_release_assets('1.2.24', expected)
+            differs = json.dumps({'assets': [{'name': apk.name, 'size': apk.stat().st_size + 1}]})
+            with patch.object(release, 'capture', return_value=differs):
+                with self.assertRaisesRegex(ValueError, 'differs from the validated copy'):
+                    release.check_release_assets('1.2.24', expected)
 
 
 if __name__ == '__main__':

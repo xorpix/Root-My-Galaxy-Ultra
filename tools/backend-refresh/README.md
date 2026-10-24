@@ -57,7 +57,10 @@ and tag are pushed together without force; if
 the branch advanced during the build, the run stops so your changes are retained.
 
 The release includes `RootMyGalaxyUltra-VERSION.apk`, `SHA256SUMS`, release notes
-with the upstream revisions, and `apply-matched-backends.patch`. The tag points
+with the upstream revisions, and `apply-matched-backends.patch`. GitHub once
+accepted some of `gh release create`'s assets and silently dropped one, so each
+asset is now uploaded as its own checked call to the hidden draft and verified
+by name and byte size before the release is revealed. The tag points
 to the actual updated source, including its bundled binaries and provenance.
 These are regular releases. Build results do not claim hardware validation.
 

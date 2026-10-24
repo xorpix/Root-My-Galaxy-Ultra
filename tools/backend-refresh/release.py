@@ -234,6 +234,21 @@ def sign(result):
     print('Signed APK verified:', output.name)
 
 
+def check_release_assets(tag, assets):
+    """Fail unless the release holds every validated asset at its exact size.
+
+    gh release create uploads its asset list as a side step and left releases
+    1.2.22 through 1.2.24 without apply-matched-backends.patch while reporting
+    success, so publishing now uploads one checked call per file and this check
+    is the assertion that GitHub still holds each validated copy."""
+    view = json.loads(capture(['gh', 'release', 'view', tag, '--json', 'assets'], PROJECT))
+    stored = {asset['name']: asset['size'] for asset in view['assets']}
+    for path in assets:
+        if stored.get(path.name) != path.stat().st_size:
+            raise ValueError(f'Release asset differs from the validated copy: {path.name}')
+    print('Release assets verified:', ', '.join(path.name for path in assets), flush=True)
+
+
 def publish(result, branch):
     info = metadata(result)
     signed = json.loads((result / 'signed-apk.json').read_text())
@@ -260,10 +275,17 @@ def publish(result, branch):
     subprocess.run(['git', 'push', '--atomic', 'origin', 'HEAD:refs/heads/' + branch, 'refs/tags/' + tag],
                    cwd=PROJECT, check=True)
     assets = [apk, result / 'SHA256SUMS', result / 'apply-matched-backends.patch']
-    subprocess.run(['gh', 'release', 'create', tag, *map(str, assets), '--verify-tag', '--draft',
+    # The tag was pushed atomically with the branch above and --verify-tag keeps
+    # the draft bound to it, so an empty draft is not visible and the checked
+    # per-file uploads below can never publish half a release.
+    subprocess.run(['gh', 'release', 'create', tag, '--verify-tag', '--draft',
                     '--title', 'Root My Galaxy Ultra ' + tag, '--notes-file', result / 'release-notes.md'],
                    cwd=PROJECT, check=True)
+    for path in assets:
+        subprocess.run(['gh', 'release', 'upload', tag, str(path)], cwd=PROJECT, check=True)
+    check_release_assets(tag, assets)
     subprocess.run(['gh', 'release', 'edit', tag, '--draft=false', '--latest'], cwd=PROJECT, check=True)
+    check_release_assets(tag, assets)
     summary = os.environ.get('GITHUB_STEP_SUMMARY')
     if summary:
         with open(summary, 'a') as stream:
