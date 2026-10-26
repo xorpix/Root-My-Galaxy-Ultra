@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "created_utc": "2026-10-21",
-  "app_version": "1.2.24",
+  "app_version": "1.2.26",
   "app_base_commit": "82139c73837f5fc52edda7710c11424c2f3f66f3",
   "upstream_repository": "https://github.com/KernelSU-Next/KernelSU-Next",
   "upstream_commit": "b427a3f9c2421a443f961007bfce66b25486643f",

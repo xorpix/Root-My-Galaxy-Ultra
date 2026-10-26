@@ -36,7 +36,7 @@
       "kernelsu": {
         "url": "asset://azhl/kernelsu/ksud",
         "size": 5302072,
-        "sha256": "159ec93f798bb5f68768a813b2224fb6d353707eedf9b8184532278e95ae8a42",
+        "sha256": "b9fddb67a42a17dbff545adac0fa9d62ec9cd3c3210e7e69b37c43a1ddd4c6a4",
         "version": "3.3.1"
       }
     },
@@ -192,7 +192,7 @@
       "kernelsu": {
         "url": "asset://azhl/kernelsu/ksud",
         "size": 5302072,
-        "sha256": "159ec93f798bb5f68768a813b2224fb6d353707eedf9b8184532278e95ae8a42",
+        "sha256": "b9fddb67a42a17dbff545adac0fa9d62ec9cd3c3210e7e69b37c43a1ddd4c6a4",
         "version": "3.3.1"
       }
     },

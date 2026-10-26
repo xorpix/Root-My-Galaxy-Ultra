@@ -37,8 +37,8 @@
     "daemon_clippy": "passed (-D warnings)",
     "daemon_build": "passed",
     "exact_driver_in_daemon": "passed",
-    "apk_build": "passed (local debug APK; bundle and D2 companion verified)",
-    "android_unit_tests": "passed (934 JVM tests, 0 failures)",
+    "apk_build": "passed (GitHub Actions)",
+    "android_unit_tests": "passed (GitHub Actions)",
     "device_test": "not run"
   },
   "source_provenance": "RMGU KernelSU Samsung compatibility changes adapted to KowSU 6366f25b; upstream UAPI, version formula and manager signer retained.",
@@ -81,5 +81,6 @@
     "userspace/ksud/src/late_load.rs": "f4a657ab1a1cce7df55dcf11bc6f94cd53dce4ad6b079a4e98a5c6faad761a05",
     "userspace/ksud/src/soft_reboot.rs": "3b4de8e7112f43240969ad16c0e4e6938713c814d77f832e7932d75e547af407",
     "userspace/ksud/src/utils.rs": "f1300cad6f81900e7cfb04dad768bc0125c8538c39634835c9f0f677479922bb"
-  }
+  },
+  "app_version": "1.2.26"
 }
