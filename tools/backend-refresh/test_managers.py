@@ -38,7 +38,7 @@ def bundle(name, version, uapi=5, debug=False, package=None):
     inner, outer = io.BytesIO(), io.BytesIO()
     with zipfile.ZipFile(inner, 'w') as apk:
         apk.writestr('lib/arm64-v8a/libkernelsu.so', library(package or managers.MANAGERS[name][3], uapi))
-    prefix = {'kernelsu': 'KernelSU', 'kernelsu-next': 'KernelSU_Next', 'resukisu': 'BakaSU'}[name]
+    prefix = {'kernelsu': 'KernelSU', 'kernelsu-next': 'KernelSU_Next', 'resukisu': 'BakaSU', 'kowsu': 'KowSU'}[name]
     abi = '-arm64-v8a' if name == 'resukisu' else ''
     filename = f'{prefix}_v1.0.0_{version}{abi}-' + ('debug' if debug else 'release') + '.apk'
     with zipfile.ZipFile(outer, 'w') as archive:
@@ -163,10 +163,11 @@ class ManagerTests(unittest.TestCase):
     def test_mixed_api_bundle_verifies_each_manager_against_its_backend(self):
         self.config['backends']['kernelsu']['uapi'] = 6
         self.config['backends']['kernelsu-next']['uapi'] = 5
+        self.config['backends']['resukisu']['uapi'] = 5
         common.write_json(self.project / 'tools/backend-refresh/targets.json', self.config)
         self.client = FakeGitHub(self.config, self.readme)
         report = self.update()
-        self.assertEqual({'kernelsu': 6, 'kernelsu-next': 5, 'resukisu': 5}, report['required_uapi'])
+        self.assertEqual({'kernelsu': 6, 'kernelsu-next': 5, 'resukisu': 5, 'kowsu': 6}, report['required_uapi'])
         self.assertTrue(all(r['status'] == 'matched' for r in report['managers'].values()))
         for name, record in report['managers'].items():
             self.assertEqual(self.config['backends'][name]['uapi'], record['uapi'])

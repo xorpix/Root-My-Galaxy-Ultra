@@ -235,7 +235,7 @@ class RootRecoveryTest {
 
     @Test
     fun `a matching bundled daemon survives replacement of the installed daemon`() {
-        for (id in listOf("kernelsu", "kernelsu-next", "resukisu")) {
+        for (id in listOf("kernelsu", "kernelsu-next", "resukisu", "kowsu")) {
             val backend = M3qLaunch.backend(id)
             val directory = File(System.getProperty("java.io.tmpdir"), "root my galaxy/lib").absolutePath
             val expected = File(directory, backend.daemonLibrary).absolutePath

@@ -1,7 +1,7 @@
 {
   "schema": 3,
-  "app_base": "22e2435dd051266d9e338e53dd6cd30b099059af",
-  "checked_date": "2026-10-24",
+  "app_base": "02a8118cc202be8a448e23d29e584b9c07b678e9",
+  "checked_date": "2026-10-26",
   "build_status": "built",
   "backends": {
     "kernelsu": {
@@ -42,6 +42,19 @@
       "branch": "main",
       "version_offset": 30700,
       "uapi": 6
+    },
+    "kowsu": {
+      "repository": "KOWX712/KernelSU",
+      "branch": "master",
+      "commit": "6366f25b89f2bc5e287c1983715ebae60cd5540e",
+      "commit_count": 2737,
+      "version": 32737,
+      "version_offset": 30000,
+      "daemon_version": "3.3.0-136-g6366f25b",
+      "rust": "1.98.1",
+      "uapi": 6,
+      "rebuild": false,
+      "compat_sha256": "34602e1459801516686711cd78392611703043af9460c04f8394a9537b722e8c"
     }
   }
 }

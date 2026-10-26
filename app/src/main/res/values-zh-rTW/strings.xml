@@ -433,6 +433,7 @@
     <string name="flavor_kernelsu_summary">Weishu 開發的官方 KernelSU。</string>
     <string name="flavor_kernelsu_next_summary">Rifsxd 開發的 KernelSU-Next。</string>
     <string name="flavor_resukisu_summary">BakaSU（SukiSU-Ultra 的分支）。</string>
+    <string name="flavor_kowsu_summary">KowSU（KOWX712 開發的 KernelSU 分支）。</string>
     <string name="repo_no_profile">在目錄中沒有酬載匹配%1$s</string>
     <string name="repo_no_profile_closest">最接近的:%1$s</string>
     <string name="repo_no_profile_other_kernel">這裡是 %1$s 覆蓋的 %2$s</string>

@@ -92,6 +92,7 @@ internal fun identifyManager(packageName: String, label: String): ManagerIdentit
 
     val words = label.lowercase().replace('-', ' ').replace('_', ' ')
     return when {
+        "kowsu" in words || "kow su" in words -> ManagerIdentity(KernelSuFlavor.KowSu, spoofed = true)
         "next" in words -> ManagerIdentity(KernelSuFlavor.KernelSuNext, spoofed = true)
         // Ahead of the KernelSU test because the two share a substring: `resukisu` contains `su`, and
         // reading this project's manager as KernelSU's would put it in the wrong row.

@@ -45,22 +45,24 @@ fun main(args: Array<String>) = runBlocking {
         }
         check(runCatching { M3qLaunch.environment(2000) }.isFailure)
         check(M3qLaunch.environment(10345)["M3Q_APP_UID"] == "10345")
-        for (id in listOf("kernelsu", "kernelsu-next", "resukisu")) {
-            val version = M3qLaunch.backend(id).version
-            check(M3qLaunch.acceptsControl(id, version, 5, 5))
-            check(!M3qLaunch.acceptsControl(id, version, 1, 5))
-            check(!M3qLaunch.acceptsControl(id, version, 5, 4))
-            check(!M3qLaunch.acceptsControl(id, version, 5, 6))
-            check(!M3qLaunch.acceptsControl(id, 1, 5, 5))
+        for (id in listOf("kernelsu", "kernelsu-next", "resukisu", "kowsu")) {
+            val backend = M3qLaunch.backend(id)
+            check(M3qLaunch.acceptsControl(id, backend.version, 5, backend.uapi))
+            check(!M3qLaunch.acceptsControl(id, backend.version, 1, backend.uapi))
+            for (other in listOf(4, 5, 6, 7).filter { it != backend.uapi }) {
+                check(!M3qLaunch.acceptsControl(id, backend.version, 5, other))
+            }
+            check(!M3qLaunch.acceptsControl(id, 1, 5, backend.uapi))
         }
         var passed = 0
         // Every case uses real runner code, with no Android/kernel/native execution.
-        for (scenario in listOf("success", "next", "resuki", "root-failure", "existing-driver", "bad-verification", "wrong-uapi", "timeout", "prior-claim", "no-receipt-access")) {
+        for (scenario in listOf("success", "next", "resuki", "kow", "root-failure", "existing-driver", "bad-verification", "wrong-uapi", "timeout", "prior-claim", "no-receipt-access")) {
             val context = Context(File(fixture, scenario).apply { mkdir() }, ApplicationInfo(libraries.path),
                 AssetManager(File(project, "app/src/main/assets")))
             val flavor = when (scenario) {
                 "next" -> KernelSuFlavor.KernelSuNext
                 "resuki" -> KernelSuFlavor.ReSukiSU
+                "kow" -> KernelSuFlavor.KowSu
                 else -> KernelSuFlavor.KernelSu
             }
             val backend = M3qLaunch.backend(flavor.id)
@@ -100,7 +102,7 @@ fun main(args: Array<String>) = runBlocking {
                                 else Reply(13, "KernelSU driver fd unavailable\n")
                             } else {
                                 val version = if (scenario == "bad-verification") 1 else backend.version
-                                val uapi = if (scenario == "wrong-uapi") 4 else 5
+                                val uapi = if (scenario == "wrong-uapi") 4 else backend.uapi
                                 Reply(0, "KernelSU control verified version=$version flags=0x5 uapi=$uapi features=0x3\n")
                             }
                         }
@@ -124,7 +126,7 @@ fun main(args: Array<String>) = runBlocking {
                     }
                 })
             val result = runCatching { runner.execute(payloads, disableModules = false) }
-            val success = scenario in listOf("success", "next", "resuki")
+            val success = scenario in listOf("success", "next", "resuki", "kow")
             check(result.isSuccess == success) { "$scenario: $result" }
             if (success) {
                 check(stages == listOf(RunStage.Exploit, RunStage.KernelSu, RunStage.Verify))

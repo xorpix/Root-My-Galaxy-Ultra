@@ -20,6 +20,8 @@ MANAGERS = {
     'kernelsu': ('KernelSU', 'build-manager.yml', 'manager', 'me_weishu_kernelsu'),
     'kernelsu-next': ('KernelSU-Next', 'build-manager-ci.yml', 'manager', 'com_rifsxd_ksunext'),
     'resukisu': ('BakaSU', 'build-manager.yml', 'Manager-release', 'org_bakasu_bakasu'),
+    # KowSU changes the application id but keeps KernelSU's Kotlin/JNI namespace.
+    'kowsu': ('KowSU', 'build-manager.yml', 'manager', 'me_weishu_kernelsu'),
 }
 MAX_ARCHIVE = 128 * 1024 * 1024
 MAX_APK = 96 * 1024 * 1024

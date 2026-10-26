@@ -6,7 +6,7 @@ source_daemon=$2
 expected=$3
 disable_requested=$4
 wipe_requested=$5
-case "$backend" in kernelsu|kernelsu-next|resukisu) ;; *) exit 64 ;; esac
+case "$backend" in kernelsu|kernelsu-next|resukisu|kowsu) ;; *) exit 64 ;; esac
 case "$disable_requested" in 0|1) ;; *) exit 64 ;; esac
 case "$wipe_requested" in 0|1) ;; *) exit 64 ;; esac
 [ "$(id -u)" = 0 ] || exit 65

@@ -38,7 +38,7 @@ def needs_rebuild(target, upstream_sha, manifest):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', required=True, type=Path)
-    parser.add_argument('--force-rebuild', action='store_true', help='Rebuild all three matched pairs')
+    parser.add_argument('--force-rebuild', action='store_true', help='Rebuild every matched pair')
     args = parser.parse_args()
     snapshot = probe(PROJECT, force_rebuild=args.force_rebuild)
     write_json(args.output, snapshot)

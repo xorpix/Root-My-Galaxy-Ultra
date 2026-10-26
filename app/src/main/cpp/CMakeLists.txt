@@ -25,5 +25,5 @@ target_compile_options(exp PRIVATE -O2 -Wall -Wextra -fno-stack-protector -fomit
 target_link_libraries(exp PRIVATE log)
 target_link_options(exp PRIVATE "-Wl,-z,max-page-size=16384")
 set_source_files_properties(${DF_DIR}/exp.c PROPERTIES OBJECT_DEPENDS
-    "${DF_DIR}/ko/dirtyfrag-android12-5.10.ko;${DF_DIR}/ko/dirtyfrag-android13-5.10.ko;${DF_DIR}/ko/dirtyfrag-android13-5.15.ko;${DF_DIR}/ko/dirtyfrag-android14-5.15.ko;${DF_DIR}/ko/dirtyfrag-android14-6.1.ko;${DF_DIR}/ko/dirtyfrag-android15-6.6.ko;${DF_DIR}/ko/dirtyfrag-android16-6.12.ko;${DF_DIR}/ko/dirtyfrag-android16-6.12-kernelsu.ko;${DF_DIR}/ko/dirtyfrag-android16-6.12-kernelsu-next.ko;${DF_DIR}/ko/dirtyfrag-android16-6.12-resukisu.ko;${DF_DIR}/ko/dirtyfrag-android17-6.18.ko;${DF_SPLICEHELPER}")
+    "${DF_DIR}/ko/dirtyfrag-android12-5.10.ko;${DF_DIR}/ko/dirtyfrag-android13-5.10.ko;${DF_DIR}/ko/dirtyfrag-android13-5.15.ko;${DF_DIR}/ko/dirtyfrag-android14-5.15.ko;${DF_DIR}/ko/dirtyfrag-android14-6.1.ko;${DF_DIR}/ko/dirtyfrag-android15-6.6.ko;${DF_DIR}/ko/dirtyfrag-android16-6.12.ko;${DF_DIR}/ko/dirtyfrag-android16-6.12-kernelsu.ko;${DF_DIR}/ko/dirtyfrag-android16-6.12-kernelsu-next.ko;${DF_DIR}/ko/dirtyfrag-android16-6.12-resukisu.ko;${DF_DIR}/ko/dirtyfrag-android16-6.12-kowsu.ko;${DF_DIR}/ko/dirtyfrag-android17-6.18.ko;${DF_SPLICEHELPER}")
 

@@ -117,6 +117,45 @@
         "sha256": "8023385c362bd53b859385723f98966c1dea9adf1336d7d381019359f190907e",
         "version": "4.2.0-rc3"
       }
+    },
+    {
+      "payloadId": "m3q-azhl-kowsu",
+      "displayName": "SM-S948B AZHL / KowSU",
+      "models": [
+        "SM-S948B"
+      ],
+      "kernelVersions": [
+        "6.12.30-android16-5-pd30ff70-abogkiS948BXXS4AZHL-4k"
+      ],
+      "firmware": {
+        "model": "SM-S948B",
+        "device": "m3q",
+        "incremental": "S948BXXS4AZHL",
+        "kernelRelease": "6.12.30-android16-5-pd30ff70-abogkiS948BXXS4AZHL-4k",
+        "sdk": 36,
+        "abi": "arm64-v8a",
+        "pageSize": 4096
+      },
+      "flavor": "kowsu",
+      "routePolicy": {
+        "slideRoute": "default",
+        "attempts": 1,
+        "attemptTimeoutSec": 120,
+        "p0AttemptTimeoutSec": 45,
+        "p0OffsetCache": false,
+        "prefersShellTransport": true
+      },
+      "exploit": {
+        "url": "asset://m3q/libm3qpayload.so",
+        "size": 238648,
+        "sha256": "9ceb86833b9ae5da350dc04bc1a77d992680931973da1e9172b4ddd999b404dc"
+      },
+      "kernelsu": {
+        "url": "asset://azhl/kowsu/ksud",
+        "version": "3.3.0",
+        "size": 5309976,
+        "sha256": "55a3d375a74dc7b37c4c2ddd2801242139ff72ca0341199c40d36b0b77e233d1"
+      }
     }
   ]
 }

@@ -1,7 +1,7 @@
 # Root My Galaxy Ultra
 
 Temporary root for **Samsung Galaxy S26 Ultra (m3q) regional and carrier variants**, with a choice
-of **KernelSU**, **KernelSU-Next** or **BakaSU (former ReSukiSU)**. Root is lost after a full
+of **KernelSU**, **KernelSU-Next**, **BakaSU (former ReSukiSU)** or **KowSU**. Root is lost after a full
 reboot; activate it again through the app or enable optional automatic restoration,
 including [root before first unlock](docs/root-before-unlock.md) on supported DirtyFrag setups.
 
@@ -77,6 +77,7 @@ The current source bundles these driver/daemon pairs:
 | KernelSU | `32704 / 6` | [Manager APK (ZIP)](https://nightly.link/tiann/KernelSU/actions/runs/40075385290/manager.zip) · [Official build](https://github.com/tiann/KernelSU/actions/runs/40075385290) |
 | KernelSU-Next | `33405 / 6` | [Manager APK (ZIP)](https://nightly.link/KernelSU-Next/KernelSU-Next/actions/runs/39297115788/manager.zip) · [Official build](https://github.com/KernelSU-Next/KernelSU-Next/actions/runs/39297115788) |
 | BakaSU | `35252 / 6` | [Manager APKs (ZIP)](https://nightly.link/Baka-SU/BakaSU/actions/runs/40109566037/Manager-release.zip) · [Official build](https://github.com/Baka-SU/BakaSU/actions/runs/40109566037) |
+| KowSU | `32737 / 6` | [Manager APK (ZIP)](https://nightly.link/KOWX712/KernelSU/actions/runs/40204528615/manager.zip) · [Official build](https://github.com/KOWX712/KernelSU/actions/runs/40204528615) |
 
 Download the ZIP, extract it, and install the APK. For BakaSU on a Samsung phone,
 choose the APK ending in `-arm64-v8a-release.apk` from the archive.
@@ -92,6 +93,7 @@ opens their upstream source and artifact records. GitHub artifacts can expire.
 These are pinned upstream development revisions with Samsung compatibility
 changes. [Backend documentation](backends/README.md) contains the exact source
 revisions, checksums, build instructions and validation limits.
+See [KowSU integration](docs/kowsu-backend.md) for its manager and bridge details.
 
 The app's manager controls open official GitHub downloads, including a selected
 release through **Manager version control**. Complete the download and Android
@@ -156,7 +158,7 @@ Review exported logs for personal information before posting them publicly.
 ## Automatic backend updates
 
 The [weekly build workflow](tools/backend-refresh/README.md) checks official KernelSU,
-KernelSU-Next and BakaSU commits every Monday at 03:17 UTC. When sources change,
+KernelSU-Next, BakaSU and KowSU commits every Monday at 03:17 UTC. When sources change,
 it builds matched drivers/daemons, runs validation, signs the APK with the existing
 release key and publishes the next patch release. Unchanged weeks are skipped.
 Keep the build kit and `backends/` provenance records in git; the linked guide
@@ -253,7 +255,7 @@ AZHL screenshots from an earlier build; labels may differ in current releases.
   [helper variant metadata](app/src/main/assets/m3q/helper-variants.json).
 - [diabl0w / DFRoot](https://github.com/diabl0w/DFRoot) — DirtyFrag integration
   for eligible S26 Ultra variants. See [DirtyFrag provenance and licensing notes](app/src/main/cpp/dirtyfrag/DF_ORIGIN.md).
-- **KernelSU, KernelSU-Next and BakaSU contributors** — root backends;
+- **KernelSU, KernelSU-Next, BakaSU and KowSU contributors** — root backends;
   [source revisions and Samsung patches](backends/README.md).
 
 The application repository carries the [Apache 2.0 license](LICENSE).

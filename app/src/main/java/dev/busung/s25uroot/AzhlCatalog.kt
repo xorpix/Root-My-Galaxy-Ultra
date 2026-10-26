@@ -28,7 +28,7 @@ internal object AzhlCatalog {
     /** True when this profile's exploit is the tested M3Q payload.
      *
      * The exploit is backend-agnostic: it only obtains root, and the backend
-     * comes from whichever ksud is staged at late-load time. All three
+     * comes from whichever ksud is staged at late-load time. All
      * flavors therefore share the tested payload and differ by ksud. */
     fun isM3qPayload(profile: TargetProfile): Boolean =
         profile.exploit.url == M3Q_PAYLOAD_ASSET
@@ -104,12 +104,14 @@ internal fun azhlReleaseVersion(flavor: KernelSuFlavor): String = when (flavor) 
     KernelSuFlavor.KernelSu -> "3.3.1"
     KernelSuFlavor.KernelSuNext -> "3.4.2"
     KernelSuFlavor.ReSukiSU -> "4.2.0-rc3"
+    KernelSuFlavor.KowSu -> "3.3.0"
 }
 
 internal fun azhlDriverVersion(flavor: KernelSuFlavor): Int = when (flavor) {
     KernelSuFlavor.KernelSu -> 32704
     KernelSuFlavor.KernelSuNext -> 33405
     KernelSuFlavor.ReSukiSU -> 35252
+    KernelSuFlavor.KowSu -> 32737
 }
 
 internal fun azhlEnvironment(flavor: KernelSuFlavor, disableModules: Boolean): Array<String> = arrayOf(

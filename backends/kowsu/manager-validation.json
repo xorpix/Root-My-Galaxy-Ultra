@@ -1,0 +1,21 @@
+{
+  "manager": {
+    "apk": "KowSU_v3.3.0-136-g6366f25b_32737-release.apk",
+    "apk_sha256": "612984446c9911fed2ecf5ac44f918145a6eae21f93ebe837247214cac42e770",
+    "manager_version": 32737,
+    "uapi": 6,
+    "status": "matched",
+    "repository": "KOWX712/KernelSU",
+    "source_commit": "6366f25b89f2bc5e287c1983715ebae60cd5540e",
+    "run_id": 40204528615,
+    "artifact_id": 12602823399,
+    "artifact_sha256": "decfb96ddd2e2c44c1a7ec7b473189f713948b444449230e996538793594fd01",
+    "expires_at": "2027-01-23T14:55:48Z",
+    "download_url": "https://nightly.link/KOWX712/KernelSU/actions/runs/40204528615/manager.zip",
+    "build_url": "https://github.com/KOWX712/KernelSU/actions/runs/40204528615"
+  },
+  "warnings": [],
+  "package": "com.kowx712.supermanager",
+  "certificate_sha256": "484fcba6e6c43b1fb09700633bf2fb4758f13cb0b2f4457b80d075084b26c588",
+  "signature_verified": true
+}

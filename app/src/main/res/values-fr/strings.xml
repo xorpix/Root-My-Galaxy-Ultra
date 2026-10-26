@@ -437,6 +437,7 @@
     <string name="flavor_kernelsu_summary">KernelSU officiel par Weishu.</string>
     <string name="flavor_kernelsu_next_summary">KernelSU-Next par Rifsxd.</string>
     <string name="flavor_resukisu_summary">BakaSU (dérivé de SukiSU-Ultra).</string>
+    <string name="flavor_kowsu_summary">KowSU (dérivé de KernelSU par KOWX712).</string>
     <string name="repo_no_profile">Aucune charge utile dans le catalogue ne correspond à %1$s</string>
     <string name="repo_no_profile_closest">Le plus proche: %1$s</string>
     <string name="repo_no_profile_other_kernel">%1$s couvre %2$s</string>

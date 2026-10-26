@@ -12,7 +12,7 @@ import subprocess
 import sys
 import urllib.request
 
-from common import HERE, PROJECT, app_version, baseline, capture, load_config, next_version, reviewed_uapi, write_json
+from common import BACKEND_LABELS, HERE, PROJECT, app_version, baseline, capture, load_config, next_version, reviewed_uapi, write_json
 from probe import needs_rebuild, probe
 import patching
 
@@ -248,7 +248,7 @@ def render_curated_notes(template, config):
         raise ValueError('Curated backend release notes need exactly one backend table marker')
     table = ['| Backend | Driver / UAPI | Upstream commit | Daemon |', '|---|---|---|---|']
     for name, target in config['backends'].items():
-        label = {'kernelsu': 'KernelSU', 'kernelsu-next': 'KernelSU-Next', 'resukisu': 'BakaSU'}[name]
+        label = BACKEND_LABELS[name]
         status = 'updated' if target['rebuild'] else 'unchanged'
         table.append(f'| {label} ({status}) | {target["version"]} / {target["uapi"]} | '
                      f'[{target["commit"][:8]}](https://github.com/{target["repository"]}/commit/{target["commit"]}) | '
@@ -269,7 +269,7 @@ def prepare_release(source, work, config):
             'Samsung compatibility changes. Each daemon embeds its matching driver. Use the manager UAPI shown below.', '',
             '| Backend | Driver / UAPI | Upstream commit | Daemon |', '|---|---|---|---|']
     for name, t in config['backends'].items():
-        label = {'kernelsu': 'KernelSU', 'kernelsu-next': 'KernelSU-Next', 'resukisu': 'BakaSU'}[name]
+        label = BACKEND_LABELS[name]
         status = 'updated' if name in changed else 'unchanged'
         rows.append(f'| {label} ({status}) | {t["version"]} / {t["uapi"]} | '
                     f'[{t["commit"][:8]}](https://github.com/{t["repository"]}/commit/{t["commit"]}) | '

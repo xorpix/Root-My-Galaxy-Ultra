@@ -34,6 +34,20 @@ class KernelSuManagerTest {
         assertFalse(baka.spoofed)
         assertFalse(identifyManager("com.resukisu.resukisu", "ReSukiSU").spoofed)
         assertEquals(KernelSuFlavor.ReSukiSU, identifyManager("custom.manager", "BakaSU").flavor)
+
+        val kow = identifyManager("com.kowx712.supermanager", "KernelSU")
+        assertEquals(KernelSuFlavor.KowSu, kow.flavor)
+        assertFalse(kow.spoofed)
+    }
+
+    @Test
+    fun `KowSU labels identify repackaged managers before generic KernelSU labels`() {
+        listOf("KowSU", "Kow SU", "KowSU KernelSU Manager").forEach { label ->
+            val identity = identifyManager("custom.manager", label)
+            assertEquals(KernelSuFlavor.KowSu, identity.flavor)
+            assertTrue(identity.spoofed)
+        }
+        assertEquals(KernelSuFlavor.KernelSu, identifyManager("me.weishu.kernelsu", "KowSU").flavor)
     }
 
     @Test
