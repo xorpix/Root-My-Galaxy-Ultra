@@ -39,11 +39,11 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25 (matches the Gradle daemon criteria)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '25'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
@@ -54,7 +54,7 @@ jobs:
       - name: Setup NDK
         uses: nttld/setup-ndk@v1
         with:
-          ndk-version: r28
+          ndk-version: r28c
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
