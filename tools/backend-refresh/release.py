@@ -14,7 +14,7 @@ import subprocess
 import tempfile
 import zipfile
 
-from common import ASSETS, HERE, JAVA, JNI, PROJECT, app_version, baseline, capture, catalog_releases, daemon_release, load_config, record, release_label_edit, write_json
+from common import ASSETS, HERE, JAVA, JNI, PROJECT, app_version, baseline, capture, catalog_releases, daemon_release, driver_versions_edit, load_config, record, release_label_edit, write_json
 from refresh import package_result, render_curated_notes
 
 sys.path.insert(0, str(PROJECT / 'tools'))
@@ -148,8 +148,9 @@ def apply_checked_update(result):
                     raise ValueError('Unexpected base helper declaration')
                 text = text.replace(before, after)
         else:
-            for name, target in targets.items():
-                text = re.sub(r'\b' + str(old[name]['driver_version']) + r'\b', str(target['version']), text)
+            text = driver_versions_edit(text, path.name,
+                {n: m['driver_version'] for n, m in old.items()},
+                {n: t['version'] for n, t in targets.items()})
             if path.name == 'AzhlCatalog.kt':
                 text = release_label_edit(text, old_releases, targets)
             if path.name == 'prepare_m3q_helpers.py':

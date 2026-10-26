@@ -61,7 +61,7 @@ kernel family still requires matching native builds.
 
 ## Validation
 
-Host tests cover regional/carrier names, all three backend choices, immutable
+Host tests cover regional/carrier names, all four backend choices, immutable
 payload staging, generated profile/cache round trips, changed-firmware refusal,
 unsupported hardware/kernel rejection and the known AZHL/recorded DF routes.
 These checks do not run the exploit or establish hardware compatibility.

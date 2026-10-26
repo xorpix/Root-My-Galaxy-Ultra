@@ -119,6 +119,45 @@
       }
     },
     {
+      "payloadId": "df-bzig-kowsu",
+      "displayName": "SM-S948B BZIG / dirtyfrag / KowSU",
+      "models": [
+        "SM-S948B"
+      ],
+      "kernelVersions": [
+        "6.12.69-android16-6-pb4d3caf-abogkiS948BXXS4BZIG-4k"
+      ],
+      "firmware": {
+        "model": "SM-S948B",
+        "device": "m3q",
+        "incremental": "S948BXXS4BZIG",
+        "kernelRelease": "6.12.69-android16-6-pb4d3caf-abogkiS948BXXS4BZIG-4k",
+        "sdk": 37,
+        "abi": "arm64-v8a",
+        "pageSize": 4096
+      },
+      "flavor": "kowsu",
+      "routePolicy": {
+        "slideRoute": "default",
+        "attempts": 1,
+        "attemptTimeoutSec": 120,
+        "p0AttemptTimeoutSec": 45,
+        "p0OffsetCache": false,
+        "prefersShellTransport": false
+      },
+      "exploit": {
+        "url": "native://libexp.so",
+        "size": 0,
+        "verifySize": false
+      },
+      "kernelsu": {
+        "url": "asset://azhl/kowsu/ksud",
+        "version": "3.3.0",
+        "size": 5309976,
+        "sha256": "55a3d375a74dc7b37c4c2ddd2801242139ff72ca0341199c40d36b0b77e233d1"
+      }
+    },
+    {
       "payloadId": "df-bzid-kernelsu",
       "displayName": "SM-S948W BZID / dirtyfrag / KernelSU",
       "models": [
@@ -233,6 +272,45 @@
         "size": 4474624,
         "sha256": "8023385c362bd53b859385723f98966c1dea9adf1336d7d381019359f190907e",
         "version": "4.2.0-rc3"
+      }
+    },
+    {
+      "payloadId": "df-bzid-kowsu",
+      "displayName": "SM-S948W BZID / dirtyfrag / KowSU",
+      "models": [
+        "SM-S948W"
+      ],
+      "kernelVersions": [
+        "6.12.69-android16-6-pee899be-abogkiS948USQU4BZID-4k"
+      ],
+      "firmware": {
+        "model": "SM-S948W",
+        "device": "m3q",
+        "incremental": "S948WVLU4BZID",
+        "kernelRelease": "6.12.69-android16-6-pee899be-abogkiS948USQU4BZID-4k",
+        "sdk": 37,
+        "abi": "arm64-v8a",
+        "pageSize": 4096
+      },
+      "flavor": "kowsu",
+      "routePolicy": {
+        "slideRoute": "default",
+        "attempts": 1,
+        "attemptTimeoutSec": 120,
+        "p0AttemptTimeoutSec": 45,
+        "p0OffsetCache": false,
+        "prefersShellTransport": false
+      },
+      "exploit": {
+        "url": "native://libexp.so",
+        "size": 0,
+        "verifySize": false
+      },
+      "kernelsu": {
+        "url": "asset://azhl/kowsu/ksud",
+        "version": "3.3.0",
+        "size": 5309976,
+        "sha256": "55a3d375a74dc7b37c4c2ddd2801242139ff72ca0341199c40d36b0b77e233d1"
       }
     }
   ]

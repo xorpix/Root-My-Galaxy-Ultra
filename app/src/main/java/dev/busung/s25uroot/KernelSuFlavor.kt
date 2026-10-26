@@ -7,7 +7,7 @@ import org.json.JSONObject
 /**
  * Which KernelSU the app installs and drives.
  *
- * KernelSU, KernelSU-Next and ReSukiSU are separate projects with separate kernels, separate managers
+ * KernelSU, KernelSU-Next, BakaSU and KowSU have separate kernels, managers
  * and separate daemons, and no two of them can be in the kernel at once: each hooks the same syscall
  * paths, so a boot carries one of them or neither. That is why this is stored for the app rather than
  * passed to one run, and why changing it has to wait for a restart.
@@ -49,7 +49,7 @@ enum class KernelSuFlavor(
      * This is a property of the module rather than of the app's preference, so it is stated on the
      * flavour: the kernel decides who its manager is by comparing an APK's signature against a table
      * built into the module, and only ReSukiSU's carries the second path that lets a key be given to it
-     * afterwards. The other two can only be told by recompiling, which is not something an app can do.
+     * afterwards. The other backends require recompilation, which is not something an app can do.
      *
      * False is the safe default and not merely the common one: offering to register a manager with a
      * kernel that has no such feature would put a control on the screen that cannot work.
@@ -89,6 +89,16 @@ enum class KernelSuFlavor(
         defaultManagerAsset = "",
         supportsDynamicManager = true,
         summaryRes = R.string.flavor_resukisu_summary,
+    ),
+    KowSu(
+        id = "kowsu",
+        label = "KowSU",
+        managerPackage = "com.kowx712.supermanager",
+        repository = "KOWX712/KernelSU",
+        // KowSU's development branch uses UAPI 6 and its own manager signer.
+        defaultManagerVersion = "3.3.0",
+        defaultManagerAsset = "",
+        summaryRes = R.string.flavor_kowsu_summary,
     ),
     ;
 

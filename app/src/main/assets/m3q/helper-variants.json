@@ -111,6 +111,45 @@
           "after": "aa1f03e5"
         }
       ]
+    },
+    "kowsu": {
+      "library": "libm3qroot_kowsu.so",
+      "driverVersion": 32737,
+      "uapiVersion": 6,
+      "size": 24232,
+      "sha256": "34e6990899b872316eea8c328f287e8ed7d1c165950665682c2222142d8ce439",
+      "changes": [
+        {
+          "virtual_address": "0x6c94",
+          "file_offset": 11412,
+          "before": "528fef89",
+          "after": "528ffc29"
+        },
+        {
+          "virtual_address": "0x6cc8",
+          "file_offset": 11464,
+          "before": "528fef82",
+          "after": "528ffc22"
+        },
+        {
+          "virtual_address": "0x6ca0",
+          "file_offset": 11424,
+          "before": "710010df",
+          "after": "710018df"
+        },
+        {
+          "virtual_address": "0x6cd0",
+          "file_offset": 11472,
+          "before": "52800084",
+          "after": "528000c4"
+        },
+        {
+          "virtual_address": "0x7234",
+          "file_offset": 12852,
+          "before": "911f28a5",
+          "after": "aa1f03e5"
+        }
+      ]
     }
   }
 }

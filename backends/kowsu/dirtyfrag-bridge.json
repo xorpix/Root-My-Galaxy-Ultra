@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "source": {
+    "path": "dirtyfrag-android16-6.12-kernelsu.ko",
+    "size": 11128,
+    "sha256": "cb667d8cd59a04b7ff0fa505bbafcf2e91de5b492ab2e84c7f2d0c42095bc0b4"
+  },
+  "output": {
+    "path": "dirtyfrag-android16-6.12-kowsu.ko",
+    "size": 11128,
+    "sha256": "a2f9a03cef5eda394b3cae109d14b2eafbda512b7d7bed024de577649cfa97ef"
+  },
+  "manager_package": "com.kowx712.supermanager",
+  "manager_selection": "KowSU daemon compiled default; no package override",
+  "edit": {
+    "file_offset": 2541,
+    "before": " --package-name me.weishu.kernelsu",
+    "after": "                                  "
+  }
+}

@@ -12,7 +12,7 @@ on:
         default: true
         required: true
       force_rebuild:
-        description: Rebuild all three matched driver/daemon pairs even when source pins are unchanged
+        description: Rebuild every matched driver/daemon pair even when source pins are unchanged
         type: boolean
         default: false
         required: false
@@ -21,6 +21,8 @@ on:
       - '.github/workflows/backend-refresh.yml'
       - '.github/workflows/backend-compatibility.yml'
       - 'tools/backend-refresh/**'
+      - 'tools/prepare_m3q_helpers.py'
+      - 'tools/prepare_df_backends.py'
       - 'tools/build_backend.py'
       - 'tools/provision_*.py'
       - 'tools/test_backend_bundle.py'

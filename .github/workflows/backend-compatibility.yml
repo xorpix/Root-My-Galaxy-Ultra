@@ -10,6 +10,8 @@ on:
       - '.github/workflows/backend-compatibility.yml'
       - '.github/workflows/backend-refresh.yml'
       - 'tools/backend-refresh/**'
+      - 'tools/prepare_m3q_helpers.py'
+      - 'tools/prepare_df_backends.py'
       - 'backends/**'
 
 permissions:

@@ -433,6 +433,7 @@
     <string name="flavor_kernelsu_summary">Weishuによる公式KernelSU。</string>
     <string name="flavor_kernelsu_next_summary">RifsxdによるKernelSU-Next。</string>
     <string name="flavor_resukisu_summary">BakaSU（SukiSU-Ultraのフォーク）。</string>
+    <string name="flavor_kowsu_summary">KowSU（KOWX712によるKernelSUのフォーク）。</string>
     <string name="repo_no_profile">カタログに %1$s と一致するペイロードはありません</string>
     <string name="repo_no_profile_closest">最寄りの %1$s</string>
     <string name="repo_no_profile_other_kernel">%1$sは%2$sをカバーする</string>

@@ -11,6 +11,7 @@ import tempfile
 import unittest
 
 from prepare_m3q_helpers import variant, file_offset, VERSIONS, LIBRARIES, UAPI_VERSIONS
+import prepare_df_backends
 
 PROJECT = Path(__file__).resolve().parents[1]
 ASSETS = PROJECT / 'app/src/main/assets'
@@ -19,6 +20,50 @@ JAVA = PROJECT / 'app/src/main/java/dev/busung/s25uroot'
 
 
 class BundleTests(unittest.TestCase):
+    def test_kowsu_bridge_retains_instructions_and_uses_its_daemon_manager_default(self):
+        folder = PROJECT / 'app/src/main/cpp/dirtyfrag/ko'
+        source = (folder / prepare_df_backends.SOURCE).read_bytes()
+        expected, _ = prepare_df_backends.variant(source)
+        bridge = (folder / prepare_df_backends.OUTPUT).read_bytes()
+        self.assertEqual(expected, bridge)
+        self.assertNotIn(b'--package-name', bridge)
+        self.assertIn(b'/data/user_de/0/dev.experimental.azhlroot/ksud', bridge)
+        shoff = struct.unpack_from('<Q', source, 40)[0]
+        shsize, shnum = struct.unpack_from('<HH', source, 58)
+        executable = 0
+        for i in range(shnum):
+            section = struct.unpack_from('<IIQQQQIIQQ', source, shoff + i * shsize)
+            if section[2] & 4:
+                executable += 1
+                start, size = section[4:6]
+                self.assertEqual(source[start:start + size], bridge[start:start + size])
+        self.assertGreater(executable, 0)
+        metadata = json.loads((PROJECT / 'backends/kowsu/dirtyfrag-bridge.json').read_text())
+        self.assertEqual(prepare_df_backends.record(bridge)['sha256'], metadata['output']['sha256'])
+        for invalid in (source[:-1], source[:-1] + bytes([source[-1] ^ 1])):
+            with self.assertRaises(ValueError):
+                prepare_df_backends.variant(invalid)
+
+    @unittest.skipUnless(shutil.which('cc'), 'C compiler needed for bridge selection check')
+    def test_native_dirtyfrag_handoff_selects_each_backends_own_bridge(self):
+        source = (PROJECT / 'app/src/main/cpp/dirtyfrag/exp.c').read_text()
+        selection = source.split('struct KoImage {', 1)[1].split('static int read_device_versions', 1)[0]
+        selection = 'struct KoImage {' + selection
+        symbols = set(re.findall(r'\bdirtyfrag_ko_\w+\b', selection))
+        fixture = '#include <string.h>\n#include <assert.h>\n'
+        fixture += '\n'.join(f'static char {symbol}[1];' for symbol in sorted(symbols))
+        fixture += '\n' + selection + '\nint main(void) {\n'
+        for name in VERSIONS:
+            fixture += (f'assert(select_ko_image(16, 6, 12, "{name}") == '
+                        f'&ko_16_6_12_{name.replace("-", "_")});\n')
+        fixture += 'assert(select_ko_image(16, 6, 13, "kowsu") == NULL);\nreturn 0;\n}\n'
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            (path / 'selection.c').write_text(fixture)
+            subprocess.run(['cc', '-Wall', '-Wextra', '-Werror', path / 'selection.c',
+                            '-o', path / 'selection'], check=True)
+            subprocess.run([path / 'selection'], check=True)
+
     def test_helpers_only_change_documented_instructions(self):
         original = (ASSETS / 'm3q/libm3qroot.so').read_bytes()
         for backend, version in VERSIONS.items():
@@ -71,7 +116,7 @@ class BundleTests(unittest.TestCase):
     def test_runtime_expectations_match_packaged_helpers(self):
         launch = (JAVA / 'M3qLaunch.kt').read_text()
         catalog = (JAVA / 'AzhlCatalog.kt').read_text().split('internal fun azhlDriverVersion', 1)[1]
-        enum_names = {'kernelsu': 'KernelSu', 'kernelsu-next': 'KernelSuNext', 'resukisu': 'ReSukiSU'}
+        enum_names = {'kernelsu': 'KernelSu', 'kernelsu-next': 'KernelSuNext', 'resukisu': 'ReSukiSU', 'kowsu': 'KowSu'}
         native = (PROJECT / 'native/azhl/src/azhl_backend.h').read_text()
         for backend, version in VERSIONS.items():
             helper = (JNI / LIBRARIES[backend]).read_bytes()

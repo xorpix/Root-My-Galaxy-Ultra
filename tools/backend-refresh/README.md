@@ -1,13 +1,14 @@
 # Weekly backend builds and releases
 
 [Weekly backend release](../../.github/workflows/backend-refresh.yml) checks the
-three official source branches every **Monday at 03:17 UTC**:
+four official source branches every **Monday at 03:17 UTC**:
 
 | Backend | Official source branch | Internal id |
 |---|---|---|
 | KernelSU | `tiann/KernelSU`, `main` | `kernelsu` |
 | KernelSU-Next | `KernelSU-Next/KernelSU-Next`, `dev` | `kernelsu-next` |
 | BakaSU | `Baka-SU/BakaSU`, `main` | `resukisu` |
+| KowSU | `KOWX712/KernelSU`, `master` | `kowsu` |
 
 When there are new commits or reviewed Samsung patch updates, it snapshots those revisions, builds each changed
 kernel driver and daemon as a matched pair, updates the bundled files and helper
@@ -99,7 +100,7 @@ an update artifact without the signing secrets, git push, or release. That
 artifact's `apk-input.apk` has a disposable signature and is not the release APK.
 Build-only mode also accepts a non-default branch, so you can test the workflow
 on a pull request branch before merging it. Publishing requires the default branch.
-Choose **force_rebuild** to rebuild all three pairs even when an upstream source
+Choose **force_rebuild** to rebuild all four pairs even when an upstream source
 pin is unchanged. Backend-kit pull requests build the changed pairs without publishing.
 Repository pull requests that change the backend kit automatically run the
 compatibility check and the build-only weekly workflow. Changed backends are
@@ -145,13 +146,15 @@ conflicts stop before source is changed. There is no whitespace/fuzz relaxation
 or automatic conflict resolution. The complete merged source patch is retained
 as build provenance and becomes the next build's reviewed template. The UAPI
 recorded for each backend, upstream version calculation, complete source history,
-and the helper's existing version encoding must remain compatible. KernelSU UAPI 6
+and the helper's existing version encoding must remain compatible. Driver version
+edits are scoped to backend identities because forks can share version numbers. KernelSU UAPI 6
 was reviewed with its unchanged four-field GET_INFO layout and ioctl; the new
 symbol lookup command and preinit flag are additive. BakaSU UAPI 6 was reviewed
 the same way on 2026-10-24 for 1.2.24: its additions mirror the KernelSU 6
 symbol lookup command and preinit flag, every pre-existing downstream ioctl
 number and the GET_INFO layout stay as-is, and the get_feature supported byte
 became zero-compatible flag bits. KernelSU-Next remains at the reviewed UAPI 6.
+KowSU retains the UAPI 6 control contract and its own manager package and signer.
 The generator patches each helper's expected UAPI and success
 message together, and the app requires that exact backend/API pair. Upstream UAPI
 headers remain unmodified. A new API number, control layout or GET_INFO ioctl
@@ -160,7 +163,9 @@ requires further review before automation accepts it.
 All changed native builds must succeed before any app bundle is staged. The
 exact built driver must be recoverable from its daemon. Catalogs, JNI copies,
 helper hashes and runtime versions must agree; tests and the APK build must pass.
-Firmware/routing, exploit files and bridge binaries remain unchanged. This does
+Recurring refreshes preserve firmware/routing, exploit files and bridge binaries.
+KowSU was added with its own bridge in a separate reviewed integration; see
+[its integration record](../../docs/kowsu-backend.md). This does
 not add firmware/device support, port an exploit, add SUSFS, or retune root attempts.
 
 Failed build logs and test reports are uploaded to the workflow run. If signing

@@ -107,3 +107,14 @@ literal in its non-executable data section changes to `org.bakasu.bakasu`,
 with space padding. The command suffix and executable sections are unchanged.
 The reproducible, input-hash-checked edit is in
 `tools/backend-refresh/stage.py`. This is not a new exploit build.
+
+## KowSU integration (2026-10-26)
+
+KowSU uses `dirtyfrag-android16-6.12-kowsu.ko`, derived from the bundled
+KernelSU bridge by `tools/prepare_df_backends.py`. The generator checks the
+source SHA-256 and removes only its manager-package override in a
+non-executable ELF section. The existing command, instructions, image
+protection, module policy and deadlines are retained. KowSU's daemon uses its
+compiled `com.kowx712.supermanager` default, matching its driver. The source and
+output hashes and the exact edit are in `backends/kowsu/dirtyfrag-bridge.json`.
+`exp.c` selects this bridge explicitly for `kowsu`; CMake embeds it.

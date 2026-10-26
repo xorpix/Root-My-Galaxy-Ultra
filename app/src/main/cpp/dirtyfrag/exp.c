@@ -326,6 +326,8 @@ asm(
     "dirtyfrag_ko_16_6_12_kernelsu_start:\n.incbin \"ko/dirtyfrag-android16-6.12-kernelsu.ko\"\ndirtyfrag_ko_16_6_12_kernelsu_end:\n"
     ".global dirtyfrag_ko_16_6_12_kernelsu_next_start\n.global dirtyfrag_ko_16_6_12_kernelsu_next_end\n"
     "dirtyfrag_ko_16_6_12_kernelsu_next_start:\n.incbin \"ko/dirtyfrag-android16-6.12-kernelsu-next.ko\"\ndirtyfrag_ko_16_6_12_kernelsu_next_end:\n"
+    ".global dirtyfrag_ko_16_6_12_kowsu_start\n.global dirtyfrag_ko_16_6_12_kowsu_end\n"
+    "dirtyfrag_ko_16_6_12_kowsu_start:\n.incbin \"ko/dirtyfrag-android16-6.12-kowsu.ko\"\ndirtyfrag_ko_16_6_12_kowsu_end:\n"
     ".global dirtyfrag_ko_16_6_12_resukisu_start\n.global dirtyfrag_ko_16_6_12_resukisu_end\n"
     "dirtyfrag_ko_16_6_12_resukisu_start:\n.incbin \"ko/dirtyfrag-android16-6.12-resukisu.ko\"\ndirtyfrag_ko_16_6_12_resukisu_end:\n"
 );
@@ -347,6 +349,7 @@ extern char dirtyfrag_ko_17_6_18_start[], dirtyfrag_ko_17_6_18_end[];
 extern char dirtyfrag_ko_16_6_12_kernelsu_start[], dirtyfrag_ko_16_6_12_kernelsu_end[];
 extern char dirtyfrag_ko_16_6_12_kernelsu_next_start[], dirtyfrag_ko_16_6_12_kernelsu_next_end[];
 extern char dirtyfrag_ko_16_6_12_resukisu_start[], dirtyfrag_ko_16_6_12_resukisu_end[];
+extern char dirtyfrag_ko_16_6_12_kowsu_start[], dirtyfrag_ko_16_6_12_kowsu_end[];
 extern char splice_helper_start[], splice_helper_end[];
 
 struct KoImage { int android_release, kver_major, kver_minor; const char *start, *end; };
@@ -354,6 +357,7 @@ struct KoImage { int android_release, kver_major, kver_minor; const char *start,
 static const struct KoImage ko_16_6_12_kernelsu = {16, 6, 12, dirtyfrag_ko_16_6_12_kernelsu_start, dirtyfrag_ko_16_6_12_kernelsu_end};
 static const struct KoImage ko_16_6_12_kernelsu_next = {16, 6, 12, dirtyfrag_ko_16_6_12_kernelsu_next_start, dirtyfrag_ko_16_6_12_kernelsu_next_end};
 static const struct KoImage ko_16_6_12_resukisu = {16, 6, 12, dirtyfrag_ko_16_6_12_resukisu_start, dirtyfrag_ko_16_6_12_resukisu_end};
+static const struct KoImage ko_16_6_12_kowsu = {16, 6, 12, dirtyfrag_ko_16_6_12_kowsu_start, dirtyfrag_ko_16_6_12_kowsu_end};
 
 static const struct KoImage *select_ko_image(int andr, int major, int minor, const char *flavor) {
     /* Per-flavour 6.12 images carrying this app's staged-ksud path. All other
@@ -362,6 +366,7 @@ static const struct KoImage *select_ko_image(int andr, int major, int minor, con
         if (strcmp(flavor, "kernelsu-next") == 0) return &ko_16_6_12_kernelsu_next;
         if (strcmp(flavor, "resukisu") == 0) return &ko_16_6_12_resukisu;
         if (strcmp(flavor, "kernelsu") == 0) return &ko_16_6_12_kernelsu;
+        if (strcmp(flavor, "kowsu") == 0) return &ko_16_6_12_kowsu;
     }
     static const struct KoImage imgs[] = {
         {12, 5, 10, dirtyfrag_ko_12_5_10_start, dirtyfrag_ko_12_5_10_end},

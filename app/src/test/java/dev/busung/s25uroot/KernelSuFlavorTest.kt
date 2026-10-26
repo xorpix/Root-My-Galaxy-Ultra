@@ -60,6 +60,7 @@ class KernelSuFlavorTest {
     fun `ids are matched without case or padding`() {
         assertEquals(KernelSuFlavor.KernelSuNext, KernelSuFlavor.fromId("  KernelSU-Next "))
         assertEquals(KernelSuFlavor.ReSukiSU, KernelSuFlavor.fromId(" ReSukiSU "))
+        assertEquals(KernelSuFlavor.KowSu, KernelSuFlavor.fromId(" KowSU "))
         assertNull(KernelSuFlavor.fromId(""))
         assertNull(KernelSuFlavor.fromId(null))
         assertNull(KernelSuFlavor.fromId("kernelsu-next-2"))
@@ -95,6 +96,10 @@ class KernelSuFlavorTest {
             "https://github.com/Baka-SU/BakaSU/actions",
             KernelSuFlavor.ReSukiSU.defaultManagerRelease.url,
         )
+        assertEquals("com.kowx712.supermanager", KernelSuFlavor.KowSu.managerPackage)
+        assertEquals("KOWX712/KernelSU", KernelSuFlavor.KowSu.repository)
+        assertEquals("https://github.com/KOWX712/KernelSU/actions", KernelSuFlavor.KowSu.defaultManagerRelease.url)
+        assertTrue(!KernelSuFlavor.KowSu.supportsDynamicManager)
     }
 
     @Test

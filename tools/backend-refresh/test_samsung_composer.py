@@ -199,7 +199,7 @@ class ComposerTests(unittest.TestCase):
     def test_all_backends_embed_the_reviewed_script(self):
         script = SCRIPT.read_text()
         installer = (HERE / 'samsung-composer-hooks.rs').read_text()
-        for name in ('kernelsu', 'kernelsu-next', 'resukisu'):
+        for name in ('kernelsu', 'kernelsu-next', 'resukisu', 'kowsu'):
             patch = (HERE / (name + '-compat.patch')).read_text()
             added = '\n'.join(line[1:] for line in patch.splitlines()
                               if line.startswith('+') and not line.startswith('+++'))

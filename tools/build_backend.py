@@ -2,10 +2,10 @@
 """Build a pinned, already patched backend with the recovered DDK and NDK."""
 import hashlib, json, os, pathlib, shutil, subprocess, sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent / 'backend-refresh'))
-from common import load_config, reviewed_uapi
+from common import REPOSITORIES, load_config, reviewed_uapi
 tools=pathlib.Path(sys.argv[1]).resolve()
 flavor=sys.argv[2]
-assert flavor in ('kernelsu','kernelsu-next','resukisu')
+assert flavor in REPOSITORIES
 repo=tools/flavor
 plan=load_config(tools/'targets.json')
 target=plan['backends'][flavor]
@@ -42,7 +42,7 @@ config.write_text('[target.aarch64-linux-android]\nlinker = '+json.dumps(str(ndk
 env.update(CARGO_HOME=str(tools/'cargo'),RUSTUP_HOME=str(tools/'rustup'),CARGO_BUILD_JOBS='2',LIBCLANG_PATH=str(ndk/'lib'),ANDROID_NDK_HOME=str(tools/'android-ndk-r28c'))
 env['PATH']=str(ndk/'bin')+':'+str(tools/'cargo/bin')+':'+env['PATH']
 cargo=[str(tools/'cargo/bin/cargo'),'+'+target['rust']]
-if flavor=='kernelsu':
+if flavor in ('kernelsu', 'kowsu'):
     for step in ('check','clippy'):
         extra=['--','-D','warnings'] if step=='clippy' else []
         subprocess.run(cargo+['ndk','-t','arm64-v8a','--platform','26',step,'--locked']+extra,cwd=repo/'userspace/ksud',env=env,check=True)

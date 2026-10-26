@@ -26,13 +26,14 @@ flavor_pkg() {
         kernelsu)      echo me.weishu.kernelsu ;;
         kernelsu-next) echo com.rifsxd.ksunext ;;
         resukisu)      echo org.bakasu.bakasu ;;
+        kowsu)         echo com.kowx712.supermanager ;;
         *) echo "unknown flavor $1" >&2; exit 1 ;;
     esac
 }
 
 rm -rf "$OUT"
 mkdir -p "$OUT"
-for flavor in kernelsu kernelsu-next resukisu; do
+for flavor in kernelsu kernelsu-next resukisu kowsu; do
     echo "=== variant: $flavor ==="
     d="$OUT/$flavor"
     mkdir -p "$d"

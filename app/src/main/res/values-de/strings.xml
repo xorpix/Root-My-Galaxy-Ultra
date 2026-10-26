@@ -435,6 +435,7 @@
     <string name="flavor_kernelsu_summary">Offizielles KernelSU von Weishu.</string>
     <string name="flavor_kernelsu_next_summary">KernelSU-Next von Rifsxd.</string>
     <string name="flavor_resukisu_summary">BakaSU (Fork von SukiSU-Ultra).</string>
+    <string name="flavor_kowsu_summary">KowSU (KernelSU-Fork von KOWX712).</string>
     <string name="repo_no_profile">Keine Payload im Katalog entspricht %1$s</string>
     <string name="repo_no_profile_closest">Am nächsten: %1$s</string>
     <string name="repo_no_profile_other_kernel">%1$s deckt %2$s ab</string>

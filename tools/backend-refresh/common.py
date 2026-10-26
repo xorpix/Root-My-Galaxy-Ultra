@@ -12,6 +12,7 @@ REPOSITORIES = {
     'kernelsu': ('tiann/KernelSU', 'main', 30000),
     'kernelsu-next': ('KernelSU-Next/KernelSU-Next', 'dev', 30000),
     'resukisu': ('Baka-SU/BakaSU', 'main', 30700),
+    'kowsu': ('KOWX712/KernelSU', 'master', 30000),
 }
 # KernelSU 6 adds symbol lookup and a preinit flag. Its GET_INFO layout,
 # install-fd magic and existing flag meanings are unchanged. Next also supports
@@ -20,11 +21,13 @@ REPOSITORIES = {
 # KernelSU 6 symbol lookup command, preinit flag and shell-ADB restriction, and
 # the get_feature supported byte became zero-compatible flag bits (0 still means
 # unsupported). Reviewed for 1.2.24.
-REVIEWED_UAPIS = {'kernelsu': {5, 6}, 'kernelsu-next': {5, 6}, 'resukisu': {5, 6}}
+# KowSU 6366f25b retains the UAPI 6 GET_INFO contract, fd magic and flags.
+REVIEWED_UAPIS = {'kernelsu': {5, 6}, 'kernelsu-next': {5, 6}, 'resukisu': {5, 6}, 'kowsu': {6}}
 ASSETS = Path('app/src/main/assets')
 JNI = Path('app/src/main/jniLibs/arm64-v8a')
 JAVA = Path('app/src/main/java/dev/busung/s25uroot')
-FLAVOR_ENUMS = {'kernelsu': 'KernelSu', 'kernelsu-next': 'KernelSuNext', 'resukisu': 'ReSukiSU'}
+FLAVOR_ENUMS = {'kernelsu': 'KernelSu', 'kernelsu-next': 'KernelSuNext', 'resukisu': 'ReSukiSU', 'kowsu': 'KowSu'}
+BACKEND_LABELS = {'kernelsu': 'KernelSU', 'kernelsu-next': 'KernelSU-Next', 'resukisu': 'BakaSU', 'kowsu': 'KowSU'}
 
 
 def capture(args, cwd=None):
@@ -83,6 +86,42 @@ def daemon_release(target):
     if not re.fullmatch(r'\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?', version):
         raise ValueError('Unrecognized daemon release name')
     return version
+
+
+def driver_versions_edit(text, filename, previous, current):
+    """Change each backend's own version, even when two version numbers coincide."""
+    if set(previous) != set(current) or set(current) != set(FLAVOR_ENUMS):
+        raise ValueError('Unexpected backend version mapping')
+    if filename == 'prepare_m3q_helpers.py':
+        matches = re.findall(r'^VERSIONS = (.+)$', text, re.M)
+        if len(matches) != 1 or ast.literal_eval(matches[0]) != previous:
+            raise ValueError('Unexpected helper version declaration')
+        return re.sub(r'^VERSIONS = .+$', lambda _: 'VERSIONS = ' + repr(current), text, flags=re.M)
+    if filename == 'AzhlCatalog.kt':
+        for name, old in previous.items():
+            before = f'KernelSuFlavor.{FLAVOR_ENUMS[name]} -> {old}'
+            if text.count(before) != 1:
+                raise ValueError(f'Expected one driver version declaration: {name}')
+            text = text.replace(before, f'KernelSuFlavor.{FLAVOR_ENUMS[name]} -> {current[name]}')
+        return text
+    if filename == 'azhl_backend.h':
+        for name, old in previous.items():
+            pattern = r'(\{"' + re.escape(name) + r'", ")' + str(old)
+            pattern += r'(", "[^"]+", )' + str(old) + r'(\})'
+            text, count = re.subn(pattern, lambda m: m[1] + str(current[name])
+                                 + m[2] + str(current[name]) + m[3], text)
+            if count != 1:
+                raise ValueError(f'Expected one native version declaration: {name}')
+        return text
+    if filename == 'README.md':
+        for name, old in previous.items():
+            pattern = r'^(\| ' + re.escape(BACKEND_LABELS[name]) + r' \| `)' + str(old)
+            pattern += r'( / \d+` \| [^\n]+ \|)$'
+            text, count = re.subn(pattern, lambda m: m[1] + str(current[name]) + m[2], text, flags=re.M)
+            if count != 1:
+                raise ValueError(f'Expected one manager table version: {name}')
+        return text
+    raise ValueError(f'Unexpected driver version source: {filename}')
 
 
 def catalog_releases(project):

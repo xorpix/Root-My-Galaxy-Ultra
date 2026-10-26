@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Host-only checks for recurring builds and release gates. Never execute ARM64 payloads."""
 import copy
+import ast
 import json
 from pathlib import Path
 import subprocess
@@ -49,6 +50,39 @@ def plan_for(source):
 
 
 class RefreshTests(unittest.TestCase):
+    def test_forks_with_overlapping_driver_numbers_keep_their_own_versions(self):
+        previous = {n: t['version'] for n, t in common.load_config()['backends'].items()}
+        paths = ['README.md', 'tools/prepare_m3q_helpers.py', str(common.JAVA / 'AzhlCatalog.kt'),
+                 'native/azhl/src/azhl_backend.h']
+        for overlapping_old in (False, True):
+            old = dict(previous)
+            if overlapping_old:
+                old['kernelsu'] = old['kowsu']
+            current = dict(old, kernelsu=old['kowsu'], kowsu=old['kowsu'] + 1)
+            for relative in paths:
+                path = PROJECT / relative
+                source = path.read_text()
+                if overlapping_old:
+                    source = common.driver_versions_edit(source, path.name, previous, old)
+                updated = common.driver_versions_edit(source, path.name, old, current)
+                with self.subTest(source=path.name, overlapping_old=overlapping_old):
+                    if path.name == 'prepare_m3q_helpers.py':
+                        versions = next(line for line in updated.splitlines() if line.startswith('VERSIONS = '))
+                        self.assertEqual(current, ast.literal_eval(versions.split(' = ', 1)[1]))
+                    elif path.name == 'AzhlCatalog.kt':
+                        for name, version in current.items():
+                            self.assertIn(f'KernelSuFlavor.{common.FLAVOR_ENUMS[name]} -> {version}\n', updated)
+                    elif path.name == 'README.md':
+                        for name, version in current.items():
+                            row = next(line for line in updated.splitlines()
+                                       if line.startswith(f'| {common.BACKEND_LABELS[name]} |'))
+                            self.assertIn(f'| `{version} / ', row)
+                    else:
+                        for name, version in current.items():
+                            row = next(line for line in updated.splitlines() if f'{{"{name}",' in line)
+                            self.assertIn(f'"{version}"', row)
+                            self.assertTrue(row.endswith(f', {version}}},'))
+
     def test_release_labels_follow_the_actual_pinned_daemon_tag(self):
         for full, expected in [('3.3.1-12-g0faec0cc', '3.3.1'),
                                ('3.4.2-35-g204f0071', '3.4.2'),
@@ -269,7 +303,7 @@ struct ksu_get_info_cmd {
 };
 static const __u32 KSU_IOCTL_GET_INFO = _IOR('K', 2, struct ksu_get_info_cmd);
 '''
-        for name in ('kernelsu', 'kernelsu-next', 'resukisu'):
+        for name in ('kernelsu', 'kernelsu-next', 'resukisu', 'kowsu'):
             self.assertEqual(6, common.reviewed_uapi(header, name))
             with self.assertRaisesRegex(ValueError, 'control layout'):
                 common.reviewed_uapi(header.replace('__u32 flags;', '__u64 flags;'), name)

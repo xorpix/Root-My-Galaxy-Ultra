@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 HERE = Path(__file__).resolve().parent
-from common import baseline, load_config, reviewed_uapi, sync_release_labels
+from common import BACKEND_LABELS, baseline, driver_versions_edit, load_config, reviewed_uapi, sync_release_labels
 CONFIG = load_config()
 JAVA = Path('app/src/main/java/dev/busung/s25uroot')
 ASSETS = Path('app/src/main/assets')
@@ -73,7 +73,7 @@ def source_patch(repo, original_patch):
 
 
 def backend_readme(config):
-    labels = {'kernelsu': 'KernelSU', 'kernelsu-next': 'KernelSU-Next', 'resukisu': 'BakaSU'}
+    labels = BACKEND_LABELS
     rows = ['# Bundled backends', '', '| Backend | Driver / UAPI | Source | Daemon |',
             '|---|---|---|---|']
     for name, t in config['backends'].items():
@@ -142,17 +142,13 @@ def main(project, work, config=None):
         for profile in catalog['payloads']:
             profile['kernelsu'].update(record(inputs[profile['flavor']][0]))
         write_json(path, catalog)
-    # Change the existing expected-version literals, keeping control logic intact.
+    # Forks may share version numbers. Match their declarations by backend id.
     for relative in ('tools/prepare_m3q_helpers.py', JAVA / 'AzhlCatalog.kt',
                      'native/azhl/src/azhl_backend.h'):
         path = project / relative
-        text = path.read_text()
-        for name, target in config['backends'].items():
-            old = previous[name]['driver_version']
-            text, count = re.subn(r'\b' + str(old) + r'\b', str(target['version']), text)
-            if count == 0:
-                raise ValueError(f'Expected version literal missing: {relative}/{name}')
-        path.write_text(text)
+        path.write_text(driver_versions_edit(path.read_text(), path.name,
+            {n: m['driver_version'] for n, m in previous.items()},
+            {n: t['version'] for n, t in config['backends'].items()}))
     generator = project / 'tools/prepare_m3q_helpers.py'
     text, count = re.subn(r'^UAPI_VERSIONS = .+$',
                          'UAPI_VERSIONS = ' + repr({n: t['uapi'] for n, t in config['backends'].items()}),
@@ -200,11 +196,11 @@ def main(project, work, config=None):
         manifest['patched_source_sha256'] = hashes
         write_json(folder / 'build-manifest.json', manifest)
     readme = project / 'README.md'
-    text = readme.read_text()
-    labels = {'kernelsu': 'KernelSU', 'kernelsu-next': 'KernelSU-Next', 'resukisu': 'BakaSU'}
+    text = driver_versions_edit(readme.read_text(), readme.name,
+        {n: m['driver_version'] for n, m in previous.items()},
+        {n: t['version'] for n, t in config['backends'].items()})
+    labels = BACKEND_LABELS
     for name, target in config['backends'].items():
-        text = text.replace(f'`{previous[name]["driver_version"]} / {previous[name]["uapi_version"]}`',
-                            f'`{target["version"]} / {target["uapi"]}`')
         if target['uapi'] != previous[name]['uapi_version']:
             # A known old-API manager link must not survive an API migration,
             # including a later outage while finding the new manager build.

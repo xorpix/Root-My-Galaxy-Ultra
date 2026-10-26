@@ -30,7 +30,7 @@ existing Samsung backend patches and loading path work on this vendor kernel.
 ## Runtime support
 
 `DfPort` and the bundled DirtyFrag catalog now register this exact model,
-incremental, full kernel release, SDK, ABI and page size for all three backends.
+incremental, full kernel release, SDK, ABI and page size for all registered backends.
 The existing native helper selects its Android 16 / Linux 6.12 bridge from
 `uname` and the selected backend. It resolves userspace patch locations from ELF
 data at runtime; no BZIG-specific exploit offset or new native blob is used here.
