@@ -1,4 +1,5 @@
 SusFS LKM: inforcqb/susfs4ksu-lkm, GPL-2.0.
 Upstream base c2a5575e0a230db992ad94e2924bc38333797336.
-RMGU source revision b5c994d8ba9638afb1f0b3e71a5e450d535a8077.
-Complete corresponding source is retained with the RMGU 1.2.24 source and build artifacts.
+RMGU source revision 870bf952aab096789a0f4153bc5ea5bf6fcfba1e.
+Ported upstream readlink fix b69dee412aac54cdf99832412de3b4758118a1eb.
+Complete corresponding source is retained with the Samsung SusFS 2026-10-27 source checkpoint and build evidence.

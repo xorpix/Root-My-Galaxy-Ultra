@@ -2,7 +2,7 @@ name: SusFS Integration Test Build
 
 on:
   push:
-    branches: [feat/susfs-backends-20261017]
+    branches: [feat/susfs-backends-20261017, feat/susfs-readlink-enoent]
   workflow_dispatch:
 
 permissions:
@@ -29,11 +29,11 @@ jobs:
           python3 tools/test_m3q_host.py BundleTests
           python3 -c "import sys; sys.path.insert(0, 'tools/backend-refresh'); from common import baseline; baseline(__import__('pathlib').Path.cwd())"
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25 (matches the Gradle daemon criteria)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '25'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
@@ -44,7 +44,7 @@ jobs:
       - name: Setup NDK
         uses: nttld/setup-ndk@v1
         with:
-          ndk-version: r28
+          ndk-version: r28c
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -122,8 +122,10 @@ jobs:
       - name: Verify the final module bytes and APK contents
         run: |
           python3 - <<'PYTHON'
-          import hashlib, json, zipfile
+          import hashlib, json, sys, zipfile
           from pathlib import Path
+          sys.path.insert(0, 'tools/backend-refresh')
+          from common import REPOSITORIES
           root = Path('app/src/main/assets/susfs/bzig')
           profile = json.loads((root / 'profile.json').read_text())
           expected = profile['module']['sha256']
@@ -140,7 +142,7 @@ jobs:
               for path in Path('app/src/main/assets/susfs').glob('*/profile.json'):
                   name = str(path.relative_to('app/src/main/assets'))
                   assert json.loads(z.read('assets/' + name)) == json.loads(path.read_text())
-              for backend in ('kernelsu', 'kernelsu-next', 'resukisu'):
+              for backend in REPOSITORIES:
                   manifest = json.loads(Path(f'backends/{backend}/build-manifest.json').read_text())
                   daemon = z.read(f'assets/azhl/{backend}/ksud')
                   assert hashlib.sha256(daemon).hexdigest() == manifest['outputs']['ksud']['sha256']
