@@ -82,11 +82,19 @@ jobs:
           python3 tools/test_su_process.py
           python3 tools/test_early_root_speed.py
 
+      - name: Verify bundled SusFS provenance
+        run: python3 tools/check_susfs_bundle.py
+
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --no-daemon
 
       - name: Build APKs
         run: ./gradlew assembleDebug assembleRelease --no-daemon
+
+      - name: Verify packaged SusFS bytes
+        run: |
+          python3 tools/check_susfs_bundle.py --apk app/build/outputs/apk/debug/app-debug.apk
+          python3 tools/check_susfs_bundle.py --apk app/build/outputs/apk/release/app-release.apk
 
       - name: Verify embedded D2 companions
         run: |
@@ -164,6 +172,10 @@ jobs:
           {
             echo "## What's new"
             echo
+            if [ -f "docs/release-notes/${VERSION_NAME}.md" ]; then
+              cat "docs/release-notes/${VERSION_NAME}.md"
+              echo
+            fi
             echo "### CI build"
             echo
             echo "- Automated development build from \`${GITHUB_REF_NAME}\`."

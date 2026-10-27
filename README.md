@@ -6,6 +6,8 @@ reboot; activate it again through the app or enable optional automatic restorati
 including [root before first unlock](docs/root-before-unlock.md) on supported DirtyFrag setups.
 
 [Download the latest release](https://github.com/xorpix/Root-My-Galaxy-Ultra/releases/latest)
+
+[Samsung SusFS audit repairs and source (1.2.27)](docs/susfs-audit-fixes-20261027.md)
 · [Release notes](https://github.com/xorpix/Root-My-Galaxy-Ultra/releases)
 · [Report an issue](https://github.com/xorpix/Root-My-Galaxy-Ultra/issues)
 

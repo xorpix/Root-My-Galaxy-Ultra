@@ -2,7 +2,7 @@ name: SusFS Integration Test Build
 
 on:
   push:
-    branches: [feat/susfs-backends-20261017, feat/susfs-readlink-enoent]
+    branches: [feat/susfs-backends-20261017, feat/susfs-readlink-enoent, fix/susfs-audit-20261027]
   workflow_dispatch:
 
 permissions:
@@ -28,6 +28,13 @@ jobs:
           python3 tools/test_backend_bundle.py
           python3 tools/test_m3q_host.py BundleTests
           python3 -c "import sys; sys.path.insert(0, 'tools/backend-refresh'); from common import baseline; baseline(__import__('pathlib').Path.cwd())"
+
+      - name: Verify SusFS source provenance and host regressions
+        run: |
+          python3 tools/check_susfs_bundle.py
+          mkdir -p "$RUNNER_TEMP/susfs-source"
+          tar -xzf backends/susfs/source.tar.gz -C "$RUNNER_TEMP/susfs-source"
+          python3 "$RUNNER_TEMP/susfs-source/susfs/tools/run_host_suite.py" --output "$RUNNER_TEMP/susfs-host-results"
 
       - name: Set up JDK 25 (matches the Gradle daemon criteria)
         uses: actions/setup-java@v4
@@ -121,6 +128,7 @@ jobs:
 
       - name: Verify the final module bytes and APK contents
         run: |
+          python3 tools/check_susfs_bundle.py --apk app/build/outputs/apk/release/app-release.apk
           python3 - <<'PYTHON'
           import hashlib, json, sys, zipfile
           from pathlib import Path
