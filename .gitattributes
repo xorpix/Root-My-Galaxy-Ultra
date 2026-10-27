@@ -4,3 +4,6 @@
 # a CRLF checkout breaks every checksum on Windows.
 *.patch text eol=lf
 /gradlew text eol=lf
+
+# Preserve the source patch exactly, including the Samsung source CRLF context.
+/backends/susfs/audit-fixes.patch -text

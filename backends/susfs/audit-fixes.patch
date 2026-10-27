@@ -1,0 +1,3109 @@
+diff --git a/README.md b/README.md
+index 15f925c..b15b77d 100644
+--- a/README.md
++++ b/README.md
+@@ -1,3 +1,7 @@
++# Samsung audit repairs
++
++See [27 October audit fixes and validation](docs/audit-20261027/README.md) for the current Samsung changes and build instructions.
++
+ # RMGU SUSFS — checkpoint 6
+ 
+ This checkpoint advances the separate SUSFS module source to dev3 and adds
+diff --git a/docs/audit-20261027/README.md b/docs/audit-20261027/README.md
+new file mode 100644
+index 0000000..36a5c79
+--- /dev/null
++++ b/docs/audit-20261027/README.md
+@@ -0,0 +1,47 @@
++# Samsung SusFS audit repairs — 27 October 2026
++
++This change repairs the five findings from the audit of source `870bf952aab096789a0f4153bc5ea5bf6fcfba1e`, adds both suggested lookup optimizations, and corrects the AArch32 create-syscall bindings discovered during the repair.
++
++| Finding | Repair |
++| --- | --- |
++| F1: failed restore / rollback | Track native and compat publication independently, verify each restore by reading the table, and retain module text until both entries are restored. A foreign hook does not prevent restoration of the other table. |
++| F2: sleeping callbacks | Count each of the 13 syscall wrappers across helper work and the original call. Restore entries, wait for late entrants with Tasks RCU, drain active callbacks, then wait for the final return tail. No timed fallback. |
++| F3: inconsistent directory policy | Capture the original caller's complete KernelSU umount decision before filesystem credential overrides. Preserve owner and control-node exceptions. |
++| F4: mixed uname state | Serialize writers and registration; snapshot both padded fields under a short spinlock, then copy to userspace after unlocking. Insmod parameters are read-only at runtime; the supercall remains the runtime update interface. Failed registration and exit cannot publish enabled state. |
++| F5: recycled mount identity | Read each inode/device pair under the same IRQ-safe lock as retirement and reuse. |
++| P1: repeated linear path scans | Add 256 inode-hash buckets under the existing rule lock, maintain them on add, pending resolution, delete, clear, superblock retirement and exit. Pending rules are not indexed. Preserve pointer, device and control-node filesystem-type matching. |
++| P2: empty mapping rules | Return before locking, policy and diagnostic counter work when the release-published mapping count is zero. |
++
++The compat create entries are **mkdirat 323, mknodat 324, linkat 330 and symlinkat 331**, checked against the prepared ARM64 kernel's generated compat header. Each uses its own compat wrapper and saved original, rather than the native entry or native syscall numbering.
++
++A permanent restoration failure or a foreign hook that still chains to SusFS intentionally blocks teardown. Finishing an unload and freeing live callback text is unsafe. A full reboot is the recovery path in that condition; there is no forced timeout.
++
++## Validation
++
++- All **26 host suites / 50 runner executions** passed. Twenty-four suites support both normal and ASan/UBSan builds; two run their supported default mode. LeakSanitizer cannot inspect process state on this host, so it is disabled; ASan and UBSan remain enabled. Allocation/refcount assertions still run.
++- New failure injection covers failed native/compat writes, writes that fail after publication, successful return without a store, failed rollback, restore retry and foreign ownership. Controlled lifetime tests cover sleeping work, delayed entry, multiple callbacks and wake/return tails. All 13 real wrappers are checked on success, original-call, missing-original and denial paths.
++- Controlled `uname` interleaving, concurrent writers, registration failure and exit tests pass, with runtime negative controls. Mount retirement/reuse is excluded while the reader holds its snapshot lock. Index lifecycle and policy cases pass through 8192 rules.
++- Android16/6.12 DDK cross-build with clang-r536225, CFI, Tasks RCU and 4 KiB pages passed. This uses the same 6.12.76-4k build headers and Samsung loader compatibility mechanism as the prior shipped module; it is not a new Samsung kernel image.
++- All 13 syscall wrappers match a real-kernel-header syscall CFI fixture and have valid ARM64 call landing instructions. All **136 kernel imports**, module metadata and version-table layout match the previous module. Existing callback CFI types are unchanged; the internal `susfs_fp_drain` helper intentionally gains its hook argument.
++- Thirteen real-header identity/LSM callback type cases and three path-entry layout cases passed, including negative controls.
++
++The host index benchmark used 20,000 negative queries per size, best of three trials. At 8192 rules the largest bucket held 34 records; the observed negative lookup was about 43 ns on this host. These are host complexity checks, not phone frame-time measurements or a claim that SusFS caused UI microfreezes.
++
++No phone load/unload, reboot or app stress test has been performed for this revision. **Fully reboot after installing an APK containing the new module**: a soft reboot can retain the old loaded module.
++
++## Reproduce
++
++Use the app repository's pinned `tools/provision_ddk.py` to prepare `/opt/ddk`, then in this source tree:
++
++```sh
++python3 tools/run_host_suite.py --output build/host-suite
++python3 tools/build_review.py --kdir /opt/ddk/kdir/android16-6.12 \
++  --clang-bin /opt/ddk/clang/clang-r536225/bin --evidence-dir build/module \
++  --omit-module-btf --jobs 2
++python3 tools/check_audit_artifact.py --candidate kernel/susfs_guard_lkm.ko \
++  --baseline /path/to/previous/susfs_guard_lkm.ko \
++  --kdir /opt/ddk/kdir/android16-6.12 \
++  --clang-bin /opt/ddk/clang/clang-r536225/bin --output build/artifact
++```
++
++The artifact checker needs `pyelftools`. Strip a distribution copy with the pinned toolchain's `llvm-strip -d`; retain the unstripped module for investigation. APK integration, profile hashes and signing are checked separately in the app repository.
+diff --git a/docs/audit-20261027/artifact.json b/docs/audit-20261027/artifact.json
+new file mode 100644
+index 0000000..deebe1c
+--- /dev/null
++++ b/docs/audit-20261027/artifact.json
+@@ -0,0 +1,188 @@
++{
++  "hardware_validated": false,
++  "checks": {
++    "thirteen_syscall_wrappers": true,
++    "incoming_kcfi_matches_real_syscall_type": true,
++    "all_wrappers_have_call_landing_pad": true,
++    "imports_unchanged": true,
++    "module_version_table_shape_unchanged": true,
++    "module_metadata_unchanged": true,
++    "existing_callback_types_unchanged": true
++  },
++  "candidate_sha256": "81b7af4d9313e47265b1d23bbe6ecfd26e1ad75d8f0390cb6969df84586341ae",
++  "baseline_sha256": "3374a5b721f2abdce2f5b993cd424e6c25e30f02c57215a0ce9c455c560a1fa8",
++  "expected_syscall_kcfi": 2009012525,
++  "wrapper_kcfi": {
++    "create_wrap_compat_linkat": 2009012525,
++    "create_wrap_compat_mkdirat": 2009012525,
++    "create_wrap_compat_mknodat": 2009012525,
++    "create_wrap_compat_symlinkat": 2009012525,
++    "create_wrap_linkat": 2009012525,
++    "create_wrap_mkdirat": 2009012525,
++    "create_wrap_mknodat": 2009012525,
++    "create_wrap_symlinkat": 2009012525,
++    "or_wrap_compat_open": 2009012525,
++    "or_wrap_compat_openat": 2009012525,
++    "or_wrap_compat_openat2": 2009012525,
++    "or_wrap_openat": 2009012525,
++    "or_wrap_openat2": 2009012525
++  },
++  "wrapper_landing_instructions": {
++    "create_wrap_mkdirat": 3573752639,
++    "create_wrap_compat_mkdirat": 3573752639,
++    "create_wrap_mknodat": 3573752639,
++    "create_wrap_compat_mknodat": 3573752639,
++    "create_wrap_symlinkat": 3573752639,
++    "create_wrap_compat_symlinkat": 3573752639,
++    "create_wrap_linkat": 3573752639,
++    "create_wrap_compat_linkat": 3573752639,
++    "or_wrap_openat": 3573752639,
++    "or_wrap_openat2": 3573752639,
++    "or_wrap_compat_open": 3573752639,
++    "or_wrap_compat_openat": 3573752639,
++    "or_wrap_compat_openat2": 3573752639
++  },
++  "imports": [
++    "___ratelimit",
++    "__arch_clear_user",
++    "__arch_copy_from_user",
++    "__arch_copy_to_user",
++    "__check_object_size",
++    "__copy_overflow",
++    "__cpu_online_mask",
++    "__fortify_panic",
++    "__init_waitqueue_head",
++    "__kmalloc_cache_noprof",
++    "__kmalloc_large_noprof",
++    "__kmalloc_noprof",
++    "__kvmalloc_node_noprof",
++    "__list_add_valid_or_report",
++    "__list_del_entry_valid_or_report",
++    "__mmap_lock_do_trace_acquire_returned",
++    "__mmap_lock_do_trace_released",
++    "__mmap_lock_do_trace_start_locking",
++    "__num_online_cpus",
++    "__put_task_struct",
++    "__rcu_read_lock",
++    "__rcu_read_unlock",
++    "__seq_puts",
++    "__set_fixmap",
++    "__stack_chk_fail",
++    "__tracepoint_mmap_lock_acquire_returned",
++    "__tracepoint_mmap_lock_released",
++    "__tracepoint_mmap_lock_start_locking",
++    "__tracepoint_sys_exit",
++    "__wake_up",
++    "__warn_printk",
++    "_printk",
++    "_raw_spin_lock",
++    "_raw_spin_lock_irqsave",
++    "_raw_spin_unlock",
++    "_raw_spin_unlock_irqrestore",
++    "abort_creds",
++    "alt_cb_patch_nops",
++    "arm64_use_ng_mappings",
++    "backing_file_user_path",
++    "bcmp",
++    "cancel_delayed_work_sync",
++    "cancel_work_sync",
++    "copy_from_kernel_nofault",
++    "copy_to_kernel_nofault",
++    "d_path",
++    "delayed_work_timer_fn",
++    "down_read",
++    "down_read_killable",
++    "find_vma",
++    "finish_wait",
++    "get_pid_task",
++    "get_task_mm",
++    "ihold",
++    "init_mm",
++    "init_user_ns",
++    "init_wait_entry",
++    "inode_permission",
++    "iput",
++    "kern_path",
++    "kfree",
++    "kmalloc_caches",
++    "kstrtobool",
++    "kstrtoll",
++    "kvfree",
++    "mas_find",
++    "mem_alloc_profiling_key",
++    "memchr",
++    "memcpy",
++    "memmove",
++    "memset",
++    "memstart_addr",
++    "mmput",
++    "module_put",
++    "msleep",
++    "mtree_load",
++    "mutex_lock",
++    "mutex_trylock",
++    "mutex_unlock",
++    "nop_mnt_idmap",
++    "ns_capable",
++    "override_creds",
++    "param_ops_bool",
++    "param_ops_int",
++    "param_ops_string",
++    "param_ops_ulong",
++    "path_get",
++    "path_put",
++    "prepare_creds",
++    "prepare_to_wait_event",
++    "proc_create",
++    "proc_remove",
++    "queue_delayed_work_on",
++    "queue_work_on",
++    "rb_first",
++    "rb_next",
++    "refcount_warn_saturate",
++    "register_kprobe",
++    "register_kretprobe",
++    "revert_creds",
++    "saved_boot_config",
++    "schedule",
++    "scnprintf",
++    "security_secctx_to_secid",
++    "seq_lseek",
++    "seq_open",
++    "seq_printf",
++    "seq_read",
++    "seq_release",
++    "seq_write",
++    "single_open",
++    "single_release",
++    "sized_strscpy",
++    "snprintf",
++    "static_key_enable",
++    "stop_machine",
++    "strcmp",
++    "strlen",
++    "strncmp",
++    "strnlen",
++    "strnlen_user",
++    "strrchr",
++    "strstr",
++    "synchronize_rcu",
++    "synchronize_rcu_tasks",
++    "synchronize_srcu",
++    "system_wq",
++    "task_work_add",
++    "tracepoint_probe_register",
++    "tracepoint_probe_unregister",
++    "tracepoint_srcu",
++    "try_module_get",
++    "unregister_kprobe",
++    "unregister_kretprobe",
++    "up_read",
++    "vsnprintf"
++  ],
++  "version_section_sizes": {
++    "__versions": 0,
++    "__version_ext_crcs": 0,
++    "__version_ext_names": 1
++  }
++}
+diff --git a/docs/audit-20261027/build.json b/docs/audit-20261027/build.json
+new file mode 100644
+index 0000000..2249a9b
+--- /dev/null
++++ b/docs/audit-20261027/build.json
+@@ -0,0 +1,53 @@
++{
++  "kind": "host cross-compilation only; no kernel module execution",
++  "module": {
++    "bytes": 3285160,
++    "sha256": "81b7af4d9313e47265b1d23bbe6ecfd26e1ad75d8f0390cb6969df84586341ae"
++  },
++  "commands": [
++    {
++      "argv": [
++        "make",
++        "-C",
++        "/opt/ddk/kdir/android16-6.12",
++        "M=<source>/kernel",
++        "ARCH=arm64",
++        "CC=clang",
++        "LLVM=1",
++        "LLVM_IAS=1",
++        "CONFIG_DEBUG_INFO_BTF_MODULES=",
++        "clean"
++      ],
++      "exit_code": 0
++    },
++    {
++      "argv": [
++        "make",
++        "-C",
++        "/opt/ddk/kdir/android16-6.12",
++        "M=<source>/kernel",
++        "ARCH=arm64",
++        "CC=clang",
++        "LLVM=1",
++        "LLVM_IAS=1",
++        "CONFIG_DEBUG_INFO_BTF_MODULES=",
++        "modules",
++        "-j2"
++      ],
++      "exit_code": 0
++    }
++  ],
++  "compiler": "Android (14043575, +pgo, +bolt, +lto, +mlgo, based on r536225) clang version 19.0.1 (https://android.googlesource.com/toolchain/llvm-project b3a530ec6537146650e42be89f1089e9a3588460)\nTarget: x86_64-unknown-linux-gnu\nThread model: posix\nInstalledDir: /opt/ddk/clang/clang-r536225/bin",
++  "kernel_release_header": "#define UTS_RELEASE \"6.12.76-4k\"",
++  "autoconf_sha256": "1fbc9de7fd352a6a44f0a67296bad10464b956bf59144382f404ac17d7e2fde2",
++  "module_symvers_sha256": "7d6930b74c649e4e2ceda3ef24e74774458844c34a41d29e042ccf916b509f96",
++  "module_btf_generation_omitted": true,
++  "config": {
++    "CONFIG_CFI_CLANG": true,
++    "CONFIG_CFI_ICALL_NORMALIZE_INTEGERS": true,
++    "CONFIG_TASKS_RCU": true,
++    "CONFIG_MODVERSIONS": true,
++    "CONFIG_ARM64_4K_PAGES": true
++  },
++  "hardware_validated": false
++}
+diff --git a/docs/audit-20261027/host-results.json b/docs/audit-20261027/host-results.json
+new file mode 100644
+index 0000000..e8cd6fa
+--- /dev/null
++++ b/docs/audit-20261027/host-results.json
+@@ -0,0 +1,356 @@
++{
++  "hardware_validated": false,
++  "results": [
++    {
++      "suite": "avc_spoof",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.32,
++      "log": "avc_spoof.log"
++    },
++    {
++      "suite": "avc_spoof",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.57,
++      "log": "avc_spoof-sanitizers.log"
++    },
++    {
++      "suite": "feature_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.42,
++      "log": "feature_hooks.log"
++    },
++    {
++      "suite": "feature_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.67,
++      "log": "feature_hooks-sanitizers.log"
++    },
++    {
++      "suite": "fp_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.47,
++      "log": "fp_hooks.log"
++    },
++    {
++      "suite": "fp_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.87,
++      "log": "fp_hooks-sanitizers.log"
++    },
++    {
++      "suite": "identity_controls",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 3.94,
++      "log": "identity_controls.log"
++    },
++    {
++      "suite": "identity_controls",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 5.44,
++      "log": "identity_controls-sanitizers.log"
++    },
++    {
++      "suite": "kprobe_reuse",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.22,
++      "log": "kprobe_reuse.log"
++    },
++    {
++      "suite": "kprobe_reuse",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "kprobe_reuse-sanitizers.log"
++    },
++    {
++      "suite": "kstat_compat",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.32,
++      "log": "kstat_compat.log"
++    },
++    {
++      "suite": "kstat_statx",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.26,
++      "log": "kstat_statx.log"
++    },
++    {
++      "suite": "kstat_statx",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.47,
++      "log": "kstat_statx-sanitizers.log"
++    },
++    {
++      "suite": "lifecycle",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.57,
++      "log": "lifecycle.log"
++    },
++    {
++      "suite": "lifecycle",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.92,
++      "log": "lifecycle-sanitizers.log"
++    },
++    {
++      "suite": "lsm_lifetime",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.16,
++      "log": "lsm_lifetime.log"
++    },
++    {
++      "suite": "lsm_lifetime",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.27,
++      "log": "lsm_lifetime-sanitizers.log"
++    },
++    {
++      "suite": "map_files",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 5.59,
++      "log": "map_files.log"
++    },
++    {
++      "suite": "map_files",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 6.01,
++      "log": "map_files-sanitizers.log"
++    },
++    {
++      "suite": "map_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.57,
++      "log": "map_hooks.log"
++    },
++    {
++      "suite": "map_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.77,
++      "log": "map_hooks-sanitizers.log"
++    },
++    {
++      "suite": "module_control",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.62,
++      "log": "module_control.log"
++    },
++    {
++      "suite": "mount_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.67,
++      "log": "mount_hooks.log"
++    },
++    {
++      "suite": "mount_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.47,
++      "log": "mount_hooks-sanitizers.log"
++    },
++    {
++      "suite": "mount_prefix",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.21,
++      "log": "mount_prefix.log"
++    },
++    {
++      "suite": "mount_prefix",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "mount_prefix-sanitizers.log"
++    },
++    {
++      "suite": "mshow_filter",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.57,
++      "log": "mshow_filter.log"
++    },
++    {
++      "suite": "mshow_filter",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.87,
++      "log": "mshow_filter-sanitizers.log"
++    },
++    {
++      "suite": "patch_memory_flush",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.16,
++      "log": "patch_memory_flush.log"
++    },
++    {
++      "suite": "patch_memory_flush",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.17,
++      "log": "patch_memory_flush-sanitizers.log"
++    },
++    {
++      "suite": "path_creds",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.82,
++      "log": "path_creds.log"
++    },
++    {
++      "suite": "path_creds",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.37,
++      "log": "path_creds-sanitizers.log"
++    },
++    {
++      "suite": "path_entry",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.42,
++      "log": "path_entry.log"
++    },
++    {
++      "suite": "path_entry",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.62,
++      "log": "path_entry-sanitizers.log"
++    },
++    {
++      "suite": "path_index",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.27,
++      "log": "path_index.log"
++    },
++    {
++      "suite": "path_index",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.41,
++      "log": "path_index-sanitizers.log"
++    },
++    {
++      "suite": "path_listing",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.11,
++      "log": "path_listing.log"
++    },
++    {
++      "suite": "path_listing",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.16,
++      "log": "path_listing-sanitizers.log"
++    },
++    {
++      "suite": "path_readlink_lsm",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.72,
++      "log": "path_readlink_lsm.log"
++    },
++    {
++      "suite": "path_readlink_lsm",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.32,
++      "log": "path_readlink_lsm-sanitizers.log"
++    },
++    {
++      "suite": "r18_fixes",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.92,
++      "log": "r18_fixes.log"
++    },
++    {
++      "suite": "r18_fixes",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.98,
++      "log": "r18_fixes-sanitizers.log"
++    },
++    {
++      "suite": "redirect_entry",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.27,
++      "log": "redirect_entry.log"
++    },
++    {
++      "suite": "redirect_entry",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.52,
++      "log": "redirect_entry-sanitizers.log"
++    },
++    {
++      "suite": "redirect_maps",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.27,
++      "log": "redirect_maps.log"
++    },
++    {
++      "suite": "redirect_maps",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.47,
++      "log": "redirect_maps-sanitizers.log"
++    },
++    {
++      "suite": "redirect_statfs",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.22,
++      "log": "redirect_statfs.log"
++    },
++    {
++      "suite": "redirect_statfs",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.32,
++      "log": "redirect_statfs-sanitizers.log"
++    },
++    {
++      "suite": "userspace",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.47,
++      "log": "userspace.log"
++    },
++    {
++      "suite": "userspace",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.72,
++      "log": "userspace-sanitizers.log"
++    }
++  ],
++  "runner_environment": "ASan/UBSan active; LSan unavailable in this host. Plain GCC __has_feature fallback repaired."
++}
+diff --git a/docs/audit-20261027/identity-types.json b/docs/audit-20261027/identity-types.json
+new file mode 100644
+index 0000000..a8bf471
+--- /dev/null
++++ b/docs/audit-20261027/identity-types.json
+@@ -0,0 +1,97 @@
++{
++  "kind": "real prepared kernel header validation",
++  "hardware_validated": false,
++  "results": [
++    {
++      "case": "readlink-lsm-correct",
++      "passed": true,
++      "expected_compile_success": true,
++      "exit_code": 0,
++      "output": ""
++    },
++    {
++      "case": "readlink-lsm-wrong-return",
++      "passed": true,
++      "expected_compile_success": false,
++      "exit_code": 2,
++      "output": "<temporary>/readlink-lsm-wrong-return/typecheck.c:6:15: error: static assertion failed due to requirement '__builtin_types_compatible_p(long (*)(struct dentry *), int (*)(struct dentry *))': CP18 identity signature mismatch\n    6 | static_assert(__same_type(long (*)(struct dentry *),typeof(((union security_list_options *)0)->inode_readlink)), \"CP18 identity signature mismatch\");\n      | ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/compiler_types.h:498:27: note: expanded from macro '__same_type'\n  498 | #define __same_type(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))\n      |                           ^\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n1 error generated.\nmake[2]: *** [/opt/ddk/src/android16-6.12/scripts/Makefile.build:240: <temporary>/readlink-lsm-wrong-return/typecheck.o] Error 1\nmake[1]: *** [/opt/ddk/src/android16-6.12/Makefile:2005: <temporary>/readlink-lsm-wrong-return] Error 2\nmake: *** [/opt/ddk/src/android16-6.12/Makefile:242: __sub-make] Error 2\n"
++    },
++    {
++      "case": "readlink-lsm-wrong-const",
++      "passed": true,
++      "expected_compile_success": false,
++      "exit_code": 2,
++      "output": "<temporary>/readlink-lsm-wrong-const/typecheck.c:6:15: error: static assertion failed due to requirement '__builtin_types_compatible_p(int (*)(const struct dentry *), int (*)(struct dentry *))': CP18 identity signature mismatch\n    6 | static_assert(__same_type(int (*)(const struct dentry *),typeof(((union security_list_options *)0)->inode_readlink)), \"CP18 identity signature mismatch\");\n      | ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/compiler_types.h:498:27: note: expanded from macro '__same_type'\n  498 | #define __same_type(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))\n      |                           ^\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n1 error generated.\nmake[2]: *** [/opt/ddk/src/android16-6.12/scripts/Makefile.build:240: <temporary>/readlink-lsm-wrong-const/typecheck.o] Error 1\nmake[1]: *** [/opt/ddk/src/android16-6.12/Makefile:2005: <temporary>/readlink-lsm-wrong-const] Error 2\nmake: *** [/opt/ddk/src/android16-6.12/Makefile:242: __sub-make] Error 2\n"
++    },
++    {
++      "case": "avc-nostate",
++      "passed": true,
++      "expected_compile_success": true,
++      "exit_code": 0,
++      "output": ""
++    },
++    {
++      "case": "avc-obsolete-state",
++      "passed": true,
++      "expected_compile_success": false,
++      "exit_code": 2,
++      "output": "<temporary>/avc-obsolete-state/typecheck.c:6:15: error: static assertion failed due to requirement '__builtin_types_compatible_p(int (*)(struct selinux_state *, unsigned int, unsigned int, unsigned short, unsigned int, unsigned int, unsigned int, int, struct common_audit_data *), int (*)(unsigned int, unsigned int, unsigned short, unsigned int, unsigned int, unsigned int, int, struct common_audit_data *))': CP18 identity signature mismatch\n    6 | static_assert(__same_type(int (*)(struct selinux_state *,u32,u32,u16,u32,u32,u32,int,struct common_audit_data *),typeof(&slow_avc_audit)), \"CP18 identity signature mismatch\");\n      | ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/compiler_types.h:498:27: note: expanded from macro '__same_type'\n  498 | #define __same_type(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))\n      |                           ^\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n1 error generated.\nmake[2]: *** [/opt/ddk/src/android16-6.12/scripts/Makefile.build:240: <temporary>/avc-obsolete-state/typecheck.o] Error 1\nmake[1]: *** [/opt/ddk/src/android16-6.12/Makefile:2005: <temporary>/avc-obsolete-state] Error 2\nmake: *** [/opt/ddk/src/android16-6.12/Makefile:242: __sub-make] Error 2\n"
++    },
++    {
++      "case": "avc-wrong-class-width",
++      "passed": true,
++      "expected_compile_success": false,
++      "exit_code": 2,
++      "output": "<temporary>/avc-wrong-class-width/typecheck.c:6:15: error: static assertion failed due to requirement '__builtin_types_compatible_p(int (*)(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, int, struct common_audit_data *), int (*)(unsigned int, unsigned int, unsigned short, unsigned int, unsigned int, unsigned int, int, struct common_audit_data *))': CP18 identity signature mismatch\n    6 | static_assert(__same_type(int (*)(u32,u32,u32,u32,u32,u32,int,struct common_audit_data *),typeof(&slow_avc_audit)), \"CP18 identity signature mismatch\");\n      | ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/compiler_types.h:498:27: note: expanded from macro '__same_type'\n  498 | #define __same_type(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))\n      |                           ^\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n1 error generated.\nmake[2]: *** [/opt/ddk/src/android16-6.12/scripts/Makefile.build:240: <temporary>/avc-wrong-class-width/typecheck.o] Error 1\nmake[1]: *** [/opt/ddk/src/android16-6.12/Makefile:2005: <temporary>/avc-wrong-class-width] Error 2\nmake: *** [/opt/ddk/src/android16-6.12/Makefile:242: __sub-make] Error 2\n"
++    },
++    {
++      "case": "avc-missing-audit-argument",
++      "passed": true,
++      "expected_compile_success": false,
++      "exit_code": 2,
++      "output": "<temporary>/avc-missing-audit-argument/typecheck.c:6:15: error: static assertion failed due to requirement '__builtin_types_compatible_p(int (*)(unsigned int, unsigned int, unsigned short, unsigned int, unsigned int, unsigned int, int), int (*)(unsigned int, unsigned int, unsigned short, unsigned int, unsigned int, unsigned int, int, struct common_audit_data *))': CP18 identity signature mismatch\n    6 | static_assert(__same_type(int (*)(u32,u32,u16,u32,u32,u32,int),typeof(&slow_avc_audit)), \"CP18 identity signature mismatch\");\n      | ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/compiler_types.h:498:27: note: expanded from macro '__same_type'\n  498 | #define __same_type(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))\n      |                           ^\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n1 error generated.\nmake[2]: *** [/opt/ddk/src/android16-6.12/scripts/Makefile.build:240: <temporary>/avc-missing-audit-argument/typecheck.o] Error 1\nmake[1]: *** [/opt/ddk/src/android16-6.12/Makefile:2005: <temporary>/avc-missing-audit-argument] Error 2\nmake: *** [/opt/ddk/src/android16-6.12/Makefile:242: __sub-make] Error 2\n"
++    },
++    {
++      "case": "probe-correct",
++      "passed": true,
++      "expected_compile_success": true,
++      "exit_code": 0,
++      "output": ""
++    },
++    {
++      "case": "probe-wrong-return",
++      "passed": true,
++      "expected_compile_success": false,
++      "exit_code": 2,
++      "output": "<temporary>/probe-wrong-return/typecheck.c:6:15: error: static assertion failed due to requirement '__builtin_types_compatible_p(long (*)(struct kprobe *, struct pt_regs *), int (*)(struct kprobe *, struct pt_regs *))': CP18 identity signature mismatch\n    6 | static_assert(__same_type(long (*)(struct kprobe *,struct pt_regs *),typeof(((struct kprobe*)0)->pre_handler)), \"CP18 identity signature mismatch\");\n      | ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/compiler_types.h:498:27: note: expanded from macro '__same_type'\n  498 | #define __same_type(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))\n      |                           ^\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n1 error generated.\nmake[2]: *** [/opt/ddk/src/android16-6.12/scripts/Makefile.build:240: <temporary>/probe-wrong-return/typecheck.o] Error 1\nmake[1]: *** [/opt/ddk/src/android16-6.12/Makefile:2005: <temporary>/probe-wrong-return] Error 2\nmake: *** [/opt/ddk/src/android16-6.12/Makefile:242: __sub-make] Error 2\n"
++    },
++    {
++      "case": "param-set-correct",
++      "passed": true,
++      "expected_compile_success": true,
++      "exit_code": 0,
++      "output": ""
++    },
++    {
++      "case": "param-set-wrong-return",
++      "passed": true,
++      "expected_compile_success": false,
++      "exit_code": 2,
++      "output": "<temporary>/param-set-wrong-return/typecheck.c:6:15: error: static assertion failed due to requirement '__builtin_types_compatible_p(long (*)(const char *, const struct kernel_param *), int (*)(const char *, const struct kernel_param *))': CP18 identity signature mismatch\n    6 | static_assert(__same_type(long (*)(const char *,const struct kernel_param *),typeof(((struct kernel_param_ops*)0)->set)), \"CP18 identity signature mismatch\");\n      | ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/compiler_types.h:498:27: note: expanded from macro '__same_type'\n  498 | #define __same_type(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))\n      |                           ^\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n1 error generated.\nmake[2]: *** [/opt/ddk/src/android16-6.12/scripts/Makefile.build:240: <temporary>/param-set-wrong-return/typecheck.o] Error 1\nmake[1]: *** [/opt/ddk/src/android16-6.12/Makefile:2005: <temporary>/param-set-wrong-return] Error 2\nmake: *** [/opt/ddk/src/android16-6.12/Makefile:242: __sub-make] Error 2\n"
++    },
++    {
++      "case": "param-get-correct",
++      "passed": true,
++      "expected_compile_success": true,
++      "exit_code": 0,
++      "output": ""
++    },
++    {
++      "case": "param-get-wrong-const",
++      "passed": true,
++      "expected_compile_success": false,
++      "exit_code": 2,
++      "output": "<temporary>/param-get-wrong-const/typecheck.c:6:15: error: static assertion failed due to requirement '__builtin_types_compatible_p(int (*)(const char *, const struct kernel_param *), int (*)(char *, const struct kernel_param *))': CP18 identity signature mismatch\n    6 | static_assert(__same_type(int (*)(const char *,const struct kernel_param *),typeof(((struct kernel_param_ops*)0)->get)), \"CP18 identity signature mismatch\");\n      | ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/compiler_types.h:498:27: note: expanded from macro '__same_type'\n  498 | #define __same_type(a, b) __builtin_types_compatible_p(typeof(a), typeof(b))\n      |                           ^\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n1 error generated.\nmake[2]: *** [/opt/ddk/src/android16-6.12/scripts/Makefile.build:240: <temporary>/param-get-wrong-const/typecheck.o] Error 1\nmake[1]: *** [/opt/ddk/src/android16-6.12/Makefile:2005: <temporary>/param-get-wrong-const] Error 2\nmake: *** [/opt/ddk/src/android16-6.12/Makefile:242: __sub-make] Error 2\n"
++    }
++  ]
++}
+diff --git a/docs/audit-20261027/path-entry-types.json b/docs/audit-20261027/path-entry-types.json
+new file mode 100644
+index 0000000..ea45a9c
+--- /dev/null
++++ b/docs/audit-20261027/path-entry-types.json
+@@ -0,0 +1,26 @@
++{
++  "kind": "real readdir callback ABI checks",
++  "results": [
++    {
++      "case": "production",
++      "passed": true,
++      "expected_compile_success": true,
++      "compiler_exit_code": 0,
++      "output": ""
++    },
++    {
++      "case": "wrong-count-width",
++      "passed": true,
++      "expected_compile_success": false,
++      "compiler_exit_code": 2,
++      "output": "<temporary>/wrong-count-width/typecheck.c:28:15: error: static assertion failed due to requirement 'sizeof(struct sp_getdents_callback64) == sizeof(struct getdents_callback64)': layout size\n   28 | static_assert(sizeof(struct sp_getdents_callback64) == sizeof(struct getdents_callback64), \"layout size\");\n      |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                                  ^~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-count-width/typecheck.c:28:53: note: expression evaluates to '48 == 40'\n   28 | static_assert(sizeof(struct sp_getdents_callback64) == sizeof(struct getdents_callback64), \"layout size\");\n      |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                                  ^~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-count-width/typecheck.c:36:15: error: static assertion failed due to requirement '__builtin_offsetof(struct sp_getdents_callback64, count) == __builtin_offsetof(struct getdents_callback64, count)': field offset\n   36 | static_assert(offsetof(struct sp_getdents_callback64, count) == offsetof(struct getdents_callback64, count), \"field offset\");\n      | ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/stddef.h:16:32: note: expanded from macro 'offsetof'\n   16 | #define offsetof(TYPE, MEMBER)  __builtin_offsetof(TYPE, MEMBER)\n      |                                 ^\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-count-width/typecheck.c:36:62: note: expression evaluates to '32 == 28'\n   36 | static_assert(offsetof(struct sp_getdents_callback64, count) == offsetof(struct getdents_callback64, count), \"field offset\");\n      | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-count-width/typecheck.c:37:15: error: static assertion failed due to requirement 'sizeof (((struct sp_getdents_callback64 *)0)->count) == sizeof (((struct getdents_callback64 *)0)->count)': field width\n   37 | static_assert(sizeof(((struct sp_getdents_callback64 *)0)->count) == sizeof(((struct getdents_callback64 *)0)->count), \"field width\");\n      |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                                  ^~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-count-width/typecheck.c:37:67: note: expression evaluates to '8 == 4'\n   37 | static_assert(sizeof(((struct sp_getdents_callback64 *)0)->count) == sizeof(((struct getdents_callback64 *)0)->count), \"field width\");\n      |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                                  ^~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-count-width/typecheck.c:38:15: error: static assertion failed due to requirement '__builtin_offsetof(struct sp_getdents_callback64, error) == __builtin_offsetof(struct getdents_callback64, error)': field offset\n   38 | static_assert(offsetof(struct sp_getdents_callback64, error) == offsetof(struct getdents_callback64, error), \"field offset\");\n      | ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/stddef.h:16:32: note: expanded from macro 'offsetof'\n   16 | #define offsetof(TYPE, MEMBER)  __builtin_offsetof(TYPE, MEMBER)\n      |                                 ^\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-count-width/typecheck.c:38:62: note: expression evaluates to '40 == 32'\n   38 | static_assert(offsetof(struct sp_getdents_callback64, error) == offsetof(struct getdents_callback64, error), \"field offset\");\n      | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-count-width/typecheck.c:40:15: error: static assertion failed due to requirement 'sizeof(struct sp_compat_getdents_callback) == sizeof(struct compat_getdents_callback)': layout size\n   40 | static_assert(sizeof(struct sp_compat_getdents_callback) == sizeof(struct compat_getdents_callback), \"layout size\");\n      |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                                  ^~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-count-width/typecheck.c:40:58: note: expression evaluates to '48 == 40'\n   40 | static_assert(sizeof(struct sp_compat_getdents_callback) == sizeof(struct compat_getdents_callback), \"layout size\");\n      |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                                  ^~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-count-width/typecheck.c:48:15: error: static assertion failed due to requirement '__builtin_offsetof(struct sp_compat_getdents_callback, count) == __builtin_offsetof(struct compat_getdents_callback, count)': field offset\n   48 | static_assert(offsetof(struct sp_compat_getdents_callback, count) == offsetof(struct compat_getdents_callback, count), \"field offset\");\n      | ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/stddef.h:16:32: note: expanded from macro 'offsetof'\n   16 | #define offsetof(TYPE, MEMBER)  __builtin_offsetof(TYPE, MEMBER)\n      |                                 ^\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-count-width/typecheck.c:48:67: note: expression evaluates to '32 == 28'\n   48 | static_assert(offsetof(struct sp_compat_getdents_callback, count) == offsetof(struct compat_getdents_callback, count), \"field offset\");\n      | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-count-width/typecheck.c:49:15: error: static assertion failed due to requirement 'sizeof (((struct sp_compat_getdents_callback *)0)->count) == sizeof (((struct compat_getdents_callback *)0)->count)': field width\n   49 | static_assert(sizeof(((struct sp_compat_getdents_callback *)0)->count) == sizeof(((struct compat_getdents_callback *)0)->count), \"field width\");\n      |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                                  ^~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-count-width/typecheck.c:49:72: note: expression evaluates to '8 == 4'\n   49 | static_assert(sizeof(((struct sp_compat_getdents_callback *)0)->count) == sizeof(((struct compat_getdents_callback *)0)->count), \"field width\");\n      |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                                  ^~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-count-width/typecheck.c:50:15: error: static assertion failed due to requirement '__builtin_offsetof(struct sp_compat_getdents_callback, error) == __builtin_offsetof(struct compat_getdents_callback, error)': field offset\n   50 | static_assert(offsetof(struct sp_compat_getdents_callback, error) == offsetof(struct compat_getdents_callback, error), \"field offset\");\n      | ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/stddef.h:16:32: note: expanded from macro 'offsetof'\n   16 | #define offsetof(TYPE, MEMBER)  __builtin_offsetof(TYPE, MEMBER)\n      |                                 ^\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-count-width/typecheck.c:50:67: note: expression evaluates to '40 == 32'\n   50 | static_assert(offsetof(struct sp_compat_getdents_callback, error) == offsetof(struct compat_getdents_callback, error), \"field offset\");\n      | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n8 errors generated.\nmake[2]: *** [/opt/ddk/src/android16-6.12/scripts/Makefile.build:240: <temporary>/wrong-count-width/typecheck.o] Error 1\nmake[1]: *** [/opt/ddk/src/android16-6.12/Makefile:2005: <temporary>/wrong-count-width] Error 2\nmake: *** [/opt/ddk/src/android16-6.12/Makefile:242: __sub-make] Error 2\n"
++    },
++    {
++      "case": "wrong-compat-cookie",
++      "passed": true,
++      "expected_compile_success": false,
++      "compiler_exit_code": 2,
++      "output": "<temporary>/wrong-compat-cookie/typecheck.c:52:15: error: static assertion failed due to requirement 'sizeof(struct sp_compat_linux_dirent) == sizeof(struct compat_linux_dirent)': layout size\n   52 | static_assert(sizeof(struct sp_compat_linux_dirent) == sizeof(struct compat_linux_dirent), \"layout size\");\n      |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                                  ^~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-compat-cookie/typecheck.c:52:53: note: expression evaluates to '24 == 12'\n   52 | static_assert(sizeof(struct sp_compat_linux_dirent) == sizeof(struct compat_linux_dirent), \"layout size\");\n      |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                                  ^~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-compat-cookie/typecheck.c:53:15: error: static assertion failed due to requirement '__alignof(struct sp_compat_linux_dirent) == __alignof(struct compat_linux_dirent)': layout alignment\n   53 | static_assert(__alignof__(struct sp_compat_linux_dirent) == __alignof__(struct compat_linux_dirent), \"layout alignment\");\n      |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                                  ^~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-compat-cookie/typecheck.c:53:58: note: expression evaluates to '8 == 4'\n   53 | static_assert(__alignof__(struct sp_compat_linux_dirent) == __alignof__(struct compat_linux_dirent), \"layout alignment\");\n      |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                                  ^~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-compat-cookie/typecheck.c:56:15: error: static assertion failed due to requirement '__builtin_offsetof(struct sp_compat_linux_dirent, d_off) == __builtin_offsetof(struct compat_linux_dirent, d_off)': field offset\n   56 | static_assert(offsetof(struct sp_compat_linux_dirent, d_off) == offsetof(struct compat_linux_dirent, d_off), \"field offset\");\n      | ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/stddef.h:16:32: note: expanded from macro 'offsetof'\n   16 | #define offsetof(TYPE, MEMBER)  __builtin_offsetof(TYPE, MEMBER)\n      |                                 ^\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-compat-cookie/typecheck.c:56:62: note: expression evaluates to '8 == 4'\n   56 | static_assert(offsetof(struct sp_compat_linux_dirent, d_off) == offsetof(struct compat_linux_dirent, d_off), \"field offset\");\n      | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-compat-cookie/typecheck.c:57:15: error: static assertion failed due to requirement 'sizeof (((struct sp_compat_linux_dirent *)0)->d_off) == sizeof (((struct compat_linux_dirent *)0)->d_off)': field width\n   57 | static_assert(sizeof(((struct sp_compat_linux_dirent *)0)->d_off) == sizeof(((struct compat_linux_dirent *)0)->d_off), \"field width\");\n      |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                                  ^~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-compat-cookie/typecheck.c:57:67: note: expression evaluates to '8 == 4'\n   57 | static_assert(sizeof(((struct sp_compat_linux_dirent *)0)->d_off) == sizeof(((struct compat_linux_dirent *)0)->d_off), \"field width\");\n      |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                                  ^~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-compat-cookie/typecheck.c:58:15: error: static assertion failed due to requirement '__builtin_offsetof(struct sp_compat_linux_dirent, d_reclen) == __builtin_offsetof(struct compat_linux_dirent, d_reclen)': field offset\n   58 | static_assert(offsetof(struct sp_compat_linux_dirent, d_reclen) == offsetof(struct compat_linux_dirent, d_reclen), \"field offset\");\n      | ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/stddef.h:16:32: note: expanded from macro 'offsetof'\n   16 | #define offsetof(TYPE, MEMBER)  __builtin_offsetof(TYPE, MEMBER)\n      |                                 ^\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-compat-cookie/typecheck.c:58:65: note: expression evaluates to '16 == 8'\n   58 | static_assert(offsetof(struct sp_compat_linux_dirent, d_reclen) == offsetof(struct compat_linux_dirent, d_reclen), \"field offset\");\n      | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-compat-cookie/typecheck.c:60:15: error: static assertion failed due to requirement '__builtin_offsetof(struct sp_compat_linux_dirent, d_name) == __builtin_offsetof(struct compat_linux_dirent, d_name)': name offset\n   60 | static_assert(offsetof(struct sp_compat_linux_dirent, d_name) == offsetof(struct compat_linux_dirent, d_name), \"name offset\");\n      | ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/stddef.h:16:32: note: expanded from macro 'offsetof'\n   16 | #define offsetof(TYPE, MEMBER)  __builtin_offsetof(TYPE, MEMBER)\n      |                                 ^\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n<temporary>/wrong-compat-cookie/typecheck.c:60:63: note: expression evaluates to '18 == 10'\n   60 | static_assert(offsetof(struct sp_compat_linux_dirent, d_name) == offsetof(struct compat_linux_dirent, d_name), \"name offset\");\n      | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:77:50: note: expanded from macro 'static_assert'\n   77 | #define static_assert(expr, ...) __static_assert(expr, ##__VA_ARGS__, #expr)\n      |                                  ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/ddk/src/android16-6.12/include/linux/build_bug.h:78:56: note: expanded from macro '__static_assert'\n   78 | #define __static_assert(expr, msg, ...) _Static_assert(expr, msg)\n      |                                                        ^~~~\n6 errors generated.\nmake[2]: *** [/opt/ddk/src/android16-6.12/scripts/Makefile.build:240: <temporary>/wrong-compat-cookie/typecheck.o] Error 1\nmake[1]: *** [/opt/ddk/src/android16-6.12/Makefile:2005: <temporary>/wrong-compat-cookie] Error 2\nmake: *** [/opt/ddk/src/android16-6.12/Makefile:242: __sub-make] Error 2\n"
++    }
++  ]
++}
+diff --git a/kernel/sus_map.c b/kernel/sus_map.c
+index ea8232e..84cee7a 100644
+--- a/kernel/sus_map.c
++++ b/kernel/sus_map.c
+@@ -105,6 +105,9 @@ static bool sus_map_lookup(unsigned long ino, dev_t dev)
+     bool found = false;
+     int i;
+ 
++    if (!smp_load_acquire(&nmap))
++        return false;
++
+     spin_lock_irqsave(&map_table_lock, flags);
+     for (i = 0; i < nmap; i++) {
+         if (map_entries[i].target_ino != ino)
+@@ -187,6 +190,9 @@ static int sus_map_skip_vma_pre(struct kprobe *kp, struct pt_regs *regs)
+     struct vm_area_struct *vma;
+     struct inode *inode;
+ 
++    if (!smp_load_acquire(&nmap))
++        return 0;
++
+     atomic_inc(kp == &kp_map ? &n_maps_calls : &n_smaps_calls);
+     if (!sus_map_gate_ok())
+         return 0;
+diff --git a/kernel/sus_mount.c b/kernel/sus_mount.c
+index b4b7d74..24ae61a 100644
+--- a/kernel/sus_mount.c
++++ b/kernel/sus_mount.c
+@@ -514,19 +514,25 @@ out:
+ /* Interrupt-context safe (kprobe pre_handler): read-only, no sleeping. */
+ static bool sus_mount_ident_match(struct mount *r)
+ {
+-    int n = smp_load_acquire(&n_ident);
+     struct dentry *root = r->mnt.mnt_root;
+     unsigned long ino = (root && root->d_inode) ? root->d_inode->i_ino : 0;
++    unsigned long flags;
++    bool found = false;
+     int i;
+ 
+-    for (i = 0; i < n; i++) {
++    if (!ino)
++        return false;
++    /* The inode/device pair must remain one record across slot reuse. */
++    spin_lock_irqsave(&ident_lock, flags);
++    for (i = 0; i < n_ident; i++) {
+         const struct sus_mount_ident *e = &mount_ident[i];
+-        unsigned long e_ino = smp_load_acquire(&e->root_ino);
+-
+-        if (e_ino && e_ino == ino && e->s_dev == r->mnt.mnt_sb->s_dev)
+-            return true;
++        if (e->root_ino == ino && e->s_dev == r->mnt.mnt_sb->s_dev) {
++            found = true;
++            break;
++        }
+     }
+-    return false;
++    spin_unlock_irqrestore(&ident_lock, flags);
++    return found;
+ }
+ 
+ /**
+diff --git a/kernel/sus_path.c b/kernel/sus_path.c
+index 0191653..ff079ee 100644
+--- a/kernel/sus_path.c
++++ b/kernel/sus_path.c
+@@ -104,6 +104,7 @@ struct linux_dirent64 {
+  * AS_FLAGS_SUS_PATH inode flag achieves.  dev is diagnostics only: the dirent filter
+  * never sees the listing's fd or superblock. */
+ struct sus_path_entry {
++    struct sus_path_entry *index_next;
+     struct list_head list;
+     /* ihold'ed once resolved, NULL while PENDING (registered for a path that does
+      * not exist yet, upstream's _LOOP variant); a pending rule pins no inode. */
+@@ -173,6 +174,7 @@ static void sus_path_entry_set_path(struct sus_path_entry *e, const char *path);
+ 
+ static LIST_HEAD(sus_path_list);
+ static DEFINE_SPINLOCK(sus_path_lock);
++#include "sus_path_index.h"
+ static unsigned int sus_path_count;
+ 
+ /* Rules waiting for their path to appear, counted so every fast path can bail out at
+@@ -321,7 +323,7 @@ static bool sus_path_is_hidden(u64 ino, const char *name)
+      * entries; such a rule is hidden by the by-inode layers only (sus_path_supercall()). */
+     if (ino) {
+         spin_lock(&sus_path_lock);
+-        list_for_each_entry(e, &sus_path_list, list) {
++        for (e = sus_path_index[sus_path_index_bucket(ino)]; e; e = e->index_next) {
+             if (e->ino && e->ino == ino && !strcmp(e->name, name) &&
+                 sus_path_entry_gate_any(e)) {
+                 hidden = true;
+@@ -464,6 +466,7 @@ static int sus_path_resolve_pending(void)
+             slot->ino = (u64)inode->i_ino;
+             strscpy(slot->name, name, sizeof(slot->name));
+             slot->inode = inode;
++            sus_path_index_add(slot);
+             inode = NULL;               /* the table holds the reference now */
+             retired = slot->caller;
+             slot->caller = NULL;
+@@ -863,7 +866,7 @@ static bool sus_path_inode_hidden(struct inode *inode)
+     dev = (u64)inode->i_sb->s_dev;
+ 
+     spin_lock(&sus_path_lock);
+-    list_for_each_entry(e, &sus_path_list, list) {
++    for (e = sus_path_index[sus_path_index_bucket(inode->i_ino)]; e; e = e->index_next) {
+         /* Fast path: the exact object the rule resolved. */
+         if (e->inode == inode) {
+             if (sus_path_entry_gate_inode(e, inode)) {
+@@ -1613,6 +1616,7 @@ int sus_path_del_path(const char *path)
+     list_for_each_entry_safe(e, tmp, &sus_path_list, list) {
+         if (strcmp(e->path, want))
+             continue;
++        sus_path_index_del(e);
+         list_del(&e->list);
+         list_add(&e->list, &doomed);
+         sus_path_count--;
+@@ -1682,6 +1686,7 @@ static int sus_path_command(const char *val, int *removed_out)
+         list_for_each_entry_safe(e, tmp, &sus_path_list, list) {
+             if (e->self_protect)
+                 continue;	/* ours: see the note above */
++            sus_path_index_del(e);
+             list_del(&e->list);
+             list_add(&e->list, &doomed);
+             sus_path_count--;
+@@ -2185,6 +2190,7 @@ static int sus_path_add_hidden_ex(const char *path, bool self_protect)
+ 		kfree(e);
+ 		return -ENOSPC;
+ 	}
++	sus_path_index_add(e);
+ 	list_add_tail(&e->list, &sus_path_list);
+ 	sus_path_count++;
+ 	sus_path_relax_mode(e);
+@@ -2252,6 +2258,7 @@ static int sus_path_sb_down_pre(struct kprobe *kp, struct pt_regs *regs)
+     list_for_each_entry(e, &sus_path_list, list) {
+         if (!e->inode || e->inode->i_sb != sb)
+             continue;
++        sus_path_index_del(e);
+         atomic_dec(&e->inode->i_count);   /* undo our ihold(); never the inode's last disposer */
+         e->inode = NULL;                  /* the rule is pending again */
+         e->orig_mode = 0;                 /* the relaxed mode dies with the inode */
+@@ -2459,6 +2466,7 @@ void sus_path_exit(void)
+     dirent_tmp = NULL;
+ 
+     spin_lock(&sus_path_lock);
++    memset(sus_path_index, 0, sizeof(sus_path_index));
+     list_splice_init(&sus_path_list, &doomed);
+     sus_path_count = 0;
+     atomic_set(&sus_path_n_pending, 0);
+@@ -2610,6 +2618,7 @@ void sus_path_supercall(unsigned int cmd, void __user **arg)
+                 cur->ino = ino;
+                 strscpy(cur->name, e->name, sizeof(cur->name));
+                 cur->inode = e->inode;      /* the reference moves over */
++                sus_path_index_add(cur);
+                 e->inode = NULL;
+                 retired = cur->caller;
+                 cur->caller = NULL;
+@@ -2625,6 +2634,7 @@ void sus_path_supercall(unsigned int cmd, void __user **arg)
+             }
+         }
+     }
++    sus_path_index_add(e);
+     list_add_tail(&e->list, &sus_path_list);
+     sus_path_count++;
+     if (!inode)
+diff --git a/kernel/sus_path_entry.h b/kernel/sus_path_entry.h
+index f7ab17b..9ee9235 100644
+--- a/kernel/sus_path_entry.h
++++ b/kernel/sus_path_entry.h
+@@ -21,19 +21,20 @@ static struct kprobe sp_entry_probes[5];
+ static bool sp_entry_armed[5];
+ static bool sp_entry_installed;
+ static atomic_t sp_entry_callbacks = ATOMIC_INIT(0);
+-#include "ksu_umount_gate.h"	/* susfs_ksu_umount_uid_applies, the per-uid hide boundary (issue #34) */
++#include "ksu_umount_gate.h"	/* susfs_ksu_umount_uid_applies, the full per-caller hide policy */
+ 
+ static DECLARE_WAIT_QUEUE_HEAD(sp_entry_waitq);
+ 
+ #include "sus_path_dirent_abi.h"
+ 
+-static bool sp_dirent_gate(const struct sus_path_entry *e, uid_t caller_uid)
++static bool sp_dirent_gate(const struct sus_path_entry *e, uid_t caller_uid,
++                           bool caller_umounted)
+ {
+     if (e->self_protect)
+         return caller_uid != 0;
+     if (!READ_ONCE(hide_from_apps))
+         return true;
+-    return e->inode && susfs_ksu_umount_uid_applies(caller_uid) &&
++    return e->inode && caller_umounted &&
+            caller_uid != e->inode->i_uid.val;
+ }
+ 
+@@ -73,7 +74,8 @@ static bool sp_iterate_bypass(void)
+  * (filesystem type, ino) across procfs instances in other mount namespaces.
+  * Ordinary rules never get that fallback, and names alone are not identity. */
+ static bool sp_dirent_is_hidden(struct super_block *sb, u64 ino,
+-                                 const char *name, int namelen, uid_t caller_uid)
++                                 const char *name, int namelen, uid_t caller_uid,
++                                 bool caller_umounted)
+ {
+     struct sus_path_entry *e;
+     bool hidden = false;
+@@ -82,20 +84,20 @@ static bool sp_dirent_is_hidden(struct super_block *sb, u64 ino,
+     if (sus_path_is_resolver() || namelen <= 0 || namelen > NAME_MAX)
+         return false;
+     spin_lock(&sus_path_lock);
+-    list_for_each_entry(e, &sus_path_list, list) {
++    for (e = sus_path_index[sus_path_index_bucket(ino)]; e; e = e->index_next) {
+         if (!e->inode || !e->ino || e->ino != ino)
+             continue;
+         if (e->dev != (u64)sb->s_dev &&
+             (!e->self_protect || e->inode->i_sb->s_type != sb->s_type))
+             continue;
+-        if (sp_dirent_gate(e, caller_uid)) {
++        if (sp_dirent_gate(e, caller_uid, caller_umounted)) {
+             hidden = true;
+             break;
+         }
+     }
+     spin_unlock(&sus_path_lock);
+     debug_len = strnlen(hide_name, sizeof(hide_name));
+-    if (!hidden && (!READ_ONCE(hide_from_apps) || susfs_ksu_umount_uid_applies(caller_uid)) && debug_len == namelen &&
++    if (!hidden && (!READ_ONCE(hide_from_apps) || caller_umounted) && debug_len == namelen &&
+         debug_len && !memcmp(name, hide_name, debug_len))
+         hidden = true;
+     return hidden;
+@@ -106,6 +108,7 @@ struct sp_dir_context {
+     struct dir_context *caller;
+     struct super_block *sb;
+     uid_t caller_uid;
++    bool caller_umounted;
+ };
+ 
+ static bool sp_dir_emit(struct dir_context *ctx, const char *name, int len,
+@@ -114,7 +117,8 @@ static bool sp_dir_emit(struct dir_context *ctx, const char *name, int len,
+     struct sp_dir_context *filter = container_of(ctx, struct sp_dir_context, ctx);
+     bool result;
+ 
+-    if (sp_dirent_is_hidden(filter->sb, ino, name, len, filter->caller_uid)) {
++    if (sp_dirent_is_hidden(filter->sb, ino, name, len, filter->caller_uid,
++                             filter->caller_umounted)) {
+         return true; /* keep walking; no placeholder and no user-buffer write */
+     }
+     filter->caller->pos = ctx->pos;
+@@ -149,6 +153,8 @@ static int sp_iterate_body(struct file *file, struct dir_context *ctx)
+         .caller = ctx,
+         .sb = file_inode(file)->i_sb,
+         .caller_uid = current_uid().val,
++        /* Capture before the filesystem can override current credentials. */
++        .caller_umounted = susfs_is_current_proc_umounted_app(),
+     };
+     int rc;
+ 
+diff --git a/kernel/sus_path_index.h b/kernel/sus_path_index.h
+new file mode 100644
+index 0000000..9b0bbcc
+--- /dev/null
++++ b/kernel/sus_path_index.h
+@@ -0,0 +1,33 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/* Included after sus_path_entry. All accesses hold sus_path_lock. Index only
++ * resolved rules; the owning list retains ordering and pending-rule state.
++ * Inode-only buckets preserve pointer, device and control-node type tiers. */
++#define SUS_PATH_INDEX_SIZE 256
++static struct sus_path_entry *sus_path_index[SUS_PATH_INDEX_SIZE];
++
++static unsigned int sus_path_index_bucket(u64 ino)
++{
++    ino ^= ino >> 32;
++    ino *= 0x9e3779b97f4a7c15ULL;
++    return (unsigned int)(ino >> 56);
++}
++
++static void sus_path_index_add(struct sus_path_entry *e)
++{
++    unsigned int bucket;
++    if (!e->inode)
++        return;
++    bucket = sus_path_index_bucket(e->ino);
++    e->index_next = sus_path_index[bucket];
++    sus_path_index[bucket] = e;
++}
++
++static void sus_path_index_del(struct sus_path_entry *e)
++{
++    struct sus_path_entry **slot = &sus_path_index[sus_path_index_bucket(e->ino)];
++    while (*slot && *slot != e)
++        slot = &(*slot)->index_next;
++    if (*slot)
++        *slot = e->index_next;
++    e->index_next = NULL;
++}
+diff --git a/kernel/susfs_create_gate.c b/kernel/susfs_create_gate.c
+index 8c78b84..7adf601 100644
+--- a/kernel/susfs_create_gate.c
++++ b/kernel/susfs_create_gate.c
+@@ -50,10 +50,10 @@
+ /* The AArch32 table numbers (arch/arm/tools/syscall.tbl); the native ones come
+  * from __NR_*.  Kept spelled out for the same reason susfs_fp_hook.h spells the
+  * compat indexes out: the two tables do not share a numbering. */
+-#define COMPAT_MKNODAT_NR	33
+-#define COMPAT_MKDIRAT_NR	34
+-#define COMPAT_SYMLINKAT_NR	36
+-#define COMPAT_LINKAT_NR	37
++#define COMPAT_MKNODAT_NR	324
++#define COMPAT_MKDIRAT_NR	323
++#define COMPAT_SYMLINKAT_NR	331
++#define COMPAT_LINKAT_NR	330
+ 
+ /* inode_permission() grew a mount-namespace argument in 5.12 and an idmap in 6.3.
+  * The call below exists only to match the work an absent name does (may_create's
+@@ -129,26 +129,30 @@ static __nocfi noinline bool create_name_hidden(int dfd, const char __user *path
+ 	return hidden;
+ }
+ 
++static struct susfs_fp_hook create_hooks[4];
++
+ static __nocfi noinline long create_wrap_mkdirat(const struct pt_regs *regs)
+ {
+ 	susfs_syscall_fn_t orig = READ_ONCE(create_orig_mkdirat);
+ 
++	susfs_fp_callback_enter(&create_hooks[0]);
+ 	if (!orig)
+-		return -ENOSYS;
++		return susfs_fp_callback_return(&create_hooks[0], -ENOSYS);
+ 	if (create_name_hidden((int)regs->regs[0], (const char __user *)regs->regs[1]))
+-		return -EACCES;
+-	return orig(regs);
++		return susfs_fp_callback_return(&create_hooks[0], -EACCES);
++	return susfs_fp_callback_return(&create_hooks[0], orig(regs));
+ }
+ 
+ static __nocfi noinline long create_wrap_mknodat(const struct pt_regs *regs)
+ {
+ 	susfs_syscall_fn_t orig = READ_ONCE(create_orig_mknodat);
+ 
++	susfs_fp_callback_enter(&create_hooks[1]);
+ 	if (!orig)
+-		return -ENOSYS;
++		return susfs_fp_callback_return(&create_hooks[1], -ENOSYS);
+ 	if (create_name_hidden((int)regs->regs[0], (const char __user *)regs->regs[1]))
+-		return -EACCES;
+-	return orig(regs);
++		return susfs_fp_callback_return(&create_hooks[1], -EACCES);
++	return susfs_fp_callback_return(&create_hooks[1], orig(regs));
+ }
+ 
+ static __nocfi noinline long create_wrap_symlinkat(const struct pt_regs *regs)
+@@ -156,11 +160,12 @@ static __nocfi noinline long create_wrap_symlinkat(const struct pt_regs *regs)
+ 	/* symlinkat(oldname, newdfd, newname): the path created is regs[2]. */
+ 	susfs_syscall_fn_t orig = READ_ONCE(create_orig_symlinkat);
+ 
++	susfs_fp_callback_enter(&create_hooks[2]);
+ 	if (!orig)
+-		return -ENOSYS;
++		return susfs_fp_callback_return(&create_hooks[2], -ENOSYS);
+ 	if (create_name_hidden((int)regs->regs[1], (const char __user *)regs->regs[2]))
+-		return -EACCES;
+-	return orig(regs);
++		return susfs_fp_callback_return(&create_hooks[2], -EACCES);
++	return susfs_fp_callback_return(&create_hooks[2], orig(regs));
+ }
+ 
+ static __nocfi noinline long create_wrap_linkat(const struct pt_regs *regs)
+@@ -170,77 +175,86 @@ static __nocfi noinline long create_wrap_linkat(const struct pt_regs *regs)
+ 	 * link the hidden inode out under a visible name. */
+ 	susfs_syscall_fn_t orig = READ_ONCE(create_orig_linkat);
+ 
++	susfs_fp_callback_enter(&create_hooks[3]);
+ 	if (!orig)
+-		return -ENOSYS;
++		return susfs_fp_callback_return(&create_hooks[3], -ENOSYS);
+ 	if (create_name_hidden((int)regs->regs[0], (const char __user *)regs->regs[1]))
+-		return -ENOENT;
++		return susfs_fp_callback_return(&create_hooks[3], -ENOENT);
+ 	if (create_name_hidden((int)regs->regs[2], (const char __user *)regs->regs[3]))
+-		return -EACCES;
+-	return orig(regs);
++		return susfs_fp_callback_return(&create_hooks[3], -EACCES);
++	return susfs_fp_callback_return(&create_hooks[3], orig(regs));
+ }
+ 
+ static __nocfi noinline long create_wrap_compat_mkdirat(const struct pt_regs *regs)
+ {
+ 	susfs_syscall_fn_t orig = READ_ONCE(create_orig_compat_mkdirat);
+ 
++	susfs_fp_callback_enter(&create_hooks[0]);
+ 	if (!orig)
+-		return -ENOSYS;
++		return susfs_fp_callback_return(&create_hooks[0], -ENOSYS);
+ 	if (create_name_hidden((int)regs->regs[0], (const char __user *)regs->regs[1]))
+-		return -EACCES;
+-	return orig(regs);
++		return susfs_fp_callback_return(&create_hooks[0], -EACCES);
++	return susfs_fp_callback_return(&create_hooks[0], orig(regs));
+ }
+ 
+ static __nocfi noinline long create_wrap_compat_mknodat(const struct pt_regs *regs)
+ {
+ 	susfs_syscall_fn_t orig = READ_ONCE(create_orig_compat_mknodat);
+ 
++	susfs_fp_callback_enter(&create_hooks[1]);
+ 	if (!orig)
+-		return -ENOSYS;
++		return susfs_fp_callback_return(&create_hooks[1], -ENOSYS);
+ 	if (create_name_hidden((int)regs->regs[0], (const char __user *)regs->regs[1]))
+-		return -EACCES;
+-	return orig(regs);
++		return susfs_fp_callback_return(&create_hooks[1], -EACCES);
++	return susfs_fp_callback_return(&create_hooks[1], orig(regs));
+ }
+ 
+ static __nocfi noinline long create_wrap_compat_symlinkat(const struct pt_regs *regs)
+ {
+ 	susfs_syscall_fn_t orig = READ_ONCE(create_orig_compat_symlinkat);
+ 
++	susfs_fp_callback_enter(&create_hooks[2]);
+ 	if (!orig)
+-		return -ENOSYS;
++		return susfs_fp_callback_return(&create_hooks[2], -ENOSYS);
+ 	if (create_name_hidden((int)regs->regs[1], (const char __user *)regs->regs[2]))
+-		return -EACCES;
+-	return orig(regs);
++		return susfs_fp_callback_return(&create_hooks[2], -EACCES);
++	return susfs_fp_callback_return(&create_hooks[2], orig(regs));
+ }
+ 
+ static __nocfi noinline long create_wrap_compat_linkat(const struct pt_regs *regs)
+ {
+ 	susfs_syscall_fn_t orig = READ_ONCE(create_orig_compat_linkat);
+ 
++	susfs_fp_callback_enter(&create_hooks[3]);
+ 	if (!orig)
+-		return -ENOSYS;
++		return susfs_fp_callback_return(&create_hooks[3], -ENOSYS);
+ 	if (create_name_hidden((int)regs->regs[0], (const char __user *)regs->regs[1]))
+-		return -ENOENT;
++		return susfs_fp_callback_return(&create_hooks[3], -ENOENT);
+ 	if (create_name_hidden((int)regs->regs[2], (const char __user *)regs->regs[3]))
+-		return -EACCES;
+-	return orig(regs);
++		return susfs_fp_callback_return(&create_hooks[3], -EACCES);
++	return susfs_fp_callback_return(&create_hooks[3], orig(regs));
+ }
+ 
+ static struct susfs_fp_hook create_hooks[] = {
+ 	{ .nr = __NR_mkdirat, .nr_compat = COMPAT_MKDIRAT_NR,
+ 	  .name = "create/mkdirat", .sym = "__arm64_sys_mkdirat",
+ 	  .wrapper = create_wrap_mkdirat, .orig_slot = &create_orig_mkdirat,
++	  .compat_wrapper = create_wrap_compat_mkdirat,
+ 	  .orig_slot_compat = &create_orig_compat_mkdirat },
+ 	{ .nr = __NR_mknodat, .nr_compat = COMPAT_MKNODAT_NR,
+ 	  .name = "create/mknodat", .sym = "__arm64_sys_mknodat",
+ 	  .wrapper = create_wrap_mknodat, .orig_slot = &create_orig_mknodat,
++	  .compat_wrapper = create_wrap_compat_mknodat,
+ 	  .orig_slot_compat = &create_orig_compat_mknodat },
+ 	{ .nr = __NR_symlinkat, .nr_compat = COMPAT_SYMLINKAT_NR,
+ 	  .name = "create/symlinkat", .sym = "__arm64_sys_symlinkat",
+ 	  .wrapper = create_wrap_symlinkat, .orig_slot = &create_orig_symlinkat,
++	  .compat_wrapper = create_wrap_compat_symlinkat,
+ 	  .orig_slot_compat = &create_orig_compat_symlinkat },
+ 	{ .nr = __NR_linkat, .nr_compat = COMPAT_LINKAT_NR,
+ 	  .name = "create/linkat", .sym = "__arm64_sys_linkat",
+ 	  .wrapper = create_wrap_linkat, .orig_slot = &create_orig_linkat,
++	  .compat_wrapper = create_wrap_compat_linkat,
+ 	  .orig_slot_compat = &create_orig_compat_linkat },
+ };
+ 
+@@ -288,7 +302,6 @@ int susfs_create_gate_init(void)
+ 
+ void susfs_create_gate_exit(void)
+ {
+-	int armed = 0;
+ 	int i;
+ 
+ 	for (i = 0; i < (int)ARRAY_SIZE(create_hooks); i++) {
+@@ -297,8 +310,5 @@ void susfs_create_gate_exit(void)
+ 		if (!h->installed)
+ 			continue;
+ 		susfs_fp_remove(h);
+-		armed++;
+ 	}
+-	if (armed)
+-		susfs_fp_drain();
+ }
+diff --git a/kernel/susfs_fp_hook.c b/kernel/susfs_fp_hook.c
+index 6770375..32d29a1 100644
+--- a/kernel/susfs_fp_hook.c
++++ b/kernel/susfs_fp_hook.c
+@@ -74,29 +74,20 @@ static int fp_compat_nr(const struct susfs_fp_hook *h)
+  * its original out of the module slot, so the slot is published first and the
+  * write is verified afterwards. */
+ static int fp_patch_entry(susfs_syscall_fn_t *table, int nr, const char *name,
+-			  susfs_syscall_fn_t wrapper, susfs_syscall_fn_t old)
++                          susfs_syscall_fn_t wrapper)
+ {
+-	int err;
+-
+-	err = ksu_patch_text(&table[nr], &wrapper, sizeof(wrapper),
+-			     KSU_PATCH_TEXT_FLUSH_DCACHE);
+-	if (err) {
+-		pr_warn("susfs_fp: %s: write failed %d\n", name, err);
+-		return err;
+-	}
+-	if (READ_ONCE(table[nr]) != wrapper) {
+-		/* A half-written pointer is worse than none: put the old one back. */
+-		ksu_patch_text(&table[nr], &old, sizeof(old),
+-			       KSU_PATCH_TEXT_FLUSH_DCACHE);
+-		pr_warn("susfs_fp: %s: write did not stick, rolled back\n", name);
+-		return -EIO;
+-	}
+-	return 0;
++    int err = ksu_patch_text(&table[nr], &wrapper, sizeof(wrapper),
++                             KSU_PATCH_TEXT_FLUSH_DCACHE);
++    if (err || READ_ONCE(table[nr]) != wrapper) {
++        pr_warn("susfs_fp: %s: write failed or did not stick (%d)\n", name, err);
++        return err ? err : -EIO;
++    }
++    return 0;
+ }
+ 
+ int susfs_fp_init(void)
+ {
+-	void *direct, *walked;
++	void *direct, *walked = NULL;
+ 
+ 	if (sys_call_table_ptr)
+ 		return 0;
+@@ -199,179 +190,127 @@ static bool fp_has_landing_pad(const void *fn)
+ 
+ int susfs_fp_install(struct susfs_fp_hook *h)
+ {
+-	susfs_syscall_fn_t old;
+-	int cnr, err;
+-	bool native_done = false, compat_done = false;
+-
+-	if (h->installed)
+-		return 0;
+-	if (!sys_call_table_ptr) {
+-		err = susfs_fp_init();
+-		if (err)
+-			return err;
+-	}
+-	/* nr < 0 is "no native entry", not a typo (see struct susfs_fp_hook): the AArch32-only
+-	 * syscalls live in the compat table alone, and arm64's sys_call_table[5] is setxattr. */
+-	if (h->nr >= __NR_syscalls) {
+-		pr_warn("susfs_fp: %s: bogus nr %d\n", h->name, h->nr);
+-		return -EINVAL;
+-	}
+-	/* The compat number has its own bound, and a negative one is refused here rather than
+-	 * treated as "none": only nr_compat == 0 means "this hook has no 32-bit entry". */
+-	if (h->nr_compat < 0 || h->nr_compat >= SUSFS_FP_COMPAT_MAX_NR) {
+-		pr_warn("susfs_fp: %s: bogus compat nr %d\n", h->name, h->nr_compat);
+-		return -EINVAL;
+-	}
+-	cnr = fp_compat_nr(h);
+-	if (h->nr < 0 && cnr < 0) {
+-		pr_warn("susfs_fp: %s: no native entry and no compat entry\n", h->name);
+-		return -EINVAL;
+-	}
+-	if (!h->wrapper || !fp_has_landing_pad((const void *)h->wrapper)) {
+-		pr_warn("susfs_fp: %s has no valid call landing pad (0x%08x) - not installed\n",
+-			h->name, h->wrapper ? READ_ONCE(*(const u32 *)h->wrapper) : 0);
+-		return -EINVAL;
+-	}
+-
+-	if (h->nr >= 0) {
+-		old = READ_ONCE(sys_call_table_ptr[h->nr]);
+-		if (!old) {
+-			pr_warn("susfs_fp: %s: table entry is NULL\n", h->name);
+-			return -ENOENT;
+-		}
+-
+-		/* Publish the original BEFORE the table points at us: the wrapper reads this
+-		 * slot, so a table entry that is live while the slot is still NULL would jump
+-		 * to zero on another CPU.  The slot is never cleared again for the same
+-		 * reason - once the entry is restored, nothing calls the wrapper any more. */
+-		h->orig = old;
+-		if (h->orig_slot)
+-			WRITE_ONCE(*h->orig_slot, old);
+-		smp_wmb();
+-
+-		err = fp_patch_entry(sys_call_table_ptr, h->nr, h->name, h->wrapper, old);
+-		if (err)
+-			return err;
+-		native_done = true;
+-	}
+-
+-	/* The 32-bit table is a second, independent entry: a compat task never reads
+-	 * sys_call_table, so an entry that is only patched natively is simply not
+-	 * there for it - and the compat index is its own number system, never h->nr. */
+-	if (cnr >= 0) {
+-		if (!compat_sys_call_table_ptr) {
+-			pr_warn("susfs_fp: %s: compat_sys_call_table absent, no 32-bit entry\n",
+-				h->name);
+-		} else {
+-			susfs_syscall_fn_t cold = READ_ONCE(compat_sys_call_table_ptr[cnr]);
+-
+-			if (!cold) {
+-				pr_warn("susfs_fp: %s: compat entry %d is NULL\n",
+-					h->name, cnr);
+-			} else {
+-				h->orig_compat = cold;
+-				if (h->orig_slot_compat)
+-					WRITE_ONCE(*h->orig_slot_compat, cold);
+-				smp_wmb();
+-				err = fp_patch_entry(compat_sys_call_table_ptr, cnr, h->name,
+-						     h->wrapper, cold);
+-				if (err) {
+-					/* Keep the two tables consistent rather than half-armed. */
+-					if (native_done)
+-						ksu_patch_text(&sys_call_table_ptr[h->nr], &h->orig,
+-							       sizeof(h->orig), KSU_PATCH_TEXT_FLUSH_DCACHE);
+-					return err;
+-				}
+-				compat_done = true;
+-				pr_info("susfs_fp: %s: compat entry %d armed (original %px)\n",
+-					h->name, cnr, (void *)cold);
+-			}
+-		}
+-	}
+-
+-	if (!native_done && !compat_done) {
+-		/* Reported as a failure so a caller that counts its armed entries does not
+-		 * record this one as live - there is nothing in either table. */
+-		pr_warn("susfs_fp: %s: no entry could be armed\n", h->name);
+-		return -ENOENT;
+-	}
+-
+-	h->installed = true;
++    susfs_syscall_fn_t compat = h->compat_wrapper ?: h->wrapper;
++    int cnr, err;
++
++    if (h->installed)
++        return 0;
++    if (!sys_call_table_ptr) {
++        err = susfs_fp_init();
++        if (err)
++            return err;
++    }
++    if (h->nr >= __NR_syscalls || h->nr_compat < 0 ||
++        h->nr_compat >= SUSFS_FP_COMPAT_MAX_NR)
++        return -EINVAL;
++    cnr = fp_compat_nr(h);
++    if (h->nr < 0 && cnr < 0)
++        return -EINVAL;
++    if (!h->wrapper || !fp_has_landing_pad((const void *)h->wrapper) ||
++        (cnr >= 0 && (!compat || !fp_has_landing_pad((const void *)compat))))
++        return -EINVAL;
++
++    atomic_set(&h->active_callbacks, 0);
++    init_waitqueue_head(&h->callback_waitq);
++    if (h->nr >= 0) {
++        h->orig = READ_ONCE(sys_call_table_ptr[h->nr]);
++        if (!h->orig)
++            return -ENOENT;
++        if (h->orig_slot)
++            WRITE_ONCE(*h->orig_slot, h->orig);
++        smp_wmb();
++        /* Track possible publication BEFORE a write that can fail after storing. */
++        h->native_installed = h->installed = true;
++        err = fp_patch_entry(sys_call_table_ptr, h->nr, h->name, h->wrapper);
++        if (err)
++            goto rollback;
++    }
++    if (cnr >= 0 && compat_sys_call_table_ptr) {
++        h->orig_compat = READ_ONCE(compat_sys_call_table_ptr[cnr]);
++        if (h->orig_compat) {
++            if (h->orig_slot_compat)
++                WRITE_ONCE(*h->orig_slot_compat, h->orig_compat);
++            smp_wmb();
++            h->compat_installed = h->installed = true;
++            err = fp_patch_entry(compat_sys_call_table_ptr, cnr, h->name, compat);
++            if (err)
++                goto rollback;
++        }
++    }
++    if (!h->installed)
++        return -ENOENT;
++    return 0;
++rollback:
++    /* Removal must prove restoration AND drain callbacks, even on failed init. */
++    susfs_fp_remove(h);
++    return err;
++}
+ 
+-	pr_info("susfs_fp: nr %d compat %d (%s) armed: table=%px -> %px, original %px/%px\n",
+-		h->nr, cnr, h->name, h->nr >= 0 ? (void *)&sys_call_table_ptr[h->nr] : NULL,
+-		(void *)h->wrapper, (void *)h->orig, (void *)h->orig_compat);
+-	return 0;
++/* A foreign owner may still chain to our wrapper. Never overwrite it or free
++ * our text until the chain is unwound back to the saved original. */
++static void fp_restore_entry(susfs_syscall_fn_t *table, int nr,
++                             susfs_syscall_fn_t wrapper,
++                             susfs_syscall_fn_t original, bool *installed)
++{
++    susfs_syscall_fn_t entry;
++
++    if (!*installed)
++        return;
++    entry = READ_ONCE(table[nr]);
++    if (entry == original) {
++        *installed = false;
++        return;
++    }
++    if (entry != wrapper)
++        return;
++    ksu_patch_text(&table[nr], &original, sizeof(original),
++                   KSU_PATCH_TEXT_FLUSH_DCACHE);
++    if (READ_ONCE(table[nr]) == original)
++        *installed = false;
+ }
+ 
+ void susfs_fp_remove(struct susfs_fp_hook *h)
+ {
+-	int cnr, err;
+-
+-	if (!h->installed || !sys_call_table_ptr)
+-		return;
+-
+-	cnr = fp_compat_nr(h);
+-
+-	if (h->nr >= 0 && READ_ONCE(sys_call_table_ptr[h->nr]) != h->wrapper) {
+-		pr_warn("susfs_fp: nr %d is not ours any more, leaving it alone\n", h->nr);
+-		h->installed = false;
+-		return;
+-	}
+-
+-	if (cnr >= 0 && compat_sys_call_table_ptr && h->orig_compat &&
+-	    READ_ONCE(compat_sys_call_table_ptr[cnr]) == h->wrapper) {
+-		err = ksu_patch_text(&compat_sys_call_table_ptr[cnr], &h->orig_compat,
+-				     sizeof(h->orig_compat), KSU_PATCH_TEXT_FLUSH_DCACHE);
+-		if (err)
+-			pr_warn("susfs_fp: %s: compat entry %d restore failed %d\n",
+-				h->name, cnr, err);
+-		else
+-			pr_info("susfs_fp: %s: compat entry %d restored\n", h->name, cnr);
+-	}
+-
+-	/* nr < 0 means there is no native entry: only the compat one above was ours. */
+-	if (h->nr >= 0) {
+-		err = ksu_patch_text(&sys_call_table_ptr[h->nr], &h->orig,
+-				     sizeof(h->orig), KSU_PATCH_TEXT_FLUSH_DCACHE);
+-		if (err)
+-			pr_warn("susfs_fp: nr %d restore failed %d\n", h->nr, err);
+-		else
+-			pr_info("susfs_fp: nr %d (%s) disarmed, entry %px restored\n",
+-				h->nr, h->name, (void *)h->orig);
+-	}
+-
+-	h->installed = false;
++    if (!h->installed)
++        return;
++    do {
++        /* Each side is independent: a foreign native owner cannot skip compat. */
++        fp_restore_entry(compat_sys_call_table_ptr, fp_compat_nr(h),
++                          h->compat_wrapper ?: h->wrapper, h->orig_compat,
++                          &h->compat_installed);
++        fp_restore_entry(sys_call_table_ptr, h->nr, h->wrapper, h->orig,
++                          &h->native_installed);
++        if (!h->native_installed && !h->compat_installed)
++            break;
++        pr_warn_ratelimited("susfs_fp: %s: waiting for verified table restoration\n", h->name);
++        msleep(100);
++    } while (true);
++    susfs_fp_drain(h);
++    h->installed = false;
+ }
+ 
+-/* Wait until nothing can be inside a wrapper before the module text goes away.
+- *
+- * Restoring the table entry only stops NEW calls: a task that already picked the
+- * wrapper out of the table is running module code right now, and rmmod would free
+- * it under its feet.  synchronize_rcu() alone does not cover it - the syscall
+- * path is not an RCU read-side section for this purpose - so the same
+- * synchronize_rcu_tasks() drain the LSM layer uses is repeated here (resolved at
+- * runtime and called through a __nocfi wrapper; a delay is the fallback). */
+-static void (*fp_sync_rcu_tasks_fn)(void);
+-static bool fp_sync_looked_up;
+-
+-static __nocfi void fp_call_drain(void (*fn)(void))
++void susfs_fp_callback_enter(struct susfs_fp_hook *h)
+ {
+-	fn();
++    atomic_inc(&h->active_callbacks);
++    smp_mb__after_atomic();
+ }
+ 
+-void susfs_fp_drain(void)
++long susfs_fp_callback_return(struct susfs_fp_hook *h, long result)
+ {
+-	if (!fp_sync_looked_up) {
+-		fp_sync_rcu_tasks_fn = (void *)find_kernel_symbol_exact("synchronize_rcu_tasks");
+-		fp_sync_looked_up = true;
+-		if (!fp_sync_rcu_tasks_fn)
+-			pr_warn("susfs_fp: synchronize_rcu_tasks not found, using a delay\n");
+-	}
++    /* The caller evaluates its result (including the original syscall) first. */
++    smp_mb__before_atomic();
++    if (atomic_dec_and_test(&h->active_callbacks))
++        wake_up_all(&h->callback_waitq);
++    return result;
++}
+ 
+-	synchronize_rcu();
+-	if (fp_sync_rcu_tasks_fn)
+-		fp_call_drain(fp_sync_rcu_tasks_fn);
+-	else
+-		msleep(50);
++void susfs_fp_drain(struct susfs_fp_hook *h)
++{
++    /* First grace period covers CPUs that fetched the old table target but have
++     * not entered yet. Counters span voluntary sleeps; the final grace period
++     * covers wake_up_all() and the return tail after the last decrement. */
++    synchronize_rcu();
++    synchronize_rcu_tasks();
++    wait_event(h->callback_waitq, atomic_read(&h->active_callbacks) == 0);
++    synchronize_rcu_tasks();
+ }
+diff --git a/kernel/susfs_fp_hook.h b/kernel/susfs_fp_hook.h
+index 0eac331..a85a600 100644
+--- a/kernel/susfs_fp_hook.h
++++ b/kernel/susfs_fp_hook.h
+@@ -7,6 +7,8 @@
+ #define __SUSFS_FP_HOOK_H
+ 
+ #include <linux/types.h>
++#include <linux/atomic.h>
++#include <linux/wait.h>
+ 
+ struct pt_regs;
+ 
+@@ -37,6 +39,9 @@ struct susfs_fp_hook {
+ 	susfs_syscall_fn_t *orig_slot;		/* where the wrapper reads the original */
+ 	susfs_syscall_fn_t orig;		/* the entry we replaced */
+ 	bool installed;
++	bool native_installed, compat_installed;
++	atomic_t active_callbacks;
++	wait_queue_head_t callback_waitq;
+ 	/* The 32-bit half.  A 32-bit task never touches sys_call_table, so a hook with no
+ 	 * compat index is simply not there for it - and an entry layer the compat side cannot
+ 	 * reach is exactly why the compat kprobes exist.
+@@ -44,6 +49,7 @@ struct susfs_fp_hook {
+ 	 * bool would be a second way of asking the same question, and the two could disagree
+ 	 * (a hook marked compat whose nr_compat is 0, i.e. with no number to patch with). */
+ 	susfs_syscall_fn_t *orig_slot_compat;	/* where a wrapper reads the compat original */
++	susfs_syscall_fn_t compat_wrapper; /* NULL uses wrapper */
+ 	susfs_syscall_fn_t orig_compat;		/* the compat entry we replaced */
+ };
+ 
+@@ -59,9 +65,10 @@ unsigned long susfs_fp_compat_syscall_table(void);
+ int susfs_fp_install(struct susfs_fp_hook *h);
+ void susfs_fp_remove(struct susfs_fp_hook *h);
+ 
+-/* Blocks until no CPU can still be inside a wrapper; call before the module text
+- * may go away (i.e. once, after all entries are restored). */
+-void susfs_fp_drain(void);
++/* remove() restores both entries and drains before permitting text release. */
++void susfs_fp_callback_enter(struct susfs_fp_hook *h);
++long susfs_fp_callback_return(struct susfs_fp_hook *h, long result);
++void susfs_fp_drain(struct susfs_fp_hook *h);
+ 
+ /* Prints table[nr] next to the plain and the .cfi_jt symbol for one entry. */
+ void susfs_fp_dump_entry(int nr, const char *sym);
+diff --git a/kernel/susfs_or_entry.c b/kernel/susfs_or_entry.c
+index 6f12b96..93d67b4 100644
+--- a/kernel/susfs_or_entry.c
++++ b/kernel/susfs_or_entry.c
+@@ -412,17 +412,20 @@ static __nocfi noinline long or_entry_redirect(const struct pt_regs *regs, int k
+  * landing pad comes from the module's build flags, like every wrapper attached through
+  * susfs_fp_hook; without it the arm64 indirect-branch rules refuse a table entry after an
+  * indirect call. */
++static struct susfs_fp_hook or_hooks[5];
++
+ static __nocfi noinline long or_wrap_openat(const struct pt_regs *regs)
+ {
+ 	susfs_syscall_fn_t orig = READ_ONCE(or_orig_openat);
+ 	long res;
+ 
++	susfs_fp_callback_enter(&or_hooks[0]);
+ 	if (!orig)
+-		return -ENOSYS;
++		return susfs_fp_callback_return(&or_hooks[0], -ENOSYS);
+ 	res = or_entry_redirect(regs, SUSFS_OR_ENTRY_OPENAT);
+ 	if (res != SUSFS_OR_ENTRY_PASS)
+-		return res;
+-	return orig(regs);
++		return susfs_fp_callback_return(&or_hooks[0], res);
++	return susfs_fp_callback_return(&or_hooks[0], orig(regs));
+ }
+ 
+ static __nocfi noinline long or_wrap_openat2(const struct pt_regs *regs)
+@@ -430,12 +433,13 @@ static __nocfi noinline long or_wrap_openat2(const struct pt_regs *regs)
+ 	susfs_syscall_fn_t orig = READ_ONCE(or_orig_openat2);
+ 	long res;
+ 
++	susfs_fp_callback_enter(&or_hooks[1]);
+ 	if (!orig)
+-		return -ENOSYS;
++		return susfs_fp_callback_return(&or_hooks[1], -ENOSYS);
+ 	res = or_entry_redirect(regs, SUSFS_OR_ENTRY_OPENAT2);
+ 	if (res != SUSFS_OR_ENTRY_PASS)
+-		return res;
+-	return orig(regs);
++		return susfs_fp_callback_return(&or_hooks[1], res);
++	return susfs_fp_callback_return(&or_hooks[1], orig(regs));
+ }
+ 
+ static __nocfi noinline long or_wrap_compat_open(const struct pt_regs *regs)
+@@ -443,12 +447,13 @@ static __nocfi noinline long or_wrap_compat_open(const struct pt_regs *regs)
+ 	susfs_syscall_fn_t orig = READ_ONCE(or_orig_compat_open);
+ 	long res;
+ 
++	susfs_fp_callback_enter(&or_hooks[2]);
+ 	if (!orig)
+-		return -ENOSYS;
++		return susfs_fp_callback_return(&or_hooks[2], -ENOSYS);
+ 	res = or_entry_redirect(regs, SUSFS_OR_ENTRY_COMPAT_OPEN);
+ 	if (res != SUSFS_OR_ENTRY_PASS)
+-		return res;
+-	return orig(regs);
++		return susfs_fp_callback_return(&or_hooks[2], res);
++	return susfs_fp_callback_return(&or_hooks[2], orig(regs));
+ }
+ 
+ static __nocfi noinline long or_wrap_compat_openat(const struct pt_regs *regs)
+@@ -456,12 +461,13 @@ static __nocfi noinline long or_wrap_compat_openat(const struct pt_regs *regs)
+ 	susfs_syscall_fn_t orig = READ_ONCE(or_orig_compat_openat);
+ 	long res;
+ 
++	susfs_fp_callback_enter(&or_hooks[3]);
+ 	if (!orig)
+-		return -ENOSYS;
++		return susfs_fp_callback_return(&or_hooks[3], -ENOSYS);
+ 	res = or_entry_redirect(regs, SUSFS_OR_ENTRY_COMPAT_OPENAT);
+ 	if (res != SUSFS_OR_ENTRY_PASS)
+-		return res;
+-	return orig(regs);
++		return susfs_fp_callback_return(&or_hooks[3], res);
++	return susfs_fp_callback_return(&or_hooks[3], orig(regs));
+ }
+ 
+ static __nocfi noinline long or_wrap_compat_openat2(const struct pt_regs *regs)
+@@ -469,12 +475,13 @@ static __nocfi noinline long or_wrap_compat_openat2(const struct pt_regs *regs)
+ 	susfs_syscall_fn_t orig = READ_ONCE(or_orig_compat_openat2);
+ 	long res;
+ 
++	susfs_fp_callback_enter(&or_hooks[4]);
+ 	if (!orig)
+-		return -ENOSYS;
++		return susfs_fp_callback_return(&or_hooks[4], -ENOSYS);
+ 	res = or_entry_redirect(regs, SUSFS_OR_ENTRY_COMPAT_OPENAT2);
+ 	if (res != SUSFS_OR_ENTRY_PASS)
+-		return res;
+-	return orig(regs);
++		return susfs_fp_callback_return(&or_hooks[4], res);
++	return susfs_fp_callback_return(&or_hooks[4], orig(regs));
+ }
+ 
+ /* The AArch32 table numbers (arch/arm/tools/syscall.tbl); the native ones come from __NR_*.
+@@ -644,7 +651,6 @@ int susfs_or_entry_init(void)
+ 
+ void susfs_or_entry_exit(void)
+ {
+-	int armed = 0;
+ 	int i;
+ 
+ 	/* First, so an in-flight wrapper (one whose CPU is already inside it) answers PASS to
+@@ -660,8 +666,5 @@ void susfs_or_entry_exit(void)
+ 		if (!or_hooks[i].installed)
+ 			continue;
+ 		susfs_fp_remove(&or_hooks[i]);
+-		armed++;
+ 	}
+-	if (armed)
+-		susfs_fp_drain();	/* no CPU is inside a wrapper of ours any more */
+ }
+diff --git a/kernel/susfs_uname.c b/kernel/susfs_uname.c
+index b310474..e071cb3 100644
+--- a/kernel/susfs_uname.c
++++ b/kernel/susfs_uname.c
+@@ -10,6 +10,7 @@
+ #include <linux/module.h>
+ #include <linux/kprobes.h>
+ #include <linux/mutex.h>
++#include <linux/spinlock.h>
+ #include <linux/uaccess.h>
+ #include <linux/utsname.h>
+ #include <linux/string.h>
+@@ -23,11 +24,12 @@
+ static char fake_release[SUSFS_UNAME_LEN];
+ static char fake_version[SUSFS_UNAME_LEN];
+ static bool uname_spoof_enabled;
++static DEFINE_SPINLOCK(uname_state_lock);
+ 
+ /* optional insmod-time override; supercall is the primary interface */
+-module_param_string(release, fake_release, sizeof(fake_release), 0644);
+-module_param_string(version, fake_version, sizeof(fake_version), 0644);
+-module_param(uname_spoof_enabled, bool, 0644);
++module_param_string(release, fake_release, sizeof(fake_release), 0444);
++module_param_string(version, fake_version, sizeof(fake_version), 0444);
++module_param(uname_spoof_enabled, bool, 0444);
+ MODULE_PARM_DESC(release, "fake uname release (insmod override)");
+ MODULE_PARM_DESC(version, "fake uname version (insmod override)");
+ MODULE_PARM_DESC(uname_spoof_enabled, "enable uname spoofing (insmod override)");
+@@ -53,17 +55,25 @@ static int kr_newuname_entry(struct kretprobe_instance *ri, struct pt_regs *regs
+ static int kr_newuname_ret(struct kretprobe_instance *ri, struct pt_regs *regs)
+ {
+     struct uname_args *a = (struct uname_args *)ri->data;
++    char release[SUSFS_UNAME_LEN], version[SUSFS_UNAME_LEN];
++    unsigned long flags;
++    bool enabled;
+ 
+-    if (regs_return_value(regs) != 0)
++    if (regs_return_value(regs) != 0 || !a->name)
+         return 0;
+-    if (!uname_spoof_enabled || !a->name)
++    spin_lock_irqsave(&uname_state_lock, flags);
++    enabled = uname_spoof_enabled;
++    memcpy(release, fake_release, sizeof(release));
++    memcpy(version, fake_version, sizeof(version));
++    spin_unlock_irqrestore(&uname_state_lock, flags);
++    if (!enabled)
+         return 0;
+-
++    /* User copies may fault: never hold the state lock over either copy. */
+     if (copy_to_user((char __user *)a->name + offsetof(struct new_utsname, release),
+-                     fake_release, SUSFS_UNAME_LEN))
++                     release, SUSFS_UNAME_LEN))
+         return 0;
+     if (copy_to_user((char __user *)a->name + offsetof(struct new_utsname, version),
+-                     fake_version, SUSFS_UNAME_LEN))
++                     version, SUSFS_UNAME_LEN))
+         return 0;
+     return 0;
+ }
+@@ -80,36 +90,32 @@ static bool uname_registered;
+ static DEFINE_MUTEX(uname_ctl_lock);
+ static bool uname_exiting;
+ 
+-static int uname_register(void)
++/* Caller serializes registration, publication and exit with uname_ctl_lock. */
++static int uname_register_locked(void)
+ {
+     int rc;
+ 
+-    mutex_lock(&uname_ctl_lock);
+-    if (uname_exiting) {
+-        rc = -ENODEV;
+-        goto out;
+-    }
+-    if (uname_registered) {
+-        rc = 0;
+-        goto out;
+-    }
++    if (uname_exiting)
++        return -ENODEV;
++    if (uname_registered)
++        return 0;
+     krp.kp.addr = NULL;
+     krp.kp.flags = 0;
+     rc = register_kretprobe(&krp);
+-    if (rc)
+-        goto out;
+-    uname_registered = true;
+-    SUSFS_LOGI("uname spoof armed: release=%s version=%s\n",
+-            fake_release, fake_version);
+-out:
+-    mutex_unlock(&uname_ctl_lock);
++    if (!rc)
++        uname_registered = true;
+     return rc;
+ }
+ 
+ static void uname_unregister(void)
+ {
++    unsigned long flags;
++
+     mutex_lock(&uname_ctl_lock);
+     uname_exiting = true;
++    spin_lock_irqsave(&uname_state_lock, flags);
++    uname_spoof_enabled = false;
++    spin_unlock_irqrestore(&uname_state_lock, flags);
+     if (uname_registered) {
+         unregister_kretprobe(&krp);
+         uname_registered = false;
+@@ -130,20 +136,21 @@ static void uname_pad(char *value, size_t size)
+ 
+ int susfs_uname_init(void)
+ {
++    bool requested = uname_spoof_enabled && fake_release[0] && fake_version[0];
++    unsigned long flags;
++    int rc = 0;
++
++    uname_spoof_enabled = false;
+     uname_pad(fake_release, sizeof(fake_release));
+     uname_pad(fake_version, sizeof(fake_version));
+-
+-    if (uname_spoof_enabled && fake_release[0] && fake_version[0]) {
+-        int rc = uname_register();
+-
+-        if (rc) {
+-            pr_err("register_kretprobe(newuname) failed %d\n", rc);
+-            return rc;
+-        }
+-    } else {
+-        SUSFS_LOGI("uname spoof: disabled (enable via CMD_SUSFS_SET_UNAME)\n");
+-    }
+-    return 0;
++    mutex_lock(&uname_ctl_lock);
++    if (requested)
++        rc = uname_register_locked();
++    spin_lock_irqsave(&uname_state_lock, flags);
++    uname_spoof_enabled = requested && !rc;
++    spin_unlock_irqrestore(&uname_state_lock, flags);
++    mutex_unlock(&uname_ctl_lock);
++    return rc;
+ }
+ 
+ void susfs_uname_exit(void)
+@@ -155,6 +162,8 @@ void susfs_uname_exit(void)
+ void susfs_uname_supercall(void __user **arg)
+ {
+     struct st_susfs_uname info = {0};
++    char release[SUSFS_UNAME_LEN] = {0}, version[SUSFS_UNAME_LEN] = {0};
++    unsigned long flags;
+     int rc;
+ 
+     if (copy_from_user(&info, (void __user *)*arg, sizeof(info))) {
+@@ -173,27 +182,24 @@ void susfs_uname_supercall(void __user **arg)
+         goto out;
+     }
+ 
+-    /* "default" copies the device's CURRENT uname at runtime */
+-    if (!strcmp(info.release, "default"))
+-        strscpy(fake_release, utsname()->release, sizeof(fake_release));
+-    else
+-        strscpy(fake_release, info.release, sizeof(fake_release));
+-    if (!strcmp(info.version, "default"))
+-        strscpy(fake_version, utsname()->version, sizeof(fake_version));
+-    else
+-        strscpy(fake_version, info.version, sizeof(fake_version));
+-
+-    uname_pad(fake_release, sizeof(fake_release));
+-    uname_pad(fake_version, sizeof(fake_version));
+-
+-    uname_spoof_enabled = true;
+-    rc = uname_register();
+-    if (rc) {
+-        info.err = rc;
+-        goto out;
++    /* Build a fully initialized pair before publishing anything. */
++    strscpy(release, !strcmp(info.release, "default") ? utsname()->release : info.release,
++             sizeof(release));
++    strscpy(version, !strcmp(info.version, "default") ? utsname()->version : info.version,
++             sizeof(version));
++    uname_pad(release, sizeof(release));
++    uname_pad(version, sizeof(version));
++    mutex_lock(&uname_ctl_lock);
++    rc = uname_register_locked();
++    if (!rc) {
++        spin_lock_irqsave(&uname_state_lock, flags);
++        memcpy(fake_release, release, sizeof(fake_release));
++        memcpy(fake_version, version, sizeof(fake_version));
++        uname_spoof_enabled = true;
++        spin_unlock_irqrestore(&uname_state_lock, flags);
+     }
+-    info.err = 0;
+-    SUSFS_LOGI("uname spoof set: release=%s version=%s\n", fake_release, fake_version);
++    mutex_unlock(&uname_ctl_lock);
++    info.err = rc;
+ out:
+     /* upstream writes back only ->err for input-type commands */
+     if (copy_to_user(&((struct st_susfs_uname __user *)*arg)->err,
+diff --git a/tests/fp_hooks/restore_test.c b/tests/fp_hooks/restore_test.c
+new file mode 100644
+index 0000000..6faed50
+--- /dev/null
++++ b/tests/fp_hooks/restore_test.c
+@@ -0,0 +1,91 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#include <assert.h>
++#include <errno.h>
++#include <stdint.h>
++#include <stdbool.h>
++#include <stdio.h>
++#include <string.h>
++#include <stdlib.h>
++typedef int atomic_t;
++typedef int wait_queue_head_t;
++#define atomic_set(p,n) (*(p)=(n))
++#define init_waitqueue_head(p) (*(p)=0)
++#define READ_ONCE(x) (x)
++#define WRITE_ONCE(x,v) ((x)=(v))
++#define smp_wmb() ((void)0)
++#define pr_warn(...) ((void)0)
++#define pr_warn_ratelimited(...) ((void)0)
++typedef uint32_t u32;
++#include HEADER
++#define __NR_syscalls 512
++#define SUSFS_FP_COMPAT_MAX_NR 512
++#define SUSFS_ARM64_BTI_C 0xd503245fu
++#define SUSFS_ARM64_BTI_JC 0xd50324dfu
++#define SUSFS_ARM64_PACIASP 0xd503233fu
++#define SUSFS_ARM64_PACIBSP 0xd503237fu
++#define KSU_PATCH_TEXT_FLUSH_DCACHE 1
++static susfs_syscall_fn_t native[512],compat[512];
++static susfs_syscall_fn_t *sys_call_table_ptr=native,*compat_sys_call_table_ptr=compat;
++static long original(const struct pt_regs *r) { (void)r;return 1; }
++static long compat_original(const struct pt_regs *r) { (void)r;return 2; }
++static long foreign(const struct pt_regs *r) { (void)r;return 3; }
++static struct susfs_fp_hook *live;
++static int calls,fail_call,fail_mode,restore_failures,waits,drains;
++static bool foreign_owner;
++int susfs_fp_init(void) { return 0; }
++static int ksu_patch_text(void *dst,const void *src,size_t n,int flags) {
++    (void)flags;++calls;
++    susfs_syscall_fn_t next=*(susfs_syscall_fn_t const*)src;
++    if(next==live->wrapper||next==live->compat_wrapper) {
++        assert(live->installed);
++        assert(*(dst==&native[live->nr]?live->orig_slot:live->orig_slot_compat));
++    }
++    if((next==original||next==compat_original)&&restore_failures) {--restore_failures;return -EIO;}
++    if(calls==fail_call) {
++        if(fail_mode==1) memcpy(dst,src,n); /* write then failure */
++        return fail_mode==2?0:-EIO; /* reported success without a store */
++    }
++    memcpy(dst,src,n);return 0;
++}
++static void msleep(int n) {
++    assert(n==100&&live->installed);assert(++waits<20);
++    if(foreign_owner) {
++        assert(!live->compat_installed&&compat[2]==compat_original);
++        if(waits==3) native[1]=original;
++    }
++}
++void susfs_fp_drain(struct susfs_fp_hook *h) {
++    assert(h->installed&&!h->native_installed&&!h->compat_installed);
++    assert(h->active_callbacks==0);++drains;
++}
++#include PRODUCTION
++int main(int argc,char **argv) {
++    assert(argc==2);const char *c=argv[1];
++    static const u32 pad=SUSFS_ARM64_BTI_C,cpad=SUSFS_ARM64_PACIASP;
++    susfs_syscall_fn_t orig=NULL,corig=NULL;
++    struct susfs_fp_hook h={.nr=1,.nr_compat=2,.name="test",
++      .wrapper=(susfs_syscall_fn_t)(uintptr_t)&pad,
++      .compat_wrapper=(susfs_syscall_fn_t)(uintptr_t)&cpad,
++      .orig_slot=&orig,.orig_slot_compat=&corig};
++    live=&h;native[1]=original;compat[2]=compat_original;
++    if(!strcmp(c,"invalid")) {h.nr_compat=512;assert(susfs_fp_install(&h)==-EINVAL&&!calls);puts("PASS invalid");return 0;}
++    if(!strcmp(c,"missing-compat")) {h.nr=-1;compat_sys_call_table_ptr=NULL;assert(susfs_fp_install(&h)==-ENOENT&&!h.installed);puts("PASS missing-compat");return 0;}
++    bool failed=strstr(c,"fail")||!strcmp(c,"no-store");
++    if(failed) {
++        fail_call=strstr(c,"native")?1:2;
++        fail_mode=strstr(c,"after")?1:(!strcmp(c,"no-store")?2:0);
++        if(!strcmp(c,"rollback-fail")) restore_failures=3;
++        assert(susfs_fp_install(&h)==-EIO);
++    } else {
++        assert(!susfs_fp_install(&h));assert(orig==original&&corig==compat_original);
++        assert(native[1]==h.wrapper&&compat[2]==h.compat_wrapper);
++        if(!strcmp(c,"restore-retry")) restore_failures=3;
++        if(!strcmp(c,"foreign-native")) {native[1]=foreign;foreign_owner=true;}
++        if(!strcmp(c,"already-restored")) native[1]=original;
++        susfs_fp_remove(&h);
++    }
++    assert(!h.installed&&!h.native_installed&&!h.compat_installed);
++    assert(native[1]==original&&compat[2]==compat_original&&drains==1);
++    susfs_fp_remove(&h);assert(drains==1);
++    printf("PASS %s\n",c);
++}
+diff --git a/tests/fp_hooks/run.py b/tests/fp_hooks/run.py
+new file mode 100644
+index 0000000..3293e4a
+--- /dev/null
++++ b/tests/fp_hooks/run.py
+@@ -0,0 +1,73 @@
++#!/usr/bin/env python3
++"""Fault injection and controlled lifetime interleavings in actual syscall hook C."""
++import argparse, importlib.util, os, re, subprocess, tempfile
++from pathlib import Path
++p=argparse.ArgumentParser(description=__doc__);p.add_argument('--sanitizers',action='store_true');a=p.parse_args()
++here=Path(__file__).resolve().parent;root=here.parents[1]
++spec=importlib.util.spec_from_file_location('extract',root/'tests/path_creds/run.py');extract=importlib.util.module_from_spec(spec);spec.loader.exec_module(extract)
++source=(root/'kernel/susfs_fp_hook.c').read_text()
++header=re.sub(r'^#include[^\n]*\n','',(root/'kernel/susfs_fp_hook.h').read_text(),flags=re.M)
++flags=['-O1','-g','-fsanitize=address,undefined','-fno-omit-frame-pointer','-no-pie'] if a.sanitizers else ['-O2']
++env=dict(os.environ,ASAN_OPTIONS='detect_leaks=0:abort_on_error=1',UBSAN_OPTIONS='halt_on_error=1')
++with tempfile.TemporaryDirectory(prefix='susfs-fp-') as d:
++ d=Path(d);(d/'header.h').write_text(header)
++ def build(file,production,extra=()):
++  fragment=d/(file.stem+'.h');fragment.write_text(production);exe=d/file.stem
++  subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-parameter','-pthread',*flags,'-I',str(d),'-I',str(here),'-DHEADER="'+str(d/'header.h')+'"','-DPRODUCTION="'+str(fragment)+'"',*extra,str(file),'-o',str(exe)],check=True)
++  return exe
++ def run(exe,cases):
++  for case in cases:subprocess.run([str(exe),case],check=True,env=env,timeout=15)
++ funcs=['fp_compat_nr','fp_has_landing_pad','fp_patch_entry','fp_restore_entry','susfs_fp_install','susfs_fp_remove']
++ exe=build(here/'restore_test.c','\n\n'.join(extract.function(source,n) for n in funcs))
++ run(exe,['success','restore-retry','foreign-native','already-restored','native-fail-before','native-fail-after','compat-fail-before','compat-fail-after','rollback-fail','no-store','invalid','missing-compat'])
++ # Reuse the existing explicit Tasks RCU model with the real FP type/helpers.
++ host=(root/'tests/lsm_lifetime/host_kernel.h').read_text()
++ host=host.replace('struct ksu_lsm_hook { atomic_t active_callbacks; wait_queue_head_t callback_waitq; };','#include "header.h"')
++ (d/'host_kernel.h').write_text(host)
++ test=(root/'tests/lsm_lifetime/lifetime_test.c').read_text().replace('struct ksu_lsm_hook','struct susfs_fp_hook').replace('ksu_lsm_callback_enter','susfs_fp_callback_enter').replace('ksu_lsm_callback_exit(&hook)','susfs_fp_callback_return(&hook, 0)').replace('ksu_lsm_hook_drain','susfs_fp_drain').replace('PRODUCTION_LIFETIME','PRODUCTION')
++ (d/'lifetime_test.c').write_text(test)
++ exe=build(d/'lifetime_test.c','\n\n'.join(extract.function(source,n) for n in ['susfs_fp_callback_enter','susfs_fp_callback_return','susfs_fp_drain']))
++ run(exe,['empty','sleeping-tail','late-entry','multiple','wake-tail'])
++ # Verify every real wrapper balances its own counter on all return paths.
++ create=(root/'kernel/susfs_create_gate.c').read_text();opening=(root/'kernel/susfs_or_entry.c').read_text()
++ cnames=['mkdirat','mknodat','symlinkat','linkat'];onames=['openat','openat2','compat_open','compat_openat','compat_openat2']
++ names=[('create',n,i) for i,n in enumerate(cnames)]+[('create','compat_'+n,i) for i,n in enumerate(cnames)]+[('or',n,i) for i,n in enumerate(onames)]
++ decls='\n'.join('static susfs_syscall_fn_t '+pre+'_orig_'+n+';' for pre,n,i in names)
++ bodies='\n'.join(extract.function(create if pre=='create' else opening,pre+'_wrap_'+n) for pre,n,i in names)
++ checks=[]
++ for pre,n,i in names:
++  checks += [f'expected=&{pre}_hooks[{i}];hidden_call=0;hidden_at=0;redirect_result=SUSFS_OR_ENTRY_PASS;',f'{pre}_orig_{n}=NULL;assert({pre}_wrap_{n}(&regs)==-ENOSYS);assert(!expected->active_callbacks);',f'{pre}_orig_{n}=original;assert({pre}_wrap_{n}(&regs)==17);assert(!expected->active_callbacks);']
++  if pre=='or':
++   checks += [f'redirect_result=-EACCES;assert({pre}_wrap_{n}(&regs)==-EACCES);assert(!expected->active_callbacks);',f'redirect_result=42;assert({pre}_wrap_{n}(&regs)==42);assert(!expected->active_callbacks);']
++  else:
++   checks += [f'hidden_call=0;hidden_at=1;assert({pre}_wrap_{n}(&regs)=='+('-ENOENT' if n.endswith('linkat') and not n.endswith('symlinkat') else '-EACCES')+');assert(!expected->active_callbacks);']
++   if n in ('linkat','compat_linkat'): checks += [f'hidden_call=0;hidden_at=2;assert({pre}_wrap_{n}(&regs)==-EACCES);assert(!expected->active_callbacks);']
++ code='''#include <assert.h>
++#include <errno.h>
++#include <limits.h>
++#include <stdbool.h>
++#include <stdio.h>
++typedef int atomic_t;
++typedef int wait_queue_head_t;
++#define __nocfi
++#define noinline
++#define __user
++#define READ_ONCE(x) (x)
++struct pt_regs { unsigned long regs[31]; };
++#include HEADER
++#include ENUM
++static struct susfs_fp_hook create_hooks[4],or_hooks[5],*expected;
++static int hidden_call,hidden_at;static long redirect_result;
++void susfs_fp_callback_enter(struct susfs_fp_hook *h) {assert(h==expected&&!h->active_callbacks);h->active_callbacks++;}
++long susfs_fp_callback_return(struct susfs_fp_hook *h,long v) {assert(h==expected&&h->active_callbacks==1);h->active_callbacks--;return v;}
++static bool create_name_hidden(int fd,const char *name) {assert(expected->active_callbacks==1);return ++hidden_call==hidden_at;}
++static long or_entry_redirect(const struct pt_regs *r,int k) {assert(expected->active_callbacks==1);return redirect_result;}
++static long original(const struct pt_regs *r) {assert(expected->active_callbacks==1);return 17;}
++'''+decls+'\n'+bodies+'\nint main(void) {struct pt_regs regs={0};\n'+'\n'.join(checks)+'\nputs("PASS all 13 wrappers: balanced lifetime and correct original");}\n'
++ (d/'wrappers.c').write_text(code)
++ enum=re.sub(r'^#include[^\n]*\n','',(root/'kernel/susfs_or_entry.h').read_text(),flags=re.M);(d/'enum.h').write_text(enum)
++ exe=build(d/'wrappers.c','', ['-DENUM="'+str(d/'enum.h')+'"']);run(exe,['all'])
++ for n,num in [('MKDIRAT',323),('MKNODAT',324),('LINKAT',330),('SYMLINKAT',331)]:
++  assert re.search(r'#define COMPAT_'+n+r'_NR\s+'+str(num)+r'\b',create)
++  assert '.compat_wrapper = create_wrap_compat_'+n.lower() in create
++print('PASS syscall table numbering and separate native/compat wrappers')
+diff --git a/tests/identity_controls/controls_test.c b/tests/identity_controls/controls_test.c
+index 1553a9c..1dfa2b7 100644
+--- a/tests/identity_controls/controls_test.c
++++ b/tests/identity_controls/controls_test.c
+@@ -18,12 +18,13 @@ static void *replace_boot(void *reset) {
+     assert(!(reset?spoof_reset():spoof_set("replacement")));
+     atomic_store(&replacement_done,true); return NULL;
+ }
+-static void uname_abi(const char *release,const char *version) {
++static int uname_abi_result(const char *release,const char *version) {
+     struct st_susfs_uname info={0};
+     assert(strscpy(info.release,release,sizeof(info.release))>=0);
+     assert(strscpy(info.version,version,sizeof(info.version))>=0);
+-    void *arg=&info; susfs_uname_supercall(&arg); assert(!info.err);
++    void *arg=&info; susfs_uname_supercall(&arg); return info.err;
+ }
++static void uname_abi(const char *r,const char *v) { assert(!uname_abi_result(r,v)); }
+ static void check_uname(const char *release,const char *version) {
+     struct new_utsname got; memset(&got,0xa5,sizeof(got));
+     struct uname_args a={.name=&got};
+@@ -35,6 +36,28 @@ static void check_uname(const char *release,const char *version) {
+     for(size_t i=0;i<sizeof(got.sysname);i++) assert((unsigned char)got.sysname[i]==0xa5);
+     for(size_t i=0;i<sizeof(got.machine);i++) assert((unsigned char)got.machine[i]==0xa5);
+ }
++static void switch_uname_pair(void) {
++    assert(!pthread_mutex_trylock(&uname_state_lock));
++    pthread_mutex_unlock(&uname_state_lock);
++    uname_abi("B","B");
++}
++static void *uname_writer(void *p) {
++    for(int i=0;i<10000;i++) uname_abi(p,p);
++    return NULL;
++}
++static void check_uname_writers(void) {
++    pthread_t a,b;uname_abi("A","A");
++    assert(!pthread_create(&a,NULL,uname_writer,"A"));
++    assert(!pthread_create(&b,NULL,uname_writer,"B"));
++    for(int i=0;i<20000;i++) {
++        struct new_utsname got={0};struct uname_args args={.name=&got};
++        struct kretprobe_instance ri={.data=&args};struct pt_regs regs={0};
++        kr_newuname_ret(&ri,&regs);
++        assert(!strcmp(got.release,got.version));
++        assert(!strcmp(got.release,"A")||!strcmp(got.release,"B"));
++    }
++    assert(!pthread_join(a,NULL));assert(!pthread_join(b,NULL));
++}
+ int main(int argc,char **argv)
+ {
+     assert(argc==2); const char *name=argv[1]; saved_boot_config=native; avc_su_sid=3173; avc_priv_app_sid=4567;
+@@ -112,6 +135,23 @@ int main(int argc,char **argv)
+         bool defaults=!strcmp(name,"uname-default");
+         uname_abi(defaults?"default":"r",defaults?"default":"v");
+         check_uname(defaults?native_uts.release:"r",defaults?native_uts.version:"v");
++    } else if(!strcmp(name,"uname-snapshot")) {
++        uname_abi("A","A");user_copy_hook=switch_uname_pair;
++        check_uname("A","A");check_uname("B","B");
++    } else if(!strcmp(name,"uname-writers")) {
++        check_uname_writers();
++    } else if(!strcmp(name,"uname-registration-failure")) {
++        uname_register_error=-ENOMEM;
++        assert(uname_abi_result("A","A")==-ENOMEM);
++        assert(!uname_registered&&!uname_spoof_enabled&&!fake_release[0]&&!fake_version[0]);
++        uname_register_error=0;uname_abi("A","A");check_uname("A","A");
++    } else if(!strcmp(name,"uname-exit")) {
++        uname_abi("A","A");susfs_uname_exit();
++        assert(uname_abi_result("B","B")==-ENODEV);
++        assert(!uname_registered&&!uname_spoof_enabled&&!strcmp(fake_release,"A"));
++    } else if(!strcmp(name,"uname-incomplete")) {
++        strcpy(fake_release,"A");uname_spoof_enabled=true;
++        assert(!susfs_uname_init());assert(!uname_registered&&!uname_spoof_enabled);
+     } else if(!strcmp(name,"uname-initial-parameter")) {
+         memset(fake_release,'R',sizeof(fake_release)); memset(fake_version,'V',sizeof(fake_version));
+         strcpy(fake_release,"r"); strcpy(fake_version,"v");
+diff --git a/tests/identity_controls/host_kernel.h b/tests/identity_controls/host_kernel.h
+index b85098d..3ac1331 100644
+--- a/tests/identity_controls/host_kernel.h
++++ b/tests/identity_controls/host_kernel.h
+@@ -35,6 +35,9 @@ typedef uint16_t u16;
+ #define DEFINE_MUTEX(x) pthread_mutex_t x = PTHREAD_MUTEX_INITIALIZER
+ #define mutex_lock(x) assert(!pthread_mutex_lock(x))
+ #define mutex_unlock(x) assert(!pthread_mutex_unlock(x))
++#define DEFINE_SPINLOCK(x) pthread_mutex_t x = PTHREAD_MUTEX_INITIALIZER
++#define spin_lock_irqsave(p,f) do { (f)=0; assert(!pthread_mutex_lock(p)); } while (0)
++#define spin_unlock_irqrestore(p,f) do { (void)(f); assert(!pthread_mutex_unlock(p)); } while (0)
+ struct list_head { struct list_head *next,*prev; };
+ #define LIST_HEAD(x) struct list_head x = { &x,&x }
+ static void list_add_tail(struct list_head *entry, struct list_head *head) { entry->prev=head->prev; entry->next=head; head->prev->next=entry; head->prev=entry; }
+@@ -66,7 +69,8 @@ static void *kmalloc(size_t n,int flags) { if(fail_alloc) { fail_alloc--; return
+ static void *kzalloc(size_t n,int flags) { void *p=kmalloc(n,flags); if(p) memset(p,0,n); return p; }
+ static void kfree(void *p) { if(p) { assert(atomic_fetch_sub(&live_allocations,1)>0); free(p); } }
+ static int copy_from_user(void *to,const void *from,size_t n) { if(copy_fail) return 1; memcpy(to,from,n); return 0; }
+-static int copy_to_user(void *to,const void *from,size_t n) { memcpy(to,from,n); return 0; }
++static void (*user_copy_hook)(void);
++static int copy_to_user(void *to,const void *from,size_t n) { memcpy(to,from,n); if(user_copy_hook) { void (*hook)(void)=user_copy_hook;user_copy_hook=NULL;hook(); } return 0; }
+ static bool susfs_abi_path_ok(const char *value,size_t n) { return memchr(value,0,n)!=NULL; }
+ struct kernel_param { int unused; };
+ struct kernel_param_ops { int (*set)(const char *,const struct kernel_param *); int (*get)(char *,const struct kernel_param *); };
+@@ -96,7 +100,8 @@ struct kretprobe {
+     size_t data_size;
+     int maxactive;
+ };
+-static int register_kretprobe(struct kretprobe *p) { return 0; }
++static int uname_register_error;
++static int register_kretprobe(struct kretprobe *p) { return uname_register_error; }
+ static void unregister_kretprobe(struct kretprobe *p) { }
+ struct new_utsname { char sysname[65],nodename[65],release[65],version[65],machine[65],domainname[65]; };
+ static struct new_utsname native_uts={.release="native-release",.version="native-version"};
+diff --git a/tests/identity_controls/run.py b/tests/identity_controls/run.py
+index 0473294..e0304ca 100644
+--- a/tests/identity_controls/run.py
++++ b/tests/identity_controls/run.py
+@@ -20,7 +20,7 @@ kernel=here.parents[1]/'kernel'
+ names=['boot-cycle','boot-null','boot-allocation','boot-foreign','boot-reset-input',
+        'boot-abi-errors','boot-concurrency','boot-reclaim-bound','boot-reader-replace',
+        'boot-reader-reset','boot-foreign-unload','boot-exit','uname-shorter','uname-default',
+-       'uname-initial-parameter','variant-label','avc-register-selection','avc-repeat',
++       'uname-initial-parameter','uname-snapshot','uname-writers','uname-registration-failure','uname-exit','uname-incomplete','variant-label','avc-register-selection','avc-repeat',
+        'avc-sid-unavailable','avc-register-failure','avc-proc-input','avc-abi-input','avc-concurrency',
+        'avc-unload','avc-unload-disabled']
+ results=[]
+@@ -49,12 +49,13 @@ with tempfile.TemporaryDirectory(prefix='susfs-identity-host-') as d:
+         print(('PASS ' if passed else 'FAIL ')+name)
+         if not passed:
+             print(run.stderr[:2000])
+-    controls=[('old-avc-register','AVC','? 2 : 1','? 2 : 2','avc-register-selection'),
++    assert sources['UNAME'].count(', 0444)')==3
++    controls=[('mixed-uname-pair','UNAME','version, SUSFS_UNAME_LEN))','fake_version, SUSFS_UNAME_LEN))','uname-snapshot'),('old-avc-register','AVC','? 2 : 1','? 2 : 2','avc-register-selection'),
+               ('allow-avc-after-exit','AVC','avc_exiting = true;','/* exit admission omitted */','avc-unload'),
+               ('retain-disabled-probe','AVC','kp_avc.flags = 0;','/* disabled flag deliberately retained */','avc-repeat'),
+               ('free-published-bootconfig','BOOT','if (rc)\n\t\tkfree(value);','if (1)\n\t\tkfree(value);','boot-cycle'),
+               ('omit-reader-grace','BOOT','synchronize_rcu_tasks();','/* grace period omitted */','boot-reader-replace'),
+-              ('omit-uname-padding','UNAME','memset(value + len, 0, size - len);','(void)value;','uname-shorter'),
++              ('omit-uname-padding','UNAME','memset(value + len, 0, size - len);','(void)value;','uname-initial-parameter'),
+               ('overwrite-foreign-bootconfig','BOOT','if (cmpxchg(&saved_boot_config, expected, value->text) != expected)',
+                'if ((saved_boot_config = value->text, false))','boot-foreign')]
+     for label,key,old,new,name in controls:
+diff --git a/tests/lifecycle/host_kernel.h b/tests/lifecycle/host_kernel.h
+index f79ada4..95dee16 100644
+--- a/tests/lifecycle/host_kernel.h
++++ b/tests/lifecycle/host_kernel.h
+@@ -1,97 +1,100 @@
+-/* SPDX-License-Identifier: GPL-2.0 */
+-/* Host API model only. This is not a set of kernel headers or an ABI check. */
+-#ifndef SUSFS_LIFECYCLE_HOST_KERNEL_H
+-#define SUSFS_LIFECYCLE_HOST_KERNEL_H
+-#include <assert.h>
+-#include <errno.h>
+-#include <pthread.h>
+-#include <stdarg.h>
+-#include <stdatomic.h>
+-#include <stdbool.h>
+-#include <stddef.h>
+-#include <stdint.h>
+-#include <stdio.h>
+-#include <stdlib.h>
+-#include <string.h>
+-#include <unistd.h>
+-
+-#define __user
+-#define __init
+-#define __exit
+-#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+-#define BUILD_BUG_ON(c) _Static_assert(!(c), #c)
+-#define container_of(p, type, member) ((type *)((char *)(p) - offsetof(type, member)))
+-#define READ_ONCE(x) __atomic_load_n(&(x), __ATOMIC_ACQUIRE)
+-#define IS_ENABLED(c) (c)
+-#define PAGE_SIZE 4096
+-#define IS_ERR(p) ((uintptr_t)(p) >= (uintptr_t)-4095)
+-#define __NEW_UTS_LEN 64
+-#define GFP_ATOMIC 1
+-#define GFP_KERNEL 2
+-#define TWA_RESUME 1
+-#define KERNEL_VERSION(a,b,c) (((a) << 16) | ((b) << 8) | (c))
+-#define LINUX_VERSION_CODE KERNEL_VERSION(6,12,0)
+-#define module_param_named(...)
+-#define module_param(...)
+-#define module_init(...)
+-#define module_exit(...)
+-#define MODULE_LICENSE(...)
+-#define MODULE_IMPORT_NS(...)
+-#define MODULE_DESCRIPTION(...)
+-
+-/* The feature bitmap the supercall arms once a layer's init returned (susfs_supercall.c)
+- * and reads back before serving a command.  Atomics, because the admission-race test
+- * arms on one thread while another races a request through the kprobe. */
+-#define DECLARE_BITMAP(name, bits) \
+-    unsigned long name[((bits) + sizeof(long) * 8 - 1) / (sizeof(long) * 8)]
+-#define set_bit(nr, addr) \
+-    ((void)__atomic_fetch_or((unsigned long *)(addr) + (nr) / (sizeof(long) * 8), \
+-                             1UL << ((nr) % (sizeof(long) * 8)), __ATOMIC_RELEASE))
+-#define test_bit(nr, addr) \
+-    (__atomic_load_n((unsigned long *)(addr) + (nr) / (sizeof(long) * 8), \
+-                     __ATOMIC_ACQUIRE) & (1UL << ((nr) % (sizeof(long) * 8))))
+-
+-/* The tests replace the LSM layer, not its private kernel layouts. */
+-#define __SUSFS_LSM_HOOK_H
+-void ksu_lsm_hook_init(void);
+-void ksu_lsm_hook_exit(void);
+-bool ksu_lsm_hook_ready(void);
+-
+-enum { MODULE_STATE_COMING, MODULE_STATE_LIVE, MODULE_STATE_GOING };
+-struct module { atomic_int state; atomic_int refs; };
+-extern struct module host_module;
+-#define THIS_MODULE (&host_module)
+-bool module_is_coming(struct module *m);
+-bool try_module_get(struct module *m);
+-void module_put(struct module *m);
+-
+-struct callback_head { struct callback_head *next; void (*func)(struct callback_head *); };
+-struct task_struct { struct callback_head *pending; unsigned int uid; };
+-extern _Thread_local struct task_struct host_task;
+-#define current (&host_task)
+-typedef struct { unsigned int val; } kuid_t;
+-static inline kuid_t current_uid(void) { return (kuid_t){ current->uid }; }
+-struct pt_regs { unsigned long regs[31]; unsigned long pc; };
+-struct kprobe { const char *symbol_name; int (*pre_handler)(struct kprobe *, struct pt_regs *); };
+-int register_kprobe(struct kprobe *kp);
+-void unregister_kprobe(struct kprobe *kp);
+-int task_work_add(struct task_struct *task, struct callback_head *work, int mode);
+-void synchronize_rcu_tasks(void);
+-void *kzalloc(size_t n, int flags);
+-void kfree(void *p);
+-unsigned long copy_from_user(void *to, const void *from, size_t n);
+-unsigned long copy_to_user(void *to, const void *from, size_t n);
+-static inline long strscpy(char *to, const char *from, size_t n)
+-{
+-    size_t len = strlen(from);
+-    if (!n) return -E2BIG;
+-    memcpy(to, from, len < n ? len : n - 1);
+-    to[len < n ? len : n - 1] = '\0';
+-    return len < n ? (long)len : -E2BIG;
+-}
+-static inline void host_log(const char *fmt, ...) { (void)fmt; }
+-#define pr_warn(...) host_log(__VA_ARGS__)
+-#define pr_warn_ratelimited(...) host_log(__VA_ARGS__)
+-#define pr_info(...) host_log(__VA_ARGS__)
+-#define pr_err(...) host_log(__VA_ARGS__)
+-#endif
++/* SPDX-License-Identifier: GPL-2.0 */
++/* Host API model only. This is not a set of kernel headers or an ABI check. */
++#ifndef SUSFS_LIFECYCLE_HOST_KERNEL_H
++#define SUSFS_LIFECYCLE_HOST_KERNEL_H
++#include <assert.h>
++#include <stdatomic.h>
++typedef atomic_int atomic_t;
++typedef struct { int unused; } wait_queue_head_t;
++#include <errno.h>
++#include <pthread.h>
++#include <stdarg.h>
++#include <stdatomic.h>
++#include <stdbool.h>
++#include <stddef.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
++
++#define __user
++#define __init
++#define __exit
++#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
++#define BUILD_BUG_ON(c) _Static_assert(!(c), #c)
++#define container_of(p, type, member) ((type *)((char *)(p) - offsetof(type, member)))
++#define READ_ONCE(x) __atomic_load_n(&(x), __ATOMIC_ACQUIRE)
++#define IS_ENABLED(c) (c)
++#define PAGE_SIZE 4096
++#define IS_ERR(p) ((uintptr_t)(p) >= (uintptr_t)-4095)
++#define __NEW_UTS_LEN 64
++#define GFP_ATOMIC 1
++#define GFP_KERNEL 2
++#define TWA_RESUME 1
++#define KERNEL_VERSION(a,b,c) (((a) << 16) | ((b) << 8) | (c))
++#define LINUX_VERSION_CODE KERNEL_VERSION(6,12,0)
++#define module_param_named(...)
++#define module_param(...)
++#define module_init(...)
++#define module_exit(...)
++#define MODULE_LICENSE(...)
++#define MODULE_IMPORT_NS(...)
++#define MODULE_DESCRIPTION(...)
++
++/* The feature bitmap the supercall arms once a layer's init returned (susfs_supercall.c)
++ * and reads back before serving a command.  Atomics, because the admission-race test
++ * arms on one thread while another races a request through the kprobe. */
++#define DECLARE_BITMAP(name, bits) \
++    unsigned long name[((bits) + sizeof(long) * 8 - 1) / (sizeof(long) * 8)]
++#define set_bit(nr, addr) \
++    ((void)__atomic_fetch_or((unsigned long *)(addr) + (nr) / (sizeof(long) * 8), \
++                             1UL << ((nr) % (sizeof(long) * 8)), __ATOMIC_RELEASE))
++#define test_bit(nr, addr) \
++    (__atomic_load_n((unsigned long *)(addr) + (nr) / (sizeof(long) * 8), \
++                     __ATOMIC_ACQUIRE) & (1UL << ((nr) % (sizeof(long) * 8))))
++
++/* The tests replace the LSM layer, not its private kernel layouts. */
++#define __SUSFS_LSM_HOOK_H
++void ksu_lsm_hook_init(void);
++void ksu_lsm_hook_exit(void);
++bool ksu_lsm_hook_ready(void);
++
++enum { MODULE_STATE_COMING, MODULE_STATE_LIVE, MODULE_STATE_GOING };
++struct module { atomic_int state; atomic_int refs; };
++extern struct module host_module;
++#define THIS_MODULE (&host_module)
++bool module_is_coming(struct module *m);
++bool try_module_get(struct module *m);
++void module_put(struct module *m);
++
++struct callback_head { struct callback_head *next; void (*func)(struct callback_head *); };
++struct task_struct { struct callback_head *pending; unsigned int uid; };
++extern _Thread_local struct task_struct host_task;
++#define current (&host_task)
++typedef struct { unsigned int val; } kuid_t;
++static inline kuid_t current_uid(void) { return (kuid_t){ current->uid }; }
++struct pt_regs { unsigned long regs[31]; unsigned long pc; };
++struct kprobe { const char *symbol_name; int (*pre_handler)(struct kprobe *, struct pt_regs *); };
++int register_kprobe(struct kprobe *kp);
++void unregister_kprobe(struct kprobe *kp);
++int task_work_add(struct task_struct *task, struct callback_head *work, int mode);
++void synchronize_rcu_tasks(void);
++void *kzalloc(size_t n, int flags);
++void kfree(void *p);
++unsigned long copy_from_user(void *to, const void *from, size_t n);
++unsigned long copy_to_user(void *to, const void *from, size_t n);
++static inline long strscpy(char *to, const char *from, size_t n)
++{
++    size_t len = strlen(from);
++    if (!n) return -E2BIG;
++    memcpy(to, from, len < n ? len : n - 1);
++    to[len < n ? len : n - 1] = '\0';
++    return len < n ? (long)len : -E2BIG;
++}
++static inline void host_log(const char *fmt, ...) { (void)fmt; }
++#define pr_warn(...) host_log(__VA_ARGS__)
++#define pr_warn_ratelimited(...) host_log(__VA_ARGS__)
++#define pr_info(...) host_log(__VA_ARGS__)
++#define pr_err(...) host_log(__VA_ARGS__)
++#endif
+diff --git a/tests/lifecycle/run.py b/tests/lifecycle/run.py
+index 989d6ba..a5187d1 100644
+--- a/tests/lifecycle/run.py
++++ b/tests/lifecycle/run.py
+@@ -1,61 +1,61 @@
+-#!/usr/bin/env python3
+-"""Exercise edited production C with a host API model; never build/load a module."""
+-import argparse
+-import json
+-import os
+-from pathlib import Path
+-import subprocess
+-import tempfile
+-
+-parser = argparse.ArgumentParser(description=__doc__)
+-parser.add_argument('--source-dir', type=Path, default=Path(__file__).resolve().parents[2])
+-parser.add_argument('--sanitizers', action='store_true')
+-parser.add_argument('--leak-check', action='store_true',
+-                    help='Also enable LeakSanitizer; requires access to /proc task lists')
+-parser.add_argument('--json', type=Path)
+-args = parser.parse_args()
+-if args.leak_check and not args.sanitizers:
+-    parser.error('--leak-check requires --sanitizers')
+-tests = ['queued', 'init-window', 'allocation', 'enqueue', 'rejected',
+-         'payload-errors', 'multiple', 'sleeping', 'return-tail', 'rollback',
+-         'partial-failures', 'admission-race']
+-here = Path(__file__).resolve().parent
+-source = args.source_dir.resolve()
+-cc = os.environ.get('CC', 'cc')
+-results = []
+-with tempfile.TemporaryDirectory(prefix='susfs-lifecycle-host-') as temp:
+-    tmp = Path(temp)
+-    include = tmp / 'include/linux'
+-    include.mkdir(parents=True)
+-    for name in ['module', 'kprobes', 'task_work', 'rcupdate', 'slab', 'uaccess',
+-                 'cred', 'syscalls', 'string', 'types', 'utsname', 'printk',
+-                 'err', 'mm', 'kernel', 'init', 'version', 'bitmap']:
+-        (include / (name + '.h')).write_text('/* Host shim: see host_kernel.h. */\n')
+-    for config, cases in [(1, tests), (0, ['no-tasks-rcu'])]:
+-        exe = tmp / f'lifecycle-{config}'
+-        flags = ['-O1', '-g', '-fsanitize=address,undefined', '-fno-omit-frame-pointer', '-no-pie'] if args.sanitizers else ['-O2']
+-        command = [cc, '-std=gnu11', '-Wall', '-Wextra', '-Werror',
+-                   '-Wno-unused-parameter', '-Wno-sign-compare', '-pthread', *flags,
+-                   f'-DCONFIG_TASKS_RCU={config}',
+-                   f'-DPRODUCTION_DISPATCHER="{source / "kernel/susfs_supercall.c"}"',
+-                   f'-DPRODUCTION_MAIN="{source / "kernel/susfs_main.c"}"',
+-                   '-I', str(tmp / 'include'), '-I', str(here),
+-                   str(here / 'lifecycle_test.c'), '-o', str(exe)]
+-        subprocess.run(command, check=True)
+-        for case in cases:
+-            env = dict(os.environ)
+-            if args.sanitizers:
+-                env['ASAN_OPTIONS'] = f'detect_leaks={int(args.leak_check)}:abort_on_error=1'
+-                env['UBSAN_OPTIONS'] = 'halt_on_error=1'
+-            run = subprocess.run([str(exe), case], capture_output=True, text=True,
+-                                 timeout=20, env=env)
+-            result = {'case': case, 'config_tasks_rcu': config,
+-                      'exit_code': run.returncode, 'stdout': run.stdout.strip(),
+-                      'stderr': run.stderr.strip()}
+-            results.append(result)
+-            print(run.stdout.strip() or f'FAIL {case}: {run.stderr.strip()}')
+-if args.json:
+-    args.json.write_text(json.dumps({'kind': 'host API model', 'sanitizers': args.sanitizers,
+-                                    'leak_check': args.leak_check,
+-                                    'results': results}, indent=2) + '\n')
+-raise SystemExit(any(result['exit_code'] for result in results))
++#!/usr/bin/env python3
++"""Exercise edited production C with a host API model; never build/load a module."""
++import argparse
++import json
++import os
++from pathlib import Path
++import subprocess
++import tempfile
++
++parser = argparse.ArgumentParser(description=__doc__)
++parser.add_argument('--source-dir', type=Path, default=Path(__file__).resolve().parents[2])
++parser.add_argument('--sanitizers', action='store_true')
++parser.add_argument('--leak-check', action='store_true',
++                    help='Also enable LeakSanitizer; requires access to /proc task lists')
++parser.add_argument('--json', type=Path)
++args = parser.parse_args()
++if args.leak_check and not args.sanitizers:
++    parser.error('--leak-check requires --sanitizers')
++tests = ['queued', 'init-window', 'allocation', 'enqueue', 'rejected',
++         'payload-errors', 'multiple', 'sleeping', 'return-tail', 'rollback',
++         'partial-failures', 'admission-race']
++here = Path(__file__).resolve().parent
++source = args.source_dir.resolve()
++cc = os.environ.get('CC', 'cc')
++results = []
++with tempfile.TemporaryDirectory(prefix='susfs-lifecycle-host-') as temp:
++    tmp = Path(temp)
++    include = tmp / 'include/linux'
++    include.mkdir(parents=True)
++    for name in ['module', 'kprobes', 'task_work', 'rcupdate', 'slab', 'uaccess',
++                 'cred', 'syscalls', 'string', 'types', 'utsname', 'printk',
++                 'err', 'mm', 'kernel', 'init', 'version', 'bitmap', 'atomic', 'wait']:
++        (include / (name + '.h')).write_text('/* Host shim: see host_kernel.h. */\n')
++    for config, cases in [(1, tests), (0, ['no-tasks-rcu'])]:
++        exe = tmp / f'lifecycle-{config}'
++        flags = ['-O1', '-g', '-fsanitize=address,undefined', '-fno-omit-frame-pointer', '-no-pie'] if args.sanitizers else ['-O2']
++        command = [cc, '-std=gnu11', '-Wall', '-Wextra', '-Werror',
++                   '-Wno-unused-parameter', '-Wno-sign-compare', '-pthread', *flags,
++                   f'-DCONFIG_TASKS_RCU={config}',
++                   f'-DPRODUCTION_DISPATCHER="{source / "kernel/susfs_supercall.c"}"',
++                   f'-DPRODUCTION_MAIN="{source / "kernel/susfs_main.c"}"',
++                   '-I', str(tmp / 'include'), '-I', str(here),
++                   str(here / 'lifecycle_test.c'), '-o', str(exe)]
++        subprocess.run(command, check=True)
++        for case in cases:
++            env = dict(os.environ)
++            if args.sanitizers:
++                env['ASAN_OPTIONS'] = f'detect_leaks={int(args.leak_check)}:abort_on_error=1'
++                env['UBSAN_OPTIONS'] = 'halt_on_error=1'
++            run = subprocess.run([str(exe), case], capture_output=True, text=True,
++                                 timeout=20, env=env)
++            result = {'case': case, 'config_tasks_rcu': config,
++                      'exit_code': run.returncode, 'stdout': run.stdout.strip(),
++                      'stderr': run.stderr.strip()}
++            results.append(result)
++            print(run.stdout.strip() or f'FAIL {case}: {run.stderr.strip()}')
++if args.json:
++    args.json.write_text(json.dumps({'kind': 'host API model', 'sanitizers': args.sanitizers,
++                                    'leak_check': args.leak_check,
++                                    'results': results}, indent=2) + '\n')
++raise SystemExit(any(result['exit_code'] for result in results))
+diff --git a/tests/map_hooks/host_kernel.h b/tests/map_hooks/host_kernel.h
+index 31fece9..6d64056 100644
+--- a/tests/map_hooks/host_kernel.h
++++ b/tests/map_hooks/host_kernel.h
+@@ -20,7 +20,8 @@
+ #define smp_store_release(p, v) __atomic_store_n(p, v, __ATOMIC_RELEASE)
+ #define DEFINE_SPINLOCK(n) pthread_mutex_t n = PTHREAD_MUTEX_INITIALIZER
+ #define DEFINE_MUTEX(n) pthread_mutex_t n = PTHREAD_MUTEX_INITIALIZER
+-#define spin_lock_irqsave(l, f) ((f) = 0, (void)pthread_mutex_lock(l))
++static _Atomic int host_table_locks;
++#define spin_lock_irqsave(l, f) ((f) = 0, (void)atomic_fetch_add(&host_table_locks,1), (void)pthread_mutex_lock(l))
+ #define spin_unlock_irqrestore(l, f) ((void)(f), (void)pthread_mutex_unlock(l))
+ #define mutex_lock(l) ((void)pthread_mutex_lock(l))
+ #define mutex_unlock(l) ((void)pthread_mutex_unlock(l))
+diff --git a/tests/map_hooks/map_test.c b/tests/map_hooks/map_test.c
+index 6186317..f97f221 100644
+--- a/tests/map_hooks/map_test.c
++++ b/tests/map_hooks/map_test.c
+@@ -173,7 +173,17 @@ int main(int argc, char **argv)
+         assert(command("del /file0") == -ENODEV);
+     } else {
+         ready();
+-        if (test_remote(name)) {
++        if (!strcmp(name,"empty-fast-path")) {
++            int before=atomic_load(&host_table_locks);
++            int calls=atomic_read(&n_maps_calls);
++            struct pt_regs regs={0};
++            assert(!sus_map_lookup(100,11));
++            assert(!sus_map_skip_vma_pre(&kp_map,&regs));
++            assert(atomic_load(&host_table_locks)==before&&atomic_read(&n_maps_calls)==calls);
++            assert(command("add /file0")==0);assert(sus_map_lookup(100,11));
++            assert(command("clear")==0);before=atomic_load(&host_table_locks);
++            assert(!sus_map_lookup(100,11)&&atomic_load(&host_table_locks)==before);
++        } else if (test_remote(name)) {
+             /* Remote-page cases use the same rule lifecycle and teardown. */
+         } else if (!strcmp(name,"maps-inlined-formatter")) {
+             struct file f={&host_ino[0]},control={&host_ino[1]};
+diff --git a/tests/map_hooks/run.py b/tests/map_hooks/run.py
+index 1d55988..7f8680f 100644
+--- a/tests/map_hooks/run.py
++++ b/tests/map_hooks/run.py
+@@ -36,7 +36,7 @@ fragment += source[source.index('/* Kept in one table so init and exit cannot dr
+ # Keep the CP12 source usable as a negative control for the same caller tests.
+ fragment += '\n#define HOST_SECOND_REMOTE ' + ('kp_pin_remote' if 'kp_pin_remote' in gup else 'kp_gup_remote_inner') + '\n'
+ 
+-cases = ['add-delete', 'device-isolation', 'duplicates', 'capacity-reuse',
++cases = ['empty-fast-path', 'add-delete', 'device-isolation', 'duplicates', 'capacity-reuse',
+          'clear', 'maps-root-exclusion', 'sentinel', 'restore-callback',
+          'supercall-add-delete', 'invalid-input', 'unavailable',
+          'failed-registration', 'retry-registration', 'optional-retry',
+diff --git a/tests/mount_hooks/identity_concurrency.c b/tests/mount_hooks/identity_concurrency.c
+new file mode 100644
+index 0000000..6f473e2
+--- /dev/null
++++ b/tests/mount_hooks/identity_concurrency.c
+@@ -0,0 +1,48 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#include "host_kernel.h"
++#include <pthread.h>
++#undef DEFINE_SPINLOCK
++#undef spin_lock_irqsave
++#undef spin_unlock_irqrestore
++#define DEFINE_SPINLOCK(n) pthread_mutex_t n=PTHREAD_MUTEX_INITIALIZER
++static pthread_mutex_t model=PTHREAD_MUTEX_INITIALIZER;
++static pthread_cond_t changed=PTHREAD_COND_INITIALIZER;
++static _Thread_local int role;
++static bool reader_locked,writer_waiting,release_reader,writer_done;
++static void lock_identity(pthread_mutex_t *p) {
++    if(role==2) {
++        pthread_mutex_lock(&model);writer_waiting=true;pthread_cond_broadcast(&changed);pthread_mutex_unlock(&model);
++    }
++    pthread_mutex_lock(p);
++    if(role==1) {
++        pthread_mutex_lock(&model);reader_locked=true;pthread_cond_broadcast(&changed);
++        while(!release_reader)pthread_cond_wait(&changed,&model);
++        pthread_mutex_unlock(&model);
++    }
++}
++#define spin_lock_irqsave(p,f) do {(f)=0;lock_identity(p);} while(0)
++#define spin_unlock_irqrestore(p,f) do {(void)(f);pthread_mutex_unlock(p);} while(0)
++static bool sus_mount_path_is_ours(const char *p) { (void)p;return false; }
++#include PRODUCTION
++static struct super_block old_sb={.s_dev=1},new_sb={.s_dev=2};
++static struct inode old_inode={.i_ino=11},new_inode={.i_ino=99};
++static struct dentry old_root={.d_inode=&old_inode},new_root={.d_inode=&new_inode};
++static struct mount old_mount={.mnt={.mnt_sb=&old_sb,.mnt_root=&old_root}},
++    new_mount={.mnt={.mnt_sb=&new_sb,.mnt_root=&new_root}},
++    query={.mnt={.mnt_sb=&new_sb,.mnt_root=&old_root}};
++static void *reader(void *p) { (void)p;role=1;assert(!sus_mount_ident_match(&query));return NULL; }
++static void *writer(void *p) {
++    (void)p;role=2;sus_mount_ident_drop_dev(1);sus_mount_ident_add(&new_mount);
++    pthread_mutex_lock(&model);writer_done=true;pthread_cond_broadcast(&changed);pthread_mutex_unlock(&model);return NULL;
++}
++int main(void) {
++    sus_mount_ident_add(&old_mount);assert(!sus_mount_ident_match(&query));
++    pthread_t r,w;assert(!pthread_create(&r,NULL,reader,NULL));
++    pthread_mutex_lock(&model);while(!reader_locked)pthread_cond_wait(&changed,&model);pthread_mutex_unlock(&model);
++    assert(!pthread_create(&w,NULL,writer,NULL));
++    pthread_mutex_lock(&model);while(!writer_waiting)pthread_cond_wait(&changed,&model);
++    assert(!writer_done);release_reader=true;pthread_cond_broadcast(&changed);pthread_mutex_unlock(&model);
++    assert(!pthread_join(r,NULL));assert(!pthread_join(w,NULL));
++    assert(!sus_mount_ident_match(&query)&&sus_mount_ident_match(&new_mount));
++    puts("PASS identity reader excludes retirement/reuse until its snapshot is complete");return 0;
++}
+diff --git a/tests/mount_hooks/run.py b/tests/mount_hooks/run.py
+index ba7366d..1831a09 100644
+--- a/tests/mount_hooks/run.py
++++ b/tests/mount_hooks/run.py
+@@ -110,6 +110,18 @@ with tempfile.TemporaryDirectory(prefix='susfs-mount-host-') as temp:
+         results.append({'case': name, 'exit_code': run.returncode,
+                         'stdout': run.stdout.strip(), 'stderr': run.stderr.strip()})
+         print(run.stdout.strip() or 'FAIL ' + name + ': ' + run.stderr.strip())
++    identity = temp / 'identity.h'
++    begin = source.index('#define SUS_MOUNT_DEVNAME_MAX')
++    end = source.index('/* generic_shutdown_super(', begin)
++    identity.write_text(source[begin:end])
++    exe = temp / 'identity-concurrency'
++    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror',
++                    '-Wno-unused-function','-Wno-unused-parameter','-Wno-unused-variable',
++                    '-pthread',*flags,'-I',str(here),'-DPRODUCTION="'+str(identity)+'"',
++                    str(here/'identity_concurrency.c'),'-o',str(exe)],check=True)
++    run = subprocess.run([str(exe)],text=True,capture_output=True,env=env,timeout=15)
++    results.append(dict(case='identity-concurrency',exit_code=run.returncode,stdout=run.stdout,stderr=run.stderr))
++    print(run.stdout.strip() or run.stderr)
+ if args.json:
+     args.json.parent.mkdir(parents=True, exist_ok=True)
+     args.json.write_text(json.dumps({'kind': 'production C with host kernel API stubs',
+diff --git a/tests/path_creds/path_creds_test.c b/tests/path_creds/path_creds_test.c
+index 302114e..bcb7c6e 100644
+--- a/tests/path_creds/path_creds_test.c
++++ b/tests/path_creds/path_creds_test.c
+@@ -87,8 +87,21 @@ static void setup(void) {
+     const char *names[]={"/owned/a","/owned/b","/owned/c","/owned/d"};
+     for(unsigned i=0;i<4;++i) { files[i].path=names[i];files[i].tag=i+10;files[i].inode=(struct inode){.i_sb=&sb,.i_ino=100+i,.i_mode=0600,.refs=ATOMIC_INIT(1)};files[i].dentry=(struct dentry){.inode=&files[i].inode,.d_name={.name=(char *)names[i]+7}}; }
+ }
++static void verify_index(void) {
++    unsigned indexed=0,resolved=0;
++    struct sus_path_entry *e;
++    for(unsigned b=0;b<SUS_PATH_INDEX_SIZE;b++) {
++        for(e=sus_path_index[b];e;e=e->index_next) {
++            assert(e->inode&&sus_path_index_bucket(e->ino)==b&&find(e->path)==e);
++            assert(++indexed<=sus_path_count);
++        }
++    }
++    list_for_each_entry(e,&sus_path_list,list) if(e->inode) resolved++;
++    assert(indexed==resolved);
++}
+ static void clean(void) {
+-    assert(sus_path_command("clear",NULL)==0);assert(sus_path_count==0 && atomic_read(&sus_path_n_pending)==0);
++    verify_index();
++    assert(sus_path_command("clear",NULL)==0);verify_index();assert(sus_path_count==0 && atomic_read(&sus_path_n_pending)==0);
+     assert(!sus_path_cred_active() && atomic_load(&prepared)==atomic_load(&aborted));
+     assert(atomic_load(&overrides)==atomic_load(&reverted));
+     for(unsigned i=0;i<4;++i)assert(atomic_load(&files[i].inode.refs)==1 && files[i].inode.i_mode==0600);
+diff --git a/tests/path_creds/run.py b/tests/path_creds/run.py
+index 20ecd57..3981c41 100644
+--- a/tests/path_creds/run.py
++++ b/tests/path_creds/run.py
+@@ -38,6 +38,7 @@ def fragments(source):
+                     r'used_caller_cred|pend_)|unsigned int sus_path_(?:count|pass_gen)|'
+                     r'struct task_struct \*sus_path_resolver)', line):
+             parts.append(line)
++    parts.append((source / 'kernel/sus_path_index.h').read_text())
+     parts.append('static struct delayed_work sus_path_pending_wq;\nstatic char *dirent_tmp;')
+     for name in ('sus_path_relax_mode', 'sus_path_restore_mode', 'sus_path_entry_free',
+                  'sus_path_entry_set_path', 'sus_path_basename', 'sus_path_resolve_pending',
+diff --git a/tests/path_entry/entry_test.c b/tests/path_entry/entry_test.c
+index 40d40be..da0620c 100644
+--- a/tests/path_entry/entry_test.c
++++ b/tests/path_entry/entry_test.c
+@@ -119,14 +119,19 @@ static struct inode inode={&sb,100,{0},&iops,false};
+ static struct dentry dentry={&inode};
+ static int uid=10000,no_extra,hide_from_apps=1;
+ static kuid_t current_uid(void) { return (kuid_t){uid}; }
++static bool host_umount=true;
++bool susfs_ksu_umount_gate_off;
++bool susfs_ksu_umount_ask(uid_t caller) { (void)caller; return host_umount; }
++#include "../../kernel/ksu_umount_gate.h"
+ static unsigned int sus_path_count=1;
+ static char hide_name[NAME_MAX+1];
+-struct sus_path_entry { struct list_head list;struct inode *inode;u64 dev,ino;bool self_protect;char name[NAME_MAX+1]; };
++struct sus_path_entry { struct sus_path_entry *index_next; struct list_head list;struct inode *inode;u64 dev,ino;bool self_protect;char name[NAME_MAX+1]; };
+ static LIST_HEAD(sus_path_list);
+ static DEFINE_SPINLOCK(sus_path_lock);
++#include "../../kernel/sus_path_index.h"
+ static bool sus_path_is_resolver(void) { return false; }
+ static bool sus_path_gate_uid_ok(void) { return uid>=10000; }
+-static bool sus_path_entry_gate_any(const struct sus_path_entry *e) { return e->self_protect?uid!=0:uid>=10000&&uid!=e->inode->i_uid.val; }
++static bool sus_path_entry_gate_any(const struct sus_path_entry *e) { return e->self_protect?uid!=0:susfs_is_current_proc_umounted_app()&&uid!=e->inode->i_uid.val; }
+ static bool sus_path_inode_hidden(struct inode *i) { struct sus_path_entry *e;bool hit=false;spin_lock(&sus_path_lock);list_for_each_entry(e,&sus_path_list,list)if(e->inode==i&&sus_path_entry_gate_any(e))hit=true;spin_unlock(&sus_path_lock);return hit; }
+ static void path_put(struct path *p);
+ static bool retry_estale(int error,unsigned int flags) { return error==-ESTALE&&!(flags&LOOKUP_REVAL); }
+@@ -210,7 +215,7 @@ static void *remove_thread(void *unused) { (void)unused;sp_entry_remove();return
+ 
+ int main(void)
+ {
+-    struct sus_path_entry rule={.inode=&inode,.dev=sb.s_dev,.ino=100};list_add(&rule.list,&sus_path_list);
++    struct sus_path_entry rule={.inode=&inode,.dev=sb.s_dev,.ino=100};list_add(&rule.list,&sus_path_list);sus_path_index_add(&rule);
+     assert(sp_entry_install()==0);assert(sp_entry_install()==0);
+     struct file file={.inode=&inode};
+     struct emit_buf b={.ctx={.actor=emit},.capacity=80};
+@@ -226,6 +231,16 @@ int main(void)
+     rule.self_protect=false;
+     b=(struct emit_buf){.ctx={.actor=emit},.capacity=80};file.f_pos=0;
+     assert(iterate_dir(&file,&b.ctx)==0);assert(b.count==2&&file.f_pos==3);
++    host_umount=false;
++    b=(struct emit_buf){.ctx={.actor=emit},.capacity=80};file.f_pos=0;
++    assert(iterate_dir(&file,&b.ctx)==0);assert(b.count==6);
++    strcpy(hide_name,"xq");
++    b=(struct emit_buf){.ctx={.actor=emit},.capacity=80};file.f_pos=0;
++    assert(iterate_dir(&file,&b.ctx)==0);assert(b.count==6);hide_name[0]=0;
++    rule.self_protect=true;
++    b=(struct emit_buf){.ctx={.actor=emit},.capacity=80};file.f_pos=0;
++    assert(iterate_dir(&file,&b.ctx)==0);assert(b.count==2);
++    rule.self_protect=false;host_umount=true;
+     /* An app-owned ordinary rule stays visible under the same override. */
+     inode.i_uid.val=uid;
+     b=(struct emit_buf){.ctx={.actor=emit},.capacity=80};file.f_pos=0;
+@@ -240,12 +255,12 @@ int main(void)
+      * globally allocated inode number, but not s_dev or the superblock pointer.
+      * Ordinary rules must stay scoped to their device; only our controls get
+      * the existing by-inode layer's (filesystem type, inode) fallback. */
+-    assert(!sp_dirent_is_hidden(&other_sb,100,"xqZ",2,uid));
++    assert(!sp_dirent_is_hidden(&other_sb,100,"xqZ",2,uid,susfs_is_current_proc_umounted_app()));
+     rule.self_protect=true;uid=2000;
+-    assert(sp_dirent_is_hidden(&other_sb,100,"xqZ",2,uid));
+-    assert(!sp_dirent_is_hidden(&unrelated_sb,100,"xqZ",2,uid));
+-    assert(!sp_dirent_is_hidden(&other_sb,101,"xqZ",2,uid));
+-    uid=0;assert(!sp_dirent_is_hidden(&other_sb,100,"xqZ",2,uid));
++    assert(sp_dirent_is_hidden(&other_sb,100,"xqZ",2,uid,susfs_is_current_proc_umounted_app()));
++    assert(!sp_dirent_is_hidden(&unrelated_sb,100,"xqZ",2,uid,susfs_is_current_proc_umounted_app()));
++    assert(!sp_dirent_is_hidden(&other_sb,101,"xqZ",2,uid,susfs_is_current_proc_umounted_app()));
++    uid=0;assert(!sp_dirent_is_hidden(&other_sb,100,"xqZ",2,uid,susfs_is_current_proc_umounted_app()));
+     uid=10000;
+     struct inode alternate_inode=inode;alternate_inode.i_sb=&other_sb;
+     struct file alternate_file={.inode=&alternate_inode};
+@@ -253,10 +268,10 @@ int main(void)
+     assert(iterate_dir(&alternate_file,&alternate_buf.ctx)==0);
+     assert(alternate_buf.count==2&&alternate_file.f_pos==3);
+     rule.self_protect=false;
+-    assert(sp_dirent_is_hidden(&same_dev_sb,100,"xqZ",2,uid));
+-    rule.ino=0;assert(!sp_dirent_is_hidden(&sb,0,"xqZ",2,uid));rule.ino=100;
+-    uid=inode.i_uid.val;assert(!sp_dirent_is_hidden(&sb,100,"xqZ",2,uid));uid=10000;
+-    strcpy(hide_name,"xq");assert(sp_dirent_is_hidden(&other_sb,999,"xqZ",2,uid));assert(!sp_dirent_is_hidden(&other_sb,999,"xqZ",1,uid));hide_name[0]=0;
++    assert(sp_dirent_is_hidden(&same_dev_sb,100,"xqZ",2,uid,susfs_is_current_proc_umounted_app()));
++    rule.ino=0;assert(!sp_dirent_is_hidden(&sb,0,"xqZ",2,uid,susfs_is_current_proc_umounted_app()));rule.ino=100;
++    uid=inode.i_uid.val;assert(!sp_dirent_is_hidden(&sb,100,"xqZ",2,uid,susfs_is_current_proc_umounted_app()));uid=10000;
++    strcpy(hide_name,"xq");assert(sp_dirent_is_hidden(&other_sb,999,"xqZ",2,uid,susfs_is_current_proc_umounted_app()));assert(!sp_dirent_is_hidden(&other_sb,999,"xqZ",1,uid,susfs_is_current_proc_umounted_app()));hide_name[0]=0;
+     file.f_flags=O_PATH;struct path path={&dentry};assert(open_path(&path,&file)==-ENOENT&&opened==0);
+     file.f_flags=0;assert(open_path(&path,&file)==7&&opened==1);
+     uid=0;file.f_flags=O_PATH;assert(open_path(&path,&file)==7&&opened==2);uid=10000;
+diff --git a/tests/path_index/index_test.c b/tests/path_index/index_test.c
+new file mode 100644
+index 0000000..415232d
+--- /dev/null
++++ b/tests/path_index/index_test.c
+@@ -0,0 +1,48 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++#include <stdlib.h>
++#include <time.h>
++#define main readlink_fixture_main
++#include "../path_readlink_lsm/readlink_test.c"
++#undef main
++static double now(void) { struct timespec t;clock_gettime(CLOCK_MONOTONIC,&t);return t.tv_sec*1e9+t.tv_nsec; }
++int main(void) {
++    static const int counts[]={0,16,128,1024,8192};
++    struct file_system_type fs={1};struct super_block sb={1,&fs},other={2,&fs};
++    for(unsigned c=0;c<sizeof(counts)/sizeof(counts[0]);c++) {
++        int count=counts[c];sus_path_count=count;
++        struct sus_path_entry *rules=calloc(count?count:1,sizeof(*rules));
++        struct inode *inodes=calloc(count?count:1,sizeof(*inodes));assert(rules&&inodes);
++        for(int i=0;i<count;i++) {
++            inodes[i]=(struct inode){&sb,(u64)i+1,{0}};
++            rules[i]=(struct sus_path_entry){.inode=&inodes[i],.ino=i+1,.dev=1};
++            sus_path_index_add(&rules[i]);
++        }
++        for(int i=0;i<count;i++) {
++            struct inode clone=inodes[i];assert(sus_path_inode_hidden(&inodes[i]));
++            assert(sus_path_inode_hidden(&clone));clone.i_sb=&other;assert(!sus_path_inode_hidden(&clone));
++            rules[i].self_protect=true;assert(sus_path_inode_hidden(&clone));rules[i].self_protect=false;
++            inodes[i].i_uid.val=uid;assert(!sus_path_inode_hidden(&inodes[i]));inodes[i].i_uid.val=0;
++        }
++        unsigned max=0,total=0;
++        for(unsigned b=0;b<SUS_PATH_INDEX_SIZE;b++) {
++            unsigned n=0;for(struct sus_path_entry *e=sus_path_index[b];e;e=e->index_next)n++;
++            if(n>max)max=n;
++            total+=n;
++        }
++        assert(total==(unsigned)count&&max<=40);
++        struct inode miss={&sb,100000,{0}};double best=1e30;
++        for(int trial=0;trial<3;trial++) {
++            double start=now();for(int j=0;j<20000;j++)assert(!sus_path_inode_hidden(&miss));
++            double ns=(now()-start)/20000;if(ns<best)best=ns;
++        }
++        printf("PASS rules=%d max_bucket=%u negative_lookup_ns=%.2f (host only)\n",count,max,best);
++        for(int i=0;i<count;i++) {sus_path_index_del(&rules[i]);assert(!sus_path_inode_hidden(&inodes[i]));}
++        for(unsigned b=0;b<SUS_PATH_INDEX_SIZE;b++)assert(!sus_path_index[b]);
++        free(rules);free(inodes);
++    }
++    struct sus_path_entry pending={.ino=11,.dev=1};sus_path_index_add(&pending);
++    assert(!sus_path_index[sus_path_index_bucket(11)]);
++    struct inode zero={&sb,0,{0}};struct sus_path_entry rule={.inode=&zero};
++    sus_path_count=1;sus_path_index_add(&rule);assert(sus_path_inode_hidden(&zero));sus_path_index_del(&rule);
++    puts("PASS pending exclusion, inode-zero pointer matching and complete removal");return 0;
++}
+diff --git a/tests/path_index/run.py b/tests/path_index/run.py
+new file mode 100644
+index 0000000..6a323f5
+--- /dev/null
++++ b/tests/path_index/run.py
+@@ -0,0 +1,12 @@
++#!/usr/bin/env python3
++"""Check indexed production inode matching and host scaling through 8192 rules."""
++import argparse,importlib.util,os,subprocess,tempfile
++from pathlib import Path
++p=argparse.ArgumentParser(description=__doc__);p.add_argument('--sanitizers',action='store_true');a=p.parse_args()
++here=Path(__file__).resolve().parent;root=here.parents[1]
++spec=importlib.util.spec_from_file_location('readlink',root/'tests/path_readlink_lsm/run.py');module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
++with tempfile.TemporaryDirectory(prefix='susfs-index-') as d:
++ d=Path(d);f=d/'production.h';f.write_text(module.fragments(root));exe=d/'test'
++ flags=['-O1','-g','-fsanitize=address,undefined','-fno-omit-frame-pointer','-no-pie'] if a.sanitizers else ['-O2']
++ subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function','-Wno-unused-parameter','-pthread',*flags,'-DHOST_KERNEL=612','-DPRODUCTION="'+str(f)+'"',str(here/'index_test.c'),'-o',str(exe)],check=True)
++ subprocess.run([str(exe)],check=True,timeout=30,env=dict(os.environ,ASAN_OPTIONS='detect_leaks=0:abort_on_error=1',UBSAN_OPTIONS='halt_on_error=1'))
+diff --git a/tests/path_listing/path_listing_test.c b/tests/path_listing/path_listing_test.c
+index ea81de9..a6f4242 100644
+--- a/tests/path_listing/path_listing_test.c
++++ b/tests/path_listing/path_listing_test.c
+@@ -63,7 +63,10 @@ int main(int argc,char **argv) {
+     assert(argc==2);const char *test=argv[1];
+     /* The watchdog bounds every case; the maximum-table round needs the larger
+      * budget the sanitizers genuinely cost on the same work. */
+-#if defined(__SANITIZE_ADDRESS__) || (defined(__has_feature) && __has_feature(address_sanitizer))
++#ifndef __has_feature
++#define __has_feature(x) 0
++#endif
++#if defined(__SANITIZE_ADDRESS__) || __has_feature(address_sanitizer)
+     alarm(120);
+ #else
+     alarm(15);
+diff --git a/tests/path_readlink_lsm/readlink_test.c b/tests/path_readlink_lsm/readlink_test.c
+index 432cef0..cfb1d60 100644
+--- a/tests/path_readlink_lsm/readlink_test.c
++++ b/tests/path_readlink_lsm/readlink_test.c
+@@ -42,11 +42,13 @@ struct inode { struct super_block *i_sb; u64 i_ino; kuid_t i_uid; };
+ struct dentry { struct inode *inode; };
+ #define d_inode(d) ((d)->inode)
+ struct sus_path_entry {
++    struct sus_path_entry *index_next;
+     struct list_head list;
+     struct inode *inode;
+     u64 dev, ino;
+     bool self_protect;
+ };
++#include "../../kernel/sus_path_index.h"
+ static unsigned int uid=10000, sus_path_count=1;
+ static bool umounted_app=true, resolver;
+ static int hide_from_apps=1;
+@@ -133,6 +135,7 @@ int main(int argc, char **argv)
+     } else if (!strcmp(test,"empty-table")) { sus_path_count=0; hidden=false;
+     } else assert(!strcmp(test,"hidden"));
+ 
++    sus_path_index_add(&rule);
+     if (!strcmp(test,"sleeping-original")) {
+         pthread_t thread;
+         block_original=true;
+diff --git a/tests/r18_fixes/probe_test.c b/tests/r18_fixes/probe_test.c
+index 2382df9..cfce104 100644
+--- a/tests/r18_fixes/probe_test.c
++++ b/tests/r18_fixes/probe_test.c
+@@ -27,7 +27,10 @@ static struct kretprobe krp_kstat_maps,krp_kstat_smaps;
+ static DEFINE_MUTEX(kstat_lock);
+ #elif GROUP == 2
+ static struct kretprobe krp;
+-static char fake_release[65],fake_version[65];
++static bool uname_spoof_enabled;
++static DEFINE_MUTEX(uname_state_lock);
++#define spin_lock_irqsave(p,f) do { (f)=0; mutex_lock(p); } while(0)
++#define spin_unlock_irqrestore(p,f) do { (void)(f); mutex_unlock(p); } while(0)
+ #else
+ /* The open_redirect registration is a state change, not a kprobe install: the forward direction
+  * lives in susfs_or_entry.c's wrappers, so the knob is susfs_or_entry_armed() and the reverse
+@@ -55,7 +58,7 @@ static int arm(void) {
+ #if GROUP == 1
+     mutex_lock(&kstat_lock); int rc=kstat_maps_arm(); mutex_unlock(&kstat_lock); return rc;
+ #elif GROUP == 2
+-    return uname_register();
++    mutex_lock(&uname_ctl_lock); int rc=uname_register_locked(); mutex_unlock(&uname_ctl_lock); return rc;
+ #else
+     mutex_lock(&or_lock); int rc=or_register(); mutex_unlock(&or_lock); return rc;
+ #endif
+diff --git a/tests/r18_fixes/run.py b/tests/r18_fixes/run.py
+index 8e89fbc..f23dde1 100644
+--- a/tests/r18_fixes/run.py
++++ b/tests/r18_fixes/run.py
+@@ -64,7 +64,7 @@ def fragment(root, group):
+                'probe-redirect': r'or_(?:registered|dpath_registered|statfs_registered|exiting)'}[group]
+     globals_ = '\n'.join(re.findall(r'^static (?:bool |DEFINE_MUTEX\()' + pattern + r'[^\n]*', s, re.M))
+     funcs = {'probe-kstat': ('kstat_maps_arm', 'kstat_maps_disarm'),
+-             'probe-uname': ('uname_register', 'uname_unregister'),
++             'probe-uname': ('uname_register_locked', 'uname_unregister'),
+              'probe-redirect': ('or_register', 'or_unregister', 'susfs_open_redirect_exit')}[group]
+     return globals_ + '\n' + ''.join(function(s, n) for n in funcs)
+ 
+diff --git a/tools/check_audit_artifact.py b/tools/check_audit_artifact.py
+new file mode 100644
+index 0000000..4cb2062
+--- /dev/null
++++ b/tools/check_audit_artifact.py
+@@ -0,0 +1,44 @@
++#!/usr/bin/env python3
++"""Check syscall ABI/CFI against a real header fixture and prior Samsung module."""
++import argparse,json,os,re,struct,subprocess
++from pathlib import Path
++from elftools.elf.elffile import ELFFile
++from review_cp15_artifact import inspect
++p=argparse.ArgumentParser(description=__doc__)
++for name in ['candidate','baseline','kdir','clang-bin','output']:p.add_argument('--'+name,required=True,type=Path)
++a=p.parse_args();out=a.output.resolve();out.mkdir(parents=True,exist_ok=True);root=Path(__file__).resolve().parents[1]
++fixture=out/'syscall-fixture';fixture.mkdir(exist_ok=True)
++lines=['#include <linux/module.h>','#include <asm/syscall.h>','#include <asm/unistd_compat_32.h>',f'#include "{root / "kernel/susfs_fp_hook.h"}"',
++ 'static __used long expected_syscall(const struct pt_regs *regs) { return 0; }',
++ 'static syscall_fn_t expected_pointer __used = expected_syscall;',
++ 'static_assert(__same_type(susfs_syscall_fn_t, syscall_fn_t));']
++text=(root/'kernel/susfs_create_gate.c').read_text()
++for name,num in re.findall(r'^#define COMPAT_(\w+)_NR\s+(\d+)',text,re.M):
++ lines.append(f'static_assert({num} == __NR_compat32_{name.lower()});')
++lines.append('MODULE_LICENSE("GPL");')
++(fixture/'fixture.c').write_text('\n'.join(lines)+'\n');(fixture/'Makefile').write_text('obj-m := fixture.o\n')
++env=dict(os.environ);env['PATH']=str(a.clang_bin.resolve())+os.pathsep+env['PATH']
++with (out/'fixture-build.log').open('w') as log:
++ subprocess.run(['make','-C',str(a.kdir.resolve()),f'M={fixture}','ARCH=arm64','CC=clang','LLVM=1','LLVM_IAS=1','CONFIG_DEBUG_INFO_BTF_MODULES=','modules','-j2'],env=env,stdout=log,stderr=subprocess.STDOUT,check=True)
++before=inspect(a.baseline);candidate=inspect(a.candidate);expected=inspect(fixture/'fixture.ko')
++wrappers=sorted(n for n in candidate['functions'] if n.startswith(('create_wrap_','or_wrap_')))
++words={n:candidate['types'].get(n) for n in wrappers};expected_word=expected['types']['expected_syscall']
++landing={}
++with a.candidate.open('rb') as stream:
++ elf=ELFFile(stream)
++ for symbol in elf.get_section_by_name('.symtab').iter_symbols():
++  if symbol.name in wrappers:
++   section=elf.get_section(symbol['st_shndx']);offset=symbol['st_value']-section['sh_addr'];landing[symbol.name]=struct.unpack_from('<I',section.data(),offset)[0]
++checks={
++ 'thirteen_syscall_wrappers':len(wrappers)==13,
++ 'incoming_kcfi_matches_real_syscall_type':all(v==expected_word for v in words.values()),
++ 'all_wrappers_have_call_landing_pad':all(v in [0xd503245f,0xd50324df,0xd503233f,0xd503237f] for v in landing.values()),
++ 'imports_unchanged':candidate['imports']==before['imports'],
++ 'module_version_table_shape_unchanged':candidate['version_section_sizes']==before['version_section_sizes'],
++ 'module_metadata_unchanged':candidate['modinfo']==before['modinfo'],
++ 'existing_callback_types_unchanged':all(candidate['types'].get(n)==v for n,v in before['types'].items() if n in candidate['types'] and n != 'susfs_fp_drain'),
++}
++report=dict(hardware_validated=False,checks=checks,candidate_sha256=candidate['sha256'],baseline_sha256=before['sha256'],expected_syscall_kcfi=expected_word,wrapper_kcfi=words,wrapper_landing_instructions=landing,imports=candidate['imports'],version_section_sizes=candidate['version_section_sizes'])
++(out/'artifact.json').write_text(json.dumps(report,indent=2)+'\n')
++for name,ok in checks.items():print(('PASS ' if ok else 'FAIL ')+name)
++raise SystemExit(not all(checks.values()))
+diff --git a/tools/run_host_suite.py b/tools/run_host_suite.py
+new file mode 100644
+index 0000000..2fa0bb6
+--- /dev/null
++++ b/tools/run_host_suite.py
+@@ -0,0 +1,21 @@
++#!/usr/bin/env python3
++"""Run every host regression runner, normally and with ASan/UBSan where supported."""
++import argparse,concurrent.futures,json,os,subprocess,time
++from pathlib import Path
++p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,default=Path('build/host-suite'));p.add_argument('--jobs',type=int,default=2);a=p.parse_args()
++root=Path(__file__).resolve().parents[1];out=a.output.resolve();out.mkdir(parents=True,exist_ok=True)
++work=[]
++for file in sorted((root/'tests').glob('*/run.py')):
++ for san in [False,True] if '--sanitizers' in file.read_text() else [False]:work.append((file,san))
++def run(item):
++ file,san=item;label=file.parent.name+('-sanitizers' if san else '');start=time.monotonic();log=out/(label+'.log')
++ cmd=['python3',str(file)]+(['--sanitizers'] if san else [])
++ with log.open('w') as f:
++  try:rc=subprocess.run(cmd,cwd=root,stdout=f,stderr=subprocess.STDOUT,timeout=300,env=dict(os.environ,ASAN_OPTIONS=os.environ.get("ASAN_OPTIONS","detect_leaks=0:abort_on_error=1"),UBSAN_OPTIONS="halt_on_error=1")).returncode
++  except subprocess.TimeoutExpired:rc=124
++ result=dict(suite=file.parent.name,sanitizers=san,exit_code=rc,seconds=round(time.monotonic()-start,2),log=log.name)
++ print(('PASS ' if rc==0 else 'FAIL ')+label,flush=True);return result
++with concurrent.futures.ThreadPoolExecutor(max_workers=a.jobs) as pool:results=list(pool.map(run,work))
++(out/'results.json').write_text(json.dumps(dict(hardware_validated=False,results=results),indent=2)+'\n')
++print(f'{sum(r["exit_code"]==0 for r in results)}/{len(results)} runner executions passed',flush=True)
++raise SystemExit(any(r['exit_code'] for r in results))
