@@ -7,3 +7,5 @@
 
 # Preserve the source patch exactly, including the Samsung source CRLF context.
 /backends/susfs/audit-fixes.patch -text
+# Leading context spaces/tabs are part of the patch payload.
+/backends/susfs/dispatcher.patch -text -whitespace
