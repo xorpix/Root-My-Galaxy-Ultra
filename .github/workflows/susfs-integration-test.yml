@@ -2,7 +2,7 @@ name: SusFS Integration Test Build
 
 on:
   push:
-    branches: [feat/susfs-backends-20261017, feat/susfs-readlink-enoent, fix/susfs-audit-20261027]
+    branches: [feat/susfs-backends-20261017, feat/susfs-readlink-enoent, fix/susfs-audit-20261027, feat/susfs-dispatcher-20261029]
   workflow_dispatch:
 
 permissions:
@@ -35,6 +35,15 @@ jobs:
           mkdir -p "$RUNNER_TEMP/susfs-source"
           tar -xzf backends/susfs/source.tar.gz -C "$RUNNER_TEMP/susfs-source"
           python3 "$RUNNER_TEMP/susfs-source/susfs/tools/run_host_suite.py" --output "$RUNNER_TEMP/susfs-host-results"
+
+      - name: Upload SusFS host regression results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: susfs-host-regressions
+          path: ${{ runner.temp }}/susfs-host-results
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Set up JDK 25 (matches the Gradle daemon criteria)
         uses: actions/setup-java@v4
@@ -93,7 +102,9 @@ jobs:
         run: ./gradlew testDebugUnitTest --no-daemon
 
       - name: Build APKs
-        run: ./gradlew assembleRelease --no-daemon
+        env:
+          RMGU_TEST_SUFFIX: ${{ startsWith(github.ref_name, 'feat/susfs-dispatcher-') && 'dispatcher-test1' || '' }}
+        run: ./gradlew assembleRelease "-PrmguVersionSuffix=$RMGU_TEST_SUFFIX" --no-daemon
 
       - name: Verify embedded D2 companions
         run: |

@@ -1,29 +1,66 @@
-# Samsung SusFS dispatcher — source review
+# Samsung SusFS dispatcher adaptation
 
-This draft carries the focused source patch and its validation records. The active APK bundle remains on source `cc2b27a3f66f11cd9b6bf511a60b8e47c128eae4` until full bundle integration is approved.
+This update adapts upstream's preferred syscall-table delivery and kprobe
+fallback through `2517cae` to the Samsung fork. It keeps the existing command
+ABI and handlers, plus the initialization, deferred-request and verified
+restoration safeguards from the current Samsung source.
 
-## Candidate behavior
+## Behavior
 
-- Prefer the existing Samsung syscall-table hook helper for the reboot supercall.
-- Fall back only after verified rollback, and only when the resolved reboot entry is readable and its explicit BTI checks permit a probe.
-- Share command admission and deferred-work ownership between both routes.
-- Reject queued work during initialization/removal, count the complete table wrapper including sleeping original calls, and preserve both wrapper and task-work return tails.
-- Expose a root-readable, read-only `supercall_route` parameter and warn after a successful load using kprobe delivery.
+The dispatcher first attempts the native reboot syscall-table entry using the
+existing Samsung hook helper. If that cannot be installed, the helper must
+finish any required rollback and callback drain before the dispatcher considers
+the kprobe route. The routes are never intentionally installed together.
 
-The fallback refuses a build with kernel BTI enabled, an explicit `BTI c`/`BTI jc` entry, or an unknown/unreadable entry. It probes the exact address inspected. The existing restoration helper and its no-timeout lifetime contract are retained.
+The fallback resolves and inspects the exact reboot entry it will probe.
+It refuses a build with kernel BTI enabled, explicit `BTI c`/`BTI jc` entry
+instructions, and an unknown or unreadable entry. This guard is conservative;
+it is not a declaration of support for another kernel family.
+
+Both routes share command admission. Only recognized commands from root queue
+work, and no work is admitted during module initialization or ordinary removal.
+The table wrapper counts its full lifetime, including any sleep in the saved
+original reboot syscall. Queued work additionally holds a module reference.
+Teardown retains the final Tasks RCU grace period for deferred callback returns
+on both routes. Failed restoration still prevents module text from being freed.
+
+Root can inspect the selected route:
+
+```sh
+su -c 'cat /sys/module/susfs_guard_lkm/parameters/supercall_route'
+```
+
+The result is `syscall-table` or `kprobe` after a successful load. The parameter
+is read-only. A completed load using the fallback emits a warning about its
+reboot-entry breakpoint. Table delivery avoids this particular breakpoint;
+other SusFS probes remain.
 
 ## Validation
 
-All 26 host suites passed in their 50 supported runner configurations after correcting the existing path-listing runner's sanitizer deadline to match its C watchdog. The dispatcher has 40 cases/configurations and four failing negative controls per mode (normal and ASan/UBSan). Cases include both routes, original argument/result forwarding, sleeping callbacks, failed publication before fallback, refusal paths, repeated routes and admission/removal races.
+- 40 dispatcher cases/configurations in normal and ASan/UBSan builds, with four
+  failing negative controls in each mode. Cases include both routes, a sleeping
+  original syscall, callback return tails, failed installation before fallback,
+  refusal paths, repeated routes and 200 admission/removal races per route.
+- All 26 host suites in their 50 supported runner configurations. The existing
+  maximum-size path-listing sanitizer case needed the Python deadline aligned
+  with its C harness's existing 120-second watchdog; failed attempts and the
+  final rerun are recorded in the source archive.
+- Android16/6.12 DDK build with CFI, Tasks RCU, MODVERSIONS and 4 KiB pages.
+  All 14 syscall wrappers match the kernel-header syscall CFI type and have
+  call landing instructions. All 136 kernel imports and existing callback CFI
+  types match the previous Samsung module.
 
-The Android16/6.12 DDK build passed with CFI, Tasks RCU, MODVERSIONS and 4 KiB pages. All 14 syscall wrappers match the real-header syscall CFI type and have call landing instructions. The 136 kernel imports, existing callback CFI types and module version-table shape match the prior module. The focused patch reconstructs the exact candidate source tree.
+`backends/susfs/build-manifest.json` pins the new source and module. The complete
+source, test code, build report and validation records are in `source.tar.gz`;
+`dispatcher.patch` is the focused delta from the previous Samsung source.
 
-## Prepared integration
+These checks do not establish live Samsung protected-memory writes or syscall
+dispatch. Phone validation is pending. The integration workflow builds a signed
+test APK; it does not publish a stable release.
 
-- Source commit: `961fb6a0585c4ad503f9a9e1fe107058d3595c92`
-- Source tree: `8fd0d9cab6fc13e4bb0161b479294f1a86a3a132`
-- Module: 555,000 bytes, SHA-256 `f3a5e86347eef1710f1decde1318048839263605812ef22127fe29987db37f92`
-- Source archive: 791,472 bytes, SHA-256 `6b5b2fb908e650846ba894906f5be347f679c183a86e5f0397434042a7535ff1`
-- The archive contains 354 regular UTF-8 source/test/validation files. It was checked for embedded executables, nested archives and credential/private-key signatures.
+## Phone check
 
-`backends/susfs/dispatcher.patch` contains the complete delta from the current Samsung source, including test and build records. Full archive/module/profile integration and a signed test APK are pending source-archive publication approval. No phone validation has been performed.
+Install the test APK, fully reboot, restore root and activate SusFS. Read the
+route, confirm SusFS status and the manager's normal version/feature/rule
+commands, and check the configured modules after the normal soft restart.
+A soft restart alone retains the previous loaded module.
