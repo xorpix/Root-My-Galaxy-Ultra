@@ -83,6 +83,6 @@
     "userspace/ksud/src/android/utils.rs": "0199b78828aaf9fab2474c60d07b8c273b093e6911b7b1875c5078a3ba605e8a",
     "userspace/ksuinit/src/lib.rs": "44d21ff0c74a7fca0b043c3a1780a853d8c942a9eb2139ec59436b8aba9cdf5f"
   },
-  "app_version": "1.2.26",
+  "app_version": "1.2.28",
   "previous_upstream_commit": "dac2d186406a0d2b0ce3c67cad5a1fa1adbf9f4d"
 }

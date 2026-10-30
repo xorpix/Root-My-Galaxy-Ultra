@@ -12,7 +12,7 @@ from pathlib import Path
 import struct
 
 ORIGINAL_SHA256 = '39b018c3648c26fc7e801f6ec7a25018b3ef8544033afadbad4b36dd714d9d59'
-VERSIONS = {'kernelsu': 32705, 'kernelsu-next': 33405, 'resukisu': 35252, 'kowsu': 32737}
+VERSIONS = {'kernelsu': 32708, 'kernelsu-next': 33445, 'resukisu': 35252, 'kowsu': 32737}
 UAPI_VERSIONS = {'kernelsu': 6, 'kernelsu-next': 6, 'resukisu': 6, 'kowsu': 6}
 LIBRARIES = {key: 'libm3qroot_' + key.replace('-', '_') + '.so' for key in VERSIONS}
 

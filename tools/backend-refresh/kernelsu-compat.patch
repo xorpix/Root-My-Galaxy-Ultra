@@ -484,7 +484,7 @@ index 6ee1c35de07c806c5c4c5b1710bb97852580585b..08a0972157991295938443c4dc8fb17f
  
  #if NEED_OWN_STACKPROTECTOR
 diff --git a/kernel/feature/selinux_hide.c b/kernel/feature/selinux_hide.c
-index 8f23888b180d792a9f6ed3348b148d576b06fb09..b8f5cc9c7414568b6d619a5fb4a648b098f1d875 100644
+index 2a41b8056d6e2e0a416d37e9fd984b4e7852070a..042b627217b61fca2cae0b949b8a735611ac583a 100644
 --- a/kernel/feature/selinux_hide.c
 +++ b/kernel/feature/selinux_hide.c
 @@ -16,6 +16,8 @@

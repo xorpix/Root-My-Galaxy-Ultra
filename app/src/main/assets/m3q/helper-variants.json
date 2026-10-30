@@ -3,22 +3,22 @@
   "variants": {
     "kernelsu": {
       "library": "libm3qroot_kernelsu.so",
-      "driverVersion": 32705,
+      "driverVersion": 32708,
       "uapiVersion": 6,
       "size": 24232,
-      "sha256": "1b7f06790337c5a1fb45a85a507e26a5d86accc71d634781d5c56a07510a5634",
+      "sha256": "e9f82f4ff1321e0b2fe8f4ecedc956bc55d5f43037da9bd6c873ad99eecbe290",
       "changes": [
         {
           "virtual_address": "0x6c94",
           "file_offset": 11412,
           "before": "528fef89",
-          "after": "528ff829"
+          "after": "528ff889"
         },
         {
           "virtual_address": "0x6cc8",
           "file_offset": 11464,
           "before": "528fef82",
-          "after": "528ff822"
+          "after": "528ff882"
         },
         {
           "virtual_address": "0x6ca0",
@@ -36,22 +36,22 @@
     },
     "kernelsu-next": {
       "library": "libm3qroot_kernelsu_next.so",
-      "driverVersion": 33405,
+      "driverVersion": 33445,
       "uapiVersion": 6,
       "size": 24232,
-      "sha256": "544d35de1de641824729c6a86945f92866c61f800e1ea76b1198bd89f5b127dc",
+      "sha256": "a7d3bd5729ea47221555cb724c38c5d326b1cc0f78d099479e5b71722866bec0",
       "changes": [
         {
           "virtual_address": "0x6c94",
           "file_offset": 11412,
           "before": "528fef89",
-          "after": "52904fa9"
+          "after": "529054a9"
         },
         {
           "virtual_address": "0x6cc8",
           "file_offset": 11464,
           "before": "528fef82",
-          "after": "52904fa2"
+          "after": "529054a2"
         },
         {
           "virtual_address": "0x6ca0",
