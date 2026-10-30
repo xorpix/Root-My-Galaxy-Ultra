@@ -65,7 +65,7 @@ internal object AzhlPort {
 
     fun identityRefusal(snapshot: DeviceSnapshot): String? =
         if (identity.matches(snapshot)) null else
-            "This experimental build requires SM-S948B / S948BXXS4AZHL and its exact Android 16, 4 KB kernel."
+            "This root method requires SM-S948B / S948BXXS4AZHL and its exact Android 16, 4 KB kernel."
 
 }
 

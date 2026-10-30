@@ -801,9 +801,6 @@
         <item quantity="other">Diese Ausführungen und ihre Protokolle werden dauerhaft gelöscht.</item>
     </plurals>
     <string name="install_m3q_attempted_boot">Seit dem letzten Systemstart wurde bereits ein Root-Versuch ausgeführt. Starte das Telefon vollständig neu, bevor du es erneut versuchst oder das Backend wechselst. Ein Neustart des Userspace reicht nicht aus.</string>
-    <string name="azhl_install_confirm_title">%1$s installieren?</string>
-    <string name="azhl_install_confirm_body">Verwendet das mitgelieferte Backend %1$s auf %2$s / %3$s. Diese experimentelle Version kann das Telefon einfrieren oder neu starten. Beginne nach einem vollständigen Neustart. Ein aktives Backend lässt sich erst nach einem weiteren vollständigen Neustart wechseln; vorhandene Module werden beim Wechsel deaktiviert.</string>
-    <string name="azhl_install_confirm_body_azhl">Verwendet das mitgelieferte Backend %1$s auf SM-S948B / S948BXXS4AZHL. Diese experimentelle Version kann das Telefon einfrieren oder neu starten. Beginne nach einem vollständigen Neustart mit laufendem Shizuku. Ein aktives Backend lässt sich erst nach einem weiteren vollständigen Neustart wechseln; vorhandene Module werden beim Wechsel deaktiviert.</string>
     <string name="d2_title">Odin erreichbar halten</string>
     <string name="d2_summary">Hilft, den Samsung-Download-Modus auch bei eingerichteter Bildschirmsperre erreichbar zu halten. Läuft nach der Einrichtung automatisch, selbst wenn Root beim Start ausgeschaltet ist.</string>
     <string name="d2_working">Bitte warten…</string>
@@ -894,19 +891,14 @@
     <string name="settings_plan_payloads_bundled">In dieser App eingebaut</string>
     <string name="settings_plan_fixed_limits">Bei dieser root-Methode können die Laufgrenzen nicht eingestellt werden.</string>
     <string name="settings_fixed_payload_note">Dieser Build erlaubt nur einen Versuch pro Start. Vor einem weiteren Versuch ist ein vollständiger Neustart erforderlich. Die Payload-Einstellungen sind fest vorgegeben.</string>
-    <string name="settings_susfs_title">SusFS · experimentell</string>
-    <string name="settings_susfs_summary">SusFS nach dem Rooten automatisch aktivieren. Ein vollständiger Neustart deaktiviert es. Wird es im laufenden Betrieb ausgeschaltet, gilt dies erst nach einem Neustart.</string>
+    <string name="settings_susfs_title">SusFS</string>
+    <string name="settings_susfs_summary">SusFS nach dem Rooten starten. Das Ausschalten wird nach einem vollständigen Neustart wirksam.</string>
     <string name="settings_susfs_status_title">SusFS-Status</string>
-    <string name="settings_susfs_status_summary">Ergebnis der letzten Aktivierung auf diesem Gerät. Hier werden keine Live-Prüfungen ausgeführt.</string>
     <string name="settings_susfs_off">Aus</string>
     <string name="settings_susfs_pending">Aktiviert · wird nach dem Rooten geladen</string>
     <string name="settings_susfs_active">Aktiv · %1$s</string>
     <string name="settings_susfs_active_until_reboot">Aktiv · %1$s · wird nach Neustart deaktiviert</string>
     <string name="settings_susfs_version_unknown">unbekannte Version</string>
-    <string name="settings_susfs_untested">Ungetesteter Kernel — nur ein Versuch; Erfolg wird anhand der Funktionen geprüft.</string>
-    <string name="settings_susfs_off_title">SusFS ausschalten?</string>
-    <string name="settings_susfs_off_body">SusFS kann während des Betriebs nicht entladen werden und bleibt bis zum Neustart aktiv. Deaktiviere vor dem Neustart alle Module, die SusFS benötigen, da sie ohne SusFS möglicherweise nicht richtig funktionieren.</string>
-    <string name="settings_susfs_turn_off">Ausschalten</string>
     <string name="susfs_grant_title">SusFS benötigt Root-Rechte</string>
     <string name="susfs_grant_body">SusFS kann erst starten, wenn diese App selbst Root-Rechte hat. Erteile ihr im Manager die su-Berechtigung. SusFS wird beim nächsten Durchlauf aktiviert.</string>
     <string name="action_got_it">Verstanden</string>

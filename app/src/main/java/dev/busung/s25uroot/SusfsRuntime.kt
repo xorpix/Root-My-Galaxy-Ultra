@@ -110,10 +110,7 @@ internal object SusfsRuntime {
         if (before.status.state != SusfsState.Absent) return before
         val runningRelease = root?.output?.lineSequence()?.map { it.trim() }
             ?.firstOrNull { it.contains("android") }.orEmpty()
-        // Untested family kernels attempt with the shared bytes; success is
-        // proven by the feature check below, never assumed here.
-        val untestedNote = if (target is SusfsTarget.FamilyFallback)
-            "Untested kernel ${runningRelease.ifBlank { snapshot.kernelRelease }}: attempt only.\n" else ""
+        // Family kernels use the shared bytes; the live feature check proves activation.
         if (target is SusfsTarget.Known) {
             val expected = profile.getString("kernelRelease")
             if (runningRelease != expected)
@@ -132,7 +129,7 @@ internal object SusfsRuntime {
             ?: return unavailable("The loader did not finish. Refresh status before retrying.")
         // Query even on a nonzero load exit; never retry a live/partial module blindly.
         val after = readStatus(context, profile, shell)
-        val report = untestedNote + "Device: ${snapshot.kernelVersionFull}\n" +
+        val report = "Device: ${snapshot.kernelVersionFull}\n" +
             "Loader exit: ${loaded.exitCode}\n${loaded.output}\nStatus:\n${after.report}"
         File(context.filesDir, "susfs-last-report.txt").writeText(report)
         val status = if (after.status.state == SusfsState.Absent) after.status.copy(

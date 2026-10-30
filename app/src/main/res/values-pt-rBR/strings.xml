@@ -806,9 +806,6 @@
         <item quantity="other">Estas execuções e seus registros serão excluídos permanentemente.</item>
     </plurals>
     <string name="install_m3q_attempted_boot">Já houve uma tentativa de root nesta inicialização. Reinicie completamente antes de tentar novamente ou trocar de backend. Reiniciar apenas o espaço do usuário não é suficiente.</string>
-    <string name="azhl_install_confirm_title">Instalar %1$s?</string>
-    <string name="azhl_install_confirm_body">Usa o backend %1$s incluído em %2$s / %3$s. Esta versão experimental pode travar ou reiniciar o telefone. Comece após uma reinicialização completa. A troca de um backend ativo exige outra reinicialização completa; os módulos existentes são desativados durante a troca.</string>
-    <string name="azhl_install_confirm_body_azhl">Usa o backend %1$s incluído em SM-S948B / S948BXXS4AZHL. Esta versão experimental pode travar ou reiniciar o telefone. Comece após uma reinicialização completa, com o Shizuku em execução. A troca de um backend ativo exige outra reinicialização completa; os módulos existentes são desativados durante a troca.</string>
     <string name="d2_title">Manter o Odin acessível</string>
     <string name="d2_summary">Ajuda a manter o Modo Download da Samsung acessível com bloqueio de tela. É executado automaticamente após a configuração, mesmo com Root na inicialização desativado.</string>
     <string name="d2_working">Aguarde…</string>
@@ -899,19 +896,14 @@
     <string name="settings_plan_payloads_bundled">Construído neste aplicativo</string>
     <string name="settings_plan_fixed_limits">Os limites de execução não são ajustáveis para este método root.</string>
     <string name="settings_fixed_payload_note">Esta versão permite uma tentativa por inicialização e exige reiniciar completamente antes de tentar novamente. As configurações dos payloads são fixas.</string>
-    <string name="settings_susfs_title">SusFS · experimental</string>
-    <string name="settings_susfs_summary">Ativar o SusFS automaticamente após obter root. Uma reinicialização completa o desativa; desligá-lo enquanto está ativo só terá efeito após reiniciar.</string>
+    <string name="settings_susfs_title">SusFS</string>
+    <string name="settings_susfs_summary">Iniciar o SusFS após obter root. A desativação só entra em vigor após uma reinicialização completa.</string>
     <string name="settings_susfs_status_title">Status do SusFS</string>
-    <string name="settings_susfs_status_summary">Resultado da última ativação neste dispositivo. Nenhuma verificação em tempo real é feita aqui.</string>
     <string name="settings_susfs_off">Desativado</string>
     <string name="settings_susfs_pending">Habilitado · será ativado após obter root</string>
     <string name="settings_susfs_active">Ativo · %1$s</string>
     <string name="settings_susfs_active_until_reboot">Ativo · %1$s · será desativado ao reiniciar</string>
     <string name="settings_susfs_version_unknown">versão desconhecida</string>
-    <string name="settings_susfs_untested">Kernel não testado — apenas uma tentativa, validada pela verificação de recursos.</string>
-    <string name="settings_susfs_off_title">Desativar o SusFS?</string>
-    <string name="settings_susfs_off_body">O SusFS não pode ser descarregado durante a execução: ele permanece ativo até você reiniciar. Antes de reiniciar, desative os módulos que dependem do SusFS, pois eles podem funcionar incorretamente sem ele.</string>
-    <string name="settings_susfs_turn_off">Desativar</string>
     <string name="susfs_grant_title">O SusFS precisa de permissão root</string>
     <string name="susfs_grant_body">O SusFS só pode iniciar quando este próprio app tiver acesso root. Conceda a permissão su a ele no gerenciador; o SusFS será ativado na próxima execução.</string>
     <string name="action_got_it">Entendi</string>

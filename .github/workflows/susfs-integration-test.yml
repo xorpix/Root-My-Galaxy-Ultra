@@ -2,7 +2,7 @@ name: SusFS Integration Test Build
 
 on:
   push:
-    branches: [feat/susfs-backends-20261017, feat/susfs-readlink-enoent, fix/susfs-audit-20261027, feat/susfs-dispatcher-20261029]
+    branches: [feat/susfs-backends-20261017, feat/susfs-readlink-enoent, fix/susfs-audit-20261027, feat/susfs-dispatcher-20261029, test/bzja-20261030]
   workflow_dispatch:
 
 permissions:
@@ -98,12 +98,18 @@ jobs:
       - name: Check early Odin handoff and adaptive exploit wait
         run: python3 tools/test_early_root_speed.py
 
+      - name: Check settings and translations
+        run: |
+          python3 tools/test_settings_presentation.py
+          python3 tools/test_translations.py
+          python3 tools/check_translations.py
+
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --no-daemon
 
       - name: Build APKs
         env:
-          RMGU_TEST_SUFFIX: ${{ startsWith(github.ref_name, 'feat/susfs-dispatcher-') && 'dispatcher-test1' || '' }}
+          RMGU_TEST_SUFFIX: ${{ github.ref_name == 'test/bzja-20261030' && 'bzja-test1' || startsWith(github.ref_name, 'feat/susfs-dispatcher-') && 'dispatcher-test1' || '' }}
         run: ./gradlew assembleRelease "-PrmguVersionSuffix=$RMGU_TEST_SUFFIX" --no-daemon
 
       - name: Verify embedded D2 companions
@@ -170,12 +176,32 @@ jobs:
           PYTHON
           git diff --exit-code
 
+      - name: Record test APK identity and checksum
+        run: |
+          python3 - <<'PYTHON'
+          import hashlib, json, shutil
+          from pathlib import Path
+          root = Path('app/build/outputs/apk/release')
+          metadata = json.loads((root / 'output-metadata.json').read_text())
+          output = metadata['elements'][0]
+          apk = root / output['outputFile']
+          folder = Path('test-apk')
+          folder.mkdir()
+          name = f"RootMyGalaxyUltra-{output['versionName']}.apk"
+          shutil.copyfile(apk, folder / name)
+          (folder / 'SHA256SUMS').write_text(f'{hashlib.sha256(apk.read_bytes()).hexdigest()}  {name}\n')
+          (folder / 'build-info.json').write_text(json.dumps({
+              'applicationId': metadata['applicationId'],
+              'versionName': output['versionName'],
+              'versionCode': output['versionCode'],
+          }, indent=2) + '\n')
+          PYTHON
+
       - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: susfs-update-test-apk
-          path: |
-            app/build/outputs/apk/release/*.apk
+          name: ${{ github.ref_name == 'test/bzja-20261030' && 'bzja-test-apk' || 'susfs-update-test-apk' }}
+          path: test-apk/
           if-no-files-found: error
           retention-days: 14
 

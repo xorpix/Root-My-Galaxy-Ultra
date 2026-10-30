@@ -755,10 +755,8 @@ private fun RootApp(
     LaunchedEffect(openedRunEntry) {
         if (openedRunEntry != null) selectedPage = AppPage.History
     }
-    var showInstallConfirmation by remember { mutableStateOf(false) }
     var showTargetPicker by remember { mutableStateOf(false) }
     var showRebootSheet by remember { mutableStateOf(false) }
-    val isAzhlDevice = remember { AzhlPort.identity.matches(DeviceSnapshot.current()) }
     // The app's one undo surface. Held here rather than per page, so a deletion on History and a deletion in
     // the residue dialog use the same one - and so neither has to know where it is drawn.
     val snackbarHostState = remember { SnackbarHostState() }
@@ -772,13 +770,8 @@ private fun RootApp(
     val view = LocalView.current
     val scope = rememberCoroutineScope()
     fun requestInstall() {
-        val profile = selectedProfile
-        if (requiresInstallConfirmation(device, profile)) {
-            showInstallConfirmation = true
-        } else {
-            openInstaller(profile?.selectionId)
-            selectedProfile = null
-        }
+        openInstaller(selectedProfile?.selectionId)
+        selectedProfile = null
     }
     // One Shizuku start for the whole app, because two screens offer the button: Home's checklist when
     // Shizuku is not running, and the Shizuku rows in Settings. The request, what the attempt said and the
@@ -1120,41 +1113,6 @@ private fun RootApp(
                     },
                 ) {
                     Text(stringResource(R.string.action_back))
-                }
-            },
-        )
-    }
-
-    if (showInstallConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showInstallConfirmation = false },
-            icon = { Icon(Icons.Rounded.Security, contentDescription = null) },
-            title = {
-                DialogDimAmount(0.34f)
-                Text(stringResource(R.string.azhl_install_confirm_title, kernelsuFlavor.label))
-            },
-            text = {
-                Text(
-                    if (isAzhlDevice) stringResource(R.string.azhl_install_confirm_body_azhl, kernelsuFlavor.label)
-                    else stringResource(R.string.azhl_install_confirm_body, kernelsuFlavor.label, device.model, device.incremental),
-                )
-            },
-            confirmButton = {
-                FilledTonalButton(onClick = {
-                    clickHaptic(view)
-                    showInstallConfirmation = false
-                    openInstaller(selectedProfile?.selectionId)
-                    selectedProfile = null
-                }) {
-                    Text(stringResource(R.string.action_confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    clickHaptic(view)
-                    showInstallConfirmation = false
-                }) {
-                    Text(stringResource(R.string.action_cancel))
                 }
             },
         )

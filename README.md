@@ -11,7 +11,7 @@ including [root before first unlock](docs/root-before-unlock.md) on supported Di
 · [Release notes](https://github.com/xorpix/Root-My-Galaxy-Ultra/releases)
 · [Report an issue](https://github.com/xorpix/Root-My-Galaxy-Ultra/issues)
 
-> Experimental software: a root attempt can freeze or reboot the phone.
+> A root attempt can freeze or reboot the phone.
 > Begin from a full reboot and reboot again after a failed or uncertain attempt.
 > Keep a backup of important data.
 
@@ -24,12 +24,14 @@ Japanese carrier models `SC-53G` and `SCG37`. All routes require **m3q**,
 | Model / build | Kernel requirement | Root method | Shizuku required for rooting |
 |---|---|---|---|
 | SM-S948B / `S948BXXS4AZHL`, Android 16 / API 36 | Exact recorded AZHL kernel | M3Q / GhostLock | Yes, running as shell through wireless debugging |
-| S26 Ultra regional and carrier variants, Android API 36 or newer | `android16` / Linux `6.12` GKI family | DirtyFrag (experimental family support) | No |
+| S26 Ultra regional and carrier variants, Android API 36 or newer | `android16` / Linux `6.12` GKI family | DirtyFrag | No |
 
 DirtyFrag selects the shared helper and matched backend payloads by kernel family.
 It automatically creates profiles containing the phone's actual model, firmware,
 full kernel release, SDK, ABI and page size; a firmware whitelist is not required.
 The recorded BZIG and Canadian BZID entries keep their existing profile IDs.
+BZJA (`S948BXXU5BZJA`) root and SusFS have been confirmed by the maintainer;
+users have also reported successful tests on other S26 Ultra variants.
 
 **Recognition is not a hardware-test result.** Patched firmware can block
 DirtyFrag, and a compatible kernel family does not by itself verify Samsung

@@ -47,6 +47,6 @@ def verify(apk=None):
             for path in profiles:
                 name='assets/'+path.relative_to(ROOT/'app/src/main/assets').as_posix()
                 assert json.loads(z.read(name))==json.loads(path.read_text()),name
-    print('PASS SusFS module, both firmware profiles, source archive, Git tree and commit provenance'+(' and APK payload' if apk else ''))
+    print('PASS SusFS module, all firmware profiles, source archive, Git tree and commit provenance'+(' and APK payload' if apk else ''))
 if __name__=='__main__':
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--apk',type=Path);a=p.parse_args();verify(a.apk)

@@ -796,9 +796,6 @@
         <item quantity="other">所選執行紀錄及其日誌將被永久刪除。</item>
     </plurals>
     <string name="install_m3q_attempted_boot">本次開機已嘗試取得 root。再次嘗試或切換後端前，請完整重新啟動手機。僅重新啟動使用者空間是不夠的。</string>
-    <string name="azhl_install_confirm_title">如何安裝%1$s?</string>
-    <string name="azhl_install_confirm_body">在 %2$s / %3$s 上使用內建的 %1$s 後端。此實驗性版本可能導致手機當機或重新啟動。請在完整重新啟動後開始。更換正在使用的後端需要再次完整重新啟動；更換期間會停用現有模組。</string>
-    <string name="azhl_install_confirm_body_azhl">在 SM-S948B / S948BXXS4AZHL 上使用內建的 %1$s 後端。此實驗性版本可能導致手機當機或重新啟動。請在完整重新啟動並啟動 Shizuku 後開始。更換正在使用的後端需要再次完整重新啟動；更換期間會停用現有模組。</string>
     <string name="d2_title">保持 Odin 可存取</string>
     <string name="d2_summary">有螢幕鎖定時，協助保持 Samsung 下載模式可用。設定完成後會自動執行，即使已關閉「開機時取得 root」。</string>
     <string name="d2_working">請稍候…</string>
@@ -889,19 +886,14 @@
     <string name="settings_plan_payloads_bundled">在這個應用程式中內建</string>
     <string name="settings_plan_fixed_limits">這種 root 方法的執行限制不能調節.</string>
     <string name="settings_fixed_payload_note">此組建每次開機只允許嘗試一次，再次嘗試前必須完整重新啟動。酬載設定固定。</string>
-    <string name="settings_susfs_title">SusFS · 實驗性功能</string>
-    <string name="settings_susfs_summary">取得 root 許可權後自動啟用 SusFS。完整重新啟動會將其清除；運作時關閉此選項，要在重新啟動後才會生效。</string>
+    <string name="settings_susfs_title">SusFS</string>
+    <string name="settings_susfs_summary">取得 root 許可權後啟動 SusFS。關閉操作在完整重新啟動後生效。</string>
     <string name="settings_susfs_status_title">SusFS 狀態</string>
-    <string name="settings_susfs_status_summary">此裝置上最近一次啟用的結果。此處不會即時檢查狀態。</string>
     <string name="settings_susfs_off">已關閉</string>
     <string name="settings_susfs_pending">已啟用 · 取得 root 後啟動</string>
     <string name="settings_susfs_active">運作中 · %1$s</string>
     <string name="settings_susfs_active_until_reboot">運作中 · %1$s · 重新啟動後停用</string>
     <string name="settings_susfs_version_unknown">版本未知</string>
-    <string name="settings_susfs_untested">核心未經測試 — 僅嘗試啟用，並透過功能檢查確認結果。</string>
-    <string name="settings_susfs_off_title">關閉 SusFS？</string>
-    <string name="settings_susfs_off_body">SusFS 運作時無法解除安裝，會持續保持啟用狀態，直到重新啟動。重新啟動前，請先關閉依賴 SusFS 的模組，否則它們可能因缺少 SusFS 而運作異常。</string>
-    <string name="settings_susfs_turn_off">關閉</string>
     <string name="susfs_grant_title">SusFS 需要 root 許可權</string>
     <string name="susfs_grant_body">只有本應用程式自身取得 root 許可權後，SusFS 才能啟動。請在管理器中為本應用程式授予 su 許可權，SusFS 將在下次執行時啟用。</string>
     <string name="action_got_it">瞭解</string>

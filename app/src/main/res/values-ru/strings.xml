@@ -811,9 +811,6 @@
         <item quantity="other">Выбранные данные, включая журналы, будут безвозвратно удалены.</item>
     </plurals>
     <string name="install_m3q_attempted_boot">После этой загрузки системы уже была попытка получить root. Перед новой попыткой или сменой варианта KernelSU полностью перезагрузите телефон. Перезапуска пользовательского окружения недостаточно.</string>
-    <string name="azhl_install_confirm_title">Установить %1$s?</string>
-    <string name="azhl_install_confirm_body">Будет использован встроенный вариант %1$s на %2$s / %3$s. Экспериментальная сборка может вызвать зависание или перезагрузку телефона. Начинайте после полной перезагрузки. Для смены уже работающего варианта KernelSU нужна ещё одна полная перезагрузка; при смене существующие модули отключаются.</string>
-    <string name="azhl_install_confirm_body_azhl">Будет использован встроенный вариант %1$s на SM-S948B / S948BXXS4AZHL. Экспериментальная сборка может вызвать зависание или перезагрузку телефона. Начинайте после полной перезагрузки с запущенным Shizuku. Для смены уже работающего варианта KernelSU нужна ещё одна полная перезагрузка; при смене существующие модули отключаются.</string>
     <string name="d2_title">Сохранять доступ к Odin</string>
     <string name="d2_summary">Помогает сохранить доступ к режиму Download при блокировке экрана. После настройки работает автоматически, даже если получение root при загрузке отключено.</string>
     <string name="d2_working">Подождите…</string>
@@ -904,19 +901,14 @@
     <string name="settings_plan_payloads_bundled">Встроены в приложение</string>
     <string name="settings_plan_fixed_limits">Для этого способа получения root ограничения запуска не настраиваются.</string>
     <string name="settings_fixed_payload_note">Эта сборка допускает одну попытку после загрузки системы. Перед новой попыткой нужна полная перезагрузка. Параметры пейлоада фиксированы.</string>
-    <string name="settings_susfs_title">SusFS · экспериментально</string>
-    <string name="settings_susfs_summary">Автоматически включать SusFS после получения root. Полная перезагрузка выгружает его; отключение работающего SusFS вступит в силу после перезагрузки.</string>
+    <string name="settings_susfs_title">SusFS</string>
+    <string name="settings_susfs_summary">Запускать SusFS после получения root. Отключение вступает в силу после полной перезагрузки.</string>
     <string name="settings_susfs_status_title">Состояние SusFS</string>
-    <string name="settings_susfs_status_summary">Результат последней активации на этом устройстве. Проверки текущего состояния здесь не выполняются.</string>
     <string name="settings_susfs_off">Отключён</string>
     <string name="settings_susfs_pending">Включён · активируется после получения root</string>
     <string name="settings_susfs_active">Активен · %1$s</string>
     <string name="settings_susfs_active_until_reboot">Активен · %1$s · отключится после перезагрузки</string>
     <string name="settings_susfs_version_unknown">версия неизвестна</string>
-    <string name="settings_susfs_untested">Непроверенное ядро: только попытка запуска с последующей проверкой функций.</string>
-    <string name="settings_susfs_off_title">Отключить SusFS?</string>
-    <string name="settings_susfs_off_body">Работающий SusFS нельзя выгрузить: он останется активным до перезагрузки. Перед перезагрузкой отключите зависящие от него модули, иначе без SusFS они могут работать некорректно.</string>
-    <string name="settings_susfs_turn_off">Отключить</string>
     <string name="susfs_grant_title">SusFS нужен root-доступ</string>
     <string name="susfs_grant_body">SusFS может запуститься только после получения root-доступа самим приложением. Предоставьте ему доступ к su в менеджере — SusFS включится при следующем запуске.</string>
     <string name="action_got_it">Понятно</string>
