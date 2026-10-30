@@ -12,10 +12,10 @@ index ff7c143..5c6ecd4 100644
  See [29 October dispatcher adaptation and validation](docs/dispatcher-20261029/README.md) for the current Samsung changes. It retains the [27 October audit repairs](docs/audit-20261027/README.md).
 diff --git a/docs/priority-filter-20261030/README.md b/docs/priority-filter-20261030/README.md
 new file mode 100644
-index 0000000..9d25729
+index 0000000..649838c
 --- /dev/null
 +++ b/docs/priority-filter-20261030/README.md
-@@ -0,0 +1,114 @@
+@@ -0,0 +1,120 @@
 +# Samsung priority UID filter
 +
 +Adaptation of [upstream PR #158](https://github.com/inforcqb/susfs4ksu-for-lkm/pull/158),
@@ -44,6 +44,12 @@ index 0000000..9d25729
 +- Names, directory ownership, namespace and input termination are validated before
 +  publication. Immutable bitmaps are replaced under a mutex and retired after RCU;
 +  readers do not allocate, look up paths or modify credentials.
++- The caller boundary excludes system IDs in every Android user but includes SDK
++  sandboxes (20000-29999) and app-zygote isolated children (90000-98999), as well as
++  ordinary apps and isolated processes. AOSP defines these ranges in
++  [Process.java](https://github.com/aosp-mirror/platform_frameworks_base/blob/main/core/java/android/os/Process.java).
++  Limiting callers to 10000-19999/99000-99999 would leave a query route around
++  filtering. The existing KernelSU umount/trusted-profile gate still applies.
 +- `ioprio_set` uses the running kernel's actual `ioprio_check_cap` before returning
 +  `ESRCH`. Otherwise an invalid priority would expose a different error for hidden
 +  and genuinely absent UIDs. The BZJA binary inlines this check in its syscall;
@@ -132,7 +138,7 @@ index 0000000..9d25729
 +Records in this directory identify the compiler/build and all validation results.
 diff --git a/docs/priority-filter-20261030/records/artifact.json b/docs/priority-filter-20261030/records/artifact.json
 new file mode 100644
-index 0000000..89b1a3c
+index 0000000..cd3535c
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/artifact.json
 @@ -0,0 +1,215 @@
@@ -348,20 +354,20 @@ index 0000000..89b1a3c
 +    "__version_ext_crcs": 0,
 +    "__version_ext_names": 1
 +  },
-+  "candidate_sha256": "f8693757c549704599ffac7ce48bea6df8963999bcce655d63ed0f3ba506ae07",
++  "candidate_sha256": "c6ae4744b48caceb1311536ba348b9f42bae1eee0152080ea353694680349eee",
 +  "baseline_sha256": "f3a5e86347eef1710f1decde1318048839263605812ef22127fe29987db37f92"
 +}
 diff --git a/docs/priority-filter-20261030/records/build.json b/docs/priority-filter-20261030/records/build.json
 new file mode 100644
-index 0000000..c4f2c45
+index 0000000..963d02f
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/build.json
 @@ -0,0 +1,93 @@
 +{
 +  "kind": "host cross-compilation only; no kernel module execution",
 +  "module": {
-+    "bytes": 3412440,
-+    "sha256": "f8693757c549704599ffac7ce48bea6df8963999bcce655d63ed0f3ba506ae07"
++    "bytes": 3412616,
++    "sha256": "c6ae4744b48caceb1311536ba348b9f42bae1eee0152080ea353694680349eee"
 +  },
 +  "commands": [
 +    {
@@ -443,7 +449,7 @@ index 0000000..c4f2c45
 +    "kernel/susfs_open_redirect.c": "7d7cbda61314a26ce15a8e5181f281b24c7c34eae55182d6558b3e7d70a62972",
 +    "kernel/susfs_or_entry.c": "397b1684e53a1d624022e3dfab03f5e7e5af4178ff8b5b0439a7bb8ebfd5ad84",
 +    "kernel/susfs_or_entry.h": "1cbdb6551b739048440bb1a0da85d40f0bf2bf1109e9adfe266c38362c5c588f",
-+    "kernel/susfs_priority_filter.c": "21cb294ed04597a423046db69376e9c69f064261252baecb94b5f541ed0cc252",
++    "kernel/susfs_priority_filter.c": "5d640047484c09c64420d41f3e18195e253d070d858e2849556fb455c9c34568",
 +    "kernel/susfs_supercall.c": "f93d48e21c69232c42a8fb9bebea1b8d3b2aac75bd7e5795a32d1ab1a9c18a70",
 +    "kernel/susfs_uname.c": "cfaec5ff8dc7fd159a8a4821f1e936dbc86ca630f4d2e519e90692162660f892",
 +    "kernel/symbol_resolver.c": "fb8432f5aae979b66a7813cc690792fa67b8791d83d881b0b161c03b59821ce5",
@@ -471,7 +477,7 @@ index 0000000..d3368d5
 +}
 diff --git a/docs/priority-filter-20261030/records/client-build.json b/docs/priority-filter-20261030/records/client-build.json
 new file mode 100644
-index 0000000..00ddc4f
+index 0000000..8231605
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/client-build.json
 @@ -0,0 +1,31 @@
@@ -498,9 +504,9 @@ index 0000000..00ddc4f
 +    "/workspace/scratch/8188798a6a94/priority-validation/rmgu-priority-ctl",
 +    "/workspace/scratch/8188798a6a94/susfs-priority-work/tools/rmgu_priority_ctl.c"
 +  ],
-+  "source_sha256": "da576b49a4eaf9445d42aa64d9e41e3a5833ff5c758e22b4bcd4297d243f340f",
-+  "sha256": "1974ecb5689da6d74ce182d65b13f3530328a87dfd850b81764eeb22ecb76143",
-+  "bytes": 11440,
++  "source_sha256": "afa8e8f8a421724502ea83a69f1fa5d077f6d1242bacf9084fa935e7938985d1",
++  "sha256": "7b179292704cae375fbbf0cac996ec6ae091ae449e97b33881ba26c8f76f8497",
++  "bytes": 11408,
 +  "arm64_pie": true,
 +  "interpreter": false,
 +  "dynamic_relocations": false,
@@ -543,24 +549,24 @@ index 0000000..6a7be1b
 +make: Leaving directory '/workspace/scratch/8188798a6a94/priority-ddk-toolchain/ddk-root/opt/ddk/kdir/android16-6.12'
 diff --git a/docs/priority-filter-20261030/records/distribution.json b/docs/priority-filter-20261030/records/distribution.json
 new file mode 100644
-index 0000000..d92c989
+index 0000000..5e5bb81
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/distribution.json
 @@ -0,0 +1,11 @@
 +{
 +  "module": {
-+    "bytes": 569992,
-+    "sha256": "af4319d887381152bc86048675ba885aab9e2464f568a82772626400a3c72d1c"
++    "bytes": 570080,
++    "sha256": "73fdfcc575217298ebb31be4e80cfc08048c57629bd92d53db9ef6fcb673edc8"
 +  },
 +  "priorityControl": {
-+    "bytes": 11440,
-+    "sha256": "1974ecb5689da6d74ce182d65b13f3530328a87dfd850b81764eeb22ecb76143"
++    "bytes": 11408,
++    "sha256": "7b179292704cae375fbbf0cac996ec6ae091ae449e97b33881ba26c8f76f8497"
 +  },
 +  "hardwareValidated": false
 +}
 diff --git a/docs/priority-filter-20261030/records/host-results.json b/docs/priority-filter-20261030/records/host-results.json
 new file mode 100644
-index 0000000..7851e6b
+index 0000000..6f7b069
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/host-results.json
 @@ -0,0 +1,383 @@
@@ -578,49 +584,49 @@ index 0000000..7851e6b
 +      "suite": "avc_spoof",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 0.47,
++      "seconds": 0.57,
 +      "log": "avc_spoof-sanitizers.log"
 +    },
 +    {
 +      "suite": "feature_hooks",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 0.32,
++      "seconds": 0.42,
 +      "log": "feature_hooks.log"
 +    },
 +    {
 +      "suite": "feature_hooks",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 0.57,
++      "seconds": 0.72,
 +      "log": "feature_hooks-sanitizers.log"
 +    },
 +    {
 +      "suite": "fp_hooks",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 0.47,
++      "seconds": 0.57,
 +      "log": "fp_hooks.log"
 +    },
 +    {
 +      "suite": "fp_hooks",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 0.77,
++      "seconds": 0.87,
 +      "log": "fp_hooks-sanitizers.log"
 +    },
 +    {
 +      "suite": "identity_controls",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 3.38,
++      "seconds": 3.84,
 +      "log": "identity_controls.log"
 +    },
 +    {
 +      "suite": "identity_controls",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 4.84,
++      "seconds": 5.09,
 +      "log": "identity_controls-sanitizers.log"
 +    },
 +    {
@@ -641,35 +647,35 @@ index 0000000..7851e6b
 +      "suite": "kstat_compat",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 0.27,
++      "seconds": 0.32,
 +      "log": "kstat_compat.log"
 +    },
 +    {
 +      "suite": "kstat_statx",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 0.21,
++      "seconds": 0.27,
 +      "log": "kstat_statx.log"
 +    },
 +    {
 +      "suite": "kstat_statx",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 0.42,
++      "seconds": 0.47,
 +      "log": "kstat_statx-sanitizers.log"
 +    },
 +    {
 +      "suite": "lifecycle",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 3.28,
++      "seconds": 2.68,
 +      "log": "lifecycle.log"
 +    },
 +    {
 +      "suite": "lifecycle",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 4.78,
++      "seconds": 4.59,
 +      "log": "lifecycle-sanitizers.log"
 +    },
 +    {
@@ -683,21 +689,21 @@ index 0000000..7851e6b
 +      "suite": "lsm_lifetime",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 0.27,
++      "seconds": 0.22,
 +      "log": "lsm_lifetime-sanitizers.log"
 +    },
 +    {
 +      "suite": "map_files",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 5.18,
++      "seconds": 5.59,
 +      "log": "map_files.log"
 +    },
 +    {
 +      "suite": "map_files",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 5.68,
++      "seconds": 5.64,
 +      "log": "map_files-sanitizers.log"
 +    },
 +    {
@@ -711,35 +717,35 @@ index 0000000..7851e6b
 +      "suite": "map_hooks",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 0.87,
++      "seconds": 0.62,
 +      "log": "map_hooks-sanitizers.log"
 +    },
 +    {
 +      "suite": "module_control",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 0.67,
++      "seconds": 0.62,
 +      "log": "module_control.log"
 +    },
 +    {
 +      "suite": "mount_hooks",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 0.82,
++      "seconds": 0.67,
 +      "log": "mount_hooks.log"
 +    },
 +    {
 +      "suite": "mount_hooks",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 1.43,
++      "seconds": 1.37,
 +      "log": "mount_hooks-sanitizers.log"
 +    },
 +    {
 +      "suite": "mount_prefix",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 0.22,
++      "seconds": 0.16,
 +      "log": "mount_prefix.log"
 +    },
 +    {
@@ -767,14 +773,14 @@ index 0000000..7851e6b
 +      "suite": "patch_memory_flush",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 0.16,
++      "seconds": 0.17,
 +      "log": "patch_memory_flush.log"
 +    },
 +    {
 +      "suite": "patch_memory_flush",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 0.17,
++      "seconds": 0.22,
 +      "log": "patch_memory_flush-sanitizers.log"
 +    },
 +    {
@@ -788,21 +794,21 @@ index 0000000..7851e6b
 +      "suite": "path_creds",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 1.52,
++      "seconds": 1.27,
 +      "log": "path_creds-sanitizers.log"
 +    },
 +    {
 +      "suite": "path_entry",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 0.57,
++      "seconds": 0.42,
 +      "log": "path_entry.log"
 +    },
 +    {
 +      "suite": "path_entry",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 0.77,
++      "seconds": 0.72,
 +      "log": "path_entry-sanitizers.log"
 +    },
 +    {
@@ -816,7 +822,7 @@ index 0000000..7851e6b
 +      "suite": "path_index",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 0.47,
++      "seconds": 0.42,
 +      "log": "path_index-sanitizers.log"
 +    },
 +    {
@@ -830,49 +836,49 @@ index 0000000..7851e6b
 +      "suite": "path_listing",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 7.66,
++      "seconds": 7.5,
 +      "log": "path_listing-sanitizers.log"
 +    },
 +    {
 +      "suite": "path_readlink_lsm",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 0.62,
++      "seconds": 0.57,
 +      "log": "path_readlink_lsm.log"
 +    },
 +    {
 +      "suite": "path_readlink_lsm",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 1.33,
++      "seconds": 1.07,
 +      "log": "path_readlink_lsm-sanitizers.log"
 +    },
 +    {
 +      "suite": "priority_filter",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 2.12,
++      "seconds": 2.43,
 +      "log": "priority_filter.log"
 +    },
 +    {
 +      "suite": "priority_filter",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 3.88,
++      "seconds": 3.99,
 +      "log": "priority_filter-sanitizers.log"
 +    },
 +    {
 +      "suite": "priority_tool",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 1.27,
++      "seconds": 1.37,
 +      "log": "priority_tool.log"
 +    },
 +    {
 +      "suite": "priority_tool",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 1.22,
++      "seconds": 1.47,
 +      "log": "priority_tool-sanitizers.log"
 +    },
 +    {
@@ -886,14 +892,14 @@ index 0000000..7851e6b
 +      "suite": "r18_fixes",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 1.68,
++      "seconds": 1.77,
 +      "log": "r18_fixes-sanitizers.log"
 +    },
 +    {
 +      "suite": "redirect_entry",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 0.27,
++      "seconds": 0.22,
 +      "log": "redirect_entry.log"
 +    },
 +    {
@@ -907,35 +913,35 @@ index 0000000..7851e6b
 +      "suite": "redirect_maps",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 0.22,
++      "seconds": 0.21,
 +      "log": "redirect_maps.log"
 +    },
 +    {
 +      "suite": "redirect_maps",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 0.37,
++      "seconds": 0.42,
 +      "log": "redirect_maps-sanitizers.log"
 +    },
 +    {
 +      "suite": "redirect_statfs",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 0.16,
++      "seconds": 0.22,
 +      "log": "redirect_statfs.log"
 +    },
 +    {
 +      "suite": "redirect_statfs",
 +      "sanitizers": true,
 +      "exit_code": 0,
-+      "seconds": 0.32,
++      "seconds": 0.27,
 +      "log": "redirect_statfs-sanitizers.log"
 +    },
 +    {
 +      "suite": "userspace",
 +      "sanitizers": false,
 +      "exit_code": 0,
-+      "seconds": 0.47,
++      "seconds": 0.42,
 +      "log": "userspace.log"
 +    },
 +    {
@@ -949,9 +955,36 @@ index 0000000..7851e6b
 +}
 diff --git a/docs/priority-filter-20261030/records/priority_filter-sanitizers.log b/docs/priority-filter-20261030/records/priority_filter-sanitizers.log
 new file mode 100644
-index 0000000..17c5a2b
+index 0000000..21b8ab9
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/priority_filter-sanitizers.log
+@@ -0,0 +1,21 @@
++PASS compat=1 configuration
++PASS compat=1 abi-faults
++PASS compat=1 queries
++PASS compat=1 validation
++PASS compat=1 initialization
++PASS compat=1 sleeping-teardown
++PASS compat=1 concurrency
++PASS compat=0 configuration
++PASS compat=0 abi-faults
++PASS compat=0 queries
++PASS compat=0 validation
++PASS compat=0 initialization
++PASS compat=0 sleeping-teardown
++PASS compat=0 concurrency
++PASS negative/shared-compat-original
++PASS negative/omit-ioprio-validation
++PASS negative/skip-package-validation
++PASS negative/omit-callback-entry
++PASS negative/partial-compat-coverage
++PASS negative/narrow-app-caller-range
++PASS negative/publication-uaf
+diff --git a/docs/priority-filter-20261030/records/priority_filter.log b/docs/priority-filter-20261030/records/priority_filter.log
+new file mode 100644
+index 0000000..03c3846
+--- /dev/null
++++ b/docs/priority-filter-20261030/records/priority_filter.log
 @@ -0,0 +1,20 @@
 +PASS compat=1 configuration
 +PASS compat=1 abi-faults
@@ -972,43 +1005,20 @@ index 0000000..17c5a2b
 +PASS negative/skip-package-validation
 +PASS negative/omit-callback-entry
 +PASS negative/partial-compat-coverage
-+PASS negative/publication-uaf
-diff --git a/docs/priority-filter-20261030/records/priority_filter.log b/docs/priority-filter-20261030/records/priority_filter.log
-new file mode 100644
-index 0000000..1364400
---- /dev/null
-+++ b/docs/priority-filter-20261030/records/priority_filter.log
-@@ -0,0 +1,19 @@
-+PASS compat=1 configuration
-+PASS compat=1 abi-faults
-+PASS compat=1 queries
-+PASS compat=1 validation
-+PASS compat=1 initialization
-+PASS compat=1 sleeping-teardown
-+PASS compat=1 concurrency
-+PASS compat=0 configuration
-+PASS compat=0 abi-faults
-+PASS compat=0 queries
-+PASS compat=0 validation
-+PASS compat=0 initialization
-+PASS compat=0 sleeping-teardown
-+PASS compat=0 concurrency
-+PASS negative/shared-compat-original
-+PASS negative/omit-ioprio-validation
-+PASS negative/skip-package-validation
-+PASS negative/omit-callback-entry
-+PASS negative/partial-compat-coverage
++PASS negative/narrow-app-caller-range
 diff --git a/docs/priority-filter-20261030/records/priority_tool-sanitizers.log b/docs/priority-filter-20261030/records/priority_tool-sanitizers.log
 new file mode 100644
-index 0000000..47b0056
+index 0000000..cef6ed4
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/priority_tool-sanitizers.log
-@@ -0,0 +1,25 @@
+@@ -0,0 +1,28 @@
 +PASS priority client set
 +PASS priority client clear
 +PASS priority client status
 +PASS priority client query
 +PASS priority client probe
++PASS priority client probe-sdk
++PASS priority client probe-app-zygote
 +PASS priority client unhandled
 +PASS priority client command-error
 +PASS priority client visible
@@ -1029,17 +1039,20 @@ index 0000000..47b0056
 +PASS negative/omit-private-mounts
 +PASS negative/valid-scheduling-write
 +PASS negative/omit-unsupported-sentinel
++PASS negative/narrow-caller-range
 diff --git a/docs/priority-filter-20261030/records/priority_tool.log b/docs/priority-filter-20261030/records/priority_tool.log
 new file mode 100644
-index 0000000..47b0056
+index 0000000..cef6ed4
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/priority_tool.log
-@@ -0,0 +1,25 @@
+@@ -0,0 +1,28 @@
 +PASS priority client set
 +PASS priority client clear
 +PASS priority client status
 +PASS priority client query
 +PASS priority client probe
++PASS priority client probe-sdk
++PASS priority client probe-app-zygote
 +PASS priority client unhandled
 +PASS priority client command-error
 +PASS priority client visible
@@ -1060,6 +1073,7 @@ index 0000000..47b0056
 +PASS negative/omit-private-mounts
 +PASS negative/valid-scheduling-write
 +PASS negative/omit-unsupported-sentinel
++PASS negative/narrow-caller-range
 diff --git a/kernel/Makefile b/kernel/Makefile
 index 6646f87..5aa4092 100644
 --- a/kernel/Makefile
@@ -1144,10 +1158,10 @@ index 0c9ad0c..a142bbd 100644
  
 diff --git a/kernel/susfs_priority_filter.c b/kernel/susfs_priority_filter.c
 new file mode 100644
-index 0000000..d754554
+index 0000000..bffe714
 --- /dev/null
 +++ b/kernel/susfs_priority_filter.c
-@@ -0,0 +1,333 @@
+@@ -0,0 +1,334 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Samsung adaptation of inforcqb/susfs4ksu-for-lkm PR #158, d55749105bea.
@@ -1220,9 +1234,10 @@ index 0000000..d754554
 +        uid_eq(current_euid(), GLOBAL_ROOT_UID))
 +        return false;
 +    caller_appid = caller % SUSFS_PER_USER_RANGE;
-+    /* Exclude system/shell accounts in EVERY Android user, not just user zero. */
-+    if (!((caller_appid >= PRIO_FIRST_APP && caller_appid <= PRIO_LAST_APP) ||
-+          susfs_uid_is_isolated(caller)))
++    /* Exclude system/shell in EVERY Android user, while retaining upstream's
++     * app-space boundary. SDK sandboxes (20000+) and app-zygote children
++     * (90000+) must not bypass filtering through a narrower caller range. */
++    if (caller_appid < PRIO_FIRST_APP)
 +        return false;
 +    target = (uid_t)who;
 +    appid = target % SUSFS_PER_USER_RANGE;
@@ -1581,10 +1596,10 @@ index 41e003f..4c882af 100644
          }
 diff --git a/tests/priority_filter/README.md b/tests/priority_filter/README.md
 new file mode 100644
-index 0000000..2bade00
+index 0000000..a772499
 --- /dev/null
 +++ b/tests/priority_filter/README.md
-@@ -0,0 +1,14 @@
+@@ -0,0 +1,16 @@
 +# Priority filter host checks
 +
 +The runner compiles the entire production priority layer with modeled allocation,
@@ -1594,17 +1609,19 @@ index 0000000..2bade00
 +names and owners, lookup/allocator/copy faults, unterminated payloads, exact UID
 +and namespace gates, preserved arguments and return values, I/O validation error
 +ordering, partial installation rollback, sleeping teardown and concurrent writers.
++Caller cases also cover SDK sandbox and app-zygote UID boundaries in multiple
++Android users, across all eight syscall entries, with trusted-profile passthrough.
 +
 +Negative controls remove compat separation, validation, path checks, callback
-+admission or complete compat coverage. The sanitizer run also reintroduces a
-+publication-lifetime bug. Each control must be detected. These models do not
++admission, complete compat coverage, or SDK/app-zygote caller coverage. The
++sanitizer run also reintroduces a publication-lifetime bug. Each control must be detected. These models do not
 +establish live kernel behavior or Samsung protected-memory compatibility.
 diff --git a/tests/priority_filter/priority_test.c b/tests/priority_filter/priority_test.c
 new file mode 100644
-index 0000000..bf2a8e1
+index 0000000..af3ea87
 --- /dev/null
 +++ b/tests/priority_filter/priority_test.c
-@@ -0,0 +1,277 @@
+@@ -0,0 +1,285 @@
 +/* Execute the actual priority-filter C with instrumented kernel API models. */
 +#include <assert.h>
 +#include <ctype.h>
@@ -1815,6 +1832,14 @@ index 0000000..bf2a8e1
 +        susfs_syscall_fn_t saved=*slot;*slot=NULL;assert(call(op,compat,cls,10001,0)==-ENOSYS);*slot=saved;
 +    }
 +    for(unsigned int uid=0;uid<10000;uid+=1000){as_app(uid);assert(call(PRIO_GET,false,PRIO_USER,10001,0)==110);as_app(1000000+uid);assert(call(PRIO_GET,false,PRIO_USER,10001,0)==110);}
++    unsigned int app_callers[]={10000,19999,20000,29999,90000,98999,99000,99999};
++    for(size_t i=0;i<ARRAY_SIZE(app_callers);i++)for(unsigned int user=0;user<2;user++) {
++        as_app(app_callers[i]+user*100000);
++        for(unsigned int op=0;op<PRIO_OP_COUNT;op++)for(int compat=0;compat<2;compat++)
++            assert(call(op,compat,op<PRIO_IOGET?PRIO_USER:IOPRIO_WHO_USER,10001,0)==-ESRCH);
++    }
++    as_app(20002);ksu_umount=false;assert(call(PRIO_GET,false,PRIO_USER,10001,0)==110);
++    as_app(90002);ksu_umount=false;assert(call(PRIO_GET,false,PRIO_USER,10001,0)==110);
 +    as_app(1010001);assert(call(PRIO_GET,false,PRIO_USER,10001,0)==110); /* same app across users */
 +    as_app(99001);ksu_umount=false;assert(call(PRIO_GET,false,PRIO_USER,10001,0)==-ESRCH); /* isolated */
 +    as_app(10002);ksu_umount=false;susfs_ksu_umount_gate_off=true;
@@ -1884,10 +1909,10 @@ index 0000000..bf2a8e1
 +}
 diff --git a/tests/priority_filter/run.py b/tests/priority_filter/run.py
 new file mode 100644
-index 0000000..d80695e
+index 0000000..a5bfde4
 --- /dev/null
 +++ b/tests/priority_filter/run.py
-@@ -0,0 +1,46 @@
+@@ -0,0 +1,47 @@
 +#!/usr/bin/env python3
 +"""Run the real priority layer C with ownership, VFS, callback and RCU models."""
 +import argparse,os,re,subprocess,tempfile
@@ -1925,6 +1950,7 @@ index 0000000..d80695e
 +  ('skip-package-validation','if (!prio_package_valid(package))','if (false)','configuration'),
 +  ('omit-callback-entry','susfs_fp_callback_enter(&prio_hooks[operation]);','/* omitted */','queries'),
 +  ('partial-compat-coverage','IS_ENABLED(CONFIG_COMPAT) && !prio_hooks[i].compat_installed','false','initialization'),
++  ('narrow-app-caller-range','if (caller_appid < PRIO_FIRST_APP)','if (!((caller_appid >= PRIO_FIRST_APP && caller_appid <= PRIO_LAST_APP) || susfs_uid_is_isolated(caller)))','queries'),
 +  ('publication-uaf','if (next->count)\n        next = NULL;\n    mutex_unlock(&prio_config_lock);','mutex_unlock(&prio_config_lock);\n    sched_yield();\n    if (next->count)\n        next = NULL;','concurrency'),
 + ]
 + for label,before,after,case in negatives:
@@ -1936,10 +1962,10 @@ index 0000000..d80695e
 +  print('PASS negative/'+label,flush=True)
 diff --git a/tests/priority_tool/README.md b/tests/priority_tool/README.md
 new file mode 100644
-index 0000000..c92220b
+index 0000000..b64488a
 --- /dev/null
 +++ b/tests/priority_tool/README.md
-@@ -0,0 +1,8 @@
+@@ -0,0 +1,10 @@
 +# Priority client host checks
 +
 +The production freestanding client runs against a syscall model, never real host
@@ -1947,13 +1973,15 @@ index 0000000..c92220b
 +changes, complete group/UID dropping, read-only probes, invalid-only scheduling
 +validation, unsupported-command sentinels, correct JSON/exit states, and every
 +failure before dropping IDs. Negative controls must detect removing mount privacy,
-+sending a valid scheduling update, or accepting an unanswered ABI command.
++sending a valid scheduling update, accepting an unanswered ABI command, or
++rejecting SDK sandbox callers through an ordinary-app-only UID gate. Successful
++probes include ordinary, SDK sandbox and app-zygote caller IDs.
 diff --git a/tests/priority_tool/run.py b/tests/priority_tool/run.py
 new file mode 100644
-index 0000000..e2e6ee1
+index 0000000..517f6cc
 --- /dev/null
 +++ b/tests/priority_tool/run.py
-@@ -0,0 +1,32 @@
+@@ -0,0 +1,33 @@
 +#!/usr/bin/env python3
 +"""Compile the production control client with a syscall model; never changes host IDs."""
 +import argparse,json,os,re,subprocess,tempfile
@@ -1964,7 +1992,7 @@ index 0000000..e2e6ee1
 +abi=re.sub(r'^#include[^\n]*\n','',(root/'kernel/susfs_abi.h').read_text(),flags=re.M)
 +flags=['-O1','-g','-fsanitize=address,undefined','-fno-omit-frame-pointer','-no-pie'] if a.sanitizers else ['-O2']
 +env=dict(os.environ,ASAN_OPTIONS='detect_leaks=0:abort_on_error=1',UBSAN_OPTIONS='halt_on_error=1')
-+cases=['set','clear','status','query','probe','unhandled','command-error','visible','wrong-validation','missing-target','not-root','no-status','not-ready','overflow','self',*[f'fail-{s}' for s in ['namespace','private','keepcaps','nnp','groups','gids','uids']]]
++cases=['set','clear','status','query','probe','probe-sdk','probe-app-zygote','unhandled','command-error','visible','wrong-validation','missing-target','not-root','no-status','not-ready','overflow','self',*[f'fail-{s}' for s in ['namespace','private','keepcaps','nnp','groups','gids','uids']]]
 +with tempfile.TemporaryDirectory(prefix='priority-tool-') as d:
 + d=Path(d);(d/'abi.h').write_text(abi)
 + def build(label,source):
@@ -1980,7 +2008,8 @@ index 0000000..e2e6ee1
 + for label,before,after,case in [
 +  ('omit-private-mounts','0x4000|0x40000','0x4000','probe'),
 +  ('valid-scheduling-write','invalid=SC(30,3,target,-1','invalid=SC(30,3,target,0','probe'),
-+  ('omit-unsupported-sentinel','payload.err=126','payload.err=0','unhandled')]:
++  ('omit-unsupported-sentinel','payload.err=126','payload.err=0','unhandled'),
++  ('narrow-caller-range','if(app<10000||','if((app<10000||app>19999)||','probe-sdk')]:
 +  assert before in text
 +  exe=build(label,text.replace(before,after,1))
 +  r=subprocess.run([str(exe),case],capture_output=True,text=True,env=env,timeout=10)
@@ -1988,10 +2017,10 @@ index 0000000..e2e6ee1
 +  print('PASS negative/'+label,flush=True)
 diff --git a/tests/priority_tool/tool_test.c b/tests/priority_tool/tool_test.c
 new file mode 100644
-index 0000000..c962d91
+index 0000000..d4cce47
 --- /dev/null
 +++ b/tests/priority_tool/tool_test.c
-@@ -0,0 +1,83 @@
+@@ -0,0 +1,85 @@
 +#include <assert.h>
 +#include <stdint.h>
 +#include <stdbool.h>
@@ -2008,7 +2037,7 @@ index 0000000..c962d91
 +static char captured[8192];static unsigned long captured_len;
 +static const char *test_case;
 +static int ns_created,private_mount,keepcaps,nnp,groups,gids,ids;
-+static long identity,baseline_error,invalid_error=-22;
++static long identity,baseline_error,invalid_error=-22,probe_uid=19998;
 +static int hidden=1,unhandled,command_error;
 +static int failing(long n,long option) {
 +    if(!strncmp(test_case,"fail-",5)){
@@ -2039,8 +2068,8 @@ index 0000000..c962d91
 +        assert(a==(n==141?2:3));
 +        if(eq(test_case,"query")){assert(identity==10002&&!ids&&!ns_created&&b==10001);return -3;}
 +        if(!identity){assert(b==10001);return baseline_error?baseline_error:(n==141?20:0);}
-+        assert(ids&&identity==19998);
-+        if(b==19998)return n==141?20:0;
++        assert(ids&&identity==probe_uid);
++        if(b==probe_uid)return n==141?20:0;
 +        assert(b==10001);return hidden?-3:(n==141?20:0);
 +    }
 +    if(failing(n,a))return -1;
@@ -2048,9 +2077,9 @@ index 0000000..c962d91
 +    if(n==40){assert(ns_created&&!identity&&a==0&&!strcmp((char *)b,"/")&&c==0&&d==(0x4000|0x40000));private_mount=1;return 0;}
 +    if(n==167){assert(private_mount&&!identity);if(a==8){assert(!b);keepcaps=1;}else{assert(a==38&&b==1&&keepcaps);nnp=1;}return 0;}
 +    if(n==159){assert(private_mount&&nnp&&!a&&!b);groups=1;return 0;}
-+    if(n==149){assert(groups&&!identity&&a==19998&&b==a&&c==a);gids=1;return 0;}
-+    if(n==147){assert(private_mount&&gids&&!identity&&a==19998&&b==a&&c==a);ids=1;identity=a;return 0;}
-+    if(n==30){assert(ids&&identity==19998&&a==3&&b==10001&&c==-1);return invalid_error;}
++    if(n==149){assert(groups&&!identity&&a==probe_uid&&b==a&&c==a);gids=1;return 0;}
++    if(n==147){assert(private_mount&&gids&&!identity&&a==probe_uid&&b==a&&c==a);ids=1;identity=a;return 0;}
++    if(n==30){assert(ids&&identity==probe_uid&&a==3&&b==10001&&c==-1);return invalid_error;}
 +    assert(!"unexpected syscall");return -1;
 +}
 +int main(int argc,char **argv) {
@@ -2059,6 +2088,8 @@ index 0000000..c962d91
 +    else if(eq(test_case,"clear")){args[1]="clear";ac=2;}
 +    else if(eq(test_case,"status")){args[1]="status";ac=2;}
 +    else if(eq(test_case,"query")){args[1]="query";args[2]="10001";ac=3;identity=10002;}
++    else if(eq(test_case,"probe-sdk")){args[2]="20002";probe_uid=20002;}
++    else if(eq(test_case,"probe-app-zygote")){args[2]="90002";probe_uid=90002;}
 +    else if(eq(test_case,"unhandled")){args[1]="clear";ac=2;unhandled=1;expected=1;}
 +    else if(eq(test_case,"command-error")){args[1]="clear";ac=2;command_error=-13;expected=1;}
 +    else if(eq(test_case,"visible")){hidden=0;expected=1;}
@@ -2072,7 +2103,7 @@ index 0000000..c962d91
 +    else assert(eq(test_case,"probe"));
 +    int rc=priority_tool_main(ac,args);assert(rc==expected);captured[captured_len]=0;
 +    if(!strncmp(test_case,"fail-",5))assert(!identity&&!ids);
-+    if(eq(test_case,"probe"))assert(strstr(captured,"\"passed\":true"));
++    if(eq(test_case,"probe")||eq(test_case,"probe-sdk")||eq(test_case,"probe-app-zygote"))assert(strstr(captured,"\"passed\":true"));
 +    fputs(captured,stdout);return 0;
 +}
 diff --git a/tools/build_priority_client.py b/tools/build_priority_client.py
@@ -2213,10 +2244,10 @@ index 0000000..d34bbf7
 +raise SystemExit(not all(checks.values()))
 diff --git a/tools/rmgu_priority_ctl.c b/tools/rmgu_priority_ctl.c
 new file mode 100644
-index 0000000..7553b92
+index 0000000..2d59c0f
 --- /dev/null
 +++ b/tools/rmgu_priority_ctl.c
-@@ -0,0 +1,131 @@
+@@ -0,0 +1,130 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/* Freestanding ARM64 priority-filter control and read-only verification client.
 + * set <comma-list> | clear | status | query <uid> | probe <caller-uid> <target-uid>
@@ -2295,8 +2326,7 @@ index 0000000..7553b92
 +static int probe(unsigned int caller,unsigned int target) {
 +    unsigned int app=caller%100000,target_app=target%100000;
 +    long rc,root_gp,root_io,gp,io,self_gp,self_io,invalid;
-+    if(!((app>=10000&&app<=19999)||(app>=99000&&app<=99999)) ||
-+       target_app<10000||target_app>19999||app==target_app)
++    if(app<10000||target_app<10000||target_app>19999||app==target_app)
 +        return fail("Use distinct application IDs for caller and target",-22);
 +    if(SC(174,0,0,0,0,0,0)!=0||SC(175,0,0,0,0,0,0)!=0)
 +        return fail("Probe must start as root",-1);

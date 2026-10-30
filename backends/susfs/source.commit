@@ -1,6 +1,6 @@
-tree 3215fdf90933f6133eb5937a859b674c09ddc719
-parent 961fb6a0585c4ad503f9a9e1fe107058d3595c92
-author Codex <codex@openai.com> 1793396356 +0100
-committer Codex <codex@openai.com> 1793396356 +0100
+tree 594eb2024538539fe9af0163fbb2f6b935fcb76b
+parent ee5c99e0fd5d5d941a09a1a689f93fb6d2eeec13
+author Codex <codex@openai.com> 1793397418 +0100
+committer Codex <codex@openai.com> 1793397418 +0100
 
-Adapt priority UID filtering for Samsung with transactional rules and full hook lifetimes
+Keep SDK sandbox and app-zygote callers inside the priority filter boundary

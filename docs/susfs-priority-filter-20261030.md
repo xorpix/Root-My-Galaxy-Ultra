@@ -10,7 +10,9 @@ This is one specific visibility gap; it does not hide every trace of an app.
 No packages are selected automatically. Existing SusFS activation and the app UI
 are unchanged. Rules last until a full reboot and can be replaced or cleared.
 Root, system services, trusted KernelSU profiles and an app querying itself keep
-their normal behavior. Packages sharing a UID are inseparable. Selected app IDs
+their normal behavior. The caller boundary also covers SDK sandbox and app-zygote
+process UIDs, subject to the same KernelSU profile gate. Packages sharing a UID
+are inseparable. Selected app IDs
 apply across Android users, but configuration currently resolves packages in the
 main Android user only. Reapply the list after installing, removing or reinstalling
 a selected package: UID changes or reuse can make an old rule inaccurate.
