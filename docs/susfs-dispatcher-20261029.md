@@ -54,13 +54,15 @@ other SusFS probes remain.
 source, test code, build report and validation records are in `source.tar.gz`;
 `dispatcher.patch` is the focused delta from the previous Samsung source.
 
-These checks do not establish live Samsung protected-memory writes or syscall
-dispatch. Phone validation is pending. The integration workflow builds a signed
-test APK; it does not publish a stable release.
+The maintainer subsequently reported that the signed dispatcher test works on
+their phone and approved release publication. The report covers the dispatcher
+test build; refreshed backend pairs receive the release workflow's separate
+build and bundle validation. The integration workflow builds signed test APKs;
+the backend release workflow publishes the combined stable release.
 
 ## Phone check
 
-Install the test APK, fully reboot, restore root and activate SusFS. Read the
+Install the APK, fully reboot, restore root and activate SusFS. Read the
 route, confirm SusFS status and the manager's normal version/feature/rule
 commands, and check the configured modules after the normal soft restart.
 A soft restart alone retains the previous loaded module.
