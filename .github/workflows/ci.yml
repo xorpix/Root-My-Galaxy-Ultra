@@ -173,7 +173,8 @@ jobs:
             echo "## What's new"
             echo
             if [ -f "docs/release-notes/${VERSION_NAME}.md" ]; then
-              python3 -c 'import sys; from pathlib import Path; sys.path.insert(0, "tools/backend-refresh"); from common import load_config; from refresh import render_curated_notes; print(render_curated_notes(Path(sys.argv[1]).read_text(), load_config()))' "docs/release-notes/${VERSION_NAME}.md"
+              # Weekly releases commit finished notes; pending releases still have a table marker.
+              python3 -c 'import sys; from pathlib import Path; sys.path.insert(0, "tools/backend-refresh"); from common import load_config; from refresh import render_curated_notes; text = Path(sys.argv[1]).read_text(); print(render_curated_notes(text, load_config()) if "<!-- RMGU_BACKEND_TABLE -->" in text else text, end="")' "docs/release-notes/${VERSION_NAME}.md"
               echo
             fi
             echo "### CI build"
