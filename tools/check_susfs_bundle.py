@@ -37,13 +37,22 @@ def verify(apk=None):
     assert tree_hash(tree)==manifest['sourceTree'],'source tree digest'
     module=manifest['module'];data=(ROOT/module['path']).read_bytes()
     assert len(data)==module['bytes'] and hashlib.sha256(data).hexdigest()==module['sha256'],'module digest'
+    control=manifest.get('priorityControl');control_data=None
+    if control:
+        control_data=(ROOT/control['path']).read_bytes()
+        assert len(control_data)==control['bytes'] and hashlib.sha256(control_data).hexdigest()==control['sha256'],'priority control digest'
+        assert control_data[:4]==b'\x7fELF' and int.from_bytes(control_data[18:20],'little')==183,'priority control ARM64 ELF'
     profiles=list((ROOT/'app/src/main/assets/susfs').glob('*/profile.json'));assert profiles
     for path in profiles:
         p=json.loads(path.read_text())
         assert p['sourceCommit']==manifest['sourceCommit'] and p['module']['sha256']==module['sha256'],str(path)
+        if control:
+            assert p.get('priorityControl')=={'file':Path(control['path']).name,'sha256':control['sha256']},str(path)+' priority control'
     if apk:
         with zipfile.ZipFile(apk) as z:
             assert z.read('assets/susfs/bzig/susfs_guard_lkm.ko')==data,'APK module'
+            if control:
+                assert z.read('lib/arm64-v8a/'+Path(control['path']).name)==control_data,'APK priority control'
             for path in profiles:
                 name='assets/'+path.relative_to(ROOT/'app/src/main/assets').as_posix()
                 assert json.loads(z.read(name))==json.loads(path.read_text()),name

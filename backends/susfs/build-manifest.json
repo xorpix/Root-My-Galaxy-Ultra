@@ -1,24 +1,30 @@
 {
   "schema": 1,
-  "sourceCommit": "961fb6a0585c4ad503f9a9e1fe107058d3595c92",
-  "sourceTree": "8fd0d9cab6fc13e4bb0161b479294f1a86a3a132",
-  "sourceParent": "cc2b27a3f66f11cd9b6bf511a60b8e47c128eae4",
+  "sourceCommit": "ee5c99e0fd5d5d941a09a1a689f93fb6d2eeec13",
+  "sourceTree": "3215fdf90933f6133eb5937a859b674c09ddc719",
+  "sourceParent": "961fb6a0585c4ad503f9a9e1fe107058d3595c92",
   "sourceArchive": "source.tar.gz",
-  "sourceArchiveSha256": "6b5b2fb908e650846ba894906f5be347f679c183a86e5f0397434042a7535ff1",
+  "sourceArchiveSha256": "c6f5bcee2f1ea5514932155fba99ec15c5d74b3c594eebcd9f71364255d0ad96",
   "module": {
     "path": "app/src/main/assets/susfs/bzig/susfs_guard_lkm.ko",
-    "sha256": "f3a5e86347eef1710f1decde1318048839263605812ef22127fe29987db37f92",
-    "bytes": 555000
+    "sha256": "af4319d887381152bc86048675ba885aab9e2464f568a82772626400a3c72d1c",
+    "bytes": 569992
   },
   "validation": {
-    "hostSuites": 26,
-    "hostRunnerExecutions": 50,
+    "hostSuites": 28,
+    "hostRunnerExecutions": 54,
     "identityHeaderCases": 13,
     "pathEntryHeaderCases": 3,
-    "kernelImports": 136,
+    "kernelImports": 139,
     "hardwareValidated": false,
-    "syscallWrappers": 14,
+    "syscallWrappers": 22,
     "dispatcherCasesPerMode": 40,
-    "dispatcherNegativeControlsPerMode": 4
+    "dispatcherNegativeControlsPerMode": 4,
+    "bzjaStaticPriorityCheck": true
+  },
+  "priorityControl": {
+    "path": "app/src/main/jniLibs/arm64-v8a/librmgususfs_priority.so",
+    "sha256": "1974ecb5689da6d74ce182d65b13f3530328a87dfd850b81764eeb22ecb76143",
+    "bytes": 11440
   }
 }

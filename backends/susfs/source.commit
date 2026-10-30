@@ -1,6 +1,6 @@
-tree 8fd0d9cab6fc13e4bb0161b479294f1a86a3a132
-parent cc2b27a3f66f11cd9b6bf511a60b8e47c128eae4
-author RMGU source maintenance <rmgu-source@users.noreply.github.com> 1793298541 +0000
-committer RMGU source maintenance <rmgu-source@users.noreply.github.com> 1793298541 +0000
+tree 3215fdf90933f6133eb5937a859b674c09ddc719
+parent 961fb6a0585c4ad503f9a9e1fe107058d3595c92
+author Codex <codex@openai.com> 1793396356 +0100
+committer Codex <codex@openai.com> 1793396356 +0100
 
-supercall: prefer verified table delivery with guarded Samsung fallback
+Adapt priority UID filtering for Samsung with transactional rules and full hook lifetimes
