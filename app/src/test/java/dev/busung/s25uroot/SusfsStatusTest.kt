@@ -56,6 +56,11 @@ class SusfsStatusTest {
     }
     private fun device() = DeviceSnapshot("samsung", "SM-S948B", "m3q", "6.12.69-android16-6-pb4d3caf-abogkiS948BXXS4BZIG-4k", "version", "aarch64", "BZIG", "fp", "17", 37, "arm64-v8a", 4096)
     private fun bzid() = device().copy(model = "SM-S948W", incremental = "S948WVLU4BZID", kernelRelease = "6.12.69-android16-6-pee899be-abogkiS948USQU4BZID-4k")
+    @Test fun bzjaRemainsAnUntestedSusfsCandidate() {
+        val release = "6.12.69-android16-6-pa4ef354-abogkiS948BXXU5BZJA-4k"
+        val bzja = device().copy(incremental = "S948BXXU5BZJA", kernelRelease = release)
+        assertEquals(SusfsTarget.FamilyFallback(release), susfsTargetFor(bzja))
+    }
     @Test fun variantSelection() {
         assertEquals(SusfsTarget.Known("bzig", "BZIG"), susfsTargetFor(device()))
         assertEquals(SusfsTarget.Known("bzid", "BZID"), susfsTargetFor(bzid()))

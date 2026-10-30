@@ -53,6 +53,30 @@ class DfFamilyTest {
         }
     }
 
+    @Test fun bzjaCandidateSelectsAllBackendsAndRejectsThePreUpdateProfile() {
+        // Kernel identity extracted offline from the official EUX BZJA boot image.
+        // Android properties describe the intended test phone, not a live inventory.
+        val bzja = device.copy(
+            model = "SM-S948B", incremental = "S948BXXU5BZJA",
+            kernelRelease = "6.12.69-android16-6-pa4ef354-abogkiS948BXXU5BZJA-4k",
+        )
+        val bzig = snapshot(DfPort.firmwares.getValue("bzig"))
+        val before = DfCatalog.forDevice(catalog(), bzig)
+        val after = DfCatalog.forDevice(catalog(), bzja)
+        assertTrue(DfPort.matches(bzja))
+        KernelSuFlavor.entries.forEach { flavor ->
+            val old = requireNotNull(before.resolveFor(bzig, flavor))
+            val current = requireNotNull(after.resolveFor(bzja, flavor))
+            assertEquals("S948BXXU5BZJA", current.firmware?.incremental)
+            assertEquals(setOf(bzja.kernelRelease), current.kernelVersions)
+            assertEquals(old.kernelSu, current.kernelSu)
+            assertTrue(current.sourceLabel.contains("hardware testing required"))
+            assertEquals(current, DfCatalog.requireCurrent(catalog(), bzja, current))
+            assertNotNull(backendRunRefusal(old, bzja, flavor, null, false))
+            assertTrue(runCatching { DfCatalog.requireCurrent(catalog(), bzja, old) }.isFailure)
+        }
+    }
+
     @Test fun unrelatedHardwareAndUnsupportedKernelFamiliesHaveNoAutomaticProfile() {
         val wrong = listOf(
             device.copy(model = "SM-S947B"), device.copy(model = "SM-S942B"),
