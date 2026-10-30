@@ -796,9 +796,6 @@
         <item quantity="other">Các lần chạy đã chọn và nhật ký tương ứng sẽ bị xóa vĩnh viễn.</item>
     </plurals>
     <string name="install_m3q_attempted_boot">Đã có một lần thử root trong phiên khởi động này. Khởi động lại hoàn toàn trước khi thử lại hoặc đổi backend. Chỉ khởi động lại không gian người dùng là chưa đủ.</string>
-    <string name="azhl_install_confirm_title">Cài đặt %1$s?</string>
-    <string name="azhl_install_confirm_body">Dùng backend %1$s tích hợp trên %2$s / %3$s. Bản thử nghiệm này có thể khiến điện thoại bị treo hoặc khởi động lại. Hãy bắt đầu sau khi khởi động lại hoàn toàn. Đổi backend đang hoạt động cần khởi động lại hoàn toàn một lần nữa; các mô-đun hiện có sẽ bị tắt trong lúc đổi.</string>
-    <string name="azhl_install_confirm_body_azhl">Dùng backend %1$s tích hợp trên SM-S948B / S948BXXS4AZHL. Bản thử nghiệm này có thể khiến điện thoại bị treo hoặc khởi động lại. Hãy bắt đầu sau khi khởi động lại hoàn toàn và khi Shizuku đang chạy. Đổi backend đang hoạt động cần khởi động lại hoàn toàn một lần nữa; các mô-đun hiện có sẽ bị tắt trong lúc đổi.</string>
     <string name="d2_title">Giữ quyền truy cập Odin</string>
     <string name="d2_summary">Giúp duy trì quyền truy cập Chế độ Download của Samsung khi có khóa màn hình. Tự động chạy sau khi thiết lập, ngay cả khi Root khi khởi động đã tắt.</string>
     <string name="d2_working">Vui lòng đợi…</string>
@@ -889,19 +886,14 @@
     <string name="settings_plan_payloads_bundled">Được xây dựng trong ứng dụng này</string>
     <string name="settings_plan_fixed_limits">Các giới hạn chạy không thể điều chỉnh cho phương pháp root này.</string>
     <string name="settings_fixed_payload_note">Bản dựng này chỉ cho phép một lần thử mỗi lần khởi động và yêu cầu khởi động lại hoàn toàn trước khi thử lại. Cài đặt payload được cố định.</string>
-    <string name="settings_susfs_title">SusFS · thử nghiệm</string>
-    <string name="settings_susfs_summary">Tự động bật SusFS sau khi có quyền root. Khởi động lại hoàn toàn sẽ tắt SusFS; nếu tắt khi đang hoạt động, thay đổi chỉ có hiệu lực sau khi khởi động lại.</string>
+    <string name="settings_susfs_title">SusFS</string>
+    <string name="settings_susfs_summary">Khởi chạy SusFS sau khi có root. Việc tắt chỉ có hiệu lực sau khi khởi động lại hoàn toàn.</string>
     <string name="settings_susfs_status_title">Trạng thái SusFS</string>
-    <string name="settings_susfs_status_summary">Kết quả kích hoạt gần nhất trên thiết bị này. Không kiểm tra trạng thái trực tiếp tại đây.</string>
     <string name="settings_susfs_off">Tắt</string>
     <string name="settings_susfs_pending">Đã bật · kích hoạt sau khi có root</string>
     <string name="settings_susfs_active">Đang hoạt động · %1$s</string>
     <string name="settings_susfs_active_until_reboot">Đang hoạt động · %1$s · tắt sau khi khởi động lại</string>
     <string name="settings_susfs_version_unknown">không rõ phiên bản</string>
-    <string name="settings_susfs_untested">Kernel chưa được kiểm thử — chỉ thử thực hiện, xác nhận bằng kiểm tra tính năng.</string>
-    <string name="settings_susfs_off_title">Tắt SusFS?</string>
-    <string name="settings_susfs_off_body">Không thể gỡ SusFS khỏi kernel khi đang chạy: nó vẫn hoạt động cho đến khi khởi động lại. Trước khi khởi động lại, hãy tắt các mô-đun phụ thuộc vào SusFS vì chúng có thể hoạt động sai khi không có SusFS.</string>
-    <string name="settings_susfs_turn_off">Tắt</string>
     <string name="susfs_grant_title">SusFS cần quyền root</string>
     <string name="susfs_grant_body">SusFS chỉ có thể khởi chạy khi chính ứng dụng này có quyền root. Hãy cấp quyền su cho ứng dụng trong trình quản lý; SusFS sẽ được bật ở lần chạy tiếp theo.</string>
     <string name="action_got_it">Đã hiểu</string>

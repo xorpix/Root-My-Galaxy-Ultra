@@ -796,9 +796,6 @@
         <item quantity="other">선택한 실행 기록과 로그가 영구적으로 삭제됩니다.</item>
     </plurals>
     <string name="install_m3q_attempted_boot">이번 부팅에서 이미 루트를 시도했습니다. 다시 시도하거나 백엔드를 변경하기 전에 완전히 재부팅하세요. 사용자 공간 재시작만으로는 충분하지 않습니다.</string>
-    <string name="azhl_install_confirm_title">%1$s 설치?</string>
-    <string name="azhl_install_confirm_body">%2$s / %3$s에서 내장 %1$s 백엔드를 사용합니다. 이 실험적 빌드는 휴대전화를 멈추게 하거나 재부팅할 수 있습니다. 완전히 재부팅한 후 시작하세요. 활성 백엔드를 변경하려면 다시 완전히 재부팅해야 하며, 변경 중에는 기존 모듈이 비활성화됩니다.</string>
-    <string name="azhl_install_confirm_body_azhl">SM-S948B / S948BXXS4AZHL에서 내장 %1$s 백엔드를 사용합니다. 이 실험적 빌드는 휴대전화를 멈추게 하거나 재부팅할 수 있습니다. 완전히 재부팅하고 Shizuku를 실행한 후 시작하세요. 활성 백엔드를 변경하려면 다시 완전히 재부팅해야 하며, 변경 중에는 기존 모듈이 비활성화됩니다.</string>
     <string name="d2_title">Odin 접근 유지</string>
     <string name="d2_summary">화면 잠금이 설정되어 있어도 Samsung 다운로드 모드에 접근할 수 있도록 돕습니다. 설정 후에는 부팅 시 루트가 꺼져 있어도 자동으로 실행됩니다.</string>
     <string name="d2_working">잠시 기다려 주세요…</string>
@@ -889,19 +886,14 @@
     <string name="settings_plan_payloads_bundled">이 앱에 내장되어 있습니다</string>
     <string name="settings_plan_fixed_limits">이 root 방법의 실행 제한은 조절할 수 없습니다.</string>
     <string name="settings_fixed_payload_note">이 빌드는 부팅당 한 번만 시도할 수 있으며, 다시 시도하려면 완전히 재부팅해야 합니다. 페이로드 설정은 고정되어 있습니다.</string>
-    <string name="settings_susfs_title">SusFS · 실험적 기능</string>
-    <string name="settings_susfs_summary">루트 권한을 얻은 후 SusFS를 자동으로 활성화합니다. 완전히 재부팅하면 해제됩니다. 실행 중에 끄면 재부팅 후 적용됩니다.</string>
+    <string name="settings_susfs_title">SusFS</string>
+    <string name="settings_susfs_summary">루트 권한을 얻은 후 SusFS를 시작합니다. 끄면 완전히 재부팅한 후 적용됩니다.</string>
     <string name="settings_susfs_status_title">SusFS 상태</string>
-    <string name="settings_susfs_status_summary">이 기기에서 마지막으로 활성화한 결과입니다. 여기서는 실시간으로 확인하지 않습니다.</string>
     <string name="settings_susfs_off">꺼짐</string>
     <string name="settings_susfs_pending">켜짐 · 루트 권한 획득 후 활성화</string>
     <string name="settings_susfs_active">활성 · %1$s</string>
     <string name="settings_susfs_active_until_reboot">활성 · %1$s · 재부팅 후 비활성화</string>
     <string name="settings_susfs_version_unknown">버전 알 수 없음</string>
-    <string name="settings_susfs_untested">테스트하지 않은 커널입니다. 시도만 하며, 기능 검사로 성공 여부를 확인합니다.</string>
-    <string name="settings_susfs_off_title">SusFS를 끄시겠습니까?</string>
-    <string name="settings_susfs_off_body">SusFS는 실행 중에 언로드할 수 없으므로 재부팅할 때까지 활성 상태로 유지됩니다. SusFS에 의존하는 모듈은 SusFS 없이 오작동할 수 있으므로 재부팅하기 전에 꺼 주세요.</string>
-    <string name="settings_susfs_turn_off">끄기</string>
     <string name="susfs_grant_title">SusFS에 루트 권한이 필요합니다</string>
     <string name="susfs_grant_body">이 앱 자체에 루트 권한이 있어야 SusFS를 시작할 수 있습니다. 관리자에서 이 앱에 su 권한을 부여하면 다음 실행 시 SusFS가 활성화됩니다.</string>
     <string name="action_got_it">확인</string>

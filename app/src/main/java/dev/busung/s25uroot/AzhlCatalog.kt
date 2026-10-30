@@ -51,7 +51,7 @@ internal object AzhlCatalog {
             require(profile.exploit.size > 0 && profile.kernelSu.size > 0)
             require(profile.kernelSuVersion == azhlReleaseVersion(profile.flavor))
             require(profile.routePolicy == route && !profile.requiresFreshP0Session)
-            profile.copy(sourceId = SOURCE, sourceLabel = "AZHL bundled payloads — hardware testing required")
+            profile.copy(sourceId = SOURCE, sourceLabel = "AZHL bundled payloads")
         }
     }
 

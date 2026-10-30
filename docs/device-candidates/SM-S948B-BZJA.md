@@ -1,10 +1,13 @@
-# SM-S948B BZJA test build
+# SM-S948B BZJA validation
 
-Status: offline kernel review completed; phone validation pending.
+Status: maintainer confirmed successful phone testing on 2026-10-30.
+Users also reported success on other S26 Ultra models; those reports do not
+provide an exact firmware/backend inventory for every variant.
 
-The existing 1.2.28 firmware-family route already selects BZJA. This test build
-keeps the production payloads unchanged and uses the version suffix `bzja-test1`.
-It does not add BZJA to the list of hardware-tested SusFS kernels.
+The existing 1.2.28 firmware-family route already selects BZJA. The signed
+`1.2.28-bzja-test1` build used the production payloads unchanged.
+Following successful phone testing, release 1.3.0 records the exact BZJA SusFS
+profile and removes the testing labels. The native payloads remain unchanged.
 
 ## Firmware examined
 
@@ -30,17 +33,17 @@ compatibility findings, not proof of successful root or module activation.
 Regression coverage uses the exact BZJA kernel release and intended SM-S948B
 Android 17 / SDK 37 / arm64-v8a / 4 KB device identity. Those Android properties
 are test inputs, not a live device inventory. The tests check all four backend
-selections, the stale BZIG profile refusal after updating, and retention of the
-untested SusFS family-fallback classification.
+selections, the stale BZIG profile refusal after updating, and selection of the
+exact BZJA SusFS profile.
 
 The test workflow also runs the existing backend provenance, SusFS host,
 Android unit, early-root, D2 companion, APK signature and packaged-payload checks.
 The artifact includes the signed APK, its SHA-256 checksum and version metadata.
 
-## Phone validation still needed
+## Additional validation coverage
 
-Before recording BZJA as hardware tested, verify root with the selected backend,
-the reported running kernel, SusFS activation and features, and normal app use.
-Then check a cold boot with early root enabled and the existing supported restart
-path. Record which backend was actually tested; one successful backend does not
-validate all four. The existing untested-kernel warning remains until validation.
+The maintainer reports that everything works on BZJA. Exact backend-by-backend
+results and separate cold-boot/restart timing records were not supplied. Continue
+to record the firmware, model and backend when testing additional configurations.
+One successful configuration does not establish compatibility with future patched
+firmware.

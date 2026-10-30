@@ -92,7 +92,7 @@ internal object DfCatalog {
             require(profile.kernelSu.sha256 != null && profile.kernelSu.size > 0)
             require(profile.kernelSuVersion == azhlReleaseVersion(profile.flavor))
             require(profile.routePolicy == route && !profile.requiresFreshP0Session)
-            profile.copy(sourceId = SOURCE, sourceLabel = "${firmware.key.uppercase()} bundled payloads — hardware testing required")
+            profile.copy(sourceId = SOURCE, sourceLabel = "${firmware.key.uppercase()} bundled payloads")
         }
     }
 
@@ -120,7 +120,7 @@ internal object DfCatalog {
                 models = setOf(firmware.model),
                 kernelVersions = setOf(firmware.kernelRelease),
                 firmware = firmware,
-                sourceLabel = "S26 Ultra bundled payloads — kernel family matched, hardware testing required",
+                sourceLabel = "S26 Ultra bundled payloads",
             )
         }
     }

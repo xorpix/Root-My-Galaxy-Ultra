@@ -801,9 +801,6 @@
         <item quantity="other">Bu çalıştırmalar ve günlükleri kalıcı olarak silinecek.</item>
     </plurals>
     <string name="install_m3q_attempted_boot">Bu açılışta zaten bir root denemesi yapıldı. Yeniden denemeden veya arka ucu değiştirmeden önce telefonu tamamen yeniden başlatın. Kullanıcı alanını yeniden başlatmak yeterli değildir.</string>
-    <string name="azhl_install_confirm_title">%1$s\'yu yükleyebilir miyim?</string>
-    <string name="azhl_install_confirm_body">%2$s / %3$s üzerinde yerleşik %1$s arka ucu kullanılır. Bu deneysel derleme telefonu dondurabilir veya yeniden başlatabilir. Tam yeniden başlatmadan sonra başlayın. Etkin arka ucu değiştirmek için bir kez daha tam yeniden başlatma gerekir; değişiklik sırasında mevcut modüller devre dışı bırakılır.</string>
-    <string name="azhl_install_confirm_body_azhl">SM-S948B / S948BXXS4AZHL üzerinde yerleşik %1$s arka ucu kullanılır. Bu deneysel derleme telefonu dondurabilir veya yeniden başlatabilir. Tam yeniden başlatmadan sonra Shizuku çalışırken başlayın. Etkin arka ucu değiştirmek için bir kez daha tam yeniden başlatma gerekir; değişiklik sırasında mevcut modüller devre dışı bırakılır.</string>
     <string name="d2_title">Odin erişimini koru</string>
     <string name="d2_summary">Ekran kilidi varken Samsung İndirme Moduna erişimi korumaya yardımcı olur. Kurulumdan sonra Açılışta root kapalı olsa bile otomatik çalışır.</string>
     <string name="d2_working">Lütfen bekleyin…</string>
@@ -894,19 +891,14 @@
     <string name="settings_plan_payloads_bundled">Bu uygulamaya yerleştirilmiş</string>
     <string name="settings_plan_fixed_limits">Bu root yöntemi için çalışma sınırları ayarlanamaz.</string>
     <string name="settings_fixed_payload_note">Bu derleme, her açılışta tek denemeye izin verir. Yeni bir denemeden önce tam yeniden başlatma gerekir. Yük ayarları sabittir.</string>
-    <string name="settings_susfs_title">SusFS · deneysel</string>
-    <string name="settings_susfs_summary">Root erişiminden sonra SusFS’yi otomatik etkinleştirir. Tam yeniden başlatma onu devre dışı bırakır; çalışırken kapatma işlemi yeniden başlatınca uygulanır.</string>
+    <string name="settings_susfs_title">SusFS</string>
+    <string name="settings_susfs_summary">Root erişiminden sonra SusFS’yi başlatır. Kapatma işlemi tam yeniden başlatmanın ardından uygulanır.</string>
     <string name="settings_susfs_status_title">SusFS durumu</string>
-    <string name="settings_susfs_status_summary">Bu cihazdaki son etkinleştirme sonucu. Burada anlık kontrol yapılmaz.</string>
     <string name="settings_susfs_off">Kapalı</string>
     <string name="settings_susfs_pending">Açık · root erişiminden sonra etkinleşir</string>
     <string name="settings_susfs_active">Etkin · %1$s</string>
     <string name="settings_susfs_active_until_reboot">Etkin · %1$s · yeniden başlatınca kapanır</string>
     <string name="settings_susfs_version_unknown">bilinmeyen sürüm</string>
-    <string name="settings_susfs_untested">Test edilmemiş çekirdek — yalnızca denenir; sonuç özellik kontrolüyle doğrulanır.</string>
-    <string name="settings_susfs_off_title">SusFS kapatılsın mı?</string>
-    <string name="settings_susfs_off_body">SusFS çalışırken bellekten kaldırılamaz; yeniden başlatana kadar etkin kalır. SusFS’ye bağlı modüller onsuz düzgün çalışmayabileceği için yeniden başlatmadan önce bu modülleri kapatın.</string>
-    <string name="settings_susfs_turn_off">Kapat</string>
     <string name="susfs_grant_title">SusFS için root izni gerekiyor</string>
     <string name="susfs_grant_body">SusFS’nin başlayabilmesi için bu uygulamanın kendisinde root erişimi olmalıdır. Yönetici uygulamasından su izni verin; SusFS sonraki çalıştırmada etkinleşir.</string>
     <string name="action_got_it">Anladım</string>

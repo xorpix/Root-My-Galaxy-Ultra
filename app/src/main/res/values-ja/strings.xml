@@ -796,9 +796,6 @@
         <item quantity="other">選択した実行履歴とログは完全に削除されます。</item>
     </plurals>
     <string name="install_m3q_attempted_boot">今回の起動ではすでにroot取得を試行しています。再試行やバックエンドの変更を行う前に、端末を完全に再起動してください。ユーザー空間の再起動だけでは不十分です。</string>
-    <string name="azhl_install_confirm_title">%1$sをインストールする?</string>
-    <string name="azhl_install_confirm_body">%2$s / %3$s で内蔵の %1$s バックエンドを使用します。この実験的なビルドは端末のフリーズや再起動を引き起こす可能性があります。完全に再起動してから開始してください。有効なバックエンドの変更には、もう一度完全な再起動が必要です。変更時は既存のモジュールが無効になります。</string>
-    <string name="azhl_install_confirm_body_azhl">SM-S948B / S948BXXS4AZHL で内蔵の %1$s バックエンドを使用します。この実験的なビルドは端末のフリーズや再起動を引き起こす可能性があります。完全に再起動し、Shizuku を起動してから開始してください。有効なバックエンドの変更には、もう一度完全な再起動が必要です。変更時は既存のモジュールが無効になります。</string>
     <string name="d2_title">Odinへのアクセスを維持</string>
     <string name="d2_summary">画面ロックを設定していてもSamsungのダウンロードモードにアクセスできるようにします。設定完了後は「起動時にrootを取得」がオフでも自動的に動作します。</string>
     <string name="d2_working">お待ちください…</string>
@@ -889,19 +886,14 @@
     <string name="settings_plan_payloads_bundled">このアプリに組み込まれています</string>
     <string name="settings_plan_fixed_limits">この root 方法では実行制限を調整できない.</string>
     <string name="settings_fixed_payload_note">このビルドでは起動ごとに1回のみ試行できます。再試行する前に完全な再起動が必要です。ペイロードの設定は固定されています。</string>
-    <string name="settings_susfs_title">SusFS · 試験的機能</string>
-    <string name="settings_susfs_summary">root取得後にSusFSを自動的に有効にします。完全な再起動で解除されます。動作中にオフにした場合は、再起動後に反映されます。</string>
+    <string name="settings_susfs_title">SusFS</string>
+    <string name="settings_susfs_summary">root取得後にSusFSを起動します。オフにした場合は、完全な再起動後に反映されます。</string>
     <string name="settings_susfs_status_title">SusFSの状態</string>
-    <string name="settings_susfs_status_summary">この端末で最後に有効化した結果です。ここでは現在の状態の確認は行いません。</string>
     <string name="settings_susfs_off">オフ</string>
     <string name="settings_susfs_pending">有効 · root取得後に起動</string>
     <string name="settings_susfs_active">動作中 · %1$s</string>
     <string name="settings_susfs_active_until_reboot">動作中 · %1$s · 再起動後に無効化</string>
     <string name="settings_susfs_version_unknown">バージョン不明</string>
-    <string name="settings_susfs_untested">未検証のカーネルです。動作は保証されず、機能の確認で成否を判定します。</string>
-    <string name="settings_susfs_off_title">SusFSをオフにしますか？</string>
-    <string name="settings_susfs_off_body">実行中のSusFSはアンロードできず、再起動するまで動作し続けます。SusFSに依存するモジュールは、SusFSなしでは正しく動作しない可能性があるため、再起動前に無効にしてください。</string>
-    <string name="settings_susfs_turn_off">オフにする</string>
     <string name="susfs_grant_title">SusFSにはroot権限が必要です</string>
     <string name="susfs_grant_body">このアプリ自体にroot権限が付与されるまで、SusFSは起動できません。マネージャーでこのアプリにsu権限を許可すると、次回の実行時にSusFSが有効になります。</string>
     <string name="action_got_it">了解</string>

@@ -796,9 +796,6 @@
         <item quantity="other">所选运行记录及其日志将被永久删除。</item>
     </plurals>
     <string name="install_m3q_attempted_boot">本次开机已尝试获取 root。再次尝试或切换后端前，请完全重启手机。仅重启用户空间是不够的。</string>
-    <string name="azhl_install_confirm_title">如何安装%1$s?</string>
-    <string name="azhl_install_confirm_body">在 %2$s / %3$s 上使用内置的 %1$s 后端。此实验性版本可能导致手机卡死或重启。请在完整重启后开始。更换正在使用的后端需要再次完整重启；更换期间会禁用现有模块。</string>
-    <string name="azhl_install_confirm_body_azhl">在 SM-S948B / S948BXXS4AZHL 上使用内置的 %1$s 后端。此实验性版本可能导致手机卡死或重启。请在完整重启并启动 Shizuku 后开始。更换正在使用的后端需要再次完整重启；更换期间会禁用现有模块。</string>
     <string name="d2_title">保持 Odin 可访问</string>
     <string name="d2_summary">有屏幕锁时，帮助保持 Samsung 下载模式可用。设置完成后会自动运行，即使已关闭“开机时获取 root”。</string>
     <string name="d2_working">请稍候…</string>
@@ -889,19 +886,14 @@
     <string name="settings_plan_payloads_bundled">在这个应用程序中内置</string>
     <string name="settings_plan_fixed_limits">这种 root 方法的运行限制不能调节.</string>
     <string name="settings_fixed_payload_note">此构建每次开机只允许尝试一次，再次尝试前必须完全重启。载荷设置固定。</string>
-    <string name="settings_susfs_title">SusFS · 实验性功能</string>
-    <string name="settings_susfs_summary">获取 root 权限后自动启用 SusFS。完全重启会将其清除；运行时关闭此选项，要在重启后才会生效。</string>
+    <string name="settings_susfs_title">SusFS</string>
+    <string name="settings_susfs_summary">获取 root 权限后启动 SusFS。关闭操作在完全重启后生效。</string>
     <string name="settings_susfs_status_title">SusFS 状态</string>
-    <string name="settings_susfs_status_summary">此设备上最近一次启用的结果。此处不会实时检查状态。</string>
     <string name="settings_susfs_off">已关闭</string>
     <string name="settings_susfs_pending">已启用 · 获取 root 后激活</string>
     <string name="settings_susfs_active">运行中 · %1$s</string>
     <string name="settings_susfs_active_until_reboot">运行中 · %1$s · 重启后停用</string>
     <string name="settings_susfs_version_unknown">版本未知</string>
-    <string name="settings_susfs_untested">内核未经测试 — 仅尝试启用，并通过功能检查确认结果。</string>
-    <string name="settings_susfs_off_title">关闭 SusFS？</string>
-    <string name="settings_susfs_off_body">SusFS 运行时无法卸载，会一直保持活动状态，直到重启。重启前，请先关闭依赖 SusFS 的模块，否则它们可能因缺少 SusFS 而工作异常。</string>
-    <string name="settings_susfs_turn_off">关闭</string>
     <string name="susfs_grant_title">SusFS 需要 root 权限</string>
     <string name="susfs_grant_body">只有本应用自身获得 root 权限后，SusFS 才能启动。请在管理器中为本应用授予 su 权限，SusFS 将在下次运行时启用。</string>
     <string name="action_got_it">知道了</string>

@@ -855,9 +855,6 @@ Hold Power and Volume Down together for 7 seconds to restart it from there.</str
         <item quantity="other">These runs and their logs will be permanently removed.</item>
     </plurals>
     <string name="install_m3q_attempted_boot">This boot already has a root attempt. Fully reboot before trying again or changing backends. A userspace restart is insufficient.</string>
-    <string name="azhl_install_confirm_title">Install %1$s?</string>
-    <string name="azhl_install_confirm_body">Use the bundled %1$s backend on %2$s / %3$s. This experimental build can freeze or reboot the phone. Begin after a full reboot. Changing an active backend requires another full reboot; existing modules are disabled during a change.</string>
-    <string name="azhl_install_confirm_body_azhl">Use the bundled %1$s backend on SM-S948B / S948BXXS4AZHL. This experimental build can freeze or reboot the phone. Begin after a full reboot with Shizuku running. Changing an active backend requires another full reboot; existing modules are disabled during a change.</string>
     <string name="d2_title">Keep Odin reachable</string>
     <string name="d2_summary">Helps keep Samsung Download Mode available with a screen lock. Runs automatically after setup, even when root on boot is off.</string>
     <string name="d2_working">Please wait…</string>

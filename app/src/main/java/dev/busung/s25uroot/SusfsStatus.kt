@@ -78,6 +78,7 @@ internal sealed interface SusfsTarget {
 private val knownSusfsReleases = mapOf(
     "6.12.69-android16-6-pb4d3caf-abogkiS948BXXS4BZIG-4k" to ("bzig" to "BZIG"),
     "6.12.69-android16-6-pee899be-abogkiS948USQU4BZID-4k" to ("bzid" to "BZID"),
+    "6.12.69-android16-6-pa4ef354-abogkiS948BXXU5BZJA-4k" to ("bzja" to "BZJA"),
 )
 private val susfsFamilyModel =
     Regex("SM-S948[A-Z0-9]{1,2}(?:/DS)?|SC-53G|SCG37", RegexOption.IGNORE_CASE)

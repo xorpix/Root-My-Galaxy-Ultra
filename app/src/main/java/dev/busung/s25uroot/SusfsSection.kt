@@ -1,13 +1,20 @@
 package dev.busung.s25uroot
 
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.VisibilityOff
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,11 +52,9 @@ internal fun SusfsSection() {
     val scope = rememberCoroutineScope()
     val target = remember { susfsTargetFor(DeviceSnapshot.current()) }
     val compatibility = (target as? SusfsTarget.Unsupported)?.reason
-    val untested = (target as? SusfsTarget.FamilyFallback)?.runningRelease
     var busy by remember { mutableStateOf(false) }
     var row by remember { mutableStateOf(rowState(context)) }
     var autoEnabled by remember { mutableStateOf(AppPreferences.susfsAutoEnable(context)) }
-    var confirmOff by remember { mutableStateOf(false) }
 
     fun refreshRow() {
         row = rowState(context)
@@ -87,52 +92,70 @@ internal fun SusfsSection() {
         position = SettingsCardPosition.Top,
         enabled = SettingsPresentation.canChangeSusfs(autoEnabled, busy, compatibility == null),
         onCheckedChange = { enabled ->
-            if (enabled) {
-                AppPreferences.setSusfsAutoEnable(context, true)
-                autoEnabled = true
-                refreshRow()
-                activateNow()
-            } else if (row.activeThisBoot) {
-                confirmOff = true
-            } else {
-                AppPreferences.setSusfsAutoEnable(context, false)
-                autoEnabled = false
-                refreshRow()
-            }
+            AppPreferences.setSusfsAutoEnable(context, enabled)
+            autoEnabled = enabled
+            refreshRow()
+            if (enabled) activateNow()
         },
     )
-    SettingsCard(
-        icon = Icons.Rounded.VisibilityOff,
-        title = stringResource(R.string.settings_susfs_status_title),
-        description = stringResource(R.string.settings_susfs_status_summary),
-        value = row.value,
-        notice = compatibility
-            ?: untested?.let { stringResource(R.string.settings_susfs_untested) },
+    SusfsStatusCard(
+        row = row,
+        compatibility = compatibility,
         position = SettingsCardPosition.Bottom,
         busy = busy,
-        enabled = false,
-        onClick = {},
     )
-    if (confirmOff) {
-        AlertDialog(
-            onDismissRequest = { confirmOff = false },
-            title = { Text(stringResource(R.string.settings_susfs_off_title)) },
-            text = {
-                Text(
-                    stringResource(R.string.settings_susfs_off_body),
+}
+
+/** A readable status, without a disabled action or a narrow trailing-value column. */
+@Composable
+private fun SusfsStatusCard(
+    row: SusfsRow,
+    compatibility: String?,
+    position: SettingsCardPosition,
+    busy: Boolean,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = settingsCardRestingShape(position),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        ),
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 15.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(
+                    Icons.Rounded.VisibilityOff,
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    AppPreferences.setSusfsAutoEnable(context, false)
-                    autoEnabled = false
-                    confirmOff = false
-                    refreshRow()
-                }) { Text(stringResource(R.string.settings_susfs_turn_off)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmOff = false }) { Text(stringResource(R.string.action_cancel)) }
-            },
-        )
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.settings_susfs_status_title),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        row.value,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (row.activeThisBoot) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (compatibility != null) {
+                        Text(
+                            compatibility,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            if (busy) {
+                Spacer(Modifier.height(10.dp))
+                LinearProgressIndicator(Modifier.fillMaxWidth().height(3.dp))
+            }
+        }
     }
 }

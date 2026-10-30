@@ -806,9 +806,6 @@
         <item quantity="other">Ces exécutions et leurs journaux seront définitivement supprimés.</item>
     </plurals>
     <string name="install_m3q_attempted_boot">Une tentative de root a déjà eu lieu depuis le dernier démarrage. Redémarrez complètement le téléphone avant de réessayer ou de changer de backend. Un redémarrage de l’espace utilisateur ne suffit pas.</string>
-    <string name="azhl_install_confirm_title">Installer le %1$s ?</string>
-    <string name="azhl_install_confirm_body">Utilise le backend %1$s intégré sur %2$s / %3$s. Cette version expérimentale peut bloquer ou redémarrer le téléphone. Commencez après un redémarrage complet. Changer un backend actif nécessite un autre redémarrage complet ; les modules existants sont désactivés lors du changement.</string>
-    <string name="azhl_install_confirm_body_azhl">Utilise le backend %1$s intégré sur SM-S948B / S948BXXS4AZHL. Cette version expérimentale peut bloquer ou redémarrer le téléphone. Commencez après un redémarrage complet, avec Shizuku en cours d’exécution. Changer un backend actif nécessite un autre redémarrage complet ; les modules existants sont désactivés lors du changement.</string>
     <string name="d2_title">Garder Odin accessible</string>
     <string name="d2_summary">Aide à garder le mode Download de Samsung accessible avec un verrouillage de l’écran. S’exécute automatiquement après la configuration, même si Root au démarrage est désactivé.</string>
     <string name="d2_working">Veuillez patienter…</string>
@@ -899,19 +896,14 @@
     <string name="settings_plan_payloads_bundled">Intégré dans cette application</string>
     <string name="settings_plan_fixed_limits">Les limites d\'exécution ne sont pas réglables pour cette méthode root.</string>
     <string name="settings_fixed_payload_note">Cette version n’autorise qu’une tentative par démarrage et exige un redémarrage complet avant toute nouvelle tentative. Les paramètres des charges utiles sont fixes.</string>
-    <string name="settings_susfs_title">SusFS · expérimental</string>
-    <string name="settings_susfs_summary">Activer SusFS automatiquement après l’obtention de l’accès root. Un redémarrage complet le désactive ; le désactiver pendant son fonctionnement ne prend effet qu’au redémarrage.</string>
+    <string name="settings_susfs_title">SusFS</string>
+    <string name="settings_susfs_summary">Démarrer SusFS après l’obtention de l’accès root. La désactivation prend effet après un redémarrage complet.</string>
     <string name="settings_susfs_status_title">État de SusFS</string>
-    <string name="settings_susfs_status_summary">Résultat de la dernière activation sur cet appareil. Aucune vérification en direct n’est effectuée ici.</string>
     <string name="settings_susfs_off">Désactivé</string>
     <string name="settings_susfs_pending">Activé · démarrera après l’obtention du root</string>
     <string name="settings_susfs_active">Actif · %1$s</string>
     <string name="settings_susfs_active_until_reboot">Actif · %1$s · sera désactivé au redémarrage</string>
     <string name="settings_susfs_version_unknown">version inconnue</string>
-    <string name="settings_susfs_untested">Noyau non testé — tentative uniquement, validée par la vérification des fonctionnalités.</string>
-    <string name="settings_susfs_off_title">Désactiver SusFS ?</string>
-    <string name="settings_susfs_off_body">SusFS ne peut pas être déchargé pendant son fonctionnement : il reste actif jusqu’au redémarrage. Avant de redémarrer, désactivez les modules qui dépendent de SusFS, car ils risquent de mal fonctionner sans lui.</string>
-    <string name="settings_susfs_turn_off">Désactiver</string>
     <string name="susfs_grant_title">SusFS nécessite l’accès root</string>
     <string name="susfs_grant_body">SusFS ne peut démarrer que lorsque cette application dispose elle-même de l’accès root. Accordez-lui l’autorisation su dans le gestionnaire ; SusFS sera activé à la prochaine exécution.</string>
     <string name="action_got_it">Compris</string>

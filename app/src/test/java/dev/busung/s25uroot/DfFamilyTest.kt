@@ -70,7 +70,6 @@ class DfFamilyTest {
             assertEquals("S948BXXU5BZJA", current.firmware?.incremental)
             assertEquals(setOf(bzja.kernelRelease), current.kernelVersions)
             assertEquals(old.kernelSu, current.kernelSu)
-            assertTrue(current.sourceLabel.contains("hardware testing required"))
             assertEquals(current, DfCatalog.requireCurrent(catalog(), bzja, current))
             assertNotNull(backendRunRefusal(old, bzja, flavor, null, false))
             assertTrue(runCatching { DfCatalog.requireCurrent(catalog(), bzja, old) }.isFailure)
@@ -163,6 +162,17 @@ class DfFamilyTest {
         )
         val restored = CachedPayload.parse(cached.toJson())
         assertEquals(profile, restored.profile())
+        listOf(" — hardware testing required", " — kernel family matched, hardware testing required").forEach { suffix ->
+            val legacy = cached.copy(sourceLabel = cached.sourceLabel + suffix)
+            val upgraded = CachedPayload.parse(legacy.toJson())
+            assertEquals(profile, DfCatalog.requireCurrent(catalog(), device, upgraded.profile()))
+            val tampered = legacy.copy(kernelSu = legacy.kernelSu.copy(sha256 = "b".repeat(64)))
+            assertTrue(runCatching {
+                DfCatalog.requireCurrent(catalog(), device, CachedPayload.parse(tampered.toJson()).profile())
+            }.isFailure)
+            val external = legacy.copy(sourceId = "external-source")
+            assertEquals(external.sourceLabel, CachedPayload.parse(external.toJson()).sourceLabel)
+        }
         assertNull(cacheRejectionReason(restored, cached.helperSha256, cached.helperSize, device, profile.profileId))
         assertNotNull(cacheRejectionReason(restored, cached.helperSha256, cached.helperSize,
             device.copy(incremental = "updated"), profile.profileId))

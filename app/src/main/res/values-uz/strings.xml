@@ -801,9 +801,6 @@
         <item quantity="other">Bu ishga tushirish yozuvlari va ularning jurnallari butunlay o‘chiriladi.</item>
     </plurals>
     <string name="install_m3q_attempted_boot">Ushbu yuklanishda root olishga allaqachon urinilgan. Qayta urinish yoki backendni almashtirishdan oldin telefonni to‘liq qayta ishga tushiring. Faqat foydalanuvchi muhitini qayta ishga tushirish yetarli emas.</string>
-    <string name="azhl_install_confirm_title">%1$s oʻrnatish?</string>
-    <string name="azhl_install_confirm_body">%2$s / %3$s qurilmasida ilovaga kiritilgan %1$s backend ishlatiladi. Bu tajribaviy versiya telefonning qotishiga yoki qayta yuklanishiga olib kelishi mumkin. Toʻliq qayta yuklashdan keyin boshlang. Faol backendni almashtirish uchun yana toʻliq qayta yuklash kerak; almashtirish vaqtida mavjud modullar oʻchiriladi.</string>
-    <string name="azhl_install_confirm_body_azhl">SM-S948B / S948BXXS4AZHL qurilmasida ilovaga kiritilgan %1$s backend ishlatiladi. Bu tajribaviy versiya telefonning qotishiga yoki qayta yuklanishiga olib kelishi mumkin. Toʻliq qayta yuklashdan keyin, Shizuku ishlayotganida boshlang. Faol backendni almashtirish uchun yana toʻliq qayta yuklash kerak; almashtirish vaqtida mavjud modullar oʻchiriladi.</string>
     <string name="d2_title">Odin’ga kirishni saqlash</string>
     <string name="d2_summary">Ekran qulfi yoqilganida ham Samsung Download Mode rejimiga kirishni saqlashga yordam beradi. Sozlangandan keyin, yuklanishda root olish o‘chirilgan bo‘lsa ham avtomatik ishlaydi.</string>
     <string name="d2_working">Kuting…</string>
@@ -894,19 +891,14 @@
     <string name="settings_plan_payloads_bundled">Ushbu dasturga kiritilgan</string>
     <string name="settings_plan_fixed_limits">Ushbu root usuli uchun harakatlanish chegaralari sozlanishi mumkin emas.</string>
     <string name="settings_fixed_payload_note">Ushbu yig‘ilmada har bir yuklanishda faqat bitta urinish mumkin. Keyingi urinishdan oldin telefonni to‘liq qayta ishga tushirish kerak. Payload sozlamalari o‘zgarmaydi.</string>
-    <string name="settings_susfs_title">SusFS · tajriba funksiyasi</string>
-    <string name="settings_susfs_summary">Root olingandan keyin SusFS avtomatik yoqiladi. Telefonni to‘liq qayta ishga tushirish uni o‘chiradi; faol paytda o‘chirish keyingi qayta ishga tushirishdan so‘ng kuchga kiradi.</string>
+    <string name="settings_susfs_title">SusFS</string>
+    <string name="settings_susfs_summary">Root olingandan keyin SusFS ishga tushadi. Uni o‘chirish telefon to‘liq qayta ishga tushirilgach kuchga kiradi.</string>
     <string name="settings_susfs_status_title">SusFS holati</string>
-    <string name="settings_susfs_status_summary">Ushbu qurilmadagi oxirgi faollashtirish natijasi. Bu yerda joriy holat tekshirilmaydi.</string>
     <string name="settings_susfs_off">O‘chirilgan</string>
     <string name="settings_susfs_pending">Yoqilgan · root olingandan keyin faollashadi</string>
     <string name="settings_susfs_active">Faol · %1$s</string>
     <string name="settings_susfs_active_until_reboot">Faol · %1$s · qayta ishga tushirilgach o‘chadi</string>
     <string name="settings_susfs_version_unknown">versiya noma’lum</string>
-    <string name="settings_susfs_untested">Sinovdan o‘tmagan yadro — faqat urinib ko‘riladi; natija funksiyalar tekshiruvi bilan tasdiqlanadi.</string>
-    <string name="settings_susfs_off_title">SusFS o‘chirilsinmi?</string>
-    <string name="settings_susfs_off_body">SusFS ishlab turganda uni xotiradan chiqarib bo‘lmaydi: u telefon qayta ishga tushirilguncha faol qoladi. Qayta ishga tushirishdan oldin SusFS’ga bog‘liq modullarni o‘chiring, aks holda ular SusFS’siz noto‘g‘ri ishlashi mumkin.</string>
-    <string name="settings_susfs_turn_off">O‘chirish</string>
     <string name="susfs_grant_title">SusFS uchun root ruxsati kerak</string>
     <string name="susfs_grant_body">SusFS ishga tushishi uchun ushbu ilovaning o‘zi root huquqiga ega bo‘lishi kerak. Menejerda unga su ruxsatini bering — SusFS keyingi ishga tushirishda yoqiladi.</string>
     <string name="action_got_it">Tushunarli</string>

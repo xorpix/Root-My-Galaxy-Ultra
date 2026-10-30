@@ -87,6 +87,14 @@ internal data class CachedPayload(
     companion object {
         fun parse(text: String): CachedPayload {
             val json = JSONObject(text)
+            val sourceId = json.optString("sourceId")
+            val storedLabel = json.optString("sourceLabel")
+            // Preserve verified caches across the 1.3.0 display-label cleanup. Execution identity,
+            // artifact digests and route policy still pass the complete bundled-profile check.
+            val sourceLabel = if (sourceId == DfCatalog.SOURCE || sourceId == AzhlCatalog.SOURCE)
+                storedLabel.removeSuffix(" — kernel family matched, hardware testing required")
+                    .removeSuffix(" — hardware testing required")
+            else storedLabel
             return CachedPayload(
                 id = json.getString("id"),
                 profileId = json.getString("profileId"),
@@ -108,8 +116,8 @@ internal data class CachedPayload(
                 // Absent in a cache written before the feed declared versions, and in one written from
                 // an entry that declares none: both mean the offer falls back to the flavour's own.
                 kernelSuVersion = json.optString("kernelSuVersion").trim().takeIf(String::isNotEmpty),
-                sourceId = json.optString("sourceId"),
-                sourceLabel = json.optString("sourceLabel"),
+                sourceId = sourceId,
+                sourceLabel = sourceLabel,
                 sourceCommit = json.optString("sourceCommit"),
                 helperSha256 = json.getString("helperSha256"),
                 helperSize = json.getLong("helperSize"),

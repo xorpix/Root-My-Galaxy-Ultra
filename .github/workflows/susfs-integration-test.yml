@@ -98,6 +98,12 @@ jobs:
       - name: Check early Odin handoff and adaptive exploit wait
         run: python3 tools/test_early_root_speed.py
 
+      - name: Check settings and translations
+        run: |
+          python3 tools/test_settings_presentation.py
+          python3 tools/test_translations.py
+          python3 tools/check_translations.py
+
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --no-daemon
 

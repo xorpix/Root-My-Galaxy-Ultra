@@ -2,7 +2,7 @@
 
 Regional and carrier variants share the bundled DirtyFrag route when their
 detected device and kernel match its build requirements. Each backend keeps its
-own verified daemon and bridge. Family recognition enables experimental root
+own verified daemon and bridge. Family recognition enables root
 attempts; it does not claim that every firmware or vendor kernel has been tested.
 
 ## Eligibility
@@ -33,7 +33,7 @@ The exact SM-S948B / S948BXXS4AZHL identity continues to select M3Q/GhostLock
 with Shizuku. All other eligible identities select DirtyFrag directly.
 
 For eligible DirtyFrag devices and the exact AZHL identity, the Install button
-opens the installer without the extra experimental-build confirmation. The backend
+opens the installer without the extra install confirmation. The backend
 chooser still records a choice before installation. Explicit selections from other
 sources or profiles that do not match the device retain the confirmation and
 mismatch dialogs. Required permission, reboot and destructive-action prompts remain.
