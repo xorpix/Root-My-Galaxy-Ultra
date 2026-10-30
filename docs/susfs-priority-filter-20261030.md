@@ -29,7 +29,7 @@ version code, so it can replace this test build without clearing app data.
    ```sh
    adb push rmgu-priority-ctl /data/local/tmp/
    adb shell chmod 755 /data/local/tmp/rmgu-priority-ctl
-   adb shell su -c '/data/local/tmp/rmgu-priority-ctl status'
+   adb shell "su -c '/data/local/tmp/rmgu-priority-ctl status'"
    ```
 
    Expect `ready=1 configured=0`. An unavailable status or `ready=0` means this
@@ -39,8 +39,8 @@ version code, so it can replace this test build without clearing app data.
    running so there is a live target to observe.
 
    ```sh
-   adb shell su -c '/data/local/tmp/rmgu-priority-ctl set com.example.target'
-   adb shell su -c '/data/local/tmp/rmgu-priority-ctl status'
+   adb shell "su -c '/data/local/tmp/rmgu-priority-ctl set com.example.target'"
+   adb shell "su -c '/data/local/tmp/rmgu-priority-ctl status'"
    ```
 
    `set` replaces the entire list. Use comma-separated names for multiple apps.
@@ -49,7 +49,7 @@ version code, so it can replace this test build without clearing app data.
    `cmd package list packages -U`. Use distinct app IDs. Substitute those numbers:
 
    ```sh
-   adb shell su -c '/data/local/tmp/rmgu-priority-ctl probe 10124 10123'
+   adb shell "su -c '/data/local/tmp/rmgu-priority-ctl probe 10124 10123'"
    ```
 
    `passed:true` verifies the modeled UID transition against a live root-visible
@@ -65,7 +65,7 @@ version code, so it can replace this test build without clearing app data.
    modules, SusFS commands and the usual soft restart on your firmware/backend:
 
    ```sh
-   adb shell su -c '/data/local/tmp/rmgu-priority-ctl clear'
+   adb shell "su -c '/data/local/tmp/rmgu-priority-ctl clear'"
    ```
 
 To roll back, install `RootMyGalaxyUltra-1.3.0-rollback.apk` and **fully reboot**
