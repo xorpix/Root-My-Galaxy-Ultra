@@ -1,0 +1,4064 @@
+diff --git a/README.md b/README.md
+index b15b77d..ff7c143 100644
+--- a/README.md
++++ b/README.md
+@@ -1,3 +1,7 @@
++# Samsung dispatcher adaptation
++
++See [29 October dispatcher adaptation and validation](docs/dispatcher-20261029/README.md) for the current Samsung changes. It retains the [27 October audit repairs](docs/audit-20261027/README.md).
++
+ # Samsung audit repairs
+ 
+ See [27 October audit fixes and validation](docs/audit-20261027/README.md) for the current Samsung changes and build instructions.
+diff --git a/docs/dispatcher-20261029/README.md b/docs/dispatcher-20261029/README.md
+new file mode 100644
+index 0000000..390efe2
+--- /dev/null
++++ b/docs/dispatcher-20261029/README.md
+@@ -0,0 +1,89 @@
++# Samsung supercall dispatcher — 29 October 2026
++
++Base: Samsung source `cc2b27a3f66f11cd9b6bf511a60b8e47c128eae4`.
++Adapted from upstream's table delivery and fallback changes through
++[`2517cae`](https://github.com/inforcqb/susfs4ksu-for-lkm/commit/2517cae8695eac0a294d555718cf280d1d43c8c0),
++including `792ac97`, `f912c9c` and `a8c5d7e`. This is a focused dispatcher port;
++the maps and symbol-listing BTI conversions are separate changes.
++
++## Delivery and ownership
++
++1. Try the reboot entry through the existing Samsung syscall-table helper.
++   Its saved-original publication, verified write/rollback, native ownership
++   checks and complete callback drain remain unchanged. A failed install must
++   restore any possible publication before it can return to the fallback.
++2. Only then consider the existing kprobe delivery. Refuse it when the selected
++   build enables `CONFIG_ARM64_BTI_KERNEL`, the exact reboot body cannot be
++   resolved/read, or that entry begins with explicit `BTI c`/`BTI jc`. Probe the
++   same address that was inspected; there is no second name-based resolution.
++   This is a conservative entry check, not general certification of another KMI.
++3. Both routes call one admission/queue function. Wrong magic, non-root callers,
++   unsupported/inactive commands, initialization, removal, allocation failure
++   and enqueue failure retain the existing forwarding behavior and reference
++   accounting. Payload ABI and the deferred handlers are unchanged.
++4. The table wrapper counts its entire frame, including a potentially sleeping
++   normal reboot call. Queued commands additionally own a module reference
++   through dispatch and work-object cleanup. Initialization cannot publish work.
++5. Teardown restores/drains the table wrapper or unregisters the probe, then
++   waits for the task-work callback's final return tail on either route. There
++   is no timed teardown fallback. The existing rule that live kernel references
++   prevent module text from being freed remains in force.
++
++The root-readable parameter
++`/sys/module/susfs_guard_lkm/parameters/supercall_route` reports `syscall-table`,
++`kprobe` or `none`. It is read-only, including in the runtime parameter API.
++An unconditional warning after successful initialization identifies kprobe
++delivery and its kernel-debugging/instruction-inspection trace. Table delivery
++avoids this particular reboot-entry breakpoint; other module probes remain.
++
++## Validation
++
++- The lifecycle harness now runs 40 cases/configurations in normal and
++  ASan/UBSan builds. Both routes cover queued/sleeping commands, initialization,
++  removal admission, payload/allocation/enqueue failures and the callback tail.
++  Additional cases exercise route selection, full original-register/result
++  forwarding, a sleeping original syscall, the wrapper return tail, failed
++  publication before fallback, BTI refusal, missing/unreadable entries,
++  registration failure and 20 alternating route lifecycles. The admission race
++  runs 200 iterations per route and build mode.
++- Four negative controls remove initialization admission, wrapper counting,
++  task-work tail synchronization or the explicit BTI guard. Each must fail its
++  behavioral test. The real table helper's restoration, late-entry and
++  wake/return-tail cases remain in `tests/fp_hooks`.
++- All 26 host suites are validated in their 50 supported runner configurations.
++  One pre-existing 8192-rule path-listing ASan case exceeded the Python runner's
++  20-second deadline. Its C harness already allowed 120 seconds; the outer
++  deadline now matches that budget only for this sanitizer stress case. The
++  failed attempts and the final targeted rerun are retained in the records.
++- The Android16/6.12 DDK build retains CFI, Tasks RCU, MODVERSIONS and 4 KiB pages.
++  All 14 syscall wrappers match the real kernel-header syscall type and carry
++  call landing instructions. Kernel imports, existing callback CFI types and
++  module version-table shape match the previous Samsung module.
++
++These are host models, compile checks and static artifact checks. They do not
++test Samsung protected-memory writes or live kernel dispatch. No phone load,
++unload, reboot or app test has been performed for this adaptation.
++
++## Reproduce
++
++```sh
++python3 tools/run_host_suite.py --output build/dispatcher-host
++python3 tests/lifecycle/run.py --sanitizers --json build/dispatcher-lifecycle.json
++python3 tools/build_review.py --kdir /opt/ddk/kdir/android16-6.12 \
++  --clang-bin /opt/ddk/clang/clang-r536225/bin \
++  --evidence-dir build/dispatcher-module --omit-module-btf --jobs 2
++python3 tools/check_audit_artifact.py --candidate kernel/susfs_guard_lkm.ko \
++  --baseline /path/to/previous/susfs_guard_lkm.ko \
++  --kdir /opt/ddk/kdir/android16-6.12 \
++  --clang-bin /opt/ddk/clang/clang-r536225/bin --output build/dispatcher-artifact
++```
++
++Provision the pinned DDK using the app repository's `tools/provision_ddk.py`.
++The artifact checker needs `pyelftools`. Preserve an unstripped artifact for
++investigation; use the pinned `llvm-strip -d` for distribution.
++
++For phone validation, install the test APK, fully reboot, restore root and
++activate SusFS. Read `supercall_route`, verify the app's status and the manager's
++normal version/feature/rule commands, then check the configured modules after
++the normal soft restart. A soft restart alone retains the previously loaded
++SusFS module and cannot replace it with this build.
+diff --git a/docs/dispatcher-20261029/records/artifact.json b/docs/dispatcher-20261029/records/artifact.json
+new file mode 100644
+index 0000000..05c9170
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/artifact.json
+@@ -0,0 +1,190 @@
++{
++  "hardware_validated": false,
++  "checks": {
++    "fourteen_syscall_wrappers": true,
++    "incoming_kcfi_matches_real_syscall_type": true,
++    "all_wrappers_have_call_landing_pad": true,
++    "imports_unchanged": true,
++    "module_version_table_shape_unchanged": true,
++    "module_metadata_unchanged_except_route_parameter": true,
++    "existing_callback_types_unchanged": true
++  },
++  "candidate_sha256": "df2810444bcfa1e50b87727ccada41f71f4b250e3782663f11efb9b9a3de6f47",
++  "baseline_sha256": "df033a463d5457acdc5f16d543979b49f23f0885a41f6c31910cad373f846dd1",
++  "expected_syscall_kcfi": 2009012525,
++  "wrapper_kcfi": {
++    "create_wrap_compat_linkat": 2009012525,
++    "create_wrap_compat_mkdirat": 2009012525,
++    "create_wrap_compat_mknodat": 2009012525,
++    "create_wrap_compat_symlinkat": 2009012525,
++    "create_wrap_linkat": 2009012525,
++    "create_wrap_mkdirat": 2009012525,
++    "create_wrap_mknodat": 2009012525,
++    "create_wrap_symlinkat": 2009012525,
++    "or_wrap_compat_open": 2009012525,
++    "or_wrap_compat_openat": 2009012525,
++    "or_wrap_compat_openat2": 2009012525,
++    "or_wrap_openat": 2009012525,
++    "or_wrap_openat2": 2009012525,
++    "supercall_reboot_wrapper": 2009012525
++  },
++  "wrapper_landing_instructions": {
++    "create_wrap_mkdirat": 3573752639,
++    "create_wrap_compat_mkdirat": 3573752639,
++    "create_wrap_mknodat": 3573752639,
++    "create_wrap_compat_mknodat": 3573752639,
++    "create_wrap_symlinkat": 3573752639,
++    "create_wrap_compat_symlinkat": 3573752639,
++    "create_wrap_linkat": 3573752639,
++    "create_wrap_compat_linkat": 3573752639,
++    "or_wrap_openat": 3573752639,
++    "or_wrap_openat2": 3573752639,
++    "or_wrap_compat_open": 3573752639,
++    "or_wrap_compat_openat": 3573752639,
++    "or_wrap_compat_openat2": 3573752639,
++    "supercall_reboot_wrapper": 3573752639
++  },
++  "imports": [
++    "___ratelimit",
++    "__arch_clear_user",
++    "__arch_copy_from_user",
++    "__arch_copy_to_user",
++    "__check_object_size",
++    "__copy_overflow",
++    "__cpu_online_mask",
++    "__fortify_panic",
++    "__init_waitqueue_head",
++    "__kmalloc_cache_noprof",
++    "__kmalloc_large_noprof",
++    "__kmalloc_noprof",
++    "__kvmalloc_node_noprof",
++    "__list_add_valid_or_report",
++    "__list_del_entry_valid_or_report",
++    "__mmap_lock_do_trace_acquire_returned",
++    "__mmap_lock_do_trace_released",
++    "__mmap_lock_do_trace_start_locking",
++    "__num_online_cpus",
++    "__put_task_struct",
++    "__rcu_read_lock",
++    "__rcu_read_unlock",
++    "__seq_puts",
++    "__set_fixmap",
++    "__stack_chk_fail",
++    "__tracepoint_mmap_lock_acquire_returned",
++    "__tracepoint_mmap_lock_released",
++    "__tracepoint_mmap_lock_start_locking",
++    "__tracepoint_sys_exit",
++    "__wake_up",
++    "__warn_printk",
++    "_printk",
++    "_raw_spin_lock",
++    "_raw_spin_lock_irqsave",
++    "_raw_spin_unlock",
++    "_raw_spin_unlock_irqrestore",
++    "abort_creds",
++    "alt_cb_patch_nops",
++    "arm64_use_ng_mappings",
++    "backing_file_user_path",
++    "bcmp",
++    "cancel_delayed_work_sync",
++    "cancel_work_sync",
++    "copy_from_kernel_nofault",
++    "copy_to_kernel_nofault",
++    "d_path",
++    "delayed_work_timer_fn",
++    "down_read",
++    "down_read_killable",
++    "find_vma",
++    "finish_wait",
++    "get_pid_task",
++    "get_task_mm",
++    "ihold",
++    "init_mm",
++    "init_user_ns",
++    "init_wait_entry",
++    "inode_permission",
++    "iput",
++    "kern_path",
++    "kfree",
++    "kmalloc_caches",
++    "kstrtobool",
++    "kstrtoll",
++    "kvfree",
++    "mas_find",
++    "mem_alloc_profiling_key",
++    "memchr",
++    "memcpy",
++    "memmove",
++    "memset",
++    "memstart_addr",
++    "mmput",
++    "module_put",
++    "msleep",
++    "mtree_load",
++    "mutex_lock",
++    "mutex_trylock",
++    "mutex_unlock",
++    "nop_mnt_idmap",
++    "ns_capable",
++    "override_creds",
++    "param_ops_bool",
++    "param_ops_int",
++    "param_ops_string",
++    "param_ops_ulong",
++    "path_get",
++    "path_put",
++    "prepare_creds",
++    "prepare_to_wait_event",
++    "proc_create",
++    "proc_remove",
++    "queue_delayed_work_on",
++    "queue_work_on",
++    "rb_first",
++    "rb_next",
++    "refcount_warn_saturate",
++    "register_kprobe",
++    "register_kretprobe",
++    "revert_creds",
++    "saved_boot_config",
++    "schedule",
++    "scnprintf",
++    "security_secctx_to_secid",
++    "seq_lseek",
++    "seq_open",
++    "seq_printf",
++    "seq_read",
++    "seq_release",
++    "seq_write",
++    "single_open",
++    "single_release",
++    "sized_strscpy",
++    "snprintf",
++    "static_key_enable",
++    "stop_machine",
++    "strcmp",
++    "strlen",
++    "strncmp",
++    "strnlen",
++    "strnlen_user",
++    "strrchr",
++    "strstr",
++    "synchronize_rcu",
++    "synchronize_rcu_tasks",
++    "synchronize_srcu",
++    "system_wq",
++    "task_work_add",
++    "tracepoint_probe_register",
++    "tracepoint_probe_unregister",
++    "tracepoint_srcu",
++    "try_module_get",
++    "unregister_kprobe",
++    "unregister_kretprobe",
++    "up_read",
++    "vsnprintf"
++  ],
++  "version_section_sizes": {
++    "__versions": 0,
++    "__version_ext_crcs": 0,
++    "__version_ext_names": 1
++  }
++}
+diff --git a/docs/dispatcher-20261029/records/build.json b/docs/dispatcher-20261029/records/build.json
+new file mode 100644
+index 0000000..5569ded
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/build.json
+@@ -0,0 +1,53 @@
++{
++  "kind": "host cross-compilation only; no kernel module execution",
++  "module": {
++    "bytes": 3293200,
++    "sha256": "df2810444bcfa1e50b87727ccada41f71f4b250e3782663f11efb9b9a3de6f47"
++  },
++  "commands": [
++    {
++      "argv": [
++        "make",
++        "-C",
++        "<workspace>/ddk-dispatch/ddk-root/opt/ddk/kdir/android16-6.12",
++        "M=<source>/kernel",
++        "ARCH=arm64",
++        "CC=clang",
++        "LLVM=1",
++        "LLVM_IAS=1",
++        "CONFIG_DEBUG_INFO_BTF_MODULES=",
++        "clean"
++      ],
++      "exit_code": 0
++    },
++    {
++      "argv": [
++        "make",
++        "-C",
++        "<workspace>/ddk-dispatch/ddk-root/opt/ddk/kdir/android16-6.12",
++        "M=<source>/kernel",
++        "ARCH=arm64",
++        "CC=clang",
++        "LLVM=1",
++        "LLVM_IAS=1",
++        "CONFIG_DEBUG_INFO_BTF_MODULES=",
++        "modules",
++        "-j2"
++      ],
++      "exit_code": 0
++    }
++  ],
++  "compiler": "Android (14043575, +pgo, +bolt, +lto, +mlgo, based on r536225) clang version 19.0.1 (https://android.googlesource.com/toolchain/llvm-project b3a530ec6537146650e42be89f1089e9a3588460)\nTarget: x86_64-unknown-linux-gnu\nThread model: posix\nInstalledDir: <workspace>/ddk-dispatch/ddk-root/opt/ddk/clang/clang-r536225/bin",
++  "kernel_release_header": "#define UTS_RELEASE \"6.12.76-4k\"",
++  "autoconf_sha256": "1fbc9de7fd352a6a44f0a67296bad10464b956bf59144382f404ac17d7e2fde2",
++  "module_symvers_sha256": "7d6930b74c649e4e2ceda3ef24e74774458844c34a41d29e042ccf916b509f96",
++  "module_btf_generation_omitted": true,
++  "config": {
++    "CONFIG_CFI_CLANG": true,
++    "CONFIG_CFI_ICALL_NORMALIZE_INTEGERS": true,
++    "CONFIG_TASKS_RCU": true,
++    "CONFIG_MODVERSIONS": true,
++    "CONFIG_ARM64_4K_PAGES": true
++  },
++  "hardware_validated": false
++}
+diff --git a/docs/dispatcher-20261029/records/compile.log b/docs/dispatcher-20261029/records/compile.log
+new file mode 100644
+index 0000000..69ee044
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/compile.log
+@@ -0,0 +1,26 @@
++make: Entering directory '<workspace>/ddk-dispatch/ddk-root/opt/ddk/kdir/android16-6.12'
++  CC [M]  <source>/kernel/susfs_main.o
++  CC [M]  <source>/kernel/patch_memory.o
++  CC [M]  <source>/kernel/symbol_resolver.o
++  CC [M]  <source>/kernel/lsm_hook.o
++  CC [M]  <source>/kernel/lsm_lifetime.o
++  CC [M]  <source>/kernel/susfs_fp_hook.o
++  CC [M]  <source>/kernel/susfs_create_gate.o
++  CC [M]  <source>/kernel/susfs_uname.o
++  CC [M]  <source>/kernel/susfs_kstat.o
++  CC [M]  <source>/kernel/sus_map.o
++  CC [M]  <source>/kernel/sus_path.o
++  CC [M]  <source>/kernel/sus_path_creds.o
++  CC [M]  <source>/kernel/sus_mount.o
++  CC [M]  <source>/kernel/spoof_cmdline.o
++  CC [M]  <source>/kernel/susfs_open_redirect.o
++  CC [M]  <source>/kernel/susfs_or_entry.o
++  CC [M]  <source>/kernel/susfs_enable_log.o
++  CC [M]  <source>/kernel/susfs_avc_spoof.o
++  CC [M]  <source>/kernel/susfs_supercall.o
++  CC [M]  <source>/kernel/susfs_hide_syms.o
++  CC [M]  <source>/kernel/ksu_umount_gate.o
++  LD [M]  <source>/kernel/susfs_guard_lkm.o
++  MODPOST <source>/kernel/Module.symvers
++  LD [M]  <source>/kernel/susfs_guard_lkm.ko
++make: Leaving directory '<workspace>/ddk-dispatch/ddk-root/opt/ddk/kdir/android16-6.12'
+diff --git a/docs/dispatcher-20261029/records/host-final-results.json b/docs/dispatcher-20261029/records/host-final-results.json
+new file mode 100644
+index 0000000..6531dd3
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/host-final-results.json
+@@ -0,0 +1,359 @@
++{
++  "hardware_validated": false,
++  "required_runner_configurations": 50,
++  "initial_results_file": "host-initial-results.json",
++  "path_listing_rerun": "path-listing-final.json",
++  "results": [
++    {
++      "suite": "avc_spoof",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 12.0,
++      "log": "logs/avc_spoof.log"
++    },
++    {
++      "suite": "avc_spoof",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 12.79,
++      "log": "logs/avc_spoof-sanitizers.log"
++    },
++    {
++      "suite": "feature_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 12.76,
++      "log": "logs/feature_hooks.log"
++    },
++    {
++      "suite": "feature_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 31.72,
++      "log": "logs/feature_hooks-sanitizers.log"
++    },
++    {
++      "suite": "fp_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 8.47,
++      "log": "logs/fp_hooks.log"
++    },
++    {
++      "suite": "fp_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 19.83,
++      "log": "logs/fp_hooks-sanitizers.log"
++    },
++    {
++      "suite": "identity_controls",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 56.47,
++      "log": "logs/identity_controls.log"
++    },
++    {
++      "suite": "identity_controls",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 57.47,
++      "log": "logs/identity_controls-sanitizers.log"
++    },
++    {
++      "suite": "kprobe_reuse",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.67,
++      "log": "logs/kprobe_reuse.log"
++    },
++    {
++      "suite": "kprobe_reuse",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.11,
++      "log": "logs/kprobe_reuse-sanitizers.log"
++    },
++    {
++      "suite": "kstat_compat",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.77,
++      "log": "logs/kstat_compat.log"
++    },
++    {
++      "suite": "kstat_statx",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 1.09,
++      "log": "logs/kstat_statx.log"
++    },
++    {
++      "suite": "kstat_statx",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.44,
++      "log": "logs/kstat_statx-sanitizers.log"
++    },
++    {
++      "suite": "lifecycle",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 12.92,
++      "log": "logs/lifecycle.log"
++    },
++    {
++      "suite": "lifecycle",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 20.31,
++      "log": "logs/lifecycle-sanitizers.log"
++    },
++    {
++      "suite": "lsm_lifetime",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.57,
++      "log": "logs/lsm_lifetime.log"
++    },
++    {
++      "suite": "lsm_lifetime",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.09,
++      "log": "logs/lsm_lifetime-sanitizers.log"
++    },
++    {
++      "suite": "map_files",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 28.36,
++      "log": "logs/map_files.log"
++    },
++    {
++      "suite": "map_files",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 39.49,
++      "log": "logs/map_files-sanitizers.log"
++    },
++    {
++      "suite": "map_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 3.72,
++      "log": "logs/map_hooks.log"
++    },
++    {
++      "suite": "map_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 4.95,
++      "log": "logs/map_hooks-sanitizers.log"
++    },
++    {
++      "suite": "module_control",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 5.15,
++      "log": "logs/module_control.log"
++    },
++    {
++      "suite": "mount_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 3.03,
++      "log": "logs/mount_hooks.log"
++    },
++    {
++      "suite": "mount_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 17.95,
++      "log": "logs/mount_hooks-sanitizers.log"
++    },
++    {
++      "suite": "mount_prefix",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 4.32,
++      "log": "logs/mount_prefix.log"
++    },
++    {
++      "suite": "mount_prefix",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 3.74,
++      "log": "logs/mount_prefix-sanitizers.log"
++    },
++    {
++      "suite": "mshow_filter",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 4.67,
++      "log": "logs/mshow_filter.log"
++    },
++    {
++      "suite": "mshow_filter",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 5.01,
++      "log": "logs/mshow_filter-sanitizers.log"
++    },
++    {
++      "suite": "patch_memory_flush",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 1.19,
++      "log": "logs/patch_memory_flush.log"
++    },
++    {
++      "suite": "patch_memory_flush",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.72,
++      "log": "logs/patch_memory_flush-sanitizers.log"
++    },
++    {
++      "suite": "path_creds",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 4.85,
++      "log": "logs/path_creds.log"
++    },
++    {
++      "suite": "path_creds",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 5.68,
++      "log": "logs/path_creds-sanitizers.log"
++    },
++    {
++      "suite": "path_entry",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 1.53,
++      "log": "logs/path_entry.log"
++    },
++    {
++      "suite": "path_entry",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.99,
++      "log": "logs/path_entry-sanitizers.log"
++    },
++    {
++      "suite": "path_index",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.84,
++      "log": "logs/path_index.log"
++    },
++    {
++      "suite": "path_index",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.17,
++      "log": "logs/path_index-sanitizers.log"
++    },
++    {
++      "suite": "path_listing",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 2.42,
++      "log": "logs/path_listing.log"
++    },
++    {
++      "suite": "path_listing",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 24.603,
++      "log": "logs/path_listing-sanitizers-final.log",
++      "initial_deadline_failure": true
++    },
++    {
++      "suite": "path_readlink_lsm",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 3.71,
++      "log": "logs/path_readlink_lsm.log"
++    },
++    {
++      "suite": "path_readlink_lsm",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 5.52,
++      "log": "logs/path_readlink_lsm-sanitizers.log"
++    },
++    {
++      "suite": "r18_fixes",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 2.96,
++      "log": "logs/r18_fixes.log"
++    },
++    {
++      "suite": "r18_fixes",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 9.84,
++      "log": "logs/r18_fixes-sanitizers.log"
++    },
++    {
++      "suite": "redirect_entry",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.66,
++      "log": "logs/redirect_entry.log"
++    },
++    {
++      "suite": "redirect_entry",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.28,
++      "log": "logs/redirect_entry-sanitizers.log"
++    },
++    {
++      "suite": "redirect_maps",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.52,
++      "log": "logs/redirect_maps.log"
++    },
++    {
++      "suite": "redirect_maps",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 2.38,
++      "log": "logs/redirect_maps-sanitizers.log"
++    },
++    {
++      "suite": "redirect_statfs",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 1.4,
++      "log": "logs/redirect_statfs.log"
++    },
++    {
++      "suite": "redirect_statfs",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 6.47,
++      "log": "logs/redirect_statfs-sanitizers.log"
++    },
++    {
++      "suite": "userspace",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 6.64,
++      "log": "logs/userspace.log"
++    },
++    {
++      "suite": "userspace",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 2.17,
++      "log": "logs/userspace-sanitizers.log"
++    }
++  ]
++}
+diff --git a/docs/dispatcher-20261029/records/host-initial-results.json b/docs/dispatcher-20261029/records/host-initial-results.json
+new file mode 100644
+index 0000000..3f81cbc
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/host-initial-results.json
+@@ -0,0 +1,355 @@
++{
++  "hardware_validated": false,
++  "results": [
++    {
++      "suite": "avc_spoof",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 12.0,
++      "log": "logs/avc_spoof.log"
++    },
++    {
++      "suite": "avc_spoof",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 12.79,
++      "log": "logs/avc_spoof-sanitizers.log"
++    },
++    {
++      "suite": "feature_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 12.76,
++      "log": "logs/feature_hooks.log"
++    },
++    {
++      "suite": "feature_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 31.72,
++      "log": "logs/feature_hooks-sanitizers.log"
++    },
++    {
++      "suite": "fp_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 8.47,
++      "log": "logs/fp_hooks.log"
++    },
++    {
++      "suite": "fp_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 19.83,
++      "log": "logs/fp_hooks-sanitizers.log"
++    },
++    {
++      "suite": "identity_controls",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 56.47,
++      "log": "logs/identity_controls.log"
++    },
++    {
++      "suite": "identity_controls",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 57.47,
++      "log": "logs/identity_controls-sanitizers.log"
++    },
++    {
++      "suite": "kprobe_reuse",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.67,
++      "log": "logs/kprobe_reuse.log"
++    },
++    {
++      "suite": "kprobe_reuse",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.11,
++      "log": "logs/kprobe_reuse-sanitizers.log"
++    },
++    {
++      "suite": "kstat_compat",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.77,
++      "log": "logs/kstat_compat.log"
++    },
++    {
++      "suite": "kstat_statx",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 1.09,
++      "log": "logs/kstat_statx.log"
++    },
++    {
++      "suite": "kstat_statx",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.44,
++      "log": "logs/kstat_statx-sanitizers.log"
++    },
++    {
++      "suite": "lifecycle",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 12.92,
++      "log": "logs/lifecycle.log"
++    },
++    {
++      "suite": "lifecycle",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 20.31,
++      "log": "logs/lifecycle-sanitizers.log"
++    },
++    {
++      "suite": "lsm_lifetime",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.57,
++      "log": "logs/lsm_lifetime.log"
++    },
++    {
++      "suite": "lsm_lifetime",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.09,
++      "log": "logs/lsm_lifetime-sanitizers.log"
++    },
++    {
++      "suite": "map_files",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 28.36,
++      "log": "logs/map_files.log"
++    },
++    {
++      "suite": "map_files",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 39.49,
++      "log": "logs/map_files-sanitizers.log"
++    },
++    {
++      "suite": "map_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 3.72,
++      "log": "logs/map_hooks.log"
++    },
++    {
++      "suite": "map_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 4.95,
++      "log": "logs/map_hooks-sanitizers.log"
++    },
++    {
++      "suite": "module_control",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 5.15,
++      "log": "logs/module_control.log"
++    },
++    {
++      "suite": "mount_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 3.03,
++      "log": "logs/mount_hooks.log"
++    },
++    {
++      "suite": "mount_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 17.95,
++      "log": "logs/mount_hooks-sanitizers.log"
++    },
++    {
++      "suite": "mount_prefix",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 4.32,
++      "log": "logs/mount_prefix.log"
++    },
++    {
++      "suite": "mount_prefix",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 3.74,
++      "log": "logs/mount_prefix-sanitizers.log"
++    },
++    {
++      "suite": "mshow_filter",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 4.67,
++      "log": "logs/mshow_filter.log"
++    },
++    {
++      "suite": "mshow_filter",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 5.01,
++      "log": "logs/mshow_filter-sanitizers.log"
++    },
++    {
++      "suite": "patch_memory_flush",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 1.19,
++      "log": "logs/patch_memory_flush.log"
++    },
++    {
++      "suite": "patch_memory_flush",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.72,
++      "log": "logs/patch_memory_flush-sanitizers.log"
++    },
++    {
++      "suite": "path_creds",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 4.85,
++      "log": "logs/path_creds.log"
++    },
++    {
++      "suite": "path_creds",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 5.68,
++      "log": "logs/path_creds-sanitizers.log"
++    },
++    {
++      "suite": "path_entry",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 1.53,
++      "log": "logs/path_entry.log"
++    },
++    {
++      "suite": "path_entry",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.99,
++      "log": "logs/path_entry-sanitizers.log"
++    },
++    {
++      "suite": "path_index",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.84,
++      "log": "logs/path_index.log"
++    },
++    {
++      "suite": "path_index",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.17,
++      "log": "logs/path_index-sanitizers.log"
++    },
++    {
++      "suite": "path_listing",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 2.42,
++      "log": "logs/path_listing.log"
++    },
++    {
++      "suite": "path_listing",
++      "sanitizers": true,
++      "exit_code": 1,
++      "seconds": 23.32,
++      "log": "logs/path_listing-sanitizers.log"
++    },
++    {
++      "suite": "path_readlink_lsm",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 3.71,
++      "log": "logs/path_readlink_lsm.log"
++    },
++    {
++      "suite": "path_readlink_lsm",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 5.52,
++      "log": "logs/path_readlink_lsm-sanitizers.log"
++    },
++    {
++      "suite": "r18_fixes",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 2.96,
++      "log": "logs/r18_fixes.log"
++    },
++    {
++      "suite": "r18_fixes",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 9.84,
++      "log": "logs/r18_fixes-sanitizers.log"
++    },
++    {
++      "suite": "redirect_entry",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.66,
++      "log": "logs/redirect_entry.log"
++    },
++    {
++      "suite": "redirect_entry",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.28,
++      "log": "logs/redirect_entry-sanitizers.log"
++    },
++    {
++      "suite": "redirect_maps",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.52,
++      "log": "logs/redirect_maps.log"
++    },
++    {
++      "suite": "redirect_maps",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 2.38,
++      "log": "logs/redirect_maps-sanitizers.log"
++    },
++    {
++      "suite": "redirect_statfs",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 1.4,
++      "log": "logs/redirect_statfs.log"
++    },
++    {
++      "suite": "redirect_statfs",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 6.47,
++      "log": "logs/redirect_statfs-sanitizers.log"
++    },
++    {
++      "suite": "userspace",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 6.64,
++      "log": "logs/userspace.log"
++    },
++    {
++      "suite": "userspace",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 2.17,
++      "log": "logs/userspace-sanitizers.log"
++    }
++  ]
++}
+diff --git a/docs/dispatcher-20261029/records/lifecycle-sanitizers.json b/docs/dispatcher-20261029/records/lifecycle-sanitizers.json
+new file mode 100644
+index 0000000..44d5688
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/lifecycle-sanitizers.json
+@@ -0,0 +1,393 @@
++{
++  "kind": "host API model",
++  "sanitizers": true,
++  "leak_check": false,
++  "results": [
++    {
++      "case": "queued",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS queued (table)",
++      "stderr": ""
++    },
++    {
++      "case": "queued",
++      "route": "kprobe",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS queued (kprobe)",
++      "stderr": ""
++    },
++    {
++      "case": "init-window",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS init-window (table)",
++      "stderr": ""
++    },
++    {
++      "case": "init-window",
++      "route": "kprobe",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS init-window (kprobe)",
++      "stderr": ""
++    },
++    {
++      "case": "allocation",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS allocation (table)",
++      "stderr": ""
++    },
++    {
++      "case": "allocation",
++      "route": "kprobe",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS allocation (kprobe)",
++      "stderr": ""
++    },
++    {
++      "case": "enqueue",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS enqueue (table)",
++      "stderr": ""
++    },
++    {
++      "case": "enqueue",
++      "route": "kprobe",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS enqueue (kprobe)",
++      "stderr": ""
++    },
++    {
++      "case": "rejected",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS rejected (table)",
++      "stderr": ""
++    },
++    {
++      "case": "rejected",
++      "route": "kprobe",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS rejected (kprobe)",
++      "stderr": ""
++    },
++    {
++      "case": "payload-errors",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS payload-errors (table)",
++      "stderr": ""
++    },
++    {
++      "case": "payload-errors",
++      "route": "kprobe",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS payload-errors (kprobe)",
++      "stderr": ""
++    },
++    {
++      "case": "multiple",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS multiple (table)",
++      "stderr": ""
++    },
++    {
++      "case": "multiple",
++      "route": "kprobe",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS multiple (kprobe)",
++      "stderr": ""
++    },
++    {
++      "case": "sleeping",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS sleeping (table)",
++      "stderr": ""
++    },
++    {
++      "case": "sleeping",
++      "route": "kprobe",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS sleeping (kprobe)",
++      "stderr": ""
++    },
++    {
++      "case": "return-tail",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS return-tail (table)",
++      "stderr": ""
++    },
++    {
++      "case": "return-tail",
++      "route": "kprobe",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS return-tail (kprobe)",
++      "stderr": ""
++    },
++    {
++      "case": "rollback",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS rollback (table)",
++      "stderr": ""
++    },
++    {
++      "case": "rollback",
++      "route": "kprobe",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS rollback (kprobe)",
++      "stderr": ""
++    },
++    {
++      "case": "partial-failures",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS partial-failures (table)",
++      "stderr": ""
++    },
++    {
++      "case": "partial-failures",
++      "route": "kprobe",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS partial-failures (kprobe)",
++      "stderr": ""
++    },
++    {
++      "case": "admission-race",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS admission-race (table)",
++      "stderr": ""
++    },
++    {
++      "case": "admission-race",
++      "route": "kprobe",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS admission-race (kprobe)",
++      "stderr": ""
++    },
++    {
++      "case": "table-preferred",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS table-preferred (table)",
++      "stderr": ""
++    },
++    {
++      "case": "fallback",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS fallback (table)",
++      "stderr": ""
++    },
++    {
++      "case": "bti-c",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS bti-c (table)",
++      "stderr": ""
++    },
++    {
++      "case": "bti-jc",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS bti-jc (table)",
++      "stderr": ""
++    },
++    {
++      "case": "unknown-entry",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS unknown-entry (table)",
++      "stderr": ""
++    },
++    {
++      "case": "unreadable-entry",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS unreadable-entry (table)",
++      "stderr": ""
++    },
++    {
++      "case": "both-fail",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS both-fail (table)",
++      "stderr": ""
++    },
++    {
++      "case": "rollback-before-fallback",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS rollback-before-fallback (table)",
++      "stderr": ""
++    },
++    {
++      "case": "table-forward",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS table-forward (table)",
++      "stderr": ""
++    },
++    {
++      "case": "sleeping-original",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS sleeping-original (table)",
++      "stderr": ""
++    },
++    {
++      "case": "wrapper-tail",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS wrapper-tail (table)",
++      "stderr": ""
++    },
++    {
++      "case": "repeat-routes",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS repeat-routes (table)",
++      "stderr": ""
++    },
++    {
++      "case": "null-probe-regs",
++      "route": "kprobe",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS null-probe-regs (kprobe)",
++      "stderr": ""
++    },
++    {
++      "case": "no-tasks-rcu",
++      "route": "table",
++      "config_tasks_rcu": 0,
++      "config_bti_kernel": 0,
++      "exit_code": 0,
++      "stdout": "PASS no-tasks-rcu (table)",
++      "stderr": ""
++    },
++    {
++      "case": "bti-config",
++      "route": "kprobe",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 1,
++      "exit_code": 0,
++      "stdout": "PASS bti-config (kprobe)",
++      "stderr": ""
++    },
++    {
++      "case": "table-preferred",
++      "route": "table",
++      "config_tasks_rcu": 1,
++      "config_bti_kernel": 1,
++      "exit_code": 0,
++      "stdout": "PASS table-preferred (table)",
++      "stderr": ""
++    }
++  ],
++  "negative_controls": [
++    {
++      "control": "init-admission",
++      "exit_code": -6,
++      "rejected": true,
++      "stderr": "negative-init-admission: <source>/tests/lifecycle/lifecycle_test.c:114: check_init_request: Assertion `request(CMD_SUSFS_SHOW_VERSION, &payload) == 0' failed."
++    },
++    {
++      "control": "sleeping-wrapper",
++      "exit_code": -6,
++      "rejected": true,
++      "stderr": "negative-sleeping-wrapper: <source>/tests/lifecycle/lifecycle_test.c:150: host_original_reboot: Assertion `atomic_load(&reboot_hook.active_callbacks) > 0' failed."
++    },
++    {
++      "control": "task-work-tail",
++      "exit_code": -6,
++      "rejected": true,
++      "stderr": "negative-task-work-tail: <source>/tests/lifecycle/lifecycle_test.c:279: feature_exit: Assertion `!entry_registered() && !callback_frames && !wrapper_frames' failed."
++    },
++    {
++      "control": "bti-fallback",
++      "exit_code": -6,
++      "rejected": true,
++      "stderr": "negative-bti-fallback: <source>/tests/lifecycle/lifecycle_test.c:642: test_selection: Assertion `susfs_init() == expected' failed."
++    }
++  ]
++}
+diff --git a/docs/dispatcher-20261029/records/logs/avc_spoof-sanitizers.log b/docs/dispatcher-20261029/records/logs/avc_spoof-sanitizers.log
+new file mode 100644
+index 0000000..d0621b9
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/avc_spoof-sanitizers.log
+@@ -0,0 +1,17 @@
++PASS source rewrites both sids and derives avc_ssid_arg
++PASS nostate/source-match
++PASS nostate/target-match
++PASS nostate/both-match
++PASS nostate/neither
++PASS nostate/disabled
++PASS nostate/su-unresolved-zero
++PASS nostate/priv-unresolved
++PASS state/source-match
++PASS state/target-match
++PASS state/both-match
++PASS state/neither
++PASS state/disabled
++PASS state/su-unresolved-zero
++PASS state/priv-unresolved
++PASS target-only negative control leaves scontext=ksu visible
++PASS AVC handler spoofs the su domain on both source and target
+diff --git a/docs/dispatcher-20261029/records/logs/avc_spoof.log b/docs/dispatcher-20261029/records/logs/avc_spoof.log
+new file mode 100644
+index 0000000..d0621b9
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/avc_spoof.log
+@@ -0,0 +1,17 @@
++PASS source rewrites both sids and derives avc_ssid_arg
++PASS nostate/source-match
++PASS nostate/target-match
++PASS nostate/both-match
++PASS nostate/neither
++PASS nostate/disabled
++PASS nostate/su-unresolved-zero
++PASS nostate/priv-unresolved
++PASS state/source-match
++PASS state/target-match
++PASS state/both-match
++PASS state/neither
++PASS state/disabled
++PASS state/su-unresolved-zero
++PASS state/priv-unresolved
++PASS target-only negative control leaves scontext=ksu visible
++PASS AVC handler spoofs the su domain on both source and target
+diff --git a/docs/dispatcher-20261029/records/logs/feature_hooks-sanitizers.log b/docs/dispatcher-20261029/records/logs/feature_hooks-sanitizers.log
+new file mode 100644
+index 0000000..db36100
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/feature_hooks-sanitizers.log
+@@ -0,0 +1,13 @@
++PASS syscall/cross-abi
++PASS syscall/native-stat
++PASS syscall/compat-stat
++PASS syscall/dirent
++PASS syscall/errors-null
++PASS syscall/ordinary-syscalls
++PASS syscall/legacy-wrap
++PASS fdinfo/duplicates-lifecycle
++PASS fdinfo/partial-failures
++PASS fdinfo/phone-leak
++PASS fdinfo/file-credentials
++PASS fdinfo/decimal-width
++PASS fdinfo/decimal-bounds
+diff --git a/docs/dispatcher-20261029/records/logs/feature_hooks.log b/docs/dispatcher-20261029/records/logs/feature_hooks.log
+new file mode 100644
+index 0000000..db36100
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/feature_hooks.log
+@@ -0,0 +1,13 @@
++PASS syscall/cross-abi
++PASS syscall/native-stat
++PASS syscall/compat-stat
++PASS syscall/dirent
++PASS syscall/errors-null
++PASS syscall/ordinary-syscalls
++PASS syscall/legacy-wrap
++PASS fdinfo/duplicates-lifecycle
++PASS fdinfo/partial-failures
++PASS fdinfo/phone-leak
++PASS fdinfo/file-credentials
++PASS fdinfo/decimal-width
++PASS fdinfo/decimal-bounds
+diff --git a/docs/dispatcher-20261029/records/logs/fp_hooks-sanitizers.log b/docs/dispatcher-20261029/records/logs/fp_hooks-sanitizers.log
+new file mode 100644
+index 0000000..d059ffd
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/fp_hooks-sanitizers.log
+@@ -0,0 +1,19 @@
++PASS success
++PASS restore-retry
++PASS foreign-native
++PASS already-restored
++PASS native-fail-before
++PASS native-fail-after
++PASS compat-fail-before
++PASS compat-fail-after
++PASS rollback-fail
++PASS no-store
++PASS invalid
++PASS missing-compat
++PASS empty
++PASS sleeping-tail
++PASS late-entry
++PASS multiple
++PASS wake-tail
++PASS all 13 wrappers: balanced lifetime and correct original
++PASS syscall table numbering and separate native/compat wrappers
+diff --git a/docs/dispatcher-20261029/records/logs/fp_hooks.log b/docs/dispatcher-20261029/records/logs/fp_hooks.log
+new file mode 100644
+index 0000000..d059ffd
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/fp_hooks.log
+@@ -0,0 +1,19 @@
++PASS success
++PASS restore-retry
++PASS foreign-native
++PASS already-restored
++PASS native-fail-before
++PASS native-fail-after
++PASS compat-fail-before
++PASS compat-fail-after
++PASS rollback-fail
++PASS no-store
++PASS invalid
++PASS missing-compat
++PASS empty
++PASS sleeping-tail
++PASS late-entry
++PASS multiple
++PASS wake-tail
++PASS all 13 wrappers: balanced lifetime and correct original
++PASS syscall table numbering and separate native/compat wrappers
+diff --git a/docs/dispatcher-20261029/records/logs/identity_controls-sanitizers.log b/docs/dispatcher-20261029/records/logs/identity_controls-sanitizers.log
+new file mode 100644
+index 0000000..c9319ad
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/identity_controls-sanitizers.log
+@@ -0,0 +1,38 @@
++PASS boot-cycle
++PASS boot-null
++PASS boot-allocation
++PASS boot-foreign
++PASS boot-reset-input
++PASS boot-abi-errors
++PASS boot-concurrency
++PASS boot-reclaim-bound
++PASS boot-reader-replace
++PASS boot-reader-reset
++PASS boot-foreign-unload
++PASS boot-exit
++PASS uname-shorter
++PASS uname-default
++PASS uname-initial-parameter
++PASS uname-snapshot
++PASS uname-writers
++PASS uname-registration-failure
++PASS uname-exit
++PASS uname-incomplete
++PASS variant-label
++PASS avc-register-selection
++PASS avc-repeat
++PASS avc-sid-unavailable
++PASS avc-register-failure
++PASS avc-proc-input
++PASS avc-abi-input
++PASS avc-concurrency
++PASS avc-unload
++PASS avc-unload-disabled
++PASS negative/mixed-uname-pair
++PASS negative/old-avc-register
++PASS negative/allow-avc-after-exit
++PASS negative/retain-disabled-probe
++PASS negative/free-published-bootconfig
++PASS negative/omit-reader-grace
++PASS negative/omit-uname-padding
++PASS negative/overwrite-foreign-bootconfig
+diff --git a/docs/dispatcher-20261029/records/logs/identity_controls.log b/docs/dispatcher-20261029/records/logs/identity_controls.log
+new file mode 100644
+index 0000000..c9319ad
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/identity_controls.log
+@@ -0,0 +1,38 @@
++PASS boot-cycle
++PASS boot-null
++PASS boot-allocation
++PASS boot-foreign
++PASS boot-reset-input
++PASS boot-abi-errors
++PASS boot-concurrency
++PASS boot-reclaim-bound
++PASS boot-reader-replace
++PASS boot-reader-reset
++PASS boot-foreign-unload
++PASS boot-exit
++PASS uname-shorter
++PASS uname-default
++PASS uname-initial-parameter
++PASS uname-snapshot
++PASS uname-writers
++PASS uname-registration-failure
++PASS uname-exit
++PASS uname-incomplete
++PASS variant-label
++PASS avc-register-selection
++PASS avc-repeat
++PASS avc-sid-unavailable
++PASS avc-register-failure
++PASS avc-proc-input
++PASS avc-abi-input
++PASS avc-concurrency
++PASS avc-unload
++PASS avc-unload-disabled
++PASS negative/mixed-uname-pair
++PASS negative/old-avc-register
++PASS negative/allow-avc-after-exit
++PASS negative/retain-disabled-probe
++PASS negative/free-published-bootconfig
++PASS negative/omit-reader-grace
++PASS negative/omit-uname-padding
++PASS negative/overwrite-foreign-bootconfig
+diff --git a/docs/dispatcher-20261029/records/logs/kprobe_reuse-sanitizers.log b/docs/dispatcher-20261029/records/logs/kprobe_reuse-sanitizers.log
+new file mode 100644
+index 0000000..7ee4227
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/kprobe_reuse-sanitizers.log
+@@ -0,0 +1,14 @@
++PASS production/kprobe-cycles
++PASS production/kprobe-failed-lookup
++PASS production/kprobe-preserve-flags
++PASS production/kprobe-idempotent
++PASS production/kretprobe-cycles
++PASS production/kretprobe-failed-lookup
++PASS production/kretprobe-preserve-flags
++PASS production/kretprobe-idempotent
++PASS without-fix/kprobe-cycles
++PASS without-fix/kprobe-failed-lookup
++PASS without-fix/kprobe-preserve-flags
++PASS without-fix/kretprobe-cycles
++PASS without-fix/kretprobe-failed-lookup
++PASS without-fix/kretprobe-preserve-flags
+diff --git a/docs/dispatcher-20261029/records/logs/kprobe_reuse.log b/docs/dispatcher-20261029/records/logs/kprobe_reuse.log
+new file mode 100644
+index 0000000..7ee4227
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/kprobe_reuse.log
+@@ -0,0 +1,14 @@
++PASS production/kprobe-cycles
++PASS production/kprobe-failed-lookup
++PASS production/kprobe-preserve-flags
++PASS production/kprobe-idempotent
++PASS production/kretprobe-cycles
++PASS production/kretprobe-failed-lookup
++PASS production/kretprobe-preserve-flags
++PASS production/kretprobe-idempotent
++PASS without-fix/kprobe-cycles
++PASS without-fix/kprobe-failed-lookup
++PASS without-fix/kprobe-preserve-flags
++PASS without-fix/kretprobe-cycles
++PASS without-fix/kretprobe-failed-lookup
++PASS without-fix/kretprobe-preserve-flags
+diff --git a/docs/dispatcher-20261029/records/logs/kstat_compat.log b/docs/dispatcher-20261029/records/logs/kstat_compat.log
+new file mode 100644
+index 0000000..1043c4b
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/kstat_compat.log
+@@ -0,0 +1 @@
++PASS compat_stat: all fields/canaries, exact-width boundaries, overflow refusal, read/write faults, identity, gate and empty/no-flag rules
+diff --git a/docs/dispatcher-20261029/records/logs/kstat_statx-sanitizers.log b/docs/dispatcher-20261029/records/logs/kstat_statx-sanitizers.log
+new file mode 100644
+index 0000000..ae79d60
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/kstat_statx-sanitizers.log
+@@ -0,0 +1,11 @@
++PASS statx/phone-device
++PASS statx/device-identity
++PASS statx/wide-device
++PASS statx/masks
++PASS statx/field-widths
++PASS statx/gates-control
++PASS statx/empty-noflag
++PASS statx/read-faults
++PASS statx/write-faults
++PASS statx/snapshot
++PASS statx/compat-layout
+diff --git a/docs/dispatcher-20261029/records/logs/kstat_statx.log b/docs/dispatcher-20261029/records/logs/kstat_statx.log
+new file mode 100644
+index 0000000..ae79d60
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/kstat_statx.log
+@@ -0,0 +1,11 @@
++PASS statx/phone-device
++PASS statx/device-identity
++PASS statx/wide-device
++PASS statx/masks
++PASS statx/field-widths
++PASS statx/gates-control
++PASS statx/empty-noflag
++PASS statx/read-faults
++PASS statx/write-faults
++PASS statx/snapshot
++PASS statx/compat-layout
+diff --git a/docs/dispatcher-20261029/records/logs/lifecycle-sanitizers.log b/docs/dispatcher-20261029/records/logs/lifecycle-sanitizers.log
+new file mode 100644
+index 0000000..7a4c0c1
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/lifecycle-sanitizers.log
+@@ -0,0 +1,44 @@
++PASS queued (table)
++PASS queued (kprobe)
++PASS init-window (table)
++PASS init-window (kprobe)
++PASS allocation (table)
++PASS allocation (kprobe)
++PASS enqueue (table)
++PASS enqueue (kprobe)
++PASS rejected (table)
++PASS rejected (kprobe)
++PASS payload-errors (table)
++PASS payload-errors (kprobe)
++PASS multiple (table)
++PASS multiple (kprobe)
++PASS sleeping (table)
++PASS sleeping (kprobe)
++PASS return-tail (table)
++PASS return-tail (kprobe)
++PASS rollback (table)
++PASS rollback (kprobe)
++PASS partial-failures (table)
++PASS partial-failures (kprobe)
++PASS admission-race (table)
++PASS admission-race (kprobe)
++PASS table-preferred (table)
++PASS fallback (table)
++PASS bti-c (table)
++PASS bti-jc (table)
++PASS unknown-entry (table)
++PASS unreadable-entry (table)
++PASS both-fail (table)
++PASS rollback-before-fallback (table)
++PASS table-forward (table)
++PASS sleeping-original (table)
++PASS wrapper-tail (table)
++PASS repeat-routes (table)
++PASS null-probe-regs (kprobe)
++PASS no-tasks-rcu (table)
++PASS bti-config (kprobe)
++PASS table-preferred (table)
++PASS rejected init-admission
++PASS rejected sleeping-wrapper
++PASS rejected task-work-tail
++PASS rejected bti-fallback
+diff --git a/docs/dispatcher-20261029/records/logs/lifecycle.log b/docs/dispatcher-20261029/records/logs/lifecycle.log
+new file mode 100644
+index 0000000..7a4c0c1
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/lifecycle.log
+@@ -0,0 +1,44 @@
++PASS queued (table)
++PASS queued (kprobe)
++PASS init-window (table)
++PASS init-window (kprobe)
++PASS allocation (table)
++PASS allocation (kprobe)
++PASS enqueue (table)
++PASS enqueue (kprobe)
++PASS rejected (table)
++PASS rejected (kprobe)
++PASS payload-errors (table)
++PASS payload-errors (kprobe)
++PASS multiple (table)
++PASS multiple (kprobe)
++PASS sleeping (table)
++PASS sleeping (kprobe)
++PASS return-tail (table)
++PASS return-tail (kprobe)
++PASS rollback (table)
++PASS rollback (kprobe)
++PASS partial-failures (table)
++PASS partial-failures (kprobe)
++PASS admission-race (table)
++PASS admission-race (kprobe)
++PASS table-preferred (table)
++PASS fallback (table)
++PASS bti-c (table)
++PASS bti-jc (table)
++PASS unknown-entry (table)
++PASS unreadable-entry (table)
++PASS both-fail (table)
++PASS rollback-before-fallback (table)
++PASS table-forward (table)
++PASS sleeping-original (table)
++PASS wrapper-tail (table)
++PASS repeat-routes (table)
++PASS null-probe-regs (kprobe)
++PASS no-tasks-rcu (table)
++PASS bti-config (kprobe)
++PASS table-preferred (table)
++PASS rejected init-admission
++PASS rejected sleeping-wrapper
++PASS rejected task-work-tail
++PASS rejected bti-fallback
+diff --git a/docs/dispatcher-20261029/records/logs/lsm_lifetime-sanitizers.log b/docs/dispatcher-20261029/records/logs/lsm_lifetime-sanitizers.log
+new file mode 100644
+index 0000000..4672bd5
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/lsm_lifetime-sanitizers.log
+@@ -0,0 +1,5 @@
++PASS empty
++PASS sleeping-tail
++PASS late-entry
++PASS multiple
++PASS wake-tail
+diff --git a/docs/dispatcher-20261029/records/logs/lsm_lifetime.log b/docs/dispatcher-20261029/records/logs/lsm_lifetime.log
+new file mode 100644
+index 0000000..4672bd5
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/lsm_lifetime.log
+@@ -0,0 +1,5 @@
++PASS empty
++PASS sleeping-tail
++PASS late-entry
++PASS multiple
++PASS wake-tail
+diff --git a/docs/dispatcher-20261029/records/logs/map_files-sanitizers.log b/docs/dispatcher-20261029/records/logs/map_files-sanitizers.log
+new file mode 100644
+index 0000000..f64b916
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/map_files-sanitizers.log
+@@ -0,0 +1,58 @@
++PASS range-parser
++PASS hidden-readlink
++PASS visible-readlink
++PASS path-errors
++PASS root-passthrough
++PASS empty-rules
++PASS ptrace-denied
++PASS follow-ownership
++PASS follow-security
++PASS enumeration
++PASS small-buffer
++PASS lock-interrupt
++PASS device-isolation
++PASS padding-aware
++PASS remap-identity
++PASS restore-rules
++PASS missing-symbol
++PASS ambiguous-symbol
++PASS missing-access-helper
++PASS missing-padding-helper
++PASS wrong-callback
++PASS first-probe-failure
++PASS later-probe-failure
++PASS wrong-entry
++PASS sleeping-teardown
++PASS no-table-write
++PASS repeat-install
++PASS unrelated-readlink
++PASS task-guard-isolation
++PASS diverted-entry-teardown
++PASS missing-instantiate-helper
++PASS lookup-probe-failure
++PASS revalidate-probe-failure
++PASS cached-hidden
++PASS cached-control
++PASS cached-rcu
++PASS cached-native-failures
++PASS cached-restore
++PASS cached-remap
++PASS cold-hidden
++PASS cold-control
++PASS cold-errors
++PASS cold-instantiate-failure
++PASS metadata-root-empty
++PASS metadata-device-isolation
++PASS metadata-sleeping-teardown
++PASS readlink-reference-leak negative control
++PASS follow-double-release negative control
++PASS directory-entry-leak negative control
++PASS wrong-incoming-type negative control
++PASS missing-recursion-guard negative control
++PASS missing-entry-accounting negative control
++PASS shared-readlink-unscoped negative control
++PASS missing-probe-flag-reset negative control
++PASS cached-metadata-leak negative control
++PASS cold-metadata-leak negative control
++PASS cold-mm-reference-leak negative control
++PASS cached-wrong-incoming-type negative control
+diff --git a/docs/dispatcher-20261029/records/logs/map_files.log b/docs/dispatcher-20261029/records/logs/map_files.log
+new file mode 100644
+index 0000000..f64b916
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/map_files.log
+@@ -0,0 +1,58 @@
++PASS range-parser
++PASS hidden-readlink
++PASS visible-readlink
++PASS path-errors
++PASS root-passthrough
++PASS empty-rules
++PASS ptrace-denied
++PASS follow-ownership
++PASS follow-security
++PASS enumeration
++PASS small-buffer
++PASS lock-interrupt
++PASS device-isolation
++PASS padding-aware
++PASS remap-identity
++PASS restore-rules
++PASS missing-symbol
++PASS ambiguous-symbol
++PASS missing-access-helper
++PASS missing-padding-helper
++PASS wrong-callback
++PASS first-probe-failure
++PASS later-probe-failure
++PASS wrong-entry
++PASS sleeping-teardown
++PASS no-table-write
++PASS repeat-install
++PASS unrelated-readlink
++PASS task-guard-isolation
++PASS diverted-entry-teardown
++PASS missing-instantiate-helper
++PASS lookup-probe-failure
++PASS revalidate-probe-failure
++PASS cached-hidden
++PASS cached-control
++PASS cached-rcu
++PASS cached-native-failures
++PASS cached-restore
++PASS cached-remap
++PASS cold-hidden
++PASS cold-control
++PASS cold-errors
++PASS cold-instantiate-failure
++PASS metadata-root-empty
++PASS metadata-device-isolation
++PASS metadata-sleeping-teardown
++PASS readlink-reference-leak negative control
++PASS follow-double-release negative control
++PASS directory-entry-leak negative control
++PASS wrong-incoming-type negative control
++PASS missing-recursion-guard negative control
++PASS missing-entry-accounting negative control
++PASS shared-readlink-unscoped negative control
++PASS missing-probe-flag-reset negative control
++PASS cached-metadata-leak negative control
++PASS cold-metadata-leak negative control
++PASS cold-mm-reference-leak negative control
++PASS cached-wrong-incoming-type negative control
+diff --git a/docs/dispatcher-20261029/records/logs/map_hooks-sanitizers.log b/docs/dispatcher-20261029/records/logs/map_hooks-sanitizers.log
+new file mode 100644
+index 0000000..22d1963
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/map_hooks-sanitizers.log
+@@ -0,0 +1,28 @@
++PASS empty-fast-path
++PASS add-delete
++PASS device-isolation
++PASS duplicates
++PASS capacity-reuse
++PASS clear
++PASS maps-root-exclusion
++PASS sentinel
++PASS restore-callback
++PASS supercall-add-delete
++PASS invalid-input
++PASS unavailable
++PASS failed-registration
++PASS retry-registration
++PASS optional-retry
++PASS repeat-lifecycle
++PASS concurrent-rules
++PASS gup-return-contract
++PASS pin-return-contract
++PASS gup-gap-boundaries
++PASS gup-zero-pages
++PASS gup-root-control
++PASS gup-output-lock-preservation
++PASS gup-null-anonymous
++PASS gup-restoration
++PASS pin-optional-retry
++PASS maps-inlined-formatter
++PASS required-map-files
+diff --git a/docs/dispatcher-20261029/records/logs/map_hooks.log b/docs/dispatcher-20261029/records/logs/map_hooks.log
+new file mode 100644
+index 0000000..22d1963
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/map_hooks.log
+@@ -0,0 +1,28 @@
++PASS empty-fast-path
++PASS add-delete
++PASS device-isolation
++PASS duplicates
++PASS capacity-reuse
++PASS clear
++PASS maps-root-exclusion
++PASS sentinel
++PASS restore-callback
++PASS supercall-add-delete
++PASS invalid-input
++PASS unavailable
++PASS failed-registration
++PASS retry-registration
++PASS optional-retry
++PASS repeat-lifecycle
++PASS concurrent-rules
++PASS gup-return-contract
++PASS pin-return-contract
++PASS gup-gap-boundaries
++PASS gup-zero-pages
++PASS gup-root-control
++PASS gup-output-lock-preservation
++PASS gup-null-anonymous
++PASS gup-restoration
++PASS pin-optional-retry
++PASS maps-inlined-formatter
++PASS required-map-files
+diff --git a/docs/dispatcher-20261029/records/logs/module_control.log b/docs/dispatcher-20261029/records/logs/module_control.log
+new file mode 100644
+index 0000000..fc1416b
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/module_control.log
+@@ -0,0 +1,8 @@
++PASS exact-list
++PASS parse-failure-preserves-list
++PASS rescan-late-module
++PASS distinct-sysfs-errors
++PASS long-module-path
++PASS capacity
++PASS concurrent-writers
++PASS missing-writer-serialization negative control
+diff --git a/docs/dispatcher-20261029/records/logs/mount_hooks-sanitizers.log b/docs/dispatcher-20261029/records/logs/mount_hooks-sanitizers.log
+new file mode 100644
+index 0000000..c10cef5
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/mount_hooks-sanitizers.log
+@@ -0,0 +1,44 @@
++PASS bind-parent
++PASS namespace-copy
++PASS shared-source
++PASS long-source
++PASS device-inode-isolation
++PASS null-root
++PASS drop-and-reuse
++PASS repeat-enable
++PASS partial-retry
++PASS failed-registration-retry
++PASS optional-retry
++PASS fdinfo-partial-retry
++PASS idempotent-enable
++PASS callback-second-enable
++PASS fdinfo-second-enable
++PASS required-hook-retry
++PASS ksu-default
++PASS module-hosts
++PASS path-boundaries
++PASS backing-bind
++PASS backing-upper
++PASS backing-lower
++PASS backing-nested
++PASS backing-other-device
++PASS backing-lookalike
++PASS backing-missing-helper
++PASS backing-cycle
++PASS backing-long-path
++PASS backing-cross-view
++PASS idmap-over64
++PASS idmap-recycle
++PASS idmap-drop-dev
++PASS idmap-allocation-failure
++PASS idmap-cap
++PASS statfs-erofs
++PASS statfs-root
++PASS statfs-ordinary-overlay
++PASS statfs-upper-only
++PASS statfs-writable-lower
++PASS statfs-nested
++PASS statfs-cycle
++PASS scan-stable-ids
++PASS diagnostics-format
++PASS identity reader excludes retirement/reuse until its snapshot is complete
+diff --git a/docs/dispatcher-20261029/records/logs/mount_hooks.log b/docs/dispatcher-20261029/records/logs/mount_hooks.log
+new file mode 100644
+index 0000000..c10cef5
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/mount_hooks.log
+@@ -0,0 +1,44 @@
++PASS bind-parent
++PASS namespace-copy
++PASS shared-source
++PASS long-source
++PASS device-inode-isolation
++PASS null-root
++PASS drop-and-reuse
++PASS repeat-enable
++PASS partial-retry
++PASS failed-registration-retry
++PASS optional-retry
++PASS fdinfo-partial-retry
++PASS idempotent-enable
++PASS callback-second-enable
++PASS fdinfo-second-enable
++PASS required-hook-retry
++PASS ksu-default
++PASS module-hosts
++PASS path-boundaries
++PASS backing-bind
++PASS backing-upper
++PASS backing-lower
++PASS backing-nested
++PASS backing-other-device
++PASS backing-lookalike
++PASS backing-missing-helper
++PASS backing-cycle
++PASS backing-long-path
++PASS backing-cross-view
++PASS idmap-over64
++PASS idmap-recycle
++PASS idmap-drop-dev
++PASS idmap-allocation-failure
++PASS idmap-cap
++PASS statfs-erofs
++PASS statfs-root
++PASS statfs-ordinary-overlay
++PASS statfs-upper-only
++PASS statfs-writable-lower
++PASS statfs-nested
++PASS statfs-cycle
++PASS scan-stable-ids
++PASS diagnostics-format
++PASS identity reader excludes retirement/reuse until its snapshot is complete
+diff --git a/docs/dispatcher-20261029/records/logs/mount_prefix-sanitizers.log b/docs/dispatcher-20261029/records/logs/mount_prefix-sanitizers.log
+new file mode 100644
+index 0000000..5a2b86c
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/mount_prefix-sanitizers.log
+@@ -0,0 +1 @@
++PASS 64 mount prefixes: limits, truncation, allocation failure and coherent concurrent snapshots
+diff --git a/docs/dispatcher-20261029/records/logs/mount_prefix.log b/docs/dispatcher-20261029/records/logs/mount_prefix.log
+new file mode 100644
+index 0000000..5a2b86c
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/mount_prefix.log
+@@ -0,0 +1 @@
++PASS 64 mount prefixes: limits, truncation, allocation failure and coherent concurrent snapshots
+diff --git a/docs/dispatcher-20261029/records/logs/mshow_filter-sanitizers.log b/docs/dispatcher-20261029/records/logs/mshow_filter-sanitizers.log
+new file mode 100644
+index 0000000..18dc719
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/mshow_filter-sanitizers.log
+@@ -0,0 +1,19 @@
++PASS m_show armed by name: no table resolve, explicit .symbol_name
++PASS current/enlisted-susfs
++PASS current/enlisted-kernelsu
++PASS current/not-enlisted-okmodule
++PASS current/null-p-shown
++PASS current/m-op-irrelevant
++PASS current/m-null-impossible-call
++PASS current/op-match-still-hides
++PASS current/op-mismatch-suppresses
++PASS reference/enlisted-susfs
++PASS reference/enlisted-kernelsu
++PASS reference/not-enlisted-okmodule
++PASS reference/null-p-shown
++PASS reference/m-op-irrelevant
++PASS reference/m-null-impossible-call
++PASS reference/op-match-still-hides
++PASS reference/op-mismatch-suppresses
++PASS missing-identity-detach negative control (gate can suppress hiding)
++PASS m_show filter behaves like the phone-qualified 1.2.16 handler
+diff --git a/docs/dispatcher-20261029/records/logs/mshow_filter.log b/docs/dispatcher-20261029/records/logs/mshow_filter.log
+new file mode 100644
+index 0000000..18dc719
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/mshow_filter.log
+@@ -0,0 +1,19 @@
++PASS m_show armed by name: no table resolve, explicit .symbol_name
++PASS current/enlisted-susfs
++PASS current/enlisted-kernelsu
++PASS current/not-enlisted-okmodule
++PASS current/null-p-shown
++PASS current/m-op-irrelevant
++PASS current/m-null-impossible-call
++PASS current/op-match-still-hides
++PASS current/op-mismatch-suppresses
++PASS reference/enlisted-susfs
++PASS reference/enlisted-kernelsu
++PASS reference/not-enlisted-okmodule
++PASS reference/null-p-shown
++PASS reference/m-op-irrelevant
++PASS reference/m-null-impossible-call
++PASS reference/op-match-still-hides
++PASS reference/op-mismatch-suppresses
++PASS missing-identity-detach negative control (gate can suppress hiding)
++PASS m_show filter behaves like the phone-qualified 1.2.16 handler
+diff --git a/docs/dispatcher-20261029/records/logs/patch_memory_flush-sanitizers.log b/docs/dispatcher-20261029/records/logs/patch_memory_flush-sanitizers.log
+new file mode 100644
+index 0000000..8dd4496
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/patch_memory_flush-sanitizers.log
+@@ -0,0 +1,10 @@
++PASS guard: resolves by name
++PASS guard: no build-time KSU_NEW_DCACHE_FLUSH macro
++PASS guard: ksu_patch_text_nosync refuses before the store
++PASS both-dcache
++PASS new-preferred
++PASS old-only
++PASS no-dcache
++PASS icache-fallback
++PASS no-icache
++PASS flush helper resolved by name, new-first, with fallback and clean refusal
+diff --git a/docs/dispatcher-20261029/records/logs/patch_memory_flush.log b/docs/dispatcher-20261029/records/logs/patch_memory_flush.log
+new file mode 100644
+index 0000000..8dd4496
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/patch_memory_flush.log
+@@ -0,0 +1,10 @@
++PASS guard: resolves by name
++PASS guard: no build-time KSU_NEW_DCACHE_FLUSH macro
++PASS guard: ksu_patch_text_nosync refuses before the store
++PASS both-dcache
++PASS new-preferred
++PASS old-only
++PASS no-dcache
++PASS icache-fallback
++PASS no-icache
++PASS flush helper resolved by name, new-first, with fallback and clean refusal
+diff --git a/docs/dispatcher-20261029/records/logs/path_creds-sanitizers.log b/docs/dispatcher-20261029/records/logs/path_creds-sanitizers.log
+new file mode 100644
+index 0000000..0fc44e8
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/path_creds-sanitizers.log
+@@ -0,0 +1,15 @@
++PASS protected-caller
++PASS caller-exit
++PASS allocation-failure
++PASS prepare-failure
++PASS duplicate
++PASS capacity
++PASS per-rule-callers
++PASS resolve-release
++PASS manual-complete
++PASS delete-during-lookup
++PASS clear-during-lookup
++PASS replace-during-lookup
++PASS lookup-errors
++PASS cleanup
++PASS missing-borrow-reference negative control
+diff --git a/docs/dispatcher-20261029/records/logs/path_creds.log b/docs/dispatcher-20261029/records/logs/path_creds.log
+new file mode 100644
+index 0000000..0fc44e8
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/path_creds.log
+@@ -0,0 +1,15 @@
++PASS protected-caller
++PASS caller-exit
++PASS allocation-failure
++PASS prepare-failure
++PASS duplicate
++PASS capacity
++PASS per-rule-callers
++PASS resolve-release
++PASS manual-complete
++PASS delete-during-lookup
++PASS clear-during-lookup
++PASS replace-during-lookup
++PASS lookup-errors
++PASS cleanup
++PASS missing-borrow-reference negative control
+diff --git a/docs/dispatcher-20261029/records/logs/path_entry-sanitizers.log b/docs/dispatcher-20261029/records/logs/path_entry-sanitizers.log
+new file mode 100644
+index 0000000..b4ab95c
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/path_entry-sanitizers.log
+@@ -0,0 +1 @@
++PASS production path entry: dirent byte lengths/identity/owner/position, O_PATH pre-install denial, readlink native errors/retry/reference ownership, probe rollback and diverted-entry teardown
+diff --git a/docs/dispatcher-20261029/records/logs/path_entry.log b/docs/dispatcher-20261029/records/logs/path_entry.log
+new file mode 100644
+index 0000000..b4ab95c
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/path_entry.log
+@@ -0,0 +1 @@
++PASS production path entry: dirent byte lengths/identity/owner/position, O_PATH pre-install denial, readlink native errors/retry/reference ownership, probe rollback and diverted-entry teardown
+diff --git a/docs/dispatcher-20261029/records/logs/path_index-sanitizers.log b/docs/dispatcher-20261029/records/logs/path_index-sanitizers.log
+new file mode 100644
+index 0000000..0016a17
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/path_index-sanitizers.log
+@@ -0,0 +1,6 @@
++PASS rules=0 max_bucket=0 negative_lookup_ns=5.48 (host only)
++PASS rules=16 max_bucket=1 negative_lookup_ns=20.10 (host only)
++PASS rules=128 max_bucket=1 negative_lookup_ns=14.61 (host only)
++PASS rules=1024 max_bucket=6 negative_lookup_ns=32.23 (host only)
++PASS rules=8192 max_bucket=34 negative_lookup_ns=281.65 (host only)
++PASS pending exclusion, inode-zero pointer matching and complete removal
+diff --git a/docs/dispatcher-20261029/records/logs/path_index.log b/docs/dispatcher-20261029/records/logs/path_index.log
+new file mode 100644
+index 0000000..f0ec32b
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/path_index.log
+@@ -0,0 +1,6 @@
++PASS rules=0 max_bucket=0 negative_lookup_ns=0.58 (host only)
++PASS rules=16 max_bucket=1 negative_lookup_ns=7.45 (host only)
++PASS rules=128 max_bucket=1 negative_lookup_ns=11.48 (host only)
++PASS rules=1024 max_bucket=6 negative_lookup_ns=9.74 (host only)
++PASS rules=8192 max_bucket=34 negative_lookup_ns=74.23 (host only)
++PASS pending exclusion, inode-zero pointer matching and complete removal
+diff --git a/docs/dispatcher-20261029/records/logs/path_listing-sanitizers-final.log b/docs/dispatcher-20261029/records/logs/path_listing-sanitizers-final.log
+new file mode 100644
+index 0000000..d58a2a9
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/path_listing-sanitizers-final.log
+@@ -0,0 +1,16 @@
++PASS empty
++PASS multi-page
++PASS maximum-table
++PASS short-reads-seek
++PASS immutable-after-delete
++PASS pending-protected-values
++PASS allocation-failure
++PASS growth-retry
++PASS growth-exhaustion
++PASS count-mismatch
++PASS capacity-overflow
++PASS seq-open-failure
++PASS app-denial
++PASS write-only
++PASS sysfs-bounds
++PASS missing-tail negative control
+diff --git a/docs/dispatcher-20261029/records/logs/path_listing-sanitizers.log b/docs/dispatcher-20261029/records/logs/path_listing-sanitizers.log
+new file mode 100644
+index 0000000..37871a8
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/path_listing-sanitizers.log
+@@ -0,0 +1,20 @@
++PASS empty
++PASS multi-page
++Traceback (most recent call last):
++  File "<source>/tests/path_listing/run.py", line 93, in <module>
++    raise SystemExit(main())
++                     ^^^^^^
++  File "<source>/tests/path_listing/run.py", line 69, in main
++    run = subprocess.run([str(exe), case], capture_output=True, text=True, timeout=20, env=env)
++          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 550, in run
++    stdout, stderr = process.communicate(input, timeout=timeout)
++                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 1209, in communicate
++    stdout, stderr = self._communicate(input, endtime, timeout)
++                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
++  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 2116, in _communicate
++    self._check_timeout(endtime, orig_timeout, stdout, stderr)
++  File "/opt/codex/runtimes/codex-primary-runtime/dependencies/python/lib/python3.12/subprocess.py", line 1253, in _check_timeout
++    raise TimeoutExpired(
++subprocess.TimeoutExpired: Command '['/tmp/susfs-path-listing-do_bwg3n/test', 'maximum-table']' timed out after 20 seconds
+diff --git a/docs/dispatcher-20261029/records/logs/path_listing.log b/docs/dispatcher-20261029/records/logs/path_listing.log
+new file mode 100644
+index 0000000..d58a2a9
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/path_listing.log
+@@ -0,0 +1,16 @@
++PASS empty
++PASS multi-page
++PASS maximum-table
++PASS short-reads-seek
++PASS immutable-after-delete
++PASS pending-protected-values
++PASS allocation-failure
++PASS growth-retry
++PASS growth-exhaustion
++PASS count-mismatch
++PASS capacity-overflow
++PASS seq-open-failure
++PASS app-denial
++PASS write-only
++PASS sysfs-bounds
++PASS missing-tail negative control
+diff --git a/docs/dispatcher-20261029/records/logs/path_readlink_lsm-sanitizers.log b/docs/dispatcher-20261029/records/logs/path_readlink_lsm-sanitizers.log
+new file mode 100644
+index 0000000..976ad8e
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/path_readlink_lsm-sanitizers.log
+@@ -0,0 +1,46 @@
++PASS 601 hidden
++PASS 601 visible-denied
++PASS 601 visible-allowed
++PASS 601 visible-retry
++PASS 601 visible-other-error
++PASS 601 umount-bypass
++PASS 601 owner-bypass
++PASS 601 root-bypass
++PASS 601 gate-disabled
++PASS 601 self-protected-shell
++PASS 601 self-protected-root
++PASS 601 same-identity
++PASS 601 other-mount
++PASS 601 self-protected-proc-instance
++PASS 601 unrelated-filesystem
++PASS 601 pending
++PASS 601 negative-dentry
++PASS 601 null-dentry
++PASS 601 resolver
++PASS 601 empty-table
++PASS 601 sleeping-original
++PASS 612 hidden
++PASS 612 visible-denied
++PASS 612 visible-allowed
++PASS 612 visible-retry
++PASS 612 visible-other-error
++PASS 612 umount-bypass
++PASS 612 owner-bypass
++PASS 612 root-bypass
++PASS 612 gate-disabled
++PASS 612 self-protected-shell
++PASS 612 self-protected-root
++PASS 612 same-identity
++PASS 612 other-mount
++PASS 612 self-protected-proc-instance
++PASS 612 unrelated-filesystem
++PASS 612 pending
++PASS 612 negative-dentry
++PASS 612 null-dentry
++PASS 612 resolver
++PASS 612 empty-table
++PASS 612 sleeping-original
++PASS 601 missing-readlink-denial negative control
++PASS 612 missing-readlink-denial negative control
++PASS 612 missing-original-call-exit negative control
++PASS production readlink LSM: 42 cases, 3 runtime negative controls
+diff --git a/docs/dispatcher-20261029/records/logs/path_readlink_lsm.log b/docs/dispatcher-20261029/records/logs/path_readlink_lsm.log
+new file mode 100644
+index 0000000..976ad8e
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/path_readlink_lsm.log
+@@ -0,0 +1,46 @@
++PASS 601 hidden
++PASS 601 visible-denied
++PASS 601 visible-allowed
++PASS 601 visible-retry
++PASS 601 visible-other-error
++PASS 601 umount-bypass
++PASS 601 owner-bypass
++PASS 601 root-bypass
++PASS 601 gate-disabled
++PASS 601 self-protected-shell
++PASS 601 self-protected-root
++PASS 601 same-identity
++PASS 601 other-mount
++PASS 601 self-protected-proc-instance
++PASS 601 unrelated-filesystem
++PASS 601 pending
++PASS 601 negative-dentry
++PASS 601 null-dentry
++PASS 601 resolver
++PASS 601 empty-table
++PASS 601 sleeping-original
++PASS 612 hidden
++PASS 612 visible-denied
++PASS 612 visible-allowed
++PASS 612 visible-retry
++PASS 612 visible-other-error
++PASS 612 umount-bypass
++PASS 612 owner-bypass
++PASS 612 root-bypass
++PASS 612 gate-disabled
++PASS 612 self-protected-shell
++PASS 612 self-protected-root
++PASS 612 same-identity
++PASS 612 other-mount
++PASS 612 self-protected-proc-instance
++PASS 612 unrelated-filesystem
++PASS 612 pending
++PASS 612 negative-dentry
++PASS 612 null-dentry
++PASS 612 resolver
++PASS 612 empty-table
++PASS 612 sleeping-original
++PASS 601 missing-readlink-denial negative control
++PASS 612 missing-readlink-denial negative control
++PASS 612 missing-original-call-exit negative control
++PASS production readlink LSM: 42 cases, 3 runtime negative controls
+diff --git a/docs/dispatcher-20261029/records/logs/r18_fixes-sanitizers.log b/docs/dispatcher-20261029/records/logs/r18_fixes-sanitizers.log
+new file mode 100644
+index 0000000..90721d6
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/r18_fixes-sanitizers.log
+@@ -0,0 +1,48 @@
++PASS production/dirent/native-mixed
++PASS production/dirent/native-all-hidden
++PASS production/dirent/native-all-hidden-next-chunk
++PASS production/dirent/native-partial-fault
++PASS production/dirent/native-first-fault
++PASS production/dirent/native-malformed-first
++PASS production/dirent/native-no-rules
++PASS production/dirent/native-tail-scrub-fault
++PASS production/dirent/native-partial-and-scrub-fault
++PASS production/dirent/native-placeholder-scrub-fault
++PASS production/dirent/compat-mixed
++PASS production/dirent/compat-all-hidden
++PASS production/dirent/compat-all-hidden-next-chunk
++PASS production/dirent/compat-partial-fault
++PASS production/dirent/compat-first-fault
++PASS production/dirent/compat-malformed-first
++PASS production/dirent/compat-no-rules
++PASS production/dirent/compat-tail-scrub-fault
++PASS production/dirent/compat-partial-and-scrub-fault
++PASS production/dirent/compat-placeholder-scrub-fault
++PASS production/redirect/publication
++PASS production/redirect/replacement-capacity
++PASS production/redirect/replacement-success
++PASS production/redirect/reserved-target
++PASS production/probe-kstat/exit-live
++PASS production/probe-kstat/exit-unarmed
++PASS production/probe-kstat/failed-retry
++PASS production/probe-kstat/concurrent-arm
++PASS production/probe-kstat/late-writer
++PASS production/probe-uname/exit-live
++PASS production/probe-uname/exit-unarmed
++PASS production/probe-uname/failed-retry
++PASS production/probe-uname/concurrent-arm
++PASS production/probe-uname/late-writer
++PASS production/probe-redirect/exit-live
++PASS production/probe-redirect/exit-unarmed
++PASS production/probe-redirect/failed-retry
++PASS production/probe-redirect/concurrent-arm
++PASS production/probe-redirect/late-writer
++PASS production/elf/table-wrap
++PASS production/elf/table-past-end
++PASS production/elf/table-truncated
++PASS production/elf/shstr-wrap
++PASS production/elf/symtab-wrap
++PASS production/elf/strtab-wrap
++PASS production/elf/modinfo-wrap
++PASS production/elf/size-wrap
++PASS production/elf/valid-ranges
+diff --git a/docs/dispatcher-20261029/records/logs/r18_fixes.log b/docs/dispatcher-20261029/records/logs/r18_fixes.log
+new file mode 100644
+index 0000000..90721d6
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/r18_fixes.log
+@@ -0,0 +1,48 @@
++PASS production/dirent/native-mixed
++PASS production/dirent/native-all-hidden
++PASS production/dirent/native-all-hidden-next-chunk
++PASS production/dirent/native-partial-fault
++PASS production/dirent/native-first-fault
++PASS production/dirent/native-malformed-first
++PASS production/dirent/native-no-rules
++PASS production/dirent/native-tail-scrub-fault
++PASS production/dirent/native-partial-and-scrub-fault
++PASS production/dirent/native-placeholder-scrub-fault
++PASS production/dirent/compat-mixed
++PASS production/dirent/compat-all-hidden
++PASS production/dirent/compat-all-hidden-next-chunk
++PASS production/dirent/compat-partial-fault
++PASS production/dirent/compat-first-fault
++PASS production/dirent/compat-malformed-first
++PASS production/dirent/compat-no-rules
++PASS production/dirent/compat-tail-scrub-fault
++PASS production/dirent/compat-partial-and-scrub-fault
++PASS production/dirent/compat-placeholder-scrub-fault
++PASS production/redirect/publication
++PASS production/redirect/replacement-capacity
++PASS production/redirect/replacement-success
++PASS production/redirect/reserved-target
++PASS production/probe-kstat/exit-live
++PASS production/probe-kstat/exit-unarmed
++PASS production/probe-kstat/failed-retry
++PASS production/probe-kstat/concurrent-arm
++PASS production/probe-kstat/late-writer
++PASS production/probe-uname/exit-live
++PASS production/probe-uname/exit-unarmed
++PASS production/probe-uname/failed-retry
++PASS production/probe-uname/concurrent-arm
++PASS production/probe-uname/late-writer
++PASS production/probe-redirect/exit-live
++PASS production/probe-redirect/exit-unarmed
++PASS production/probe-redirect/failed-retry
++PASS production/probe-redirect/concurrent-arm
++PASS production/probe-redirect/late-writer
++PASS production/elf/table-wrap
++PASS production/elf/table-past-end
++PASS production/elf/table-truncated
++PASS production/elf/shstr-wrap
++PASS production/elf/symtab-wrap
++PASS production/elf/strtab-wrap
++PASS production/elf/modinfo-wrap
++PASS production/elf/size-wrap
++PASS production/elf/valid-ranges
+diff --git a/docs/dispatcher-20261029/records/logs/redirect_entry-sanitizers.log b/docs/dispatcher-20261029/records/logs/redirect_entry-sanitizers.log
+new file mode 100644
+index 0000000..7bd7c81
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/redirect_entry-sanitizers.log
+@@ -0,0 +1,32 @@
++PASS guard: 32-bit flag truncation (no high-bit bypass)
++PASS guard: O_LARGEFILE added on arm64
++PASS guard: each wrapper forwards its own entry kind
++PASS openat-redirect
++PASS openat-highbit-flag
++PASS openat-unknown-flag
++PASS openat-opath
++PASS openat-cloexec
++PASS openat-redirect-nonotify
++PASS copen-redirect
++PASS copenat-redirect
++PASS copenat2-redirect
++PASS openat2-redirect
++PASS openat2-largerzeroed
++PASS openat-tmpfile
++PASS openat-miss
++PASS openat-empty-target
++PASS openat-lookup-fails
++PASS openat-not-ready
++PASS openat-not-active
++PASS openat2-short
++PASS openat2-unknown-resolve
++PASS openat2-beneath-inroot
++PASS openat2-cached-create
++PASS openat2-unknown-flag
++PASS openat2-bad-mode
++PASS openat2-opath-extraflag
++PASS openat2-largernonzero
++PASS openat2-larger-nochecker
++PASS openat-filp-error
++PASS openat-emfile
++PASS forward wrapper redirects the right opens, hands the rest back, orders fd/open/install correctly
+diff --git a/docs/dispatcher-20261029/records/logs/redirect_entry.log b/docs/dispatcher-20261029/records/logs/redirect_entry.log
+new file mode 100644
+index 0000000..7bd7c81
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/redirect_entry.log
+@@ -0,0 +1,32 @@
++PASS guard: 32-bit flag truncation (no high-bit bypass)
++PASS guard: O_LARGEFILE added on arm64
++PASS guard: each wrapper forwards its own entry kind
++PASS openat-redirect
++PASS openat-highbit-flag
++PASS openat-unknown-flag
++PASS openat-opath
++PASS openat-cloexec
++PASS openat-redirect-nonotify
++PASS copen-redirect
++PASS copenat-redirect
++PASS copenat2-redirect
++PASS openat2-redirect
++PASS openat2-largerzeroed
++PASS openat-tmpfile
++PASS openat-miss
++PASS openat-empty-target
++PASS openat-lookup-fails
++PASS openat-not-ready
++PASS openat-not-active
++PASS openat2-short
++PASS openat2-unknown-resolve
++PASS openat2-beneath-inroot
++PASS openat2-cached-create
++PASS openat2-unknown-flag
++PASS openat2-bad-mode
++PASS openat2-opath-extraflag
++PASS openat2-largernonzero
++PASS openat2-larger-nochecker
++PASS openat-filp-error
++PASS openat-emfile
++PASS forward wrapper redirects the right opens, hands the rest back, orders fd/open/install correctly
+diff --git a/docs/dispatcher-20261029/records/logs/redirect_maps-sanitizers.log b/docs/dispatcher-20261029/records/logs/redirect_maps-sanitizers.log
+new file mode 100644
+index 0000000..5189c92
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/redirect_maps-sanitizers.log
+@@ -0,0 +1,12 @@
++PASS inlined-maps
++PASS outofline-smaps
++PASS row-scope
++PASS path-prefix
++PASS deleted
++PASS capacity-growth
++PASS failed-show
++PASS buffer-change
++PASS root-control
++PASS arm-cycles
++PASS arm-first-failure
++PASS arm-second-retry
+diff --git a/docs/dispatcher-20261029/records/logs/redirect_maps.log b/docs/dispatcher-20261029/records/logs/redirect_maps.log
+new file mode 100644
+index 0000000..5189c92
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/redirect_maps.log
+@@ -0,0 +1,12 @@
++PASS inlined-maps
++PASS outofline-smaps
++PASS row-scope
++PASS path-prefix
++PASS deleted
++PASS capacity-growth
++PASS failed-show
++PASS buffer-change
++PASS root-control
++PASS arm-cycles
++PASS arm-first-failure
++PASS arm-second-retry
+diff --git a/docs/dispatcher-20261029/records/logs/redirect_statfs-sanitizers.log b/docs/dispatcher-20261029/records/logs/redirect_statfs-sanitizers.log
+new file mode 100644
+index 0000000..45d2502
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/redirect_statfs-sanitizers.log
+@@ -0,0 +1,9 @@
++PASS app-match
++PASS kernel-error
++PASS root-exclusion
++PASS inode-device-control
++PASS dead-and-empty
++PASS invalid-paths
++PASS proc-empty
++PASS proc-live
++PASS proc-dead
+diff --git a/docs/dispatcher-20261029/records/logs/redirect_statfs.log b/docs/dispatcher-20261029/records/logs/redirect_statfs.log
+new file mode 100644
+index 0000000..45d2502
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/redirect_statfs.log
+@@ -0,0 +1,9 @@
++PASS app-match
++PASS kernel-error
++PASS root-exclusion
++PASS inode-device-control
++PASS dead-and-empty
++PASS invalid-paths
++PASS proc-empty
++PASS proc-live
++PASS proc-dead
+diff --git a/docs/dispatcher-20261029/records/logs/userspace-sanitizers.log b/docs/dispatcher-20261029/records/logs/userspace-sanitizers.log
+new file mode 100644
+index 0000000..5ba8613
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/userspace-sanitizers.log
+@@ -0,0 +1,34 @@
++{
++  "sanitizers": true,
++  "results": [
++    {
++      "case": "vermagic-preservation",
++      "result": "PASS",
++      "detail": "PASS: kernel-only symbols, long/short magic, metadata, sections, symbols, refusal paths, kptr restoration/retry"
++    },
++    {
++      "case": "live",
++      "result": "PASS"
++    },
++    {
++      "case": "syscall-refusal",
++      "result": "PASS"
++    },
++    {
++      "case": "unchanged-sentinel",
++      "result": "PASS"
++    },
++    {
++      "case": "feature-error",
++      "result": "PASS"
++    },
++    {
++      "case": "unterminated",
++      "result": "PASS"
++    },
++    {
++      "case": "json-escaping",
++      "result": "PASS"
++    }
++  ]
++}
+diff --git a/docs/dispatcher-20261029/records/logs/userspace.log b/docs/dispatcher-20261029/records/logs/userspace.log
+new file mode 100644
+index 0000000..38f9664
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/logs/userspace.log
+@@ -0,0 +1,34 @@
++{
++  "sanitizers": false,
++  "results": [
++    {
++      "case": "vermagic-preservation",
++      "result": "PASS",
++      "detail": "PASS: kernel-only symbols, long/short magic, metadata, sections, symbols, refusal paths, kptr restoration/retry"
++    },
++    {
++      "case": "live",
++      "result": "PASS"
++    },
++    {
++      "case": "syscall-refusal",
++      "result": "PASS"
++    },
++    {
++      "case": "unchanged-sentinel",
++      "result": "PASS"
++    },
++    {
++      "case": "feature-error",
++      "result": "PASS"
++    },
++    {
++      "case": "unterminated",
++      "result": "PASS"
++    },
++    {
++      "case": "json-escaping",
++      "result": "PASS"
++    }
++  ]
++}
+diff --git a/docs/dispatcher-20261029/records/path-listing-final.json b/docs/dispatcher-20261029/records/path-listing-final.json
+new file mode 100644
+index 0000000..b5d0f92
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/path-listing-final.json
+@@ -0,0 +1,134 @@
++{
++  "kind": "production path snapshot C with host allocator/list/seq_file API models",
++  "hardware_validated": false,
++  "linux_seq_core_emulated": true,
++  "sanitizers": true,
++  "results": [
++    {
++      "case": "empty",
++      "exit_code": 0,
++      "seconds": 0.01,
++      "timeout": 20,
++      "stdout": "PASS empty",
++      "stderr": ""
++    },
++    {
++      "case": "multi-page",
++      "exit_code": 0,
++      "seconds": 0.034,
++      "timeout": 20,
++      "stdout": "PASS multi-page",
++      "stderr": ""
++    },
++    {
++      "case": "maximum-table",
++      "exit_code": 0,
++      "seconds": 24.282,
++      "timeout": 120,
++      "stdout": "PASS maximum-table",
++      "stderr": ""
++    },
++    {
++      "case": "short-reads-seek",
++      "exit_code": 0,
++      "seconds": 0.032,
++      "timeout": 20,
++      "stdout": "PASS short-reads-seek",
++      "stderr": ""
++    },
++    {
++      "case": "immutable-after-delete",
++      "exit_code": 0,
++      "seconds": 0.027,
++      "timeout": 20,
++      "stdout": "PASS immutable-after-delete",
++      "stderr": ""
++    },
++    {
++      "case": "pending-protected-values",
++      "exit_code": 0,
++      "seconds": 0.034,
++      "timeout": 20,
++      "stdout": "PASS pending-protected-values",
++      "stderr": ""
++    },
++    {
++      "case": "allocation-failure",
++      "exit_code": 0,
++      "seconds": 0.016,
++      "timeout": 20,
++      "stdout": "PASS allocation-failure",
++      "stderr": ""
++    },
++    {
++      "case": "growth-retry",
++      "exit_code": 0,
++      "seconds": 0.019,
++      "timeout": 20,
++      "stdout": "PASS growth-retry",
++      "stderr": ""
++    },
++    {
++      "case": "growth-exhaustion",
++      "exit_code": 0,
++      "seconds": 0.018,
++      "timeout": 20,
++      "stdout": "PASS growth-exhaustion",
++      "stderr": ""
++    },
++    {
++      "case": "count-mismatch",
++      "exit_code": 0,
++      "seconds": 0.008,
++      "timeout": 20,
++      "stdout": "PASS count-mismatch",
++      "stderr": ""
++    },
++    {
++      "case": "capacity-overflow",
++      "exit_code": 0,
++      "seconds": 0.006,
++      "timeout": 20,
++      "stdout": "PASS capacity-overflow",
++      "stderr": ""
++    },
++    {
++      "case": "seq-open-failure",
++      "exit_code": 0,
++      "seconds": 0.006,
++      "timeout": 20,
++      "stdout": "PASS seq-open-failure",
++      "stderr": ""
++    },
++    {
++      "case": "app-denial",
++      "exit_code": 0,
++      "seconds": 0.012,
++      "timeout": 20,
++      "stdout": "PASS app-denial",
++      "stderr": ""
++    },
++    {
++      "case": "write-only",
++      "exit_code": 0,
++      "seconds": 0.092,
++      "timeout": 20,
++      "stdout": "PASS write-only",
++      "stderr": ""
++    },
++    {
++      "case": "sysfs-bounds",
++      "exit_code": 0,
++      "seconds": 0.007,
++      "timeout": 20,
++      "stdout": "PASS sysfs-bounds",
++      "stderr": ""
++    }
++  ],
++  "negative_control": {
++    "case": "missing-tail",
++    "passed": true,
++    "exit_code": -6,
++    "stderr": "test: <source>/tests/path_listing/path_listing_test.c:52: exact_rows: Assertion `next && !strncmp(next,row,strlen(row))' failed."
++  }
++}
+diff --git a/docs/dispatcher-20261029/records/validation.json b/docs/dispatcher-20261029/records/validation.json
+new file mode 100644
+index 0000000..aa9683a
+--- /dev/null
++++ b/docs/dispatcher-20261029/records/validation.json
+@@ -0,0 +1,19 @@
++{
++  "hardware_validated": false,
++  "source_parent": "cc2b27a3f66f11cd9b6bf511a60b8e47c128eae4",
++  "upstream_reviewed": "2517cae8695eac0a294d555718cf280d1d43c8c0",
++  "host_suites": 26,
++  "required_runner_configurations": 50,
++  "all_required_configurations_passed": true,
++  "dispatcher_cases_per_mode": 40,
++  "dispatcher_negative_controls_per_mode": 4,
++  "maximum_table_deadline_failures_before_runner_fix": 2,
++  "distribution": {
++    "bytes": 555000,
++    "sha256": "f3a5e86347eef1710f1decde1318048839263605812ef22127fe29987db37f92"
++  },
++  "limitations": [
++    "Host models and cross-compilation; no on-device execution",
++    "Fallback is conservative about explicit BTI and unreadable entries; another kernel family is not certified"
++  ]
++}
+diff --git a/kernel/susfs.h b/kernel/susfs.h
+index 97d615b..400853b 100644
+--- a/kernel/susfs.h
++++ b/kernel/susfs.h
+@@ -129,6 +129,7 @@ void susfs_avc_spoof_exit(void);
+ 
+ int susfs_supercall_init(void);
+ void susfs_supercall_exit(void);
++bool susfs_supercall_kprobe_active(void);
+ 
+ /* The features a layer can arm, one row per layer table entry.  The reboot kprobe reads the
+  * bitmap with test_bit(); the arm happens once, in process context, before the module can
+diff --git a/kernel/susfs_main.c b/kernel/susfs_main.c
+index 487c86a..0c9ad0c 100644
+--- a/kernel/susfs_main.c
++++ b/kernel/susfs_main.c
+@@ -241,14 +241,17 @@ static int __init susfs_init(void)
+      * built-in SUSFS has no module entry, so hiding it only from non-root would leave a
+      * trace upstream does not have): `lsmod | grep susfs` stays empty and a second `insmod`
+      * fails with -EEXIST, which reads like a broken module.
+-     * THE ONE LINE THAT IGNORES THE LOG SWITCH: everything else follows enable_log
+-     * (susfs_log.h), but this is the only evidence the module came up and the one thing an
+-     * operator greps for, so it stays unconditional even for a silent load - otherwise
++     * This load confirmation and the fallback warning below ignore enable_log:
++     * they are the evidence of a completed load and its delivery route, so both
++     * stay unconditional even for a silent load - otherwise
+      * "loaded but logging off" is indistinguishable from "not loaded".  The prefix comes
+      * from pr_fmt (susfs_log.h), so the message must not repeat it. */
+     pr_info("loaded. This module is filtered out of /proc/modules for every caller including root, so `lsmod | grep susfs` stays empty - check /sys/module/%s instead (a second insmod fails with -EEXIST while it is loaded).\n",
+             SUSFS_LKM_MODULE_NAME);
+ 
++    if (susfs_supercall_kprobe_active())
++        pr_warn("supercall uses the kprobe fallback: the breakpoint on __arm64_sys_reboot is visible through kernel debugging and instruction inspection.\n");
++
+     return 0;
+ }
+ 
+diff --git a/kernel/susfs_supercall.c b/kernel/susfs_supercall.c
+index 8da4a5b..5444e43 100644
+--- a/kernel/susfs_supercall.c
++++ b/kernel/susfs_supercall.c
+@@ -5,12 +5,11 @@
+  * ksu_susfs (and SukiSU ksud) call syscall(SYS_reboot, 0xDEADBEEF, 0xFAFAFAFA, cmd_id,
+  * &payload) and the handler writes payload.err back.  Upstream SUSFS patches
+  * kernel/reboot.c SYSCALL_DEFINE4 to branch into ksu_handle_sys_reboot(); an LKM cannot
+- * patch that, so we kprobe __arm64_sys_reboot and match the magics ourselves.
+- *  - arm64 syscall-wrapper quirk: the kprobe sees regs->regs[0] == struct pt_regs * (the
+- *    wrapper's __regs argument); the real user args are in real_regs->regs[0..3] - SukiSU's
+- *    PT_REAL_REGS() / arch.h.
+- *  - a pre_handler runs in interrupt context and must not copy_from_user, so the command is
+- *    deferred to task_work (TWA_RESUME), i.e. process context - the same trick SukiSU uses.
++ * patch that. Prefer a data-only sys_call_table replacement, preserving the kernel's
++ * instruction entry and BTI/CFI chain. If installation fails after verified rollback,
++ * retain the Samsung kprobe route only when its entry can safely be inspected and does
++ * not carry an explicit BTI landing instruction. Both routes use the same admission
++ * and task-work ownership contract; neither copies a payload in probe context.
+  * The handlers keep upstream's signature `void xxx(void __user **arg)`, *arg pointing at
+  * the userspace payload struct.
+  */
+@@ -24,9 +23,21 @@
+ #include <linux/syscalls.h>
+ #include <linux/string.h>
+ #include <linux/bitmap.h>
++#include <asm/unistd.h>
+ #include "susfs_abi.h"
+ #include "susfs_log.h"
+ #include "susfs.h"
++#include "susfs_fp_hook.h"
++#include "symbol_resolver.h"
++
++enum supercall_delivery {
++	SUPERCALL_NONE,
++	SUPERCALL_TABLE,
++	SUPERCALL_KPROBE,
++};
++static enum supercall_delivery sc_delivery;
++static susfs_syscall_fn_t reboot_orig;
++static struct susfs_fp_hook reboot_hook;
+ 
+ struct susfs_tw {
+ 	struct callback_head cb;
+@@ -271,44 +282,41 @@ static bool susfs_cmd_handled(unsigned int cmd)
+ 	return feature >= 0 && susfs_supercall_feature_armed(feature);
+ }
+ 
+-static int reboot_pre(struct kprobe *kp, struct pt_regs *regs)
++/* A queued work item owns one module reference until its callback's final put.
++ * Reject COMING even though try_module_get() can succeed there: failed init frees
++ * module text independently of those references. The caller still owns its entry
++ * lifetime (kprobe registration or the syscall wrapper's active counter). */
++static bool supercall_queue(const struct pt_regs *regs)
+ {
+-	struct pt_regs *real_regs = (struct pt_regs *)regs->regs[0];
+ 	int magic1, magic2;
+ 	unsigned int cmd;
+ 	void __user *payload;
+ 	struct susfs_tw *tw;
+ 
+-	/* A prober runs before the callee, so an argument the callee would have checked is
+-	 * still raw here (see the filename_lookup lesson in sus_path.c). */
+-	if (!real_regs)
+-		return 0;
++	if (!regs)
++		return false;
+ 
+-	magic1 = (int)real_regs->regs[0];
+-	magic2 = (int)real_regs->regs[1];
+-	cmd = (unsigned int)real_regs->regs[2];
+-	payload = (void __user *)real_regs->regs[3];
++	magic1 = (int)regs->regs[0];
++	magic2 = (int)regs->regs[1];
++	cmd = (unsigned int)regs->regs[2];
++	payload = (void __user *)regs->regs[3];
+ 
+ 	if (magic1 != KSU_INSTALL_MAGIC1)
+-		return 0;
++		return false;
+ 	if (magic2 != SUSFS_MAGIC)
+-		return 0;
++		return false;
+ 	if (current_uid().val != 0)
+-		return 0;
++		return false;
+ 
+ 	/* Not ours to answer: leave the syscall alone so reboot(2) reports the -EINVAL
+ 	 * upstream reports and payload.err keeps the caller's value. */
+ 	if (!susfs_cmd_handled(cmd)) {
+ 		SUSFS_LOGI("susfs supercall: unsupported cmd 0x%x\n", cmd);
+-		return 0;
++		return false;
+ 	}
+ 
+-	/* A failed module_init() is freed even if it acquired references.  Do not
+-	 * publish callbacks until the kernel marks initialization complete.  The
+-	 * registered kprobe protects this handler while it acquires the reference;
+-	 * try_module_get() refuses new work once ordinary removal has started. */
+ 	if (module_is_coming(THIS_MODULE) || !try_module_get(THIS_MODULE))
+-		return 0;
++		return false;
+ 
+ 	tw = kzalloc(sizeof(*tw), GFP_ATOMIC);
+ 	if (!tw)
+@@ -322,6 +330,44 @@ static int reboot_pre(struct kprobe *kp, struct pt_regs *regs)
+ 		pr_warn("susfs supercall: task_work_add failed\n");
+ 		goto put_module;
+ 	}
++	return true;
++
++put_module:
++	module_put(THIS_MODULE);
++	return false;
++}
++
++/* Count the complete frame, including normal reboot forwarding and any sleep in
++ * the saved original. A queued command has an additional, independent module ref. */
++static long __nocfi noinline supercall_reboot_wrapper(const struct pt_regs *regs)
++{
++	susfs_syscall_fn_t original;
++	long result;
++
++	susfs_fp_callback_enter(&reboot_hook);
++	if (supercall_queue(regs))
++		result = 0;
++	else {
++		original = READ_ONCE(reboot_orig);
++		result = original ? original(regs) : -ENOSYS;
++	}
++	return susfs_fp_callback_return(&reboot_hook, result);
++}
++
++static struct susfs_fp_hook reboot_hook = {
++	.nr = __NR_reboot,
++	.nr_compat = 0, /* The existing supercall clients use the AArch64 ABI. */
++	.name = "supercall/reboot",
++	.sym = "__arm64_sys_reboot",
++	.wrapper = supercall_reboot_wrapper,
++	.orig_slot = &reboot_orig,
++};
++
++static int reboot_pre(struct kprobe *kp, struct pt_regs *regs)
++{
++	/* The probe sees the syscall wrapper's pt_regs pointer as its first argument. */
++	if (!supercall_queue((const struct pt_regs *)regs->regs[0]))
++		return 0;
+ 
+ 	/* Upstream's reboot.c patch makes a handled supercall return 0 instead of falling
+ 	 * through to the real reboot path:
+@@ -334,10 +380,6 @@ static int reboot_pre(struct kprobe *kp, struct pt_regs *regs)
+ 	regs->pc = regs->regs[30];
+ 	regs->regs[0] = 0;
+ 	return 1;
+-
+-put_module:
+-	module_put(THIS_MODULE);
+-	return 0;
+ }
+ 
+ static struct kprobe reboot_kp = {
+@@ -345,7 +387,51 @@ static struct kprobe reboot_kp = {
+ 	.pre_handler = reboot_pre,
+ };
+ 
+-static bool sc_registered;
++/* Resolve the actual body once and register at the SAME inspected address.
++ * Never let a failed table install turn into probing a known BTI call target.
++ * This is conservative: an explicit BTI instruction is refused even if the
++ * running CPU would treat it as a hint. Unknown/unreadable entries are refused. */
++static int supercall_prepare_probe(void)
++{
++	unsigned long address;
++	u32 instruction;
++
++	if (IS_ENABLED(CONFIG_ARM64_BTI_KERNEL))
++		return -EOPNOTSUPP;
++	address = find_kernel_symbol_exact("__arm64_sys_reboot");
++	if (!address)
++		return -ENOENT;
++	if (copy_from_kernel_nofault(&instruction, (const void *)address,
++				     sizeof(instruction)))
++		return -EFAULT;
++	if (instruction == 0xd503245fU || instruction == 0xd50324dfU)
++		return -EOPNOTSUPP; /* BTI c / BTI jc */
++	reboot_kp.symbol_name = NULL;
++	reboot_kp.addr = (kprobe_opcode_t *)address;
++	reboot_kp.flags = 0;
++	return 0;
++}
++
++static int supercall_route_show(char *buf, const struct kernel_param *kp)
++{
++	const char *name = "none";
++
++	if (READ_ONCE(sc_delivery) == SUPERCALL_TABLE)
++		name = "syscall-table";
++	else if (READ_ONCE(sc_delivery) == SUPERCALL_KPROBE)
++		name = "kprobe";
++	return scnprintf(buf, PAGE_SIZE, "%s\n", name);
++}
++
++static const struct kernel_param_ops supercall_route_ops = {
++	.get = supercall_route_show,
++};
++module_param_cb(supercall_route, &supercall_route_ops, NULL, 0400);
++
++bool susfs_supercall_kprobe_active(void)
++{
++	return READ_ONCE(sc_delivery) == SUPERCALL_KPROBE;
++}
+ 
+ /* ---- ABI layout assertions ----
+  * These sizes and `err` offsets ARE the userspace contract (ksu_susfs, ksud and
+@@ -397,28 +483,48 @@ int susfs_supercall_init(void)
+ {
+ 	int rc;
+ 
++	if (sc_delivery != SUPERCALL_NONE)
++		return 0;
+ 	susfs_abi_layout_check();
+ 
++	/* The helper returns an error only after any possible publication has been
++	 * restored and drained. Falling back must never leave a second live route. */
++	rc = susfs_fp_install(&reboot_hook);
++	if (!rc) {
++		WRITE_ONCE(sc_delivery, SUPERCALL_TABLE);
++		SUSFS_LOGI("susfs supercall: armed via sys_call_table (reboot ABI, version " SUSFS_VERSION_STR ")\n");
++		return 0;
++	}
++	pr_warn("susfs supercall: table hook unavailable (%d), checking kprobe fallback\n", rc);
++	rc = supercall_prepare_probe();
++	if (rc) {
++		pr_warn("susfs supercall: no safe kprobe fallback (%d)\n", rc);
++		return rc;
++	}
+ 	rc = register_kprobe(&reboot_kp);
+ 	if (rc) {
+ 		pr_warn("susfs supercall: register_kprobe(reboot) failed %d\n", rc);
+ 		return rc;
+ 	}
+-	sc_registered = true;
+-	SUSFS_LOGI("susfs supercall: armed (reboot ABI, version " SUSFS_VERSION_STR ")\n");
++	WRITE_ONCE(sc_delivery, SUPERCALL_KPROBE);
++	SUSFS_LOGI("susfs supercall: armed via kprobe (reboot ABI, version " SUSFS_VERSION_STR ")\n");
+ 	return 0;
+ }
+ 
+ void susfs_supercall_exit(void)
+ {
+-	if (sc_registered) {
++	if (sc_delivery == SUPERCALL_TABLE)
++		susfs_fp_remove(&reboot_hook);
++	else if (sc_delivery == SUPERCALL_KPROBE) {
+ 		unregister_kprobe(&reboot_kp);
+-		sc_registered = false;
+-		/* Pending/running callbacks hold a module reference, so ordinary
+-		 * module_exit() cannot begin until each has completed dispatch.  A
+-		 * task may still be preempted between its final module_put() and
+-		 * return to task_work_run().  A Tasks RCU grace period covers that
+-		 * non-sleeping tail.  It is NOT a substitute for the references. */
+-		synchronize_rcu_tasks();
++		reboot_kp.addr = NULL;
++		reboot_kp.flags = 0;
+ 	}
++	if (sc_delivery == SUPERCALL_NONE)
++		return;
++	WRITE_ONCE(sc_delivery, SUPERCALL_NONE);
++	/* The table helper drains wrapper frames. Both routes additionally cover a
++	 * task-work callback preempted after its final module_put(), before return
++	 * to task_work_run(). References, not this grace period, cover sleeping work. */
++	synchronize_rcu_tasks();
+ }
+diff --git a/tests/lifecycle/host_kernel.h b/tests/lifecycle/host_kernel.h
+index 95dee16..4937d00 100644
+--- a/tests/lifecycle/host_kernel.h
++++ b/tests/lifecycle/host_kernel.h
+@@ -21,10 +21,13 @@ typedef struct { int unused; } wait_queue_head_t;
+ #define __user
+ #define __init
+ #define __exit
++#define __nocfi
++#define noinline __attribute__((noinline))
+ #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+ #define BUILD_BUG_ON(c) _Static_assert(!(c), #c)
+ #define container_of(p, type, member) ((type *)((char *)(p) - offsetof(type, member)))
+ #define READ_ONCE(x) __atomic_load_n(&(x), __ATOMIC_ACQUIRE)
++#define WRITE_ONCE(x, v) __atomic_store_n(&(x), (v), __ATOMIC_RELEASE)
+ #define IS_ENABLED(c) (c)
+ #define PAGE_SIZE 4096
+ #define IS_ERR(p) ((uintptr_t)(p) >= (uintptr_t)-4095)
+@@ -34,8 +37,14 @@ typedef struct { int unused; } wait_queue_head_t;
+ #define TWA_RESUME 1
+ #define KERNEL_VERSION(a,b,c) (((a) << 16) | ((b) << 8) | (c))
+ #define LINUX_VERSION_CODE KERNEL_VERSION(6,12,0)
++#ifndef CONFIG_ARM64_BTI_KERNEL
++#define CONFIG_ARM64_BTI_KERNEL 0
++#endif
++#define __NR_reboot 142
++#define scnprintf snprintf
+ #define module_param_named(...)
+ #define module_param(...)
++#define module_param_cb(...)
+ #define module_init(...)
+ #define module_exit(...)
+ #define MODULE_LICENSE(...)
+@@ -75,7 +84,17 @@ extern _Thread_local struct task_struct host_task;
+ typedef struct { unsigned int val; } kuid_t;
+ static inline kuid_t current_uid(void) { return (kuid_t){ current->uid }; }
+ struct pt_regs { unsigned long regs[31]; unsigned long pc; };
+-struct kprobe { const char *symbol_name; int (*pre_handler)(struct kprobe *, struct pt_regs *); };
++typedef uint32_t u32;
++typedef uint32_t kprobe_opcode_t;
++struct kernel_param { int unused; };
++struct kernel_param_ops { int (*get)(char *, const struct kernel_param *); };
++struct kprobe {
++    const char *symbol_name;
++    kprobe_opcode_t *addr;
++    unsigned int flags;
++    int (*pre_handler)(struct kprobe *, struct pt_regs *);
++};
++long copy_from_kernel_nofault(void *to, const void *from, size_t size);
+ int register_kprobe(struct kprobe *kp);
+ void unregister_kprobe(struct kprobe *kp);
+ int task_work_add(struct task_struct *task, struct callback_head *work, int mode);
+diff --git a/tests/lifecycle/lifecycle_test.c b/tests/lifecycle/lifecycle_test.c
+index 363c92a..41e003f 100644
+--- a/tests/lifecycle/lifecycle_test.c
++++ b/tests/lifecycle/lifecycle_test.c
+@@ -23,6 +23,18 @@ static bool block_handler, handler_entered, release_handler;
+ static bool block_tail, tail_entered, release_tail, grace_entered;
+ static int callback_frames;
+ static int probe_frames;
++static int wrapper_frames;
++static bool table_published, table_fail_published, original_sleeping;
++static int table_error = -EACCES;
++static atomic_int table_attempts, original_calls, probe_attempts, instruction_reads;
++static u32 reboot_instruction = 0xd503233fU;
++static bool unknown_reboot, instruction_fault;
++static bool block_original, original_entered, release_original, restore_entered;
++static bool block_wrapper_tail, wrapper_tail_entered, release_wrapper_tail;
++static long original_result = -EINVAL;
++static struct pt_regs original_arguments;
++
++static bool entry_registered(void) { return registered || table_published; }
+ 
+ bool module_is_coming(struct module *m)
+ {
+@@ -54,47 +66,151 @@ void module_put(struct module *m)
+     pthread_mutex_unlock(&lock);
+ }
+ 
+-static int request(unsigned int cmd, void *payload)
++static long invoke_entry(struct pt_regs *args)
+ {
+     /* Model kprobe entry/unregistration lifetime as well as module references. */
+     pthread_mutex_lock(&lock);
+-    if (!registered) {
++    if (!entry_registered()) {
+         pthread_mutex_unlock(&lock);
+-        return 0;
++        return -EINVAL;
+     }
+-    ++probe_frames;
++    bool table = table_published;
++    if (table) ++wrapper_frames;
++    else ++probe_frames;
+     pthread_mutex_unlock(&lock);
+-    struct pt_regs args = {0}, regs = {0};
+-    args.regs[0] = KSU_INSTALL_MAGIC1;
+-    args.regs[1] = SUSFS_MAGIC;
+-    args.regs[2] = cmd;
+-    args.regs[3] = (unsigned long)payload;
+-    regs.regs[0] = (unsigned long)&args;
++    struct pt_regs regs = {0};
++    regs.regs[0] = (unsigned long)args;
+     regs.regs[30] = 123;
+-    int result = reboot_pre(&reboot_kp, &regs);
++    long result;
++    if (table) result = supercall_reboot_wrapper(args);
++    else {
++        int handled = reboot_pre(&reboot_kp, &regs);
++        if (handled) assert(regs.pc == 123 && regs.regs[0] == 0);
++        else assert(regs.pc == 0 && regs.regs[0] == (unsigned long)args);
++        result = handled ? 0 : original_result;
++    }
+     pthread_mutex_lock(&lock);
+-    --probe_frames;
++    if (table) --wrapper_frames;
++    else --probe_frames;
+     pthread_cond_broadcast(&cond);
+     pthread_mutex_unlock(&lock);
+-    if (result) assert(regs.pc == 123 && regs.regs[0] == 0);
+-    else assert(regs.pc == 0 && regs.regs[0] == (unsigned long)&args);
+     return result;
+ }
+ 
+-int register_kprobe(struct kprobe *kp)
++static int request(unsigned int cmd, void *payload)
++{
++    struct pt_regs args = {0};
++    args.regs[0] = KSU_INSTALL_MAGIC1;
++    args.regs[1] = SUSFS_MAGIC;
++    args.regs[2] = cmd;
++    args.regs[3] = (unsigned long)payload;
++    return invoke_entry(&args) == 0;
++}
++
++static void check_init_request(void)
+ {
+-    if (registration_error) return registration_error;
+-    assert(!registered);
+-    registered = kp;
+     if (probe_during_init) {
+         struct st_susfs_version payload = { .err = 126 };
+         assert(request(CMD_SUSFS_SHOW_VERSION, &payload) == 0);
+         assert(payload.err == 126 && !current->pending);
+         assert(atomic_load(&host_module.refs) == 0);
+     }
++}
++
++int register_kprobe(struct kprobe *kp)
++{
++    atomic_fetch_add(&probe_attempts, 1);
++    assert(!table_published); /* A failed table install must be rolled back first. */
++    if (registration_error) return registration_error;
++    assert(!registered);
++    assert(kp->addr == &reboot_instruction && !kp->symbol_name && !kp->flags);
++    registered = kp;
++    check_init_request();
++    return 0;
++}
++
++unsigned long find_kernel_symbol_exact(const char *name)
++{
++    assert(!strcmp(name, "__arm64_sys_reboot"));
++    return unknown_reboot ? 0 : (unsigned long)&reboot_instruction;
++}
++
++long copy_from_kernel_nofault(void *to, const void *from, size_t size)
++{
++    atomic_fetch_add(&instruction_reads, 1);
++    assert(from == &reboot_instruction && size == sizeof(reboot_instruction));
++    if (instruction_fault) return -EFAULT;
++    memcpy(to, from, size);
+     return 0;
+ }
+ 
++static long host_original_reboot(const struct pt_regs *args)
++{
++    pthread_mutex_lock(&lock);
++    assert(atomic_load(&reboot_hook.active_callbacks) > 0);
++    atomic_fetch_add(&original_calls, 1);
++    original_arguments = *args;
++    original_entered = true;
++    original_sleeping = block_original;
++    pthread_cond_broadcast(&cond);
++    while (block_original && !release_original) pthread_cond_wait(&cond, &lock);
++    original_sleeping = false;
++    pthread_cond_broadcast(&cond);
++    pthread_mutex_unlock(&lock);
++    return original_result;
++}
++
++/* The real helper's restoration/late-entry/wake-tail interleavings run in
++ * tests/fp_hooks. Here its contract models route publication and counter drain,
++ * so these cases independently check the actual dispatcher's participation. */
++int susfs_fp_install(struct susfs_fp_hook *hook)
++{
++    assert(hook == &reboot_hook && hook->nr == __NR_reboot && !hook->nr_compat);
++    atomic_fetch_add(&table_attempts, 1);
++    if (table_error && !table_fail_published) return table_error;
++    assert(!entry_registered());
++    atomic_store(&hook->active_callbacks, 0);
++    hook->orig = host_original_reboot;
++    *hook->orig_slot = hook->orig;
++    hook->installed = hook->native_installed = true;
++    table_published = true;
++    check_init_request();
++    if (table_error) susfs_fp_remove(hook);
++    return table_error;
++}
++
++void susfs_fp_remove(struct susfs_fp_hook *hook)
++{
++    pthread_mutex_lock(&lock);
++    assert(hook == &reboot_hook && !registered && table_published);
++    table_published = false;
++    restore_entered = true;
++    pthread_cond_broadcast(&cond);
++    while (atomic_load(&hook->active_callbacks)) pthread_cond_wait(&cond, &lock);
++    hook->installed = hook->native_installed = false;
++    pthread_mutex_unlock(&lock);
++}
++
++void susfs_fp_callback_enter(struct susfs_fp_hook *hook)
++{
++    assert(hook == &reboot_hook);
++    atomic_fetch_add(&hook->active_callbacks, 1);
++}
++
++long susfs_fp_callback_return(struct susfs_fp_hook *hook, long result)
++{
++    pthread_mutex_lock(&lock);
++    assert(hook == &reboot_hook && atomic_fetch_sub(&hook->active_callbacks, 1) > 0);
++    pthread_cond_broadcast(&cond);
++    if (block_wrapper_tail) {
++        wrapper_tail_entered = true;
++        pthread_cond_broadcast(&cond);
++        while (!release_wrapper_tail) pthread_cond_wait(&cond, &lock);
++    }
++    pthread_mutex_unlock(&lock);
++    return result;
++}
++
+ void unregister_kprobe(struct kprobe *kp)
+ {
+     pthread_mutex_lock(&lock);
+@@ -118,11 +234,15 @@ void synchronize_rcu_tasks(void)
+ {
+     /* Contract model, not an implementation/test of Linux Tasks RCU. */
+     pthread_mutex_lock(&lock);
+-    assert(!registered);
++    assert(!entry_registered());
+     atomic_fetch_add(&grace_calls, 1);
+     grace_entered = true;
+     pthread_cond_broadcast(&cond);
+-    while (callback_frames) pthread_cond_wait(&cond, &lock);
++    /* A sleeping original is a Tasks RCU quiescent state: only the wrapper's
++     * active counter can keep teardown waiting for it. Non-sleeping return tails
++     * still block this modeled grace period. */
++    while (callback_frames || (wrapper_frames && !original_sleeping))
++        pthread_cond_wait(&cond, &lock);
+     pthread_mutex_unlock(&lock);
+ }
+ 
+@@ -156,7 +276,7 @@ static int feature_init(int id) { atomic_store(&alive[id], true); return 0; }
+ static void feature_exit(int id)
+ {
+     /* Independent behavioral check: entry point and callback tail are gone. */
+-    assert(!registered && !callback_frames);
++    assert(!entry_registered() && !callback_frames && !wrapper_frames);
+     assert(atomic_load(&host_module.refs) == 0);
+     atomic_store(&alive[id], false);
+     atomic_fetch_add(&feature_exits, 1);
+@@ -252,7 +372,7 @@ static bool remove_normally(void)
+ 
+ static void check_released(void)
+ {
+-    assert(!registered && !current->pending);
++    assert(!entry_registered() && !current->pending && !wrapper_frames);
+     assert(atomic_load(&host_module.refs) == 0);
+     assert(atomic_load(&allocations) == 0);
+     for (size_t i = 0; i < ARRAY_SIZE(alive); ++i) assert(!atomic_load(&alive[i]));
+@@ -405,6 +525,7 @@ static void test_rollback(void)
+     current->uid = 0;
+     atomic_store(&host_module.state, MODULE_STATE_COMING);
+     registration_error = -EIO;
++    table_error = -EIO;
+     assert(susfs_init() == -EIO);
+     assert(atomic_load(&feature_exits) > 0);
+     assert(atomic_load(&grace_calls) == 0 && atomic_load(&unregister_calls) == 0);
+@@ -423,7 +544,7 @@ static void test_partial_failures(void)
+              * responds: no command becomes reachable, and the version request
+              * keeps the 126 sentinel. */
+             assert(rc == -EIO);
+-            assert(!registered && !current->pending);
++            assert(!entry_registered() && !current->pending);
+             struct st_susfs_version payload = { .err = 126 };
+             assert(request(CMD_SUSFS_SHOW_VERSION, &payload) == 0);
+             assert(payload.err == 126);
+@@ -433,7 +554,7 @@ static void test_partial_failures(void)
+              * staying up: the load completes and every later layer still arms,
+              * so the reboot kprobe is live - which is exactly what "that feature
+              * stays off" means, and why their failure is not a refusal. */
+-            assert(rc == 0 && registered && !current->pending);
++            assert(rc == 0 && entry_registered() && !current->pending);
+             atomic_store(&host_module.state, MODULE_STATE_LIVE);
+             assert(remove_normally());
+             check_released();
+@@ -480,14 +601,158 @@ static void test_admission_race(void)
+     }
+ }
+ 
++static void assert_route(const char *expected)
++{
++    char status[PAGE_SIZE];
++    int count = supercall_route_show(status, NULL);
++    assert(count == (int)strlen(expected) && !strcmp(status, expected));
++}
++
++static void test_selection(const char *which)
++{
++    current->uid = 0;
++    atomic_store(&host_module.state, MODULE_STATE_COMING);
++    table_error = -EIO;
++    int expected = 0;
++    if (!strcmp(which, "table-preferred")) {
++        table_error = 0;
++        reboot_instruction = 0xd503245fU;
++        instruction_fault = true;
++        registration_error = -EIO;
++    } else if (!strcmp(which, "bti-c") || !strcmp(which, "bti-jc")) {
++        reboot_instruction = !strcmp(which, "bti-c") ? 0xd503245fU : 0xd50324dfU;
++        expected = -EOPNOTSUPP;
++    } else if (!strcmp(which, "bti-config")) {
++        assert(CONFIG_ARM64_BTI_KERNEL);
++        expected = -EOPNOTSUPP;
++    } else if (!strcmp(which, "unknown-entry")) {
++        unknown_reboot = true;
++        expected = -ENOENT;
++    } else if (!strcmp(which, "unreadable-entry")) {
++        instruction_fault = true;
++        expected = -EFAULT;
++    } else if (!strcmp(which, "both-fail")) {
++        registration_error = -EBUSY;
++        expected = -EBUSY;
++    } else if (!strcmp(which, "rollback-before-fallback")) {
++        table_fail_published = true;
++        probe_during_init = true;
++    } else assert(!strcmp(which, "fallback"));
++
++    assert(susfs_init() == expected);
++    assert(atomic_load(&table_attempts) == 1);
++    if (expected) {
++        assert(!entry_registered() && sc_delivery == SUPERCALL_NONE);
++        assert_route("none\n");
++        if (strcmp(which, "both-fail")) assert(!atomic_load(&probe_attempts));
++    } else {
++        atomic_store(&host_module.state, MODULE_STATE_LIVE);
++        bool table = !strcmp(which, "table-preferred");
++        assert(table_published == table);
++        assert(susfs_supercall_kprobe_active() == !table);
++        assert_route(table ? "syscall-table\n" : "kprobe\n");
++        assert(susfs_supercall_init() == 0); /* Re-entry never installs a second route. */
++        assert(atomic_load(&table_attempts) == 1);
++        assert(atomic_load(&probe_attempts) == (table ? 0 : 1));
++        if (table) assert(!atomic_load(&instruction_reads));
++        assert(remove_normally());
++    }
++    check_released();
++    assert_route("none\n");
++    susfs_supercall_exit(); /* Cleanup remains idempotent. */
++    check_released();
++}
++
++static void test_forwarding(void)
++{
++    initialize();
++    struct pt_regs args = {0};
++    for (size_t i = 0; i < ARRAY_SIZE(args.regs); i++) args.regs[i] = 700 + i;
++    args.pc = 900;
++    for (int pass = 0; pass < 5; pass++) {
++        struct pt_regs saved = args;
++        original_result = pass == 4 ? 37 : -123 - pass;
++        if (pass == 1) args.regs[0] = KSU_INSTALL_MAGIC1; /* Wrong second magic. */
++        if (pass >= 2) {
++            args.regs[0] = KSU_INSTALL_MAGIC1;
++            args.regs[1] = SUSFS_MAGIC;
++            args.regs[2] = pass == 2 ? 0 : CMD_SUSFS_SHOW_VERSION;
++            current->uid = pass >= 3 ? 10000 : 0;
++        }
++        saved = args;
++        assert(invoke_entry(&args) == original_result);
++        assert(!memcmp(&args, &saved, sizeof(args)));
++        assert(!memcmp(&original_arguments, &saved, sizeof(args)));
++        assert(!current->pending && !atomic_load(&host_module.refs));
++        assert(!atomic_load(&reboot_hook.active_callbacks));
++    }
++    assert(atomic_load(&original_calls) == 5);
++    current->uid = 0;
++    assert(remove_normally());
++    check_released();
++}
++
++static void *original_worker(void *unused)
++{
++    (void)unused;
++    current->uid = 10000;
++    struct pt_regs args = {0};
++    assert(invoke_entry(&args) == original_result);
++    return NULL;
++}
++
++static void test_wrapper_lifetime(bool tail)
++{
++    initialize();
++    block_original = !tail;
++    block_wrapper_tail = tail;
++    pthread_t caller, deleter;
++    assert(!pthread_create(&caller, NULL, original_worker, NULL));
++    pthread_mutex_lock(&lock);
++    while (!(tail ? wrapper_tail_entered : original_entered))
++        pthread_cond_wait(&cond, &lock);
++    assert(wrapper_frames == 1);
++    assert(atomic_load(&reboot_hook.active_callbacks) == (tail ? 0 : 1));
++    pthread_mutex_unlock(&lock);
++    assert(!pthread_create(&deleter, NULL, remover, NULL));
++    pthread_mutex_lock(&lock);
++    while (!(tail ? grace_entered : restore_entered))
++        pthread_cond_wait(&cond, &lock);
++    assert(!table_published && !atomic_load(&feature_exits));
++    release_original = true;
++    release_wrapper_tail = true;
++    pthread_cond_broadcast(&cond);
++    pthread_mutex_unlock(&lock);
++    assert(!pthread_join(caller, NULL));
++    assert(!pthread_join(deleter, NULL));
++    check_released();
++}
++
++static void test_repeat_routes(void)
++{
++    for (int i = 0; i < 20; i++) {
++        table_error = (i & 1) ? -EACCES : 0;
++        initialize();
++        assert_route(table_error ? "kprobe\n" : "syscall-table\n");
++        struct st_susfs_version info = { .err = 126 };
++        assert(request(CMD_SUSFS_SHOW_VERSION, &info));
++        run_pending();
++        assert(!info.err);
++        assert(remove_normally());
++        check_released();
++        assert_route("none\n");
++    }
++}
++
+ int main(int argc, char **argv)
+ {
+     alarm(15);
+-    assert(argc == 2);
++    assert(argc == 3);
++    table_error = !strcmp(argv[2], "table") ? 0 : -EACCES;
+     if (!strcmp(argv[1], "no-tasks-rcu")) {
+         assert(!CONFIG_TASKS_RCU);
+         assert(susfs_init() == -EOPNOTSUPP);
+-        assert(atomic_load(&resolver_calls) == 0 && !registered);
++        assert(atomic_load(&resolver_calls) == 0 && !entry_registered());
+         check_released();
+     } else if (!strcmp(argv[1], "queued")) test_queued();
+     else if (!strcmp(argv[1], "init-window")) test_init_window();
+@@ -500,7 +765,23 @@ int main(int argc, char **argv)
+     else if (!strcmp(argv[1], "rollback")) test_rollback();
+     else if (!strcmp(argv[1], "partial-failures")) test_partial_failures();
+     else if (!strcmp(argv[1], "admission-race")) test_admission_race();
++    else if (!strcmp(argv[1], "table-forward")) test_forwarding();
++    else if (!strcmp(argv[1], "sleeping-original")) test_wrapper_lifetime(false);
++    else if (!strcmp(argv[1], "wrapper-tail")) test_wrapper_lifetime(true);
++    else if (!strcmp(argv[1], "repeat-routes")) test_repeat_routes();
++    else if (!strcmp(argv[1], "null-probe-regs")) {
++        initialize();
++        struct pt_regs regs = {0};
++        assert(reboot_pre(&reboot_kp, &regs) == 0 && !current->pending);
++        assert(remove_normally());
++        check_released();
++    }
++    else if (!strcmp(argv[1], "table-preferred") || !strcmp(argv[1], "fallback") ||
++             !strcmp(argv[1], "bti-c") || !strcmp(argv[1], "bti-jc") ||
++             !strcmp(argv[1], "bti-config") || !strcmp(argv[1], "unknown-entry") ||
++             !strcmp(argv[1], "unreadable-entry") || !strcmp(argv[1], "both-fail") ||
++             !strcmp(argv[1], "rollback-before-fallback")) test_selection(argv[1]);
+     else abort();
+-    printf("PASS %s\n", argv[1]);
++    printf("PASS %s (%s)\n", argv[1], argv[2]);
+     return 0;
+ }
+diff --git a/tests/lifecycle/run.py b/tests/lifecycle/run.py
+index a5187d1..a138a5f 100644
+--- a/tests/lifecycle/run.py
++++ b/tests/lifecycle/run.py
+@@ -23,6 +23,7 @@ here = Path(__file__).resolve().parent
+ source = args.source_dir.resolve()
+ cc = os.environ.get('CC', 'cc')
+ results = []
++negative_results = []
+ with tempfile.TemporaryDirectory(prefix='susfs-lifecycle-host-') as temp:
+     tmp = Path(temp)
+     include = tmp / 'include/linux'
+@@ -31,31 +32,83 @@ with tempfile.TemporaryDirectory(prefix='susfs-lifecycle-host-') as temp:
+                  'cred', 'syscalls', 'string', 'types', 'utsname', 'printk',
+                  'err', 'mm', 'kernel', 'init', 'version', 'bitmap', 'atomic', 'wait']:
+         (include / (name + '.h')).write_text('/* Host shim: see host_kernel.h. */\n')
+-    for config, cases in [(1, tests), (0, ['no-tasks-rcu'])]:
+-        exe = tmp / f'lifecycle-{config}'
++    (tmp / 'include/asm').mkdir()
++    (tmp / 'include/asm/unistd.h').write_text('/* Host syscall number fixture. */\n')
++    selection = ['table-preferred', 'fallback', 'bti-c', 'bti-jc', 'unknown-entry',
++                 'unreadable-entry', 'both-fail', 'rollback-before-fallback']
++    matrix = [(case, route) for case in tests for route in ['table', 'kprobe']]
++    matrix += [(case, 'table') for case in selection +
++               ['table-forward', 'sleeping-original', 'wrapper-tail', 'repeat-routes']]
++    matrix += [('null-probe-regs', 'kprobe')]
++    for config, bti, cases in [(1, 0, matrix), (0, 0, [('no-tasks-rcu', 'table')]),
++                               (1, 1, [('bti-config', 'kprobe'), ('table-preferred', 'table')])]:
++        exe = tmp / f'lifecycle-{config}-{bti}'
+         flags = ['-O1', '-g', '-fsanitize=address,undefined', '-fno-omit-frame-pointer', '-no-pie'] if args.sanitizers else ['-O2']
+         command = [cc, '-std=gnu11', '-Wall', '-Wextra', '-Werror',
+                    '-Wno-unused-parameter', '-Wno-sign-compare', '-pthread', *flags,
+                    f'-DCONFIG_TASKS_RCU={config}',
++                   f'-DCONFIG_ARM64_BTI_KERNEL={bti}',
+                    f'-DPRODUCTION_DISPATCHER="{source / "kernel/susfs_supercall.c"}"',
+                    f'-DPRODUCTION_MAIN="{source / "kernel/susfs_main.c"}"',
+                    '-I', str(tmp / 'include'), '-I', str(here),
++                   '-I', str(source / 'kernel'),
+                    str(here / 'lifecycle_test.c'), '-o', str(exe)]
++        if config == 1 and bti == 0:
++            negative_command = list(command)
+         subprocess.run(command, check=True)
+-        for case in cases:
++        for case, route in cases:
+             env = dict(os.environ)
+             if args.sanitizers:
+                 env['ASAN_OPTIONS'] = f'detect_leaks={int(args.leak_check)}:abort_on_error=1'
+                 env['UBSAN_OPTIONS'] = 'halt_on_error=1'
+-            run = subprocess.run([str(exe), case], capture_output=True, text=True,
++            run = subprocess.run([str(exe), case, route], capture_output=True, text=True,
+                                  timeout=20, env=env)
+-            result = {'case': case, 'config_tasks_rcu': config,
++            result = {'case': case, 'route': route, 'config_tasks_rcu': config,
++                      'config_bti_kernel': bti,
+                       'exit_code': run.returncode, 'stdout': run.stdout.strip(),
+                       'stderr': run.stderr.strip()}
+             results.append(result)
+             print(run.stdout.strip() or f'FAIL {case}: {run.stderr.strip()}')
++    # Each negative control removes a production safeguard. Its behavioral case
++    # must then fail; a host model that merely repeats the implementation passes
++    # these broken versions and cannot establish the contract being checked.
++    original = (source / 'kernel/susfs_supercall.c').read_text()
++    controls = [
++        ('init-admission', 'init-window',
++         [('module_is_coming(THIS_MODULE) || !try_module_get(THIS_MODULE)',
++           '!try_module_get(THIS_MODULE)')]),
++        ('sleeping-wrapper', 'sleeping-original',
++         [('susfs_fp_callback_enter(&reboot_hook);', '(void)0;'),
++          ('return susfs_fp_callback_return(&reboot_hook, result);', 'return result;')]),
++        ('task-work-tail', 'return-tail',
++         [('synchronize_rcu_tasks();', '(void)0;')]),
++        ('bti-fallback', 'bti-c',
++         [('if (instruction == 0xd503245fU || instruction == 0xd50324dfU)',
++           'if (false)')]),
++    ]
++    for label, case, replacements in controls:
++        changed = original
++        for before, after in replacements:
++            if changed.count(before) != 1:
++                raise ValueError('Negative control no longer targets one safeguard: ' + label)
++            changed = changed.replace(before, after, 1)
++        production = tmp / (label + '.c')
++        production.write_text(changed)
++        exe = tmp / ('negative-' + label)
++        command = [f'-DPRODUCTION_DISPATCHER="{production}"' if item.startswith('-DPRODUCTION_DISPATCHER=')
++                   else item for item in negative_command]
++        command[-1] = str(exe)
++        subprocess.run(command, check=True)
++        run = subprocess.run([str(exe), case, 'table'], capture_output=True,
++                             text=True, timeout=20, env=env)
++        negative_results.append({'control': label, 'exit_code': run.returncode,
++                                 'rejected': run.returncode != 0,
++                                 'stderr': run.stderr.strip()})
++        print(('PASS rejected ' if run.returncode else 'FAIL accepted ') + label)
+ if args.json:
+     args.json.write_text(json.dumps({'kind': 'host API model', 'sanitizers': args.sanitizers,
+                                     'leak_check': args.leak_check,
+-                                    'results': results}, indent=2) + '\n')
+-raise SystemExit(any(result['exit_code'] for result in results))
++                                    'results': results,
++                                    'negative_controls': negative_results}, indent=2) + '\n')
++raise SystemExit(any(result['exit_code'] for result in results) or
++                 any(not result['rejected'] for result in negative_results))
+diff --git a/tests/path_listing/run.py b/tests/path_listing/run.py
+index de930a3..57ab6cc 100644
+--- a/tests/path_listing/run.py
++++ b/tests/path_listing/run.py
+@@ -8,6 +8,7 @@ from pathlib import Path
+ import re
+ import subprocess
+ import tempfile
++import time
+ 
+ ROOT = Path(__file__).resolve().parents[2]
+ spec = importlib.util.spec_from_file_location('extract', ROOT / 'tests/path_creds/run.py')
+@@ -66,8 +67,15 @@ def main():
+         subprocess.run(command, check=True)
+         env = dict(os.environ, ASAN_OPTIONS='detect_leaks=0:abort_on_error=1', UBSAN_OPTIONS='halt_on_error=1')
+         for case in cases:
+-            run = subprocess.run([str(exe), case], capture_output=True, text=True, timeout=20, env=env)
+-            results.append(dict(case=case, exit_code=run.returncode, stdout=run.stdout.strip(), stderr=run.stderr.strip()))
++            # Match the C harness's existing sanitizer watchdog for its full
++            # 8192-row stress case. The old 20s outer deadline killed it before
++            # its own 120s watchdog, including on an otherwise idle host.
++            timeout = 120 if args.sanitizers and case == 'maximum-table' else 20
++            started = time.monotonic()
++            run = subprocess.run([str(exe), case], capture_output=True, text=True, timeout=timeout, env=env)
++            results.append(dict(case=case, exit_code=run.returncode,
++                                seconds=round(time.monotonic() - started, 3), timeout=timeout,
++                                stdout=run.stdout.strip(), stderr=run.stderr.strip()))
+             print(run.stdout.strip() or 'FAIL ' + case + ': ' + run.stderr.strip())
+         # A compiled runtime negative control: cap iteration to the first ten
+         # rows. A large listing must fail its exact row/byte checks.
+diff --git a/tools/check_audit_artifact.py b/tools/check_audit_artifact.py
+index 4cb2062..544c78d 100644
+--- a/tools/check_audit_artifact.py
++++ b/tools/check_audit_artifact.py
+@@ -21,7 +21,7 @@ env=dict(os.environ);env['PATH']=str(a.clang_bin.resolve())+os.pathsep+env['PATH
+ with (out/'fixture-build.log').open('w') as log:
+  subprocess.run(['make','-C',str(a.kdir.resolve()),f'M={fixture}','ARCH=arm64','CC=clang','LLVM=1','LLVM_IAS=1','CONFIG_DEBUG_INFO_BTF_MODULES=','modules','-j2'],env=env,stdout=log,stderr=subprocess.STDOUT,check=True)
+ before=inspect(a.baseline);candidate=inspect(a.candidate);expected=inspect(fixture/'fixture.ko')
+-wrappers=sorted(n for n in candidate['functions'] if n.startswith(('create_wrap_','or_wrap_')))
++wrappers=sorted(n for n in candidate['functions'] if n.startswith(('create_wrap_','or_wrap_')) or n=='supercall_reboot_wrapper')
+ words={n:candidate['types'].get(n) for n in wrappers};expected_word=expected['types']['expected_syscall']
+ landing={}
+ with a.candidate.open('rb') as stream:
+@@ -30,12 +30,13 @@ with a.candidate.open('rb') as stream:
+   if symbol.name in wrappers:
+    section=elf.get_section(symbol['st_shndx']);offset=symbol['st_value']-section['sh_addr'];landing[symbol.name]=struct.unpack_from('<I',section.data(),offset)[0]
+ checks={
+- 'thirteen_syscall_wrappers':len(wrappers)==13,
++ 'fourteen_syscall_wrappers':len(wrappers)==14,
+  'incoming_kcfi_matches_real_syscall_type':all(v==expected_word for v in words.values()),
+  'all_wrappers_have_call_landing_pad':all(v in [0xd503245f,0xd50324df,0xd503233f,0xd503237f] for v in landing.values()),
+  'imports_unchanged':candidate['imports']==before['imports'],
+  'module_version_table_shape_unchanged':candidate['version_section_sizes']==before['version_section_sizes'],
+- 'module_metadata_unchanged':candidate['modinfo']==before['modinfo'],
++ 'module_metadata_unchanged_except_route_parameter':
++    [v for v in candidate['modinfo'] if not v.startswith('parmtype=supercall_route:')]==before['modinfo'],
+  'existing_callback_types_unchanged':all(candidate['types'].get(n)==v for n,v in before['types'].items() if n in candidate['types'] and n != 'susfs_fp_drain'),
+ }
+ report=dict(hardware_validated=False,checks=checks,candidate_sha256=candidate['sha256'],baseline_sha256=before['sha256'],expected_syscall_kcfi=expected_word,wrapper_kcfi=words,wrapper_landing_instructions=landing,imports=candidate['imports'],version_section_sizes=candidate['version_section_sizes'])

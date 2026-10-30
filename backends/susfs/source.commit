@@ -1,6 +1,6 @@
-tree be3cd910d050be69e0de23502e3dea039ee8f25f
-parent 870bf952aab096789a0f4153bc5ea5bf6fcfba1e
-author xorpix <22274805+xorpix@users.noreply.github.com> 1793109161 -0500
-committer xorpix <22274805+xorpix@users.noreply.github.com> 1793109177 -0500
+tree 8fd0d9cab6fc13e4bb0161b479294f1a86a3a132
+parent cc2b27a3f66f11cd9b6bf511a60b8e47c128eae4
+author RMGU source maintenance <rmgu-source@users.noreply.github.com> 1793298541 +0000
+committer RMGU source maintenance <rmgu-source@users.noreply.github.com> 1793298541 +0000
 
-Fix Samsung SusFS audit findings and index path rules
+supercall: prefer verified table delivery with guarded Samsung fallback
