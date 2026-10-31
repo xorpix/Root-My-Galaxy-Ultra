@@ -268,8 +268,8 @@ def package_result(source, work):
 
 def render_curated_notes(template, config):
     marker = '<!-- RMGU_BACKEND_TABLE -->'
-    if template.count(marker) != 1:
-        raise ValueError('Curated backend release notes need exactly one backend table marker')
+    begin = '<!-- RMGU_BACKEND_TABLE_BEGIN -->'
+    end = '<!-- RMGU_BACKEND_TABLE_END -->'
     table = ['| Backend | Driver / UAPI | Upstream commit | Daemon |', '|---|---|---|---|']
     for name, target in config['backends'].items():
         label = BACKEND_LABELS[name]
@@ -277,7 +277,16 @@ def render_curated_notes(template, config):
         table.append(f'| {label} ({status}) | {target["version"]} / {target["uapi"]} | '
                      f'[{target["commit"][:8]}](https://github.com/{target["repository"]}/commit/{target["commit"]}) | '
                      f'{target["daemon_version"]} |')
-    return template.replace(marker, '\n'.join(table))
+    # Keep an explicit boundary after the first render: an untagged release
+    # can be refreshed again without losing its curated notes or old table.
+    rendered = begin + '\n' + '\n'.join(table) + '\n' + end
+    if template.count(marker) == 1 and begin not in template and end not in template:
+        return template.replace(marker, rendered)
+    if template.count(marker) == 0 and template.count(begin) == template.count(end) == 1:
+        start, finish = template.index(begin), template.index(end)
+        if start < finish:
+            return template[:start] + rendered + template[finish + len(end):]
+    raise ValueError('Curated backend release notes need one table marker or one managed table block')
 
 
 def prepare_release(source, work, config):
