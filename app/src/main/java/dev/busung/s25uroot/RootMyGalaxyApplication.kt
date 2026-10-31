@@ -53,6 +53,8 @@ class RootMyGalaxyApplication : Application() {
         // would do nothing. Asked of the record every process shares, so a boot run in flight keeps its own.
         RunNotification.clearStale(this)
 
+        if (isShizukuProviderProcess) SusfsAutoApps.watch(this)
+
         if (!isShizukuProviderProcess) {
             ShizukuProvider.requestBinderForNonProviderProcess(this)
         }

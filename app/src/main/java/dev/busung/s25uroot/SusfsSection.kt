@@ -22,15 +22,17 @@ import kotlinx.coroutines.withContext
 private data class SusfsRow(
     val value: String,
     val activeThisBoot: Boolean,
+    val appProtection: SusfsAutoApps.State?,
 )
 
 private fun rowState(context: android.content.Context): SusfsRow {
     val automatic = AppPreferences.susfsAutoEnable(context)
     val boot = AutoRootSupport.currentBootToken()
-    val active = AppPreferences.susfsState(context) == "active" &&
+    val appProtection = SusfsAutoApps.current(context)
+    val active = appProtection != null || (AppPreferences.susfsState(context) == "active" &&
         AppPreferences.susfsBootToken(context) != null &&
-        AppPreferences.susfsBootToken(context) == boot
-    val version = AppPreferences.susfsVersion(context)
+        AppPreferences.susfsBootToken(context) == boot)
+    val version = (appProtection?.version ?: AppPreferences.susfsVersion(context))
         .ifBlank { context.getString(R.string.settings_susfs_version_unknown) }
     val state = SettingsPresentation.susfsState(automatic, active)
     val value = when (state) {
@@ -43,7 +45,7 @@ private fun rowState(context: android.content.Context): SusfsRow {
         SettingsPresentation.SusfsState.OFF ->
             context.getString(R.string.settings_susfs_off)
     }
-    return SusfsRow(value, active)
+    return SusfsRow(value, active, appProtection?.state)
 }
 
 @Composable
@@ -143,6 +145,14 @@ private fun SusfsStatusCard(
                         color = if (row.activeThisBoot) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (row.appProtection != null) {
+                        Text(
+                            stringResource(if (row.appProtection == SusfsAutoApps.State.Automatic)
+                                R.string.settings_susfs_apps_automatic else R.string.settings_susfs_apps_unavailable),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     if (compatibility != null) {
                         Text(
                             compatibility,

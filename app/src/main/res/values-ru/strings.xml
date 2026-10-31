@@ -912,4 +912,6 @@
     <string name="susfs_grant_title">SusFS нужен root-доступ</string>
     <string name="susfs_grant_body">SusFS может запуститься только после получения root-доступа самим приложением. Предоставьте ему доступ к su в менеджере — SusFS включится при следующем запуске.</string>
     <string name="action_got_it">Понятно</string>
+    <string name="settings_susfs_apps_automatic">Приложения, связанные с root, выбираются автоматически.</string>
+    <string name="settings_susfs_apps_unavailable">Автоматическая защита приложений недоступна. После обновления полностью перезагрузите устройство и снова включите SusFS.</string>
 </resources>

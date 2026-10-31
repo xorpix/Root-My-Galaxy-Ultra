@@ -17,7 +17,7 @@ superuser grant for RMGU, and the matching activated boot helper.
    backend if the app requests it. Grant RMGU superuser access in that backend's
    manager so boot verification and post-root actions can run without a prompt.
 4. Under **Root Management**, enable **Root on boot**, then **Root before first
-   unlock**. Keep the desired boot delay, **SusFS · experimental** and **Auto Soft
+   unlock**. Keep the desired boot delay, **SusFS** and **Auto Soft
    reboot** choices. Open RMGU after changing these settings so the saved boot
    policy is current.
 5. Fully reboot and leave the phone at its first PIN/password screen. The app
@@ -66,7 +66,7 @@ the reported request.
   cannot launch another exploit in that kernel boot. SusFS and automatic restart
   claims also prevent repeated side effects after worker or framework restarts.
 - Android safe mode skips early automatic root. Android must reach Direct Boot;
-  this feature cannot recover failures before that stage. SusFS remains experimental.
+  this feature cannot recover failures before that stage.
 
 If root is not restored, check the helper update/reboot/activation guidance and
 the saved superuser grant. Retain the boot result and app log when reporting a

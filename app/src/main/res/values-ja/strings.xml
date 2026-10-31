@@ -897,4 +897,6 @@
     <string name="susfs_grant_title">SusFSにはroot権限が必要です</string>
     <string name="susfs_grant_body">このアプリ自体にroot権限が付与されるまで、SusFSは起動できません。マネージャーでこのアプリにsu権限を許可すると、次回の実行時にSusFSが有効になります。</string>
     <string name="action_got_it">了解</string>
+    <string name="settings_susfs_apps_automatic">root 関連のアプリは自動的に選択されます。</string>
+    <string name="settings_susfs_apps_unavailable">アプリの自動保護を利用できません。更新後に端末を完全に再起動してから、SusFS を再度有効にしてください。</string>
 </resources>

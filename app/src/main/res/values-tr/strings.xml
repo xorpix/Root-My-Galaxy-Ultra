@@ -902,4 +902,6 @@
     <string name="susfs_grant_title">SusFS için root izni gerekiyor</string>
     <string name="susfs_grant_body">SusFS’nin başlayabilmesi için bu uygulamanın kendisinde root erişimi olmalıdır. Yönetici uygulamasından su izni verin; SusFS sonraki çalıştırmada etkinleşir.</string>
     <string name="action_got_it">Anladım</string>
+    <string name="settings_susfs_apps_automatic">Root ile ilgili uygulamalar otomatik olarak seçilir.</string>
+    <string name="settings_susfs_apps_unavailable">Otomatik uygulama koruması kullanılamıyor. Güncellemeden sonra cihazı tamamen yeniden başlatın ve SusFS’yi tekrar etkinleştirin.</string>
 </resources>

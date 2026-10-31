@@ -1,6 +1,8 @@
-tree 594eb2024538539fe9af0163fbb2f6b935fcb76b
-parent ee5c99e0fd5d5d941a09a1a689f93fb6d2eeec13
-author Codex <codex@openai.com> 1793397418 +0100
-committer Codex <codex@openai.com> 1793397418 +0100
+tree 247e1aed231fc10e4df5ad5019a854c3d4f3be9e
+parent fc114e5f01c797a3d0e30372c4422db7bb703852
+author Codex <codex@openai.com> 1793427952 +0100
+committer Codex <codex@openai.com> 1793427952 +0100
 
-Keep SDK sandbox and app-zygote callers inside the priority filter boundary
+Automatically protect root apps using the live KernelSU policy
+
+Retain the policy owner through all hook drains, keep manual extras transactional, and enable root/RMGU selection at module initialization. Preserve PR 158 wrapper, credential and error semantics; add production-C concurrency and lifetime regressions plus exact ARM64/BZJA evidence.

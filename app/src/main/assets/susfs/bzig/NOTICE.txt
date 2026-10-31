@@ -1,7 +1,7 @@
 Samsung adaptation of inforcqb/susfs4ksu-for-lkm (formerly susfs4ksu-lkm), GPL-2.0.
 Original upstream base c2a5575e0a230db992ad94e2924bc38333797336.
 Samsung adaptation base 961fb6a0585c4ad503f9a9e1fe107058d3595c92.
-Current Samsung source fc114e5f01c797a3d0e30372c4422db7bb703852.
+Current Samsung source 0c95e284270a1efc10331f218f11f9eed8658d52.
 Priority filter adapted from upstream PR #158, head d55749105beaac03776d95241f4400a68292f831.
 Complete corresponding source, tests and build evidence are in backends/susfs/source.tar.gz
 in the RMGU repository. backends/susfs/build-manifest.json and source.commit pin its provenance.

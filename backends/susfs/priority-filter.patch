@@ -1,8 +1,12 @@
 diff --git a/README.md b/README.md
-index ff7c143..5c6ecd4 100644
+index ff7c143..1dfbd49 100644
 --- a/README.md
 +++ b/README.md
-@@ -1,3 +1,7 @@
+@@ -1,3 +1,11 @@
++# Samsung automatic root-app selection
++
++See [automatic selection and policy lifetime review](docs/auto-root-apps-20261031/README.md).
++
 +# Samsung priority UID filter adaptation
 +
 +See [priority-filter review, validation and control guide](docs/priority-filter-20261030/README.md).
@@ -10,13 +14,1267 @@ index ff7c143..5c6ecd4 100644
  # Samsung dispatcher adaptation
  
  See [29 October dispatcher adaptation and validation](docs/dispatcher-20261029/README.md) for the current Samsung changes. It retains the [27 October audit repairs](docs/audit-20261027/README.md).
+diff --git a/docs/auto-root-apps-20261031/README.md b/docs/auto-root-apps-20261031/README.md
+new file mode 100644
+index 0000000..37254a9
+--- /dev/null
++++ b/docs/auto-root-apps-20261031/README.md
+@@ -0,0 +1,92 @@
++# Automatic protection of root-related apps
++
++Extends the reviewed PR #158 priority filter (Samsung parent `fc114e5`) with the
++scope requested by the maintainer: RMGU, installed root managers, and apps granted
++root. The existing four native/compat operations and caller exclusions remain.
++
++## Live kernel policy
++
++A single immutable RCU rules object holds the explicit manager bitmap, automatic
++mode and RMGU app ID. Readers first check the bitmap, then RMGU's app ID or the
++backend's live `ksu_is_uid_granted_root(target_uid)` predicate. The latter includes
++the registered manager. Grants, revocations and manager registration changes take
++effect without polling, package lookup, allocation or credential changes. It uses
++the exact target UID for per-user root grants; own/explicit app IDs apply across
++Android users, as in the earlier filter. Sharing an app ID cannot be separated.
++Trusted KernelSU profiles, root/system and self queries keep their normal behavior.
++
++All four exact bundled backend pins expose the same `bool(uid_t)` root predicate
++and behavior (recorded in `records/backend-policy.json`). Targets are app IDs
++10000..19999, so the predicate's context-sensitive UID-zero special case is never
++reached. SusFS accesses no private allowlist structures. The existing allowlist's
++non-sleeping read path supplies grant decisions inside the RCU read section.
++
++Both KSU policy pointers are resolved while preemption is disabled, with the
++owning module retained before either is published. The root pointer must belong
++to the same owner as the umount predicate. An ownerless pointer requires an exact
++vmlinux symbol match. Unknown ownership, a going module or missing root predicate
++leaves automatic selection unavailable. The reference is released only after all
++SusFS feature exits, hook drains and a final Tasks-RCU grace period. This also
++repairs the old umount pointer lifetime. While SusFS is active, its backend must
++remain loaded. A full reboot is the supported way to switch these modules.
++
++## Configuration and Android integration
++
++The existing standard `0x60030` ABI is unchanged: a transactional package-list
++replacement. It now replaces only explicit extras, preserving automatic mode.
++`clear` clears those extras; it does not turn automatic mode off.
++
++The root-only private command `0x6f001` accepts `{ unsigned int enabled;
++unsigned int own_appid; int err; }` (12 bytes, error offset 8). Enable requires
++1 and an app ID in 10000..19999; disable requires both fields zero. It preserves
++the explicit bitmap and refuses configuration if the optional hook layer failed.
++The freestanding client exposes `auto <app_id>` and `auto-off`. Existing manual
++usage still works with automatic mode off. No upstream feature bit was invented.
++
++RMGU passes read-only (0400) `priority_auto_root=1 priority_appid=<own app ID>`
++parameters at load, enabling the live policy before successful activation. Missing
++policy support disables only this optional automatic feature. A read-only status
++reports ready, configured, generation, automatic, own_appid and root_lookup. The
++app verifies mode/ownership and can enable it on an already loaded new module.
++An older live module needs a full reboot after the APK update.
++
++Only after unlock, a coalesced Android JobService inventories installed known or
++structurally recognized managers, including renamed managers found by the existing
++APK/daemon scanner and the user's manager choice. It resolves fresh names each
++time; no numeric UID list is persisted. Boot/unlock, app resume, supported removal
++broadcasts and dynamic package-change receivers request a refresh. Android does
++not deliver every install broadcast to a stopped background process: a newly
++installed inactive manager can wait until the next app open/activation/unlock.
++The active registered manager and granted-root apps are protected immediately by
++the kernel regardless of whether RMGU's process is running. There is no timer or
++recurring grant scan, and package inventory does not delay early root.
++
++The background worker uses bounded direct `su`, a cross-process configuration
++lock and a current-boot device-protected JSON record. It publishes a whole fresh
++manager list. A confirmed native failure can clear stale extras and retry once;
++a timeout is indeterminate and triggers no competing fallback command. Status
++shows automatic protection or an update/full-reboot hint, without a confirmation
++screen. Core SusFS status is independent of this optional feature.
++
++## Validation
++
++29 host suites / 56 normal and sanitizer configurations pass. Production-C tests
++cover live grants/revocations, per-user decisions, own ID, manual coexistence,
++invalid/unsupported commands, read-only boot parameters, initialization failure,
++concurrent bitmap/automatic writers/readers and RCU retirement. Dependency tests
++cover built-in/module ownership, missing/foreign/going providers and grace/ref
++lifetime; five deliberately unsafe mutants must fail. Lifecycle tests cover root
++admission and refusal of both priority commands when the optional layer fails.
++
++The Android16/6.12 ARM64 DDK module and freestanding client build successfully.
++All 22 syscall wrappers match real-header CFI types and valid landing instructions;
++baseline imports, callback types and version table shape remain intact. Only
++`_ctype`, `strim`, `strsep` and `preempt_schedule` are added to the stable module's
++imports. All 140 imported names and the dynamically resolved module-owner helper
++exist in the recovered BZJA kernel. Its actual I/O-priority validation still
++matches the callable helper. Metadata changes only by the two parameter types.
++Records pin the exact source hashes and distributed bytes. These are static/host
++checks, not complete ABI proof or phone validation. Hardware validation is pending.
++
++See the app repository's `docs/susfs-priority-filter-20261030.md` for test APK and
++rollback instructions. Full source, tests and previous evidence are retained.
+diff --git a/docs/auto-root-apps-20261031/records/artifact.json b/docs/auto-root-apps-20261031/records/artifact.json
+new file mode 100644
+index 0000000..ee91394
+--- /dev/null
++++ b/docs/auto-root-apps-20261031/records/artifact.json
+@@ -0,0 +1,217 @@
++{
++  "hardware_validated": false,
++  "checks": {
++    "22_syscall_wrappers": true,
++    "all_incoming_kcfi_match_real_headers": true,
++    "all_have_call_landing_instructions": true,
++    "baseline_imports_preserved": true,
++    "new_imports_are_only_string_parsers_and_preempt_schedule": true,
++    "module_metadata_only_adds_readonly_auto_parameters": true,
++    "version_table_shape_unchanged": true,
++    "baseline_callback_types_preserved": true
++  },
++  "wrapper_kcfi": {
++    "create_wrap_compat_linkat": 2009012525,
++    "create_wrap_compat_mkdirat": 2009012525,
++    "create_wrap_compat_mknodat": 2009012525,
++    "create_wrap_compat_symlinkat": 2009012525,
++    "create_wrap_linkat": 2009012525,
++    "create_wrap_mkdirat": 2009012525,
++    "create_wrap_mknodat": 2009012525,
++    "create_wrap_symlinkat": 2009012525,
++    "or_wrap_compat_open": 2009012525,
++    "or_wrap_compat_openat": 2009012525,
++    "or_wrap_compat_openat2": 2009012525,
++    "or_wrap_openat": 2009012525,
++    "or_wrap_openat2": 2009012525,
++    "prio_wrap_compat_getpriority": 2009012525,
++    "prio_wrap_compat_ioprio_get": 2009012525,
++    "prio_wrap_compat_ioprio_set": 2009012525,
++    "prio_wrap_compat_setpriority": 2009012525,
++    "prio_wrap_getpriority": 2009012525,
++    "prio_wrap_ioprio_get": 2009012525,
++    "prio_wrap_ioprio_set": 2009012525,
++    "prio_wrap_setpriority": 2009012525,
++    "supercall_reboot_wrapper": 2009012525
++  },
++  "wrapper_landing_instructions": {
++    "create_wrap_mkdirat": 3573752639,
++    "create_wrap_compat_mkdirat": 3573752639,
++    "create_wrap_mknodat": 3573752639,
++    "create_wrap_compat_mknodat": 3573752639,
++    "create_wrap_symlinkat": 3573752639,
++    "create_wrap_compat_symlinkat": 3573752639,
++    "create_wrap_linkat": 3573752639,
++    "create_wrap_compat_linkat": 3573752639,
++    "or_wrap_openat": 3573752639,
++    "or_wrap_openat2": 3573752639,
++    "or_wrap_compat_open": 3573752639,
++    "or_wrap_compat_openat": 3573752639,
++    "or_wrap_compat_openat2": 3573752639,
++    "prio_wrap_getpriority": 3573752639,
++    "prio_wrap_compat_getpriority": 3573752639,
++    "prio_wrap_setpriority": 3573752639,
++    "prio_wrap_compat_setpriority": 3573752639,
++    "prio_wrap_ioprio_get": 3573752639,
++    "prio_wrap_compat_ioprio_get": 3573752639,
++    "prio_wrap_ioprio_set": 3573752639,
++    "prio_wrap_compat_ioprio_set": 3573752639,
++    "supercall_reboot_wrapper": 3573752639
++  },
++  "imports": [
++    "___ratelimit",
++    "__arch_clear_user",
++    "__arch_copy_from_user",
++    "__arch_copy_to_user",
++    "__check_object_size",
++    "__copy_overflow",
++    "__cpu_online_mask",
++    "__fortify_panic",
++    "__init_waitqueue_head",
++    "__kmalloc_cache_noprof",
++    "__kmalloc_large_noprof",
++    "__kmalloc_noprof",
++    "__kvmalloc_node_noprof",
++    "__list_add_valid_or_report",
++    "__list_del_entry_valid_or_report",
++    "__mmap_lock_do_trace_acquire_returned",
++    "__mmap_lock_do_trace_released",
++    "__mmap_lock_do_trace_start_locking",
++    "__num_online_cpus",
++    "__put_task_struct",
++    "__rcu_read_lock",
++    "__rcu_read_unlock",
++    "__seq_puts",
++    "__set_fixmap",
++    "__stack_chk_fail",
++    "__tracepoint_mmap_lock_acquire_returned",
++    "__tracepoint_mmap_lock_released",
++    "__tracepoint_mmap_lock_start_locking",
++    "__tracepoint_sys_exit",
++    "__wake_up",
++    "__warn_printk",
++    "_ctype",
++    "_printk",
++    "_raw_spin_lock",
++    "_raw_spin_lock_irqsave",
++    "_raw_spin_unlock",
++    "_raw_spin_unlock_irqrestore",
++    "abort_creds",
++    "alt_cb_patch_nops",
++    "arm64_use_ng_mappings",
++    "backing_file_user_path",
++    "bcmp",
++    "cancel_delayed_work_sync",
++    "cancel_work_sync",
++    "copy_from_kernel_nofault",
++    "copy_to_kernel_nofault",
++    "d_path",
++    "delayed_work_timer_fn",
++    "down_read",
++    "down_read_killable",
++    "find_vma",
++    "finish_wait",
++    "get_pid_task",
++    "get_task_mm",
++    "ihold",
++    "init_mm",
++    "init_user_ns",
++    "init_wait_entry",
++    "inode_permission",
++    "iput",
++    "kern_path",
++    "kfree",
++    "kmalloc_caches",
++    "kstrtobool",
++    "kstrtoll",
++    "kvfree",
++    "mas_find",
++    "mem_alloc_profiling_key",
++    "memchr",
++    "memcpy",
++    "memmove",
++    "memset",
++    "memstart_addr",
++    "mmput",
++    "module_put",
++    "msleep",
++    "mtree_load",
++    "mutex_lock",
++    "mutex_trylock",
++    "mutex_unlock",
++    "nop_mnt_idmap",
++    "ns_capable",
++    "override_creds",
++    "param_ops_bool",
++    "param_ops_int",
++    "param_ops_string",
++    "param_ops_ulong",
++    "path_get",
++    "path_put",
++    "preempt_schedule",
++    "prepare_creds",
++    "prepare_to_wait_event",
++    "proc_create",
++    "proc_remove",
++    "queue_delayed_work_on",
++    "queue_work_on",
++    "rb_first",
++    "rb_next",
++    "refcount_warn_saturate",
++    "register_kprobe",
++    "register_kretprobe",
++    "revert_creds",
++    "saved_boot_config",
++    "schedule",
++    "scnprintf",
++    "security_secctx_to_secid",
++    "seq_lseek",
++    "seq_open",
++    "seq_printf",
++    "seq_read",
++    "seq_release",
++    "seq_write",
++    "single_open",
++    "single_release",
++    "sized_strscpy",
++    "snprintf",
++    "static_key_enable",
++    "stop_machine",
++    "strcmp",
++    "strim",
++    "strlen",
++    "strncmp",
++    "strnlen",
++    "strnlen_user",
++    "strrchr",
++    "strsep",
++    "strstr",
++    "synchronize_rcu",
++    "synchronize_rcu_tasks",
++    "synchronize_srcu",
++    "system_wq",
++    "task_work_add",
++    "tracepoint_probe_register",
++    "tracepoint_probe_unregister",
++    "tracepoint_srcu",
++    "try_module_get",
++    "unregister_kprobe",
++    "unregister_kretprobe",
++    "up_read",
++    "vsnprintf"
++  ],
++  "added_imports": [
++    "_ctype",
++    "preempt_schedule",
++    "strim",
++    "strsep"
++  ],
++  "removed_imports": [],
++  "version_section_sizes": {
++    "__versions": 0,
++    "__version_ext_crcs": 0,
++    "__version_ext_names": 1
++  },
++  "candidate_sha256": "a16acd2c1fa549b530628ab1a52502ce4bf732f2f75cf98de368e3e2c2c29710",
++  "baseline_sha256": "f3a5e86347eef1710f1decde1318048839263605812ef22127fe29987db37f92"
++}
+diff --git a/docs/auto-root-apps-20261031/records/backend-policy.json b/docs/auto-root-apps-20261031/records/backend-policy.json
+new file mode 100644
+index 0000000..6177ad5
+--- /dev/null
++++ b/docs/auto-root-apps-20261031/records/backend-policy.json
+@@ -0,0 +1,33 @@
++{
++  "scope": "Exact four bundled upstream pins. Identical bool(uid_t) policy predicate after whitespace normalization; app UIDs follow the live allowlist path, including the registered manager. UID 0 special handling is unreachable for priority targets 10000..19999. SusFS does not access private allowlist structures.",
++  "backends": [
++    {
++      "backend": "kernelsu",
++      "source_commit": "bb5f9faaa846b7beb833d3f5303cff7ac2aaedcf",
++      "path": "kernel/policy/allowlist.c",
++      "function": "bool ksu_is_uid_granted_root(uid_t uid)\n{\n    if (unlikely(uid == 0)) {\n        // already root, but only allow our domain.\n        return is_ksu_domain();\n    }\n    return __ksu_is_allow_uid(uid);\n}",
++      "normalized_function_sha256": "2dfe6b5e7c2068245315710a147c04b3c639b343ab0e44cbea7a3ca2bd51595e"
++    },
++    {
++      "backend": "kernelsu-next",
++      "source_commit": "31946acd2f529b2b24e5e4f0267cfacb5d13498c",
++      "path": "kernel/policy/allowlist.c",
++      "function": "bool ksu_is_uid_granted_root(uid_t uid)\n{\n\tif (unlikely(uid == 0)) {\n\t\t// already root, but only allow our domain.\n\t\treturn is_ksu_domain();\n\t}\n\treturn __ksu_is_allow_uid(uid);\n}",
++      "normalized_function_sha256": "2dfe6b5e7c2068245315710a147c04b3c639b343ab0e44cbea7a3ca2bd51595e"
++    },
++    {
++      "backend": "resukisu",
++      "source_commit": "d5e9e025b8b49155f8014684d64c91742b465f65",
++      "path": "kernel/policy/allowlist.c",
++      "function": "bool ksu_is_uid_granted_root(uid_t uid)\n{\n    if (unlikely(uid == 0)) {\n        // already root, but only allow our domain.\n        return is_ksu_domain();\n    }\n    return __ksu_is_allow_uid(uid);\n}",
++      "normalized_function_sha256": "2dfe6b5e7c2068245315710a147c04b3c639b343ab0e44cbea7a3ca2bd51595e"
++    },
++    {
++      "backend": "kowsu",
++      "source_commit": "6366f25b89f2bc5e287c1983715ebae60cd5540e",
++      "path": "kernel/policy/allowlist.c",
++      "function": "bool ksu_is_uid_granted_root(uid_t uid)\n{\n    if (unlikely(uid == 0)) {\n        // already root, but only allow our domain.\n        return is_ksu_domain();\n    }\n    return __ksu_is_allow_uid(uid);\n}",
++      "normalized_function_sha256": "2dfe6b5e7c2068245315710a147c04b3c639b343ab0e44cbea7a3ca2bd51595e"
++    }
++  ]
++}
+diff --git a/docs/auto-root-apps-20261031/records/build.json b/docs/auto-root-apps-20261031/records/build.json
+new file mode 100644
+index 0000000..fd1f7f8
+--- /dev/null
++++ b/docs/auto-root-apps-20261031/records/build.json
+@@ -0,0 +1,93 @@
++{
++  "kind": "host cross-compilation only; no kernel module execution",
++  "module": {
++    "bytes": 3498912,
++    "sha256": "c84b49c229d14de6aefe4e4051b582bd31c3ccd0e946761ff2ec59404bc0f410"
++  },
++  "commands": [
++    {
++      "argv": [
++        "make",
++        "-C",
++        "/workspace/scratch/8188798a6a94/auto-ddk/ddk-root/opt/ddk/kdir/android16-6.12",
++        "M=/workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel",
++        "ARCH=arm64",
++        "CC=clang",
++        "LLVM=1",
++        "LLVM_IAS=1",
++        "CONFIG_DEBUG_INFO_BTF_MODULES=",
++        "clean"
++      ],
++      "exit_code": 0
++    },
++    {
++      "argv": [
++        "make",
++        "-C",
++        "/workspace/scratch/8188798a6a94/auto-ddk/ddk-root/opt/ddk/kdir/android16-6.12",
++        "M=/workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel",
++        "ARCH=arm64",
++        "CC=clang",
++        "LLVM=1",
++        "LLVM_IAS=1",
++        "CONFIG_DEBUG_INFO_BTF_MODULES=",
++        "modules",
++        "-j2"
++      ],
++      "exit_code": 0
++    }
++  ],
++  "compiler": "Android (14043575, +pgo, +bolt, +lto, +mlgo, based on r536225) clang version 19.0.1 (https://android.googlesource.com/toolchain/llvm-project b3a530ec6537146650e42be89f1089e9a3588460)\nTarget: x86_64-unknown-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/8188798a6a94/auto-ddk/ddk-root/opt/ddk/clang/clang-r536225/bin",
++  "kernel_release_header": "#define UTS_RELEASE \"6.12.76-4k\"",
++  "autoconf_sha256": "1fbc9de7fd352a6a44f0a67296bad10464b956bf59144382f404ac17d7e2fde2",
++  "module_symvers_sha256": "7d6930b74c649e4e2ceda3ef24e74774458844c34a41d29e042ccf916b509f96",
++  "module_btf_generation_omitted": true,
++  "config": {
++    "CONFIG_CFI_CLANG": true,
++    "CONFIG_CFI_ICALL_NORMALIZE_INTEGERS": true,
++    "CONFIG_TASKS_RCU": true,
++    "CONFIG_MODVERSIONS": true,
++    "CONFIG_ARM64_4K_PAGES": true
++  },
++  "hardware_validated": false,
++  "kernel_source_sha256": {
++    "kernel/ksu_umount_gate.c": "5ed7fd76a45120c34bf947f5f724caa34232020b7a17ebda60a50a0fd51f426c",
++    "kernel/ksu_umount_gate.h": "747c95d0a3643c499c9c2e18ccbfb40d975069998399596ddcc2ef17f1dbdc2c",
++    "kernel/lsm_hook.c": "0ecbfb1e758e952f3312169d4eec8a4c40a1a4566ce7f77a568b3802d6c5c41f",
++    "kernel/lsm_hook.h": "b64c52b93097c8a16dd8ec2b11dd3563577eeab101c7caf73103517d9e9f7240",
++    "kernel/lsm_lifetime.c": "83948856fa0fb10176028b9aa59ce4db6f2de1d068b4cb479cca7767e0fc01ee",
++    "kernel/patch_memory.c": "1f4ec032d1a103a20e52aac0282eb40dd043afd948995fb6ce66f51672ed0f84",
++    "kernel/patch_memory.h": "0a84c5b49a7b3a7ee26fe2f13ef2328d4a4866f5f9f64f85d2699f2895c880c9",
++    "kernel/spoof_cmdline.c": "da4832e334ee8894b154dc45cfbd506a0c1806a9282874ee7854835a6f3a465a",
++    "kernel/sus_map.c": "d61482ea6ba44834b4782809ccdb0e38a2c77918c2c1a7804fde54e01c8f30e0",
++    "kernel/sus_map_files.h": "714c116b6e5c1ccac4f24be6d02a27fe89eaedd621a713b5986cdac3d02ebedb",
++    "kernel/sus_mount.c": "5add82abd0a2dfff574a17fd64f02b5d35aea8f1f07911a0a3e1c0ffcc8da9d1",
++    "kernel/sus_path.c": "04bdcb08898c0cdf2b8029f134ccba5fca0c06bf24924e5a0183b7540a17bcab",
++    "kernel/sus_path_creds.c": "c32796230d091c90e33453a76cb2fe1f301bf6f4cf6432faa7e6d570a62fd167",
++    "kernel/sus_path_creds.h": "dfe0b01c13abad9482f734c8f1b74ac2b57d584e2f678425ad601b5a70f5e12c",
++    "kernel/sus_path_dirent_abi.h": "59f4161d68673fd62534318dc052f894a1b8688cca191bebcec42918ba0158b9",
++    "kernel/sus_path_entry.h": "29f73845cda0da0c87a14737d9b6ec6af934fcee56e0be6f6417a911432794b8",
++    "kernel/sus_path_index.h": "69c55c4fa9dcad83cc622031168a7c13a6d14f325c9cc5df83dc43ebe8142047",
++    "kernel/susfs.h": "819c0116f66fe4b8a3087e8a88989cf0d3fb136cb86fa0809addb0693f5e649c",
++    "kernel/susfs_abi.h": "a5c673d95c72df769cea504e670391782e2e2c6816f2b87cdf9db7b83b2b7fbb",
++    "kernel/susfs_avc_spoof.c": "b1ba90a6f8931cbf9e7ae87afc9289fe653b8b6098dd729ebd70eb5d30f7b39f",
++    "kernel/susfs_create_gate.c": "e4c1cdebe6bc61d7b9dd6f0f061c77b2aa953a3788e369d55917e52000e8f04f",
++    "kernel/susfs_enable_log.c": "68de679ce3eae2ca9b5673644b64615793c58886d7c8fb399f8a40d3fdfc6ad9",
++    "kernel/susfs_fp_hook.c": "970354ebc8f0fe33aa66085d3f1796f9a98fd9f6a0e8cc69a569d4ed9204f859",
++    "kernel/susfs_fp_hook.h": "efd05768a1299543a184de8752c1e6b54c19526f331eb4961c1ad39ee10242e7",
++    "kernel/susfs_hide_syms.c": "f29d2f9271853fd438de51a8269c04fd2d09a2da14228c983def9f32b023cc13",
++    "kernel/susfs_kprobe.h": "28678e1af9131d47950aae5907fdc9651595f0d32bd679ee9aaf108cfb168335",
++    "kernel/susfs_kstat.c": "22351b389e2098f1f2d6550acedf71726c9c6384c4d92859fa9a634c0104ad6c",
++    "kernel/susfs_log.h": "da61e2a9f78d99dc0f85b5f31b404a40024a6df32b3fe462cd7fc7bfbbc7648c",
++    "kernel/susfs_main.c": "fbaf59431ccbfca8d42dcd85e97d610e9d4b4728c772e591bcb92af15ebffb2d",
++    "kernel/susfs_open_redirect.c": "7d7cbda61314a26ce15a8e5181f281b24c7c34eae55182d6558b3e7d70a62972",
++    "kernel/susfs_or_entry.c": "397b1684e53a1d624022e3dfab03f5e7e5af4178ff8b5b0439a7bb8ebfd5ad84",
++    "kernel/susfs_or_entry.h": "1cbdb6551b739048440bb1a0da85d40f0bf2bf1109e9adfe266c38362c5c588f",
++    "kernel/susfs_priority_filter.c": "5ff05a4b7b5decd66893110f150a310ce9f933a5ab9174a6474245f14ca8d265",
++    "kernel/susfs_supercall.c": "3c45dd3aa4634939208122db80bf55197f1070a6f7536ca68f3a11d8c49320fd",
++    "kernel/susfs_uname.c": "cfaec5ff8dc7fd159a8a4821f1e936dbc86ca630f4d2e519e90692162660f892",
++    "kernel/symbol_resolver.c": "fb8432f5aae979b66a7813cc690792fa67b8791d83d881b0b161c03b59821ce5",
++    "kernel/symbol_resolver.h": "9fe16daf94479b016259b4db0417c3f5301b9f7cdf0aece3ccba762c6b541201"
++  },
++  "kernel_sources_digest": "832340de682b58c263fabedd96a162f75e03b43f662ad29ed8f7648f16ee7ef4"
++}
+diff --git a/docs/auto-root-apps-20261031/records/bzja-static.json b/docs/auto-root-apps-20261031/records/bzja-static.json
+new file mode 100644
+index 0000000..4dfb039
+--- /dev/null
++++ b/docs/auto-root-apps-20261031/records/bzja-static.json
+@@ -0,0 +1,14 @@
++{
++  "hardware_validated": false,
++  "kernel_sha256": "62163366f26c083b7722c61960cab02d3b33acd7d07f8a99049acd078a404695",
++  "checks": {
++    "all_140_import_names_present": true,
++    "policy_module_owner_lookup_present": true,
++    "new_string_helpers_present": true,
++    "priority_syscall_types_match_bzja": true,
++    "native_inlined_guard_matches_resolved_helper": true
++  },
++  "missing_imports": [],
++  "kernel_syscall_kcfi": 2009012525,
++  "scope": "Import names and syscall CFI; I/O validation comparison normalizes only input register, 32-bit error return register and local branch labels in 19 actual instructions. It does not establish complete kernel ABI compatibility."
++}
+diff --git a/docs/auto-root-apps-20261031/records/client-build.json b/docs/auto-root-apps-20261031/records/client-build.json
+new file mode 100644
+index 0000000..e22a43c
+--- /dev/null
++++ b/docs/auto-root-apps-20261031/records/client-build.json
+@@ -0,0 +1,31 @@
++{
++  "compiler": "Android (14043575, +pgo, +bolt, +lto, +mlgo, based on r536225) clang version 19.0.1 (https://android.googlesource.com/toolchain/llvm-project b3a530ec6537146650e42be89f1089e9a3588460)\nTarget: x86_64-unknown-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/8188798a6a94/auto-ddk/ddk-root/opt/ddk/clang/clang-r536225/bin",
++  "argv": [
++    "/opt/ddk/clang/clang-r536225/bin/clang",
++    "--target=aarch64-linux-gnu",
++    "-O2",
++    "-Wall",
++    "-Wextra",
++    "-Werror",
++    "-Wno-misleading-indentation",
++    "-nostdlib",
++    "-static-pie",
++    "-ffreestanding",
++    "-fno-builtin",
++    "-fno-stack-protector",
++    "-fuse-ld=lld",
++    "-Wl,-e,_start",
++    "-Wl,--build-id=none",
++    "-Wl,-z,max-page-size=4096",
++    "-o",
++    "/workspace/scratch/8188798a6a94/auto-validation/rmgu-priority-ctl",
++    "/workspace/scratch/8188798a6a94/susfs-auto-source/susfs/tools/rmgu_priority_ctl.c"
++  ],
++  "source_sha256": "6f6b019482887384720096fd1f4f5b84039c17601e41e6c32ad85f84873fbf76",
++  "sha256": "8f9f1052089b23ae8cfb274cd8a053db94918fca42c68a746b63867348e8327b",
++  "bytes": 13056,
++  "arm64_pie": true,
++  "interpreter": false,
++  "dynamic_relocations": false,
++  "hardware_validated": false
++}
+diff --git a/docs/auto-root-apps-20261031/records/compile.log b/docs/auto-root-apps-20261031/records/compile.log
+new file mode 100644
+index 0000000..7abefe5
+--- /dev/null
++++ b/docs/auto-root-apps-20261031/records/compile.log
+@@ -0,0 +1,27 @@
++make: Entering directory '/workspace/scratch/8188798a6a94/auto-ddk/ddk-root/opt/ddk/kdir/android16-6.12'
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_main.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/patch_memory.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/symbol_resolver.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/lsm_hook.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/lsm_lifetime.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_fp_hook.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_create_gate.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_uname.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_kstat.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/sus_map.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/sus_path.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/sus_path_creds.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/sus_mount.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/spoof_cmdline.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_open_redirect.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_or_entry.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_enable_log.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_avc_spoof.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_priority_filter.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_supercall.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_hide_syms.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/ksu_umount_gate.o
++  LD [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_guard_lkm.o
++  MODPOST /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/Module.symvers
++  LD [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_guard_lkm.ko
++make: Leaving directory '/workspace/scratch/8188798a6a94/auto-ddk/ddk-root/opt/ddk/kdir/android16-6.12'
+diff --git a/docs/auto-root-apps-20261031/records/distribution.json b/docs/auto-root-apps-20261031/records/distribution.json
+new file mode 100644
+index 0000000..fa29a9b
+--- /dev/null
++++ b/docs/auto-root-apps-20261031/records/distribution.json
+@@ -0,0 +1,11 @@
++{
++  "module": {
++    "bytes": 580112,
++    "sha256": "a16acd2c1fa549b530628ab1a52502ce4bf732f2f75cf98de368e3e2c2c29710"
++  },
++  "priorityControl": {
++    "bytes": 13056,
++    "sha256": "8f9f1052089b23ae8cfb274cd8a053db94918fca42c68a746b63867348e8327b"
++  },
++  "hardwareValidated": false
++}
+diff --git a/docs/auto-root-apps-20261031/records/host-results.json b/docs/auto-root-apps-20261031/records/host-results.json
+new file mode 100644
+index 0000000..1750ef6
+--- /dev/null
++++ b/docs/auto-root-apps-20261031/records/host-results.json
+@@ -0,0 +1,397 @@
++{
++  "hardware_validated": false,
++  "results": [
++    {
++      "suite": "avc_spoof",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.27,
++      "log": "avc_spoof.log"
++    },
++    {
++      "suite": "avc_spoof",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.47,
++      "log": "avc_spoof-sanitizers.log"
++    },
++    {
++      "suite": "feature_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.32,
++      "log": "feature_hooks.log"
++    },
++    {
++      "suite": "feature_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.67,
++      "log": "feature_hooks-sanitizers.log"
++    },
++    {
++      "suite": "fp_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.47,
++      "log": "fp_hooks.log"
++    },
++    {
++      "suite": "fp_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.87,
++      "log": "fp_hooks-sanitizers.log"
++    },
++    {
++      "suite": "identity_controls",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 3.18,
++      "log": "identity_controls.log"
++    },
++    {
++      "suite": "identity_controls",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 4.48,
++      "log": "identity_controls-sanitizers.log"
++    },
++    {
++      "suite": "kprobe_reuse",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.16,
++      "log": "kprobe_reuse.log"
++    },
++    {
++      "suite": "kprobe_reuse",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.32,
++      "log": "kprobe_reuse-sanitizers.log"
++    },
++    {
++      "suite": "kstat_compat",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.27,
++      "log": "kstat_compat.log"
++    },
++    {
++      "suite": "kstat_statx",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.27,
++      "log": "kstat_statx.log"
++    },
++    {
++      "suite": "kstat_statx",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "kstat_statx-sanitizers.log"
++    },
++    {
++      "suite": "ksu_policy",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.57,
++      "log": "ksu_policy.log"
++    },
++    {
++      "suite": "ksu_policy",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.77,
++      "log": "ksu_policy-sanitizers.log"
++    },
++    {
++      "suite": "lifecycle",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 2.33,
++      "log": "lifecycle.log"
++    },
++    {
++      "suite": "lifecycle",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 3.78,
++      "log": "lifecycle-sanitizers.log"
++    },
++    {
++      "suite": "lsm_lifetime",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.17,
++      "log": "lsm_lifetime.log"
++    },
++    {
++      "suite": "lsm_lifetime",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.21,
++      "log": "lsm_lifetime-sanitizers.log"
++    },
++    {
++      "suite": "map_files",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 4.38,
++      "log": "map_files.log"
++    },
++    {
++      "suite": "map_files",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 4.69,
++      "log": "map_files-sanitizers.log"
++    },
++    {
++      "suite": "map_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "map_hooks.log"
++    },
++    {
++      "suite": "map_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.62,
++      "log": "map_hooks-sanitizers.log"
++    },
++    {
++      "suite": "module_control",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.52,
++      "log": "module_control.log"
++    },
++    {
++      "suite": "mount_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.67,
++      "log": "mount_hooks.log"
++    },
++    {
++      "suite": "mount_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.07,
++      "log": "mount_hooks-sanitizers.log"
++    },
++    {
++      "suite": "mount_prefix",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.21,
++      "log": "mount_prefix.log"
++    },
++    {
++      "suite": "mount_prefix",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.32,
++      "log": "mount_prefix-sanitizers.log"
++    },
++    {
++      "suite": "mshow_filter",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.42,
++      "log": "mshow_filter.log"
++    },
++    {
++      "suite": "mshow_filter",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.67,
++      "log": "mshow_filter-sanitizers.log"
++    },
++    {
++      "suite": "patch_memory_flush",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.12,
++      "log": "patch_memory_flush.log"
++    },
++    {
++      "suite": "patch_memory_flush",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.16,
++      "log": "patch_memory_flush-sanitizers.log"
++    },
++    {
++      "suite": "path_creds",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.62,
++      "log": "path_creds.log"
++    },
++    {
++      "suite": "path_creds",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.12,
++      "log": "path_creds-sanitizers.log"
++    },
++    {
++      "suite": "path_entry",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "path_entry.log"
++    },
++    {
++      "suite": "path_entry",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.57,
++      "log": "path_entry-sanitizers.log"
++    },
++    {
++      "suite": "path_index",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.27,
++      "log": "path_index.log"
++    },
++    {
++      "suite": "path_index",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.42,
++      "log": "path_index-sanitizers.log"
++    },
++    {
++      "suite": "path_listing",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.47,
++      "log": "path_listing.log"
++    },
++    {
++      "suite": "path_listing",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 6.8,
++      "log": "path_listing-sanitizers.log"
++    },
++    {
++      "suite": "path_readlink_lsm",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.57,
++      "log": "path_readlink_lsm.log"
++    },
++    {
++      "suite": "path_readlink_lsm",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.02,
++      "log": "path_readlink_lsm-sanitizers.log"
++    },
++    {
++      "suite": "priority_filter",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 3.12,
++      "log": "priority_filter.log"
++    },
++    {
++      "suite": "priority_filter",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 5.21,
++      "log": "priority_filter-sanitizers.log"
++    },
++    {
++      "suite": "priority_tool",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 1.38,
++      "log": "priority_tool.log"
++    },
++    {
++      "suite": "priority_tool",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.42,
++      "log": "priority_tool-sanitizers.log"
++    },
++    {
++      "suite": "r18_fixes",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.77,
++      "log": "r18_fixes.log"
++    },
++    {
++      "suite": "r18_fixes",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.43,
++      "log": "r18_fixes-sanitizers.log"
++    },
++    {
++      "suite": "redirect_entry",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.16,
++      "log": "redirect_entry.log"
++    },
++    {
++      "suite": "redirect_entry",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "redirect_entry-sanitizers.log"
++    },
++    {
++      "suite": "redirect_maps",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.21,
++      "log": "redirect_maps.log"
++    },
++    {
++      "suite": "redirect_maps",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "redirect_maps-sanitizers.log"
++    },
++    {
++      "suite": "redirect_statfs",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.22,
++      "log": "redirect_statfs.log"
++    },
++    {
++      "suite": "redirect_statfs",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.32,
++      "log": "redirect_statfs-sanitizers.log"
++    },
++    {
++      "suite": "userspace",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.42,
++      "log": "userspace.log"
++    },
++    {
++      "suite": "userspace",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.62,
++      "log": "userspace-sanitizers.log"
++    }
++  ]
++}
+diff --git a/docs/auto-root-apps-20261031/records/ksu_policy-sanitizers.log b/docs/auto-root-apps-20261031/records/ksu_policy-sanitizers.log
+new file mode 100644
+index 0000000..bfb42cd
+--- /dev/null
++++ b/docs/auto-root-apps-20261031/records/ksu_policy-sanitizers.log
+@@ -0,0 +1,13 @@
++PASS module
++PASS builtin
++PASS missing-umount
++PASS missing-root
++PASS missing-lookup
++PASS going
++PASS foreign-root
++PASS unowned
++PASS negative/omit-owner-ref
++PASS negative/omit-preempt-guard
++PASS negative/foreign-owner
++PASS negative/omit-return-drain
++PASS negative/unproven-core
+diff --git a/docs/auto-root-apps-20261031/records/ksu_policy.log b/docs/auto-root-apps-20261031/records/ksu_policy.log
+new file mode 100644
+index 0000000..bfb42cd
+--- /dev/null
++++ b/docs/auto-root-apps-20261031/records/ksu_policy.log
+@@ -0,0 +1,13 @@
++PASS module
++PASS builtin
++PASS missing-umount
++PASS missing-root
++PASS missing-lookup
++PASS going
++PASS foreign-root
++PASS unowned
++PASS negative/omit-owner-ref
++PASS negative/omit-preempt-guard
++PASS negative/foreign-owner
++PASS negative/omit-return-drain
++PASS negative/unproven-core
+diff --git a/docs/auto-root-apps-20261031/records/lifecycle-sanitizers.log b/docs/auto-root-apps-20261031/records/lifecycle-sanitizers.log
+new file mode 100644
+index 0000000..7a4c0c1
+--- /dev/null
++++ b/docs/auto-root-apps-20261031/records/lifecycle-sanitizers.log
+@@ -0,0 +1,44 @@
++PASS queued (table)
++PASS queued (kprobe)
++PASS init-window (table)
++PASS init-window (kprobe)
++PASS allocation (table)
++PASS allocation (kprobe)
++PASS enqueue (table)
++PASS enqueue (kprobe)
++PASS rejected (table)
++PASS rejected (kprobe)
++PASS payload-errors (table)
++PASS payload-errors (kprobe)
++PASS multiple (table)
++PASS multiple (kprobe)
++PASS sleeping (table)
++PASS sleeping (kprobe)
++PASS return-tail (table)
++PASS return-tail (kprobe)
++PASS rollback (table)
++PASS rollback (kprobe)
++PASS partial-failures (table)
++PASS partial-failures (kprobe)
++PASS admission-race (table)
++PASS admission-race (kprobe)
++PASS table-preferred (table)
++PASS fallback (table)
++PASS bti-c (table)
++PASS bti-jc (table)
++PASS unknown-entry (table)
++PASS unreadable-entry (table)
++PASS both-fail (table)
++PASS rollback-before-fallback (table)
++PASS table-forward (table)
++PASS sleeping-original (table)
++PASS wrapper-tail (table)
++PASS repeat-routes (table)
++PASS null-probe-regs (kprobe)
++PASS no-tasks-rcu (table)
++PASS bti-config (kprobe)
++PASS table-preferred (table)
++PASS rejected init-admission
++PASS rejected sleeping-wrapper
++PASS rejected task-work-tail
++PASS rejected bti-fallback
+diff --git a/docs/auto-root-apps-20261031/records/lifecycle.log b/docs/auto-root-apps-20261031/records/lifecycle.log
+new file mode 100644
+index 0000000..7a4c0c1
+--- /dev/null
++++ b/docs/auto-root-apps-20261031/records/lifecycle.log
+@@ -0,0 +1,44 @@
++PASS queued (table)
++PASS queued (kprobe)
++PASS init-window (table)
++PASS init-window (kprobe)
++PASS allocation (table)
++PASS allocation (kprobe)
++PASS enqueue (table)
++PASS enqueue (kprobe)
++PASS rejected (table)
++PASS rejected (kprobe)
++PASS payload-errors (table)
++PASS payload-errors (kprobe)
++PASS multiple (table)
++PASS multiple (kprobe)
++PASS sleeping (table)
++PASS sleeping (kprobe)
++PASS return-tail (table)
++PASS return-tail (kprobe)
++PASS rollback (table)
++PASS rollback (kprobe)
++PASS partial-failures (table)
++PASS partial-failures (kprobe)
++PASS admission-race (table)
++PASS admission-race (kprobe)
++PASS table-preferred (table)
++PASS fallback (table)
++PASS bti-c (table)
++PASS bti-jc (table)
++PASS unknown-entry (table)
++PASS unreadable-entry (table)
++PASS both-fail (table)
++PASS rollback-before-fallback (table)
++PASS table-forward (table)
++PASS sleeping-original (table)
++PASS wrapper-tail (table)
++PASS repeat-routes (table)
++PASS null-probe-regs (kprobe)
++PASS no-tasks-rcu (table)
++PASS bti-config (kprobe)
++PASS table-preferred (table)
++PASS rejected init-admission
++PASS rejected sleeping-wrapper
++PASS rejected task-work-tail
++PASS rejected bti-fallback
+diff --git a/docs/auto-root-apps-20261031/records/priority_filter-sanitizers.log b/docs/auto-root-apps-20261031/records/priority_filter-sanitizers.log
+new file mode 100644
+index 0000000..9c3ea3d
+--- /dev/null
++++ b/docs/auto-root-apps-20261031/records/priority_filter-sanitizers.log
+@@ -0,0 +1,27 @@
++PASS compat=1 configuration
++PASS compat=1 abi-faults
++PASS compat=1 queries
++PASS compat=1 automatic
++PASS compat=1 boot-automatic
++PASS compat=1 validation
++PASS compat=1 initialization
++PASS compat=1 sleeping-teardown
++PASS compat=1 concurrency
++PASS compat=0 configuration
++PASS compat=0 abi-faults
++PASS compat=0 queries
++PASS compat=0 automatic
++PASS compat=0 boot-automatic
++PASS compat=0 validation
++PASS compat=0 initialization
++PASS compat=0 sleeping-teardown
++PASS compat=0 concurrency
++PASS negative/shared-compat-original
++PASS negative/omit-ioprio-validation
++PASS negative/skip-package-validation
++PASS negative/omit-callback-entry
++PASS negative/partial-compat-coverage
++PASS negative/narrow-app-caller-range
++PASS negative/omit-live-grants
++PASS negative/omit-own-app
++PASS negative/publication-uaf
+diff --git a/docs/auto-root-apps-20261031/records/priority_filter.log b/docs/auto-root-apps-20261031/records/priority_filter.log
+new file mode 100644
+index 0000000..0d866a3
+--- /dev/null
++++ b/docs/auto-root-apps-20261031/records/priority_filter.log
+@@ -0,0 +1,26 @@
++PASS compat=1 configuration
++PASS compat=1 abi-faults
++PASS compat=1 queries
++PASS compat=1 automatic
++PASS compat=1 boot-automatic
++PASS compat=1 validation
++PASS compat=1 initialization
++PASS compat=1 sleeping-teardown
++PASS compat=1 concurrency
++PASS compat=0 configuration
++PASS compat=0 abi-faults
++PASS compat=0 queries
++PASS compat=0 automatic
++PASS compat=0 boot-automatic
++PASS compat=0 validation
++PASS compat=0 initialization
++PASS compat=0 sleeping-teardown
++PASS compat=0 concurrency
++PASS negative/shared-compat-original
++PASS negative/omit-ioprio-validation
++PASS negative/skip-package-validation
++PASS negative/omit-callback-entry
++PASS negative/partial-compat-coverage
++PASS negative/narrow-app-caller-range
++PASS negative/omit-live-grants
++PASS negative/omit-own-app
+diff --git a/docs/auto-root-apps-20261031/records/priority_tool-sanitizers.log b/docs/auto-root-apps-20261031/records/priority_tool-sanitizers.log
+new file mode 100644
+index 0000000..7976be5
+--- /dev/null
++++ b/docs/auto-root-apps-20261031/records/priority_tool-sanitizers.log
+@@ -0,0 +1,34 @@
++PASS priority client auto
++PASS priority client auto-off
++PASS priority client auto-invalid
++PASS priority client auto-unhandled
++PASS priority client auto-error
++PASS priority client automatic-ready
++PASS priority client set
++PASS priority client clear
++PASS priority client status
++PASS priority client query
++PASS priority client probe
++PASS priority client probe-sdk
++PASS priority client probe-app-zygote
++PASS priority client unhandled
++PASS priority client command-error
++PASS priority client visible
++PASS priority client wrong-validation
++PASS priority client missing-target
++PASS priority client not-root
++PASS priority client no-status
++PASS priority client not-ready
++PASS priority client overflow
++PASS priority client self
++PASS priority client fail-namespace
++PASS priority client fail-private
++PASS priority client fail-keepcaps
++PASS priority client fail-nnp
++PASS priority client fail-groups
++PASS priority client fail-gids
++PASS priority client fail-uids
++PASS negative/omit-private-mounts
++PASS negative/valid-scheduling-write
++PASS negative/omit-unsupported-sentinel
++PASS negative/narrow-caller-range
+diff --git a/docs/auto-root-apps-20261031/records/priority_tool.log b/docs/auto-root-apps-20261031/records/priority_tool.log
+new file mode 100644
+index 0000000..7976be5
+--- /dev/null
++++ b/docs/auto-root-apps-20261031/records/priority_tool.log
+@@ -0,0 +1,34 @@
++PASS priority client auto
++PASS priority client auto-off
++PASS priority client auto-invalid
++PASS priority client auto-unhandled
++PASS priority client auto-error
++PASS priority client automatic-ready
++PASS priority client set
++PASS priority client clear
++PASS priority client status
++PASS priority client query
++PASS priority client probe
++PASS priority client probe-sdk
++PASS priority client probe-app-zygote
++PASS priority client unhandled
++PASS priority client command-error
++PASS priority client visible
++PASS priority client wrong-validation
++PASS priority client missing-target
++PASS priority client not-root
++PASS priority client no-status
++PASS priority client not-ready
++PASS priority client overflow
++PASS priority client self
++PASS priority client fail-namespace
++PASS priority client fail-private
++PASS priority client fail-keepcaps
++PASS priority client fail-nnp
++PASS priority client fail-groups
++PASS priority client fail-gids
++PASS priority client fail-uids
++PASS negative/omit-private-mounts
++PASS negative/valid-scheduling-write
++PASS negative/omit-unsupported-sentinel
++PASS negative/narrow-caller-range
 diff --git a/docs/priority-filter-20261030/README.md b/docs/priority-filter-20261030/README.md
 new file mode 100644
-index 0000000..649838c
+index 0000000..e515ff5
 --- /dev/null
 +++ b/docs/priority-filter-20261030/README.md
-@@ -0,0 +1,120 @@
+@@ -0,0 +1,123 @@
 +# Samsung priority UID filter
++
++Current extension: [automatic root-app selection](../auto-root-apps-20261031/README.md).
 +
 +Adaptation of [upstream PR #158](https://github.com/inforcqb/susfs4ksu-for-lkm/pull/158),
 +reviewed at `d55749105beaac03776d95241f4400a68292f831`, onto Samsung source
@@ -58,9 +1316,10 @@ index 0000000..649838c
 +- Root can read readiness/count/generation from the read-only `priority_filter`
 +  module parameter. There is no new invented `CONFIG_*` feature line.
 +
-+There are no configured targets by default. No background observer or periodic
-+work is added. The four priority entries are installed when this optional layer
-+initializes; empty configuration takes the direct passthrough path inside them.
++The standalone module defaults to no configured targets unless automatic boot
++parameters are supplied. The app now enables automatic root-app protection and
++refreshes installed-manager extras after unlock; see the extension above. The
++four priority entries remain installed while the optional layer is initialized.
 +
 +## ABI and control client
 +
@@ -1087,8 +2346,173 @@ index 6646f87..5aa4092 100644
               
  
  # 5.14+ replaced __flush_dcache_area/__flush_icache_range with
+diff --git a/kernel/ksu_umount_gate.c b/kernel/ksu_umount_gate.c
+index f951eb8..88b7741 100644
+--- a/kernel/ksu_umount_gate.c
++++ b/kernel/ksu_umount_gate.c
+@@ -1,74 +1,92 @@
+ // SPDX-License-Identifier: GPL-2.0
+-
+-/* issue #34: the hide gates ask KernelSU whether it would umount modules for a uid, instead of the
+- * old `uid >= 10000` proxy that hid from the manager and from su-granted apps too.
+- *
+- * The address is resolved ONCE, at load, by name through kallsyms (kernel/symbol_resolver.c) and kept
+- * in a function pointer - it is not imported from kernelsu.ko, for two reasons:
+- *
+- *   - an import would have to be strong.  A __weak one is emitted as a GOT entry
+- *     (R_AARCH64_ADR_GOT_PAGE + R_AARCH64_LD64_GOT_LO12_NC), and arm64's module relocator implements
+- *     neither, so the module would refuse to load at all - measured on the artifacts, including with
+- *     visibility("hidden") and with -fno-pic, neither of which removes that entry (it comes from the
+- *     weak reference itself, not from PIC);
+- *   - resolving by name answers the environment question directly: the symbol is there or it is not.
+- *     Nothing here depends on which loader ran the module or on the SELinux domain it ran in, so no
+- *     loader-side detection is needed either.
+- *
+- * The answer is decided once, here, and the gates only read the flag afterwards.  Two consequences
+- * worth knowing.  A KernelSU loaded AFTER this module is not noticed until this module is reloaded
+- * (the warning below says so).  A KernelSU that is UNLOADED leaves the saved address dangling - a call
+- * would jump into freed module text; the strong import this replaced had exactly the same exposure,
+- * since nothing holds a reference for us either, so that is a known residual rather than a new one. */
+-
++/* Resolve the live KernelSU policy once, retaining its owning module until all
++ * SusFS hooks have been removed and drained. No weak imports, private policy
++ * structures or credential changes. Built-in symbols require core ownership.
++ */
+ #include <linux/kernel.h>
+ #include <linux/module.h>
+ #include <linux/types.h>
+-
++#include <linux/preempt.h>
++#include <linux/rcupdate.h>
+ #include "ksu_umount_gate.h"
+ #include "symbol_resolver.h"
+ #include "susfs_log.h"
+ 
+-/* The lookup goes through ksu_kallsyms_lookup_name() and not find_kernel_symbol_exact():
+- * the name is owned by kernelsu.ko, and find_kernel_symbol_exact() refuses module-owned
+- * names - the resolver's raw path ends in module_kallsyms_lookup_name(), which sees them. */
+-#define KSU_UMOUNT_GATE_SYMBOL	"ksu_uid_should_umount"
+-
+-/* Fail-safe default: the pre-#34 answer, until the init below proves that KernelSU's symbol exists.
+- * A path that skips that init entirely - the fail_layer=2 diagnostic in susfs_main.c is one, and this
+- * layer is deliberately not fatal - therefore leaves the gates on the safe branch instead of calling
+- * through a NULL pointer.  Only a successful resolve turns it off. */
++#define KSU_UMOUNT_GATE_SYMBOL "ksu_uid_should_umount"
++#define KSU_ROOT_GATE_SYMBOL "ksu_is_uid_granted_root"
+ bool susfs_ksu_umount_gate_off = true;
+-
+-/* Written once in init, read by every gate through susfs_ksu_umount_ask().  Non-NULL exactly while
+- * the gate is off == false, which is the invariant the helper relies on instead of testing the
+- * pointer on every call; the default above is what makes that invariant hold even when init is
+- * skipped. */
+ static bool (*ksu_uid_should_umount_fn)(uid_t uid);
++static bool (*ksu_uid_granted_root_fn)(uid_t uid);
++static struct module *ksu_policy_owner;
++static struct module *(*policy_module_address)(unsigned long addr);
++static_assert(__same_type(typeof(policy_module_address), typeof(&__module_address)));
+ 
+-/* noinline __nocfi: an indirect call through a resolved address.  CFI checks indirect call sites, and
+- * LTO would otherwise inline a small static helper back into a caller that is not marked. */
+ bool __nocfi noinline susfs_ksu_umount_ask(uid_t uid)
+ {
+-	return ksu_uid_should_umount_fn(uid);
++    return ksu_uid_should_umount_fn(uid);
++}
++
++bool susfs_ksu_root_available(void)
++{
++    return READ_ONCE(ksu_uid_granted_root_fn) != NULL;
++}
++
++bool __nocfi noinline susfs_ksu_uid_granted_root(uid_t uid)
++{
++    return ksu_uid_granted_root_fn(uid);
+ }
+ 
+-int susfs_ksu_umount_gate_init(void)
++int __nocfi susfs_ksu_umount_gate_init(void)
+ {
+-	unsigned long addr = ksu_kallsyms_lookup_name(KSU_UMOUNT_GATE_SYMBOL);
++    unsigned long umount, granted;
++    unsigned long core_umount = find_kernel_symbol_exact(KSU_UMOUNT_GATE_SYMBOL);
++    unsigned long core_granted = find_kernel_symbol_exact(KSU_ROOT_GATE_SYMBOL);
++    struct module *owner;
+ 
+-	if (!addr) {
+-		susfs_ksu_umount_gate_off = true;
+-		/* pr_warn, not SUSFS_LOGI: "issue #34's fix is not in effect on this device" is something an
+-		 * operator has to be able to see, and the load is otherwise silent about it. */
+-		pr_warn("susfs_guard_lkm: %s is not in kallsyms - the hide gates keep the uid >= 10000 rule, so issue #34's fix (hiding follows KernelSU's exclusion list) is NOT in effect here.  A KernelSU loaded after this module needs this module reloaded to be picked up.\n",
+-			KSU_UMOUNT_GATE_SYMBOL);
+-		return 0;
+-	}
++    policy_module_address = (void *)find_kernel_symbol_exact("__module_address");
++    if (!policy_module_address)
++        goto unavailable;
++    /* Raw lookup never sleeps. Preemption stays disabled from lookup through
++     * owner/reference acquisition, closing the address-free/reuse window. */
++    preempt_disable();
++    umount = ksu_kallsyms_lookup_name(KSU_UMOUNT_GATE_SYMBOL);
++    if (!umount)
++        goto unlock;
++    owner = policy_module_address(umount);
++    if (owner) {
++        if (!try_module_get(owner))
++            goto unlock;
++    } else if (umount != core_umount) {
++        goto unlock;
++    }
++    ksu_policy_owner = owner;
++    ksu_uid_should_umount_fn = (void *)umount;
++    granted = ksu_kallsyms_lookup_name(KSU_ROOT_GATE_SYMBOL);
++    if (granted && policy_module_address(granted) == owner &&
++        (owner || granted == core_granted))
++        ksu_uid_granted_root_fn = (void *)granted;
++    WRITE_ONCE(susfs_ksu_umount_gate_off, false);
++    preempt_enable();
++    return 0;
++unlock:
++    preempt_enable();
++unavailable:
++    pr_warn("susfs: KernelSU policy could not be retained; legacy hide gates remain in use\n");
++    return 0;
++}
++
++void susfs_ksu_umount_gate_exit(void)
++{
++    struct module *owner = ksu_policy_owner;
+ 
+-	ksu_uid_should_umount_fn = (bool (*)(uid_t))addr;
+-	susfs_ksu_umount_gate_off = false;	/* only now is there something to ask */
+-	SUSFS_LOGI("ksu_umount_gate: resolved %s at %px - the hide gates now answer KernelSU (issue #34)\n",
+-		   KSU_UMOUNT_GATE_SYMBOL, (void *)addr);
+-	return 0;
++    WRITE_ONCE(susfs_ksu_umount_gate_off, true);
++    /* This is the last policy consumer's exit, after every hook's drain.
++     * Include preempted return tails before releasing the dependency. */
++    if (ksu_uid_should_umount_fn)
++        synchronize_rcu_tasks();
++    ksu_uid_should_umount_fn = NULL;
++    ksu_uid_granted_root_fn = NULL;
++    ksu_policy_owner = NULL;
++    if (owner)
++        module_put(owner);
+ }
+diff --git a/kernel/ksu_umount_gate.h b/kernel/ksu_umount_gate.h
+index 855c0e6..472067e 100644
+--- a/kernel/ksu_umount_gate.h
++++ b/kernel/ksu_umount_gate.h
+@@ -107,5 +107,8 @@ static inline bool susfs_is_current_proc_umounted(void)
+ }
+ 
+ int susfs_ksu_umount_gate_init(void);
++void susfs_ksu_umount_gate_exit(void);
++bool susfs_ksu_root_available(void);
++bool susfs_ksu_uid_granted_root(uid_t uid);
+ 
+ #endif /* __SUSFS_KSU_UMOUNT_GATE_H */
 diff --git a/kernel/susfs.h b/kernel/susfs.h
-index 400853b..5ec7ac1 100644
+index 400853b..cfc961d 100644
 --- a/kernel/susfs.h
 +++ b/kernel/susfs.h
 @@ -145,6 +145,7 @@ enum susfs_feature {
@@ -1099,34 +2523,43 @@ index 400853b..5ec7ac1 100644
  	SUSFS_FEAT_COUNT,
  };
  
-@@ -161,6 +162,9 @@ void sus_path_supercall(unsigned int cmd, void __user **arg);
+@@ -161,6 +162,10 @@ void sus_path_supercall(unsigned int cmd, void __user **arg);
  void susfs_kstat_supercall(unsigned int cmd, void __user **arg);
  void susfs_open_redirect_supercall(void __user **arg);
  void susfs_sus_mount_supercall(void __user **arg);
 +void susfs_priority_filter_supercall(void __user **arg);
++void susfs_priority_auto_supercall(void __user **arg);
 +int susfs_priority_filter_init(void);
 +void susfs_priority_filter_exit(void);
  
  int susfs_hide_syms_init(void);
  void susfs_hide_syms_exit(void);
 diff --git a/kernel/susfs_abi.h b/kernel/susfs_abi.h
-index c64ac9a..8d161cf 100644
+index c64ac9a..0f08a95 100644
 --- a/kernel/susfs_abi.h
 +++ b/kernel/susfs_abi.h
-@@ -41,6 +41,8 @@
+@@ -41,6 +41,10 @@
  #define CMD_SUSFS_SUS_SU                        0x60000 /* deprecated */
  #define CMD_SUSFS_ENABLE_AVC_LOG_SPOOFING       0x60010
  #define CMD_SUSFS_ADD_SUS_MAP                   0x60020
 +#define CMD_SUSFS_SET_PRIORITY_UID_FILTER       0x60030
++/* RMGU extension; the upstream package-list ABI remains unchanged. */
++#define CMD_RMGU_SUSFS_AUTO_ROOT_APPS           0x6f001
 +#define SUSFS_APP_STR_BUF_SIZE                  65535
  
  /* 126 is a USERSPACE-side sentinel the kernel never produces: the ksu_susfs C tool pre-seeds payload.err with it and
   * prints "SUSFS operation not supported, please enable it in kernel" when the field is STILL 126 after the syscall,
-@@ -175,4 +177,10 @@ struct st_susfs_enabled_features {
+@@ -175,4 +179,16 @@ struct st_susfs_enabled_features {
  	int err;
  };
  
 +/* PR #158 / upstream priority-filter ABI. The pad before err is intentional. */
++struct st_rmgu_susfs_auto_root_apps {
++    unsigned int enabled;
++    unsigned int own_appid;
++    int err;
++};
++
 +struct st_susfs_priority_uid_filter {
 +    char app_strings[SUSFS_APP_STR_BUF_SIZE];
 +    int err;
@@ -1134,9 +2567,18 @@ index c64ac9a..8d161cf 100644
 +
  #endif
 diff --git a/kernel/susfs_main.c b/kernel/susfs_main.c
-index 0c9ad0c..a142bbd 100644
+index 0c9ad0c..77a5249 100644
 --- a/kernel/susfs_main.c
 +++ b/kernel/susfs_main.c
+@@ -118,7 +118,7 @@ static struct {
+      * works - so a failure here is a degradation, not a reason to refuse the module.  Skipping this
+      * init entirely (fail_layer=2) is safe for the same reason: the flag it sets defaults to the
+      * pre-#34 answer. */
+-    { "ksu_umount_gate",	susfs_ksu_umount_gate_init,	NULL,			false, false, -1 },
++    { "ksu_umount_gate",	susfs_ksu_umount_gate_init,	susfs_ksu_umount_gate_exit,			false, false, -1 },
+     /* FATAL: every LSM layer below (sus_path first) inserts through this file's table hooks.
+      * A module that loads without it would accept rules no LSM layer can apply - the same
+      * "loaded but inert" shape fp_hook is fatal for.  ksu_lsm_hook_init() itself only
 @@ -138,6 +138,9 @@ static struct {
      { "enable_log",	susfs_enable_log_init,		susfs_enable_log_exit,	false, true,  SUSFS_FEAT_ENABLE_LOG },
      { "avc_spoof",	susfs_avc_spoof_init,		susfs_avc_spoof_exit,	false, true,  SUSFS_FEAT_AVC_SPOOF },
@@ -1158,10 +2600,10 @@ index 0c9ad0c..a142bbd 100644
  
 diff --git a/kernel/susfs_priority_filter.c b/kernel/susfs_priority_filter.c
 new file mode 100644
-index 0000000..bffe714
+index 0000000..c1cec37
 --- /dev/null
 +++ b/kernel/susfs_priority_filter.c
-@@ -0,0 +1,334 @@
+@@ -0,0 +1,422 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Samsung adaptation of inforcqb/susfs4ksu-for-lkm PR #158, d55749105bea.
@@ -1211,11 +2653,19 @@ index 0000000..bffe714
 +struct prio_uid_rules {
 +    unsigned long bits[BITS_TO_LONGS(PRIO_APP_COUNT)];
 +    unsigned int count;
++    bool automatic;
++    uid_t own_appid;
 +};
 +
 +static struct prio_uid_rules __rcu *prio_rules;
 +static DEFINE_MUTEX(prio_config_lock);
 +static bool prio_ready;
++static bool prio_enabled;
++static bool prio_boot_auto;
++static int prio_boot_appid;
++module_param_named(priority_auto_root, prio_boot_auto, bool, 0400);
++module_param_named(priority_appid, prio_boot_appid, int, 0400);
++
 +static unsigned int prio_count;
 +static unsigned long prio_generation;
 +static int (*prio_check_cap_fn)(int ioprio);
@@ -1228,7 +2678,7 @@ index 0000000..bffe714
 +    uid_t caller = current_uid().val, target, appid, caller_appid;
 +    bool hidden = false;
 +
-+    if (!READ_ONCE(prio_ready) || !READ_ONCE(prio_count) ||
++    if (!READ_ONCE(prio_ready) || !READ_ONCE(prio_enabled) ||
 +        which != user_class || who <= 0 ||
 +        current_user_ns() != &init_user_ns ||
 +        uid_eq(current_euid(), GLOBAL_ROOT_UID))
@@ -1246,8 +2696,11 @@ index 0000000..bffe714
 +        return false;
 +    rcu_read_lock();
 +    rules = rcu_dereference(prio_rules);
-+    if (rules)
++    if (rules) {
 +        hidden = test_bit(appid - PRIO_FIRST_APP, rules->bits);
++        if (!hidden && rules->automatic)
++            hidden = appid == rules->own_appid || susfs_ksu_uid_granted_root(target);
++    }
 +    rcu_read_unlock();
 +    return hidden;
 +}
@@ -1382,6 +2835,26 @@ index 0000000..bffe714
 +    return 0;
 +}
 +
++/* Takes ownership of next and the held mutex. Never read published next after
++ * unlocking: another writer can already have retired it. */
++static void prio_commit_locked(struct prio_uid_rules *next, struct prio_uid_rules *previous)
++{
++    bool active = next->count || next->automatic;
++
++    rcu_assign_pointer(prio_rules, active ? next : NULL);
++    WRITE_ONCE(prio_count, next->count);
++    WRITE_ONCE(prio_enabled, active);
++    prio_generation++;
++    if (next->count || next->automatic)
++        next = NULL;
++    mutex_unlock(&prio_config_lock);
++    if (previous) {
++        synchronize_rcu();
++        kfree(previous);
++    }
++    kfree(next);
++}
++
 +static int prio_replace_rules(char *packages)
 +{
 +    struct prio_uid_rules *next, *previous;
@@ -1402,19 +2875,64 @@ index 0000000..bffe714
 +        goto out;
 +    }
 +    previous = rcu_dereference_protected(prio_rules, lockdep_is_held(&prio_config_lock));
-+    rcu_assign_pointer(prio_rules, next->count ? next : NULL);
-+    WRITE_ONCE(prio_count, next->count);
-+    prio_generation++;
-+    if (next->count)
-+        next = NULL;
-+    mutex_unlock(&prio_config_lock);
 +    if (previous) {
-+        synchronize_rcu();
-+        kfree(previous);
++        next->automatic = previous->automatic;
++        next->own_appid = previous->own_appid;
 +    }
++    prio_commit_locked(next, previous);
++    return 0;
 +out:
 +    kfree(next);
 +    return rc;
++}
++
++static int prio_set_automatic(u32 enabled, u32 own_appid)
++{
++    struct prio_uid_rules *next, *previous;
++    int rc = 0;
++
++    if (!uid_eq(current_euid(), GLOBAL_ROOT_UID) || current_user_ns() != &init_user_ns)
++        return -EPERM;
++    if (enabled > 1 || (enabled ? own_appid < PRIO_FIRST_APP || own_appid > PRIO_LAST_APP : own_appid != 0))
++        return -EINVAL;
++    if (enabled && !susfs_ksu_root_available())
++        return -EOPNOTSUPP;
++    next = kzalloc(sizeof(*next), GFP_KERNEL);
++    if (!next)
++        return -ENOMEM;
++    mutex_lock(&prio_config_lock);
++    if (!prio_ready) {
++        rc = -ENODEV;
++        goto unlock;
++    }
++    previous = rcu_dereference_protected(prio_rules, lockdep_is_held(&prio_config_lock));
++    if ((!previous && !enabled) || (previous && previous->automatic == !!enabled && previous->own_appid == own_appid))
++        goto unlock;
++    if (previous) {
++        memcpy(next->bits, previous->bits, sizeof(next->bits));
++        next->count = previous->count;
++    }
++    next->automatic = !!enabled;
++    next->own_appid = own_appid;
++    prio_commit_locked(next, previous);
++    return 0;
++unlock:
++    mutex_unlock(&prio_config_lock);
++    kfree(next);
++    return rc;
++}
++
++void susfs_priority_auto_supercall(void __user **arg)
++{
++    struct st_rmgu_susfs_auto_root_apps info;
++    int rc;
++
++    if (copy_from_user(&info, *arg, sizeof(info)))
++        rc = -EFAULT;
++    else
++        rc = prio_set_automatic(info.enabled, info.own_appid);
++    if (copy_to_user(&((struct st_rmgu_susfs_auto_root_apps __user *)*arg)->err, &rc, sizeof(rc)))
++        pr_warn("priority_filter: cannot return automatic selection result\n");
 +}
 +
 +void susfs_priority_filter_supercall(void __user **arg)
@@ -1445,8 +2963,14 @@ index 0000000..bffe714
 +    int length;
 +
 +    mutex_lock(&prio_config_lock);
-+    length = scnprintf(buf, PAGE_SIZE, "ready=%u configured=%u generation=%lu\n",
-+                       prio_ready ? 1 : 0, prio_count, prio_generation);
++    {
++        struct prio_uid_rules *rules = rcu_dereference_protected(prio_rules, lockdep_is_held(&prio_config_lock));
++        length = scnprintf(buf, PAGE_SIZE,
++            "ready=%u configured=%u generation=%lu automatic=%u own_appid=%u root_lookup=%u\n",
++            prio_ready ? 1 : 0, prio_count, prio_generation,
++            rules && rules->automatic ? 1 : 0, rules ? rules->own_appid : 0,
++            susfs_ksu_root_available() ? 1 : 0);
++    }
 +    mutex_unlock(&prio_config_lock);
 +    return length;
 +}
@@ -1464,6 +2988,7 @@ index 0000000..bffe714
 +    previous = rcu_dereference_protected(prio_rules, lockdep_is_held(&prio_config_lock));
 +    rcu_assign_pointer(prio_rules, NULL);
 +    WRITE_ONCE(prio_count, 0);
++    WRITE_ONCE(prio_enabled, false);
 +    mutex_unlock(&prio_config_lock);
 +    for (i = PRIO_OP_COUNT - 1; i >= 0; i--)
 +        susfs_fp_remove(&prio_hooks[i]);
@@ -1491,49 +3016,176 @@ index 0000000..bffe714
 +    mutex_lock(&prio_config_lock);
 +    WRITE_ONCE(prio_ready, true);
 +    mutex_unlock(&prio_config_lock);
++    if (prio_boot_auto) {
++        rc = prio_set_automatic(1, prio_boot_appid);
++        if (rc)
++            pr_warn("priority_filter: automatic boot selection unavailable (%d)\n", rc);
++    }
 +    return 0;
 +rollback:
 +    susfs_priority_filter_exit();
 +    return rc;
 +}
 diff --git a/kernel/susfs_supercall.c b/kernel/susfs_supercall.c
-index 5444e43..7c2343e 100644
+index 5444e43..7ca5094 100644
 --- a/kernel/susfs_supercall.c
 +++ b/kernel/susfs_supercall.c
-@@ -206,6 +206,9 @@ static void susfs_tw_func(struct callback_head *cb)
+@@ -206,6 +206,12 @@ static void susfs_tw_func(struct callback_head *cb)
  	case CMD_SUSFS_HIDE_SUS_MNTS_FOR_NON_SU_PROCS:
  		susfs_sus_mount_supercall(&arg);
  		break;
 +	case CMD_SUSFS_SET_PRIORITY_UID_FILTER:
 +		susfs_priority_filter_supercall(&arg);
 +		break;
++	case CMD_RMGU_SUSFS_AUTO_ROOT_APPS:
++		susfs_priority_auto_supercall(&arg);
++		break;
  	default:
  		/* Unreachable: reboot_pre() only defers a command susfs_cmd_handled()
  		 * accepted.  Kept as a net in case the two lists drift apart. */
-@@ -260,6 +263,8 @@ static int susfs_cmd_feature(unsigned int cmd)
+@@ -260,6 +266,9 @@ static int susfs_cmd_feature(unsigned int cmd)
  		return SUSFS_FEAT_OPEN_REDIRECT;
  	case CMD_SUSFS_HIDE_SUS_MNTS_FOR_NON_SU_PROCS:
  		return SUSFS_FEAT_SUS_MOUNT;
 +	case CMD_SUSFS_SET_PRIORITY_UID_FILTER:
++	case CMD_RMGU_SUSFS_AUTO_ROOT_APPS:
 +		return SUSFS_FEAT_PRIORITY_FILTER;
  	default:
  		return -1;
  	}
-@@ -475,6 +480,9 @@ static void __init susfs_abi_layout_check(void)
+@@ -475,6 +484,11 @@ static void __init susfs_abi_layout_check(void)
  	BUILD_BUG_ON(sizeof(struct st_susfs_variant) != 20);
  	BUILD_BUG_ON(offsetof(struct st_susfs_variant, err) != 16);
  
++	BUILD_BUG_ON(sizeof(struct st_rmgu_susfs_auto_root_apps) != 12);
++	BUILD_BUG_ON(offsetof(struct st_rmgu_susfs_auto_root_apps, err) != 8);
 +	BUILD_BUG_ON(sizeof(struct st_susfs_priority_uid_filter) != 65540);
 +	BUILD_BUG_ON(offsetof(struct st_susfs_priority_uid_filter, err) != 65536);
 +
  	BUILD_BUG_ON(sizeof(struct st_susfs_enabled_features) != 8196);
  	BUILD_BUG_ON(offsetof(struct st_susfs_enabled_features, err) != 8192);
  }
+diff --git a/tests/ksu_policy/policy_test.c b/tests/ksu_policy/policy_test.c
+new file mode 100644
+index 0000000..9899003
+--- /dev/null
++++ b/tests/ksu_policy/policy_test.c
+@@ -0,0 +1,65 @@
++#include <assert.h>
++#include <stdbool.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <string.h>
++#include <sys/types.h>
++#define __nocfi
++#define noinline __attribute__((noinline))
++#define static_assert _Static_assert
++#define __same_type(a,b) __builtin_types_compatible_p(a,b)
++#define READ_ONCE(v) (v)
++#define WRITE_ONCE(v,x) ((v)=(x))
++#define pr_warn(...) ((void)0)
++struct module {int refs;bool going;};
++static struct module backend,foreign;
++static int preempt_depth,graces;
++static bool missing_umount,missing_root,missing_lookup,builtin,foreign_root,unowned;
++typedef struct {unsigned int val;} kuid_t;
++static kuid_t current_uid(void) {return (kuid_t){10002};}
++static bool host_umount(uid_t uid) {return uid!=10003;}
++static bool host_root(uid_t uid) {return uid==10003;}
++static struct module *__module_address(unsigned long addr) {
++    assert(preempt_depth==1);
++    assert(addr==(unsigned long)host_umount||addr==(unsigned long)host_root);
++    return builtin||unowned?NULL:(foreign_root&&addr==(unsigned long)host_root?&foreign:&backend);
++}
++static unsigned long find_kernel_symbol_exact(const char *name) {
++    assert(!preempt_depth);
++    if(!strcmp(name,"__module_address"))return missing_lookup?0:(unsigned long)__module_address;
++    if(!strcmp(name,"ksu_uid_should_umount"))return builtin&&!missing_umount?(unsigned long)host_umount:0;
++    assert(!strcmp(name,"ksu_is_uid_granted_root"));return builtin&&!missing_root?(unsigned long)host_root:0;
++}
++static unsigned long ksu_kallsyms_lookup_name(const char *name) {
++    assert(preempt_depth==1);
++    if(!strcmp(name,"ksu_uid_should_umount"))return missing_umount?0:(unsigned long)host_umount;
++    assert(!strcmp(name,"ksu_is_uid_granted_root"));return missing_root?0:(unsigned long)host_root;
++}
++static void preempt_disable(void) {assert(!preempt_depth);preempt_depth=1;}
++static void preempt_enable(void) {assert(preempt_depth==1);preempt_depth=0;}
++static bool try_module_get(struct module *m) {assert(preempt_depth==1&&m==&backend);if(m->going)return false;m->refs++;return true;}
++static void module_put(struct module *m) {assert(!preempt_depth&&m==&backend&&graces==1&&m->refs==1);m->refs--;}
++static void synchronize_rcu_tasks(void) {assert(!preempt_depth);graces++;}
++#include GATE
++#include PRODUCTION
++int main(int argc,char **argv) {
++    assert(argc==2);const char *which=argv[1];bool enabled=true,root=true;
++    if(!strcmp(which,"missing-umount")){missing_umount=true;enabled=root=false;}
++    else if(!strcmp(which,"missing-root")){missing_root=true;root=false;}
++    else if(!strcmp(which,"missing-lookup")){missing_lookup=true;enabled=root=false;}
++    else if(!strcmp(which,"going")){backend.going=true;enabled=root=false;}
++    else if(!strcmp(which,"builtin"))builtin=true;
++    else if(!strcmp(which,"foreign-root")){foreign_root=true;root=false;}
++    else if(!strcmp(which,"unowned")){unowned=true;enabled=root=false;}
++    else assert(!strcmp(which,"module"));
++    assert(!susfs_ksu_umount_gate_init());assert(!preempt_depth);
++    assert(susfs_ksu_umount_gate_off==!enabled);
++    assert(backend.refs==(enabled&&!builtin?1:0)&&!foreign.refs);
++    assert(susfs_ksu_root_available()==root);
++    if(enabled){assert(susfs_ksu_umount_ask(10002));assert(!susfs_ksu_umount_ask(10003));}
++    if(root){assert(susfs_ksu_uid_granted_root(10003));assert(!susfs_ksu_uid_granted_root(10002));}
++    susfs_ksu_umount_gate_exit();assert(!backend.refs&&!foreign.refs&&susfs_ksu_umount_gate_off);
++    assert(!susfs_ksu_root_available()&&graces==(enabled?1:0));
++    susfs_ksu_umount_gate_exit();assert(graces==(enabled?1:0));
++    puts("PASS retained KernelSU policy");return 0;
++}
+diff --git a/tests/ksu_policy/run.py b/tests/ksu_policy/run.py
+new file mode 100644
+index 0000000..91d82d9
+--- /dev/null
++++ b/tests/ksu_policy/run.py
+@@ -0,0 +1,31 @@
++#!/usr/bin/env python3
++"""Compile the actual policy bridge against module/reference/RCU models."""
++import argparse,os,re,subprocess,tempfile
++from pathlib import Path
++p=argparse.ArgumentParser();p.add_argument('--sanitizers',action='store_true');a=p.parse_args()
++here=Path(__file__).resolve().parent;root=here.parents[1]
++strip=lambda p:re.sub(r'^#include[^\n]*\n','',p.read_text(),flags=re.M)
++source=strip(root/'kernel/ksu_umount_gate.c');gate=strip(root/'kernel/ksu_umount_gate.h')
++flags=['-O1','-g','-fsanitize=address,undefined','-fno-omit-frame-pointer','-no-pie'] if a.sanitizers else ['-O2']
++env=dict(os.environ,ASAN_OPTIONS='detect_leaks=0:abort_on_error=1',UBSAN_OPTIONS='halt_on_error=1')
++with tempfile.TemporaryDirectory(prefix='ksu-policy-') as folder:
++ folder=Path(folder);(folder/'gate.h').write_text(gate)
++ def build(label,text):
++  src=folder/(label+'.h');src.write_text(text);exe=folder/label
++  subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function','-Wno-unused-variable',*flags,'-DGATE="'+str(folder/'gate.h')+'"','-DPRODUCTION="'+str(src)+'"',str(here/'policy_test.c'),'-o',str(exe)],check=True)
++  return exe
++ exe=build('production',source)
++ for case in ['module','builtin','missing-umount','missing-root','missing-lookup','going','foreign-root','unowned']:
++  r=subprocess.run([str(exe),case],capture_output=True,text=True,env=env,timeout=10)
++  if r.returncode:raise RuntimeError(case+'\n'+r.stdout+r.stderr)
++  print('PASS '+case,flush=True)
++ for label,before,after,case in [
++  ('omit-owner-ref','if (!try_module_get(owner))','if (false)','module'),
++  ('omit-preempt-guard','preempt_disable();','/* omitted */','module'),
++  ('foreign-owner','policy_module_address(granted) == owner','true','foreign-root'),
++  ('omit-return-drain','synchronize_rcu_tasks();','((void)0);','module'),
++  ('unproven-core','umount != core_umount','false','unowned')]:
++  assert before in source;exe=build(label,source.replace(before,after,1))
++  r=subprocess.run([str(exe),case],capture_output=True,text=True,env=env,timeout=10)
++  assert r.returncode,'Negative control not detected: '+label
++  print('PASS negative/'+label,flush=True)
 diff --git a/tests/lifecycle/lifecycle_test.c b/tests/lifecycle/lifecycle_test.c
-index 41e003f..4c882af 100644
+index 41e003f..d49e33a 100644
 --- a/tests/lifecycle/lifecycle_test.c
 +++ b/tests/lifecycle/lifecycle_test.c
-@@ -16,7 +16,7 @@ static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+@@ -9,6 +9,7 @@
+ bool susfs_ksu_umount_gate_off = true;
+ bool susfs_ksu_umount_ask(uid_t uid) { (void)uid; return true; }
+ int susfs_ksu_umount_gate_init(void) { return 0; }
++void susfs_ksu_umount_gate_exit(void) {}
+ struct module host_module;
+ _Thread_local struct task_struct host_task;
+ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+@@ -16,7 +17,7 @@ static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
  static struct kprobe *registered;
  static atomic_int allocations, grace_calls, unregister_calls, resolver_calls;
  static atomic_int feature_exits, dispatches;
@@ -1542,7 +3194,7 @@ index 41e003f..4c882af 100644
  static int allocation_fail_at, allocation_calls, registration_error;
  static bool enqueue_error, copy_in_error, copy_out_error, probe_during_init;
  static bool block_handler, handler_entered, release_handler;
-@@ -298,6 +298,7 @@ FEATURE(susfs_open_redirect, 7)
+@@ -298,6 +299,7 @@ FEATURE(susfs_open_redirect, 7)
  FEATURE(susfs_enable_log, 8)
  FEATURE(susfs_avc_spoof, 9)
  FEATURE(susfs_hide_syms, 10)
@@ -1550,29 +3202,32 @@ index 41e003f..4c882af 100644
  /* fp_hook installs nothing itself (susfs_fp_init only resolves the sys_call_table), so
   * there is no exit and nothing to mark: not a FEATURE. */
  int susfs_fp_init(void) { return 0; }
-@@ -332,6 +333,7 @@ HANDLER(susfs_spoof_cmdline_supercall)
+@@ -332,6 +334,8 @@ HANDLER(susfs_spoof_cmdline_supercall)
  HANDLER(susfs_sus_map_supercall)
  HANDLER(susfs_open_redirect_supercall)
  HANDLER(susfs_sus_mount_supercall)
 +void susfs_priority_filter_supercall(void **arg) { (void)arg; assert(atomic_load(&alive[12])); handler(); }
++void susfs_priority_auto_supercall(void **arg) { (void)arg; assert(atomic_load(&alive[12])); handler(); }
  void sus_path_supercall(unsigned int cmd, void **arg) { (void)cmd; (void)arg; handler(); }
  void susfs_kstat_supercall(unsigned int cmd, void **arg) { (void)cmd; (void)arg; handler(); }
  
-@@ -417,9 +419,13 @@ static void test_rejected(void)
+@@ -417,9 +421,15 @@ static void test_rejected(void)
  {
      initialize();
      struct st_susfs_version payload = { .err = 126 };
 +    assert(request(CMD_SUSFS_SET_PRIORITY_UID_FILTER, &payload) == 1);
++    assert(request(CMD_RMGU_SUSFS_AUTO_ROOT_APPS, &payload) == 1);
 +    run_pending();
-+    assert(atomic_load(&dispatches) == 1 && !atomic_load(&host_module.refs));
++    assert(atomic_load(&dispatches) == 2 && !atomic_load(&host_module.refs));
      assert(request(0, &payload) == 0);
      current->uid = 10000;
      assert(request(CMD_SUSFS_SHOW_VERSION, &payload) == 0);
 +    assert(request(CMD_SUSFS_SET_PRIORITY_UID_FILTER, &payload) == 0);
++    assert(request(CMD_RMGU_SUSFS_AUTO_ROOT_APPS, &payload) == 0);
      current->uid = 0;
      atomic_store(&host_module.state, MODULE_STATE_GOING);
      assert(request(CMD_SUSFS_SHOW_VERSION, &payload) == 0);
-@@ -537,6 +543,8 @@ static void test_partial_failures(void)
+@@ -537,6 +547,8 @@ static void test_partial_failures(void)
      current->uid = 0;
      atomic_store(&host_module.state, MODULE_STATE_COMING);
      for (int i = 1; i <= (int)ARRAY_SIZE(susfs_layers); ++i) {
@@ -1581,7 +3236,7 @@ index 41e003f..4c882af 100644
          fail_layer = i;
          int rc = susfs_init();
          if (susfs_layers[i - 1].fatal) {
-@@ -556,6 +564,12 @@ static void test_partial_failures(void)
+@@ -556,6 +568,14 @@ static void test_partial_failures(void)
               * stays off" means, and why their failure is not a refusal. */
              assert(rc == 0 && entry_registered() && !current->pending);
              atomic_store(&host_module.state, MODULE_STATE_LIVE);
@@ -1589,6 +3244,8 @@ index 41e003f..4c882af 100644
 +                struct st_susfs_version payload = { .err = 126 };
 +                assert(!susfs_cmd_handled(CMD_SUSFS_SET_PRIORITY_UID_FILTER));
 +                assert(!request(CMD_SUSFS_SET_PRIORITY_UID_FILTER, &payload));
++                assert(!susfs_cmd_handled(CMD_RMGU_SUSFS_AUTO_ROOT_APPS));
++                assert(!request(CMD_RMGU_SUSFS_AUTO_ROOT_APPS, &payload));
 +                assert(payload.err == 126 && !current->pending);
 +            }
              assert(remove_normally());
@@ -1618,10 +3275,10 @@ index 0000000..a772499
 +establish live kernel behavior or Samsung protected-memory compatibility.
 diff --git a/tests/priority_filter/priority_test.c b/tests/priority_filter/priority_test.c
 new file mode 100644
-index 0000000..af3ea87
+index 0000000..38006e4
 --- /dev/null
 +++ b/tests/priority_filter/priority_test.c
-@@ -0,0 +1,285 @@
+@@ -0,0 +1,342 @@
 +/* Execute the actual priority-filter C with instrumented kernel API models. */
 +#include <assert.h>
 +#include <ctype.h>
@@ -1676,6 +3333,11 @@ index 0000000..af3ea87
 +static void *current_user_ns(void) {return root_namespace?&init_user_ns:&other_ns;}
 +static unsigned int from_kuid(const void *ns,kuid_t uid) {(void)ns;return uid.val;}
 +static bool susfs_ksu_umount_gate_off;
++static bool root_policy_available=true;
++static atomic_uint granted_uid,manager_uid;
++bool susfs_ksu_root_available(void) {return root_policy_available;}
++bool susfs_ksu_uid_granted_root(uid_t uid) {return uid==atomic_load(&granted_uid)||uid%100000==atomic_load(&manager_uid);}
++
 +static bool susfs_ksu_umount_ask(uid_t uid) {(void)uid;return ksu_umount;}
 +#include GATE
 +
@@ -1769,6 +3431,7 @@ index 0000000..af3ea87
 +long susfs_fp_callback_return(struct susfs_fp_hook *h,long r) {assert(h==expected_hook&&callback_depth==1);callback_depth--;assert(atomic_fetch_sub(&h->active_callbacks,1)>0);return r;}
 +struct kernel_param {int unused;};
 +struct kernel_param_ops {int (*get)(char *,const struct kernel_param *);};
++#define module_param_named(name,value,type,mode) static const unsigned int name##_permissions=mode
 +#define module_param_cb(name,ops,arg,mode) static const unsigned int name##_permissions=mode
 +#include PRODUCTION
 +
@@ -1847,6 +3510,41 @@ index 0000000..af3ea87
 +    finish();
 +}
 +
++static int automatic(unsigned int enabled,unsigned int appid) {
++    struct st_rmgu_susfs_auto_root_apps p={enabled,appid,126};void *arg=&p;
++    susfs_priority_auto_supercall(&arg);return p.err;
++}
++static void test_automatic(void) {
++    init_ok();atomic_store(&manager_uid,10004);atomic_store(&granted_uid,10003);
++    assert(!automatic(1,10006));assert(prio_enabled&&!prio_count);
++    unsigned long generation=prio_generation;assert(!automatic(1,10006));assert(prio_generation==generation);
++    as_app(10002);
++    for(unsigned int op=0;op<PRIO_OP_COUNT;op++)for(int compat=0;compat<2;compat++) {
++        int cls=op<PRIO_IOGET?PRIO_USER:IOPRIO_WHO_USER;
++        for(int uid=10003;uid<=10006;uid++)assert(call(op,compat,cls,uid,0)==(uid==10005?(compat?211:110):-ESRCH));
++        assert(call(op,compat,cls,10001,0)==(compat?211:110));
++    }
++    atomic_store(&granted_uid,10007);
++    assert(call(PRIO_GET,false,PRIO_USER,10003,0)==110);
++    assert(call(PRIO_GET,false,PRIO_USER,10007,0)==-ESRCH);
++    atomic_store(&manager_uid,10008);
++    assert(call(PRIO_GET,false,PRIO_USER,10004,0)==110);
++    assert(call(PRIO_GET,false,PRIO_USER,110008,0)==-ESRCH);
++    assert(call(PRIO_GET,false,PRIO_USER,110007,0)==110); /* per-user root grant */
++    ksu_umount=false;assert(call(PRIO_GET,false,PRIO_USER,10007,0)==110);ksu_umount=true;
++    as_app(10007);assert(call(PRIO_GET,false,PRIO_USER,10007,0)==110);
++    assert(automatic(0,0)==-EPERM);as_root();root_namespace=false;assert(automatic(1,10006)==-EPERM);root_namespace=true;
++    for(unsigned int bad=0;bad<3;bad++)assert(automatic(bad==0?2:bad==1?1:0,bad==0?10006:bad==1?9999:10000)==-EINVAL);
++    allocation_fail=0;assert(automatic(1,10009)==-ENOMEM);allocation_fail=-1;
++    copy_from_fail=1;assert(automatic(0,0)==-EFAULT);copy_from_fail=0;
++    assert(!apply("com.hidden"));as_app(10002);assert(call(PRIO_GET,false,PRIO_USER,10001,0)==-ESRCH);
++    as_root();assert(!apply(""));as_app(10002);assert(call(PRIO_GET,false,PRIO_USER,10001,0)==110);
++    assert(call(PRIO_GET,false,PRIO_USER,10007,0)==-ESRCH);
++    as_root();root_policy_available=false;assert(automatic(1,10009)==-EOPNOTSUPP);root_policy_available=true;
++    assert(!automatic(0,0));assert(!prio_enabled);as_app(10002);assert(call(PRIO_GET,false,PRIO_USER,10007,0)==110);
++    finish();as_root();assert(automatic(1,10006)==-ENODEV);assert(!atomic_load(&allocations));
++}
++
 +static void test_validation(void) {
 +    init_ok();assert(!apply("com.hidden"));as_app(10002);
 +    for(int compat=0;compat<2;compat++) {
@@ -1856,6 +3554,16 @@ index 0000000..af3ea87
 +        assert(call(PRIO_IOGET,compat,IOPRIO_WHO_USER,10001,0)==-ESRCH);
 +    }
 +    assert(validation_calls==6);finish();
++}
++
++static void test_boot_automatic(void) {
++    as_root();prio_boot_auto=true;prio_boot_appid=10006;
++    assert(priority_auto_root_permissions==0400&&priority_appid_permissions==0400);
++    assert(!susfs_priority_filter_init());assert(prio_ready&&prio_enabled);as_app(10002);
++    assert(call(PRIO_GET,false,PRIO_USER,10006,0)==-ESRCH);finish();
++    as_root();prio_boot_appid=9999;assert(!susfs_priority_filter_init());assert(prio_ready&&!prio_enabled);finish();
++    prio_boot_appid=10006;root_policy_available=false;assert(!susfs_priority_filter_init());assert(prio_ready&&!prio_enabled);finish();
++    root_policy_available=true;prio_boot_auto=false;
 +}
 +
 +static void test_initialization(void) {
@@ -1886,11 +3594,15 @@ index 0000000..af3ea87
 +static void *writer(void *arg) {
 +    (void)arg;as_root();for(int i=0;i<1000;i++)assert(!apply(i&1?"com.hidden":"com.second"));return NULL;
 +}
++static void *auto_writer(void *arg) {
++    (void)arg;as_root();for(int i=0;i<1000;i++)assert(!automatic(i&1,(i&1)?10006:0));return NULL;
++}
 +static void test_concurrency(void) {
-+    pthread_t r[2],w[2];init_ok();atomic_store(&run_readers,true);
++    pthread_t r[2],w[2],a;init_ok();atomic_store(&run_readers,true);
 +    for(int i=0;i<2;i++){pthread_create(&r[i],NULL,reader,NULL);pthread_create(&w[i],NULL,writer,NULL);}
-+    for(int i=0;i<2;i++)pthread_join(w[i],NULL);atomic_store(&run_readers,false);
-+    for(int i=0;i<2;i++)pthread_join(r[i],NULL);assert(prio_generation==2000);finish();
++    pthread_create(&a,NULL,auto_writer,NULL);
++    for(int i=0;i<2;i++)pthread_join(w[i],NULL);pthread_join(a,NULL);atomic_store(&run_readers,false);
++    for(int i=0;i<2;i++)pthread_join(r[i],NULL);assert(prio_generation>=2000);finish();
 +}
 +
 +int main(int argc,char **argv) {
@@ -1900,6 +3612,8 @@ index 0000000..af3ea87
 +    if(!strcmp(argv[1],"configuration"))test_configuration();
 +    else if(!strcmp(argv[1],"abi-faults"))test_abi_faults();
 +    else if(!strcmp(argv[1],"queries"))test_queries();
++    else if(!strcmp(argv[1],"automatic"))test_automatic();
++    else if(!strcmp(argv[1],"boot-automatic"))test_boot_automatic();
 +    else if(!strcmp(argv[1],"validation"))test_validation();
 +    else if(!strcmp(argv[1],"initialization"))test_initialization();
 +    else if(!strcmp(argv[1],"sleeping-teardown"))test_sleeping_teardown();
@@ -1909,10 +3623,10 @@ index 0000000..af3ea87
 +}
 diff --git a/tests/priority_filter/run.py b/tests/priority_filter/run.py
 new file mode 100644
-index 0000000..a5bfde4
+index 0000000..ea99034
 --- /dev/null
 +++ b/tests/priority_filter/run.py
-@@ -0,0 +1,47 @@
+@@ -0,0 +1,49 @@
 +#!/usr/bin/env python3
 +"""Run the real priority layer C with ownership, VFS, callback and RCU models."""
 +import argparse,os,re,subprocess,tempfile
@@ -1928,7 +3642,7 @@ index 0000000..a5bfde4
 +}
 +flags=['-O1','-g','-fsanitize=address,undefined','-fno-omit-frame-pointer','-no-pie'] if a.sanitizers else ['-O2']
 +env=dict(os.environ,ASAN_OPTIONS='detect_leaks=0:abort_on_error=1',UBSAN_OPTIONS='halt_on_error=1')
-+cases=['configuration','abi-faults','queries','validation','initialization','sleeping-teardown','concurrency']
++cases=['configuration','abi-faults','queries','automatic','boot-automatic','validation','initialization','sleeping-teardown','concurrency']
 +with tempfile.TemporaryDirectory(prefix='susfs-priority-') as d:
 + d=Path(d)
 + def build(label,production,compat=1):
@@ -1951,7 +3665,9 @@ index 0000000..a5bfde4
 +  ('omit-callback-entry','susfs_fp_callback_enter(&prio_hooks[operation]);','/* omitted */','queries'),
 +  ('partial-compat-coverage','IS_ENABLED(CONFIG_COMPAT) && !prio_hooks[i].compat_installed','false','initialization'),
 +  ('narrow-app-caller-range','if (caller_appid < PRIO_FIRST_APP)','if (!((caller_appid >= PRIO_FIRST_APP && caller_appid <= PRIO_LAST_APP) || susfs_uid_is_isolated(caller)))','queries'),
-+  ('publication-uaf','if (next->count)\n        next = NULL;\n    mutex_unlock(&prio_config_lock);','mutex_unlock(&prio_config_lock);\n    sched_yield();\n    if (next->count)\n        next = NULL;','concurrency'),
++  ('omit-live-grants','susfs_ksu_uid_granted_root(target)','false','automatic'),
++  ('omit-own-app','appid == rules->own_appid','false','automatic'),
++  ('publication-uaf','if (next->count || next->automatic)\n        next = NULL;\n    mutex_unlock(&prio_config_lock);','mutex_unlock(&prio_config_lock);\n    sched_yield();\n    if (next->count || next->automatic)\n        next = NULL;','concurrency'),
 + ]
 + for label,before,after,case in negatives:
 +  if label=='publication-uaf' and not a.sanitizers:continue
@@ -1978,7 +3694,7 @@ index 0000000..b64488a
 +probes include ordinary, SDK sandbox and app-zygote caller IDs.
 diff --git a/tests/priority_tool/run.py b/tests/priority_tool/run.py
 new file mode 100644
-index 0000000..517f6cc
+index 0000000..01698c3
 --- /dev/null
 +++ b/tests/priority_tool/run.py
 @@ -0,0 +1,33 @@
@@ -1992,7 +3708,7 @@ index 0000000..517f6cc
 +abi=re.sub(r'^#include[^\n]*\n','',(root/'kernel/susfs_abi.h').read_text(),flags=re.M)
 +flags=['-O1','-g','-fsanitize=address,undefined','-fno-omit-frame-pointer','-no-pie'] if a.sanitizers else ['-O2']
 +env=dict(os.environ,ASAN_OPTIONS='detect_leaks=0:abort_on_error=1',UBSAN_OPTIONS='halt_on_error=1')
-+cases=['set','clear','status','query','probe','probe-sdk','probe-app-zygote','unhandled','command-error','visible','wrong-validation','missing-target','not-root','no-status','not-ready','overflow','self',*[f'fail-{s}' for s in ['namespace','private','keepcaps','nnp','groups','gids','uids']]]
++cases=['auto','auto-off','auto-invalid','auto-unhandled','auto-error','automatic-ready','set','clear','status','query','probe','probe-sdk','probe-app-zygote','unhandled','command-error','visible','wrong-validation','missing-target','not-root','no-status','not-ready','overflow','self',*[f'fail-{s}' for s in ['namespace','private','keepcaps','nnp','groups','gids','uids']]]
 +with tempfile.TemporaryDirectory(prefix='priority-tool-') as d:
 + d=Path(d);(d/'abi.h').write_text(abi)
 + def build(label,source):
@@ -2017,10 +3733,10 @@ index 0000000..517f6cc
 +  print('PASS negative/'+label,flush=True)
 diff --git a/tests/priority_tool/tool_test.c b/tests/priority_tool/tool_test.c
 new file mode 100644
-index 0000000..d4cce47
+index 0000000..f772e9c
 --- /dev/null
 +++ b/tests/priority_tool/tool_test.c
-@@ -0,0 +1,85 @@
+@@ -0,0 +1,98 @@
 +#include <assert.h>
 +#include <stdint.h>
 +#include <stdbool.h>
@@ -2051,7 +3767,16 @@ index 0000000..d4cce47
 +    (void)e;(void)f;
 +    if(n==64){assert(a==1&&captured_len+(usize)c<sizeof(captured));long amount=c>17?17:c;memcpy(captured+captured_len,(void *)b,amount);captured_len+=amount;return amount;}
 +    if(n==142){
-+        assert((usize)a==KSU_INSTALL_MAGIC1&&(usize)b==SUSFS_MAGIC&&c==CMD_SUSFS_SET_PRIORITY_UID_FILTER);
++        assert((usize)a==KSU_INSTALL_MAGIC1&&(usize)b==SUSFS_MAGIC);
++        if(c==CMD_RMGU_SUSFS_AUTO_ROOT_APPS) {
++            struct st_rmgu_susfs_auto_root_apps *p=(void *)d;
++            assert(sizeof(*p)==sizeof(struct automatic_payload)&&p->err==126);
++            assert(p->enabled==(eq(test_case,"auto-off")?0:1));
++            assert(p->own_appid==(p->enabled?10123:0));
++            if(!unhandled)p->err=command_error;
++            return 0;
++        }
++        assert(c==CMD_SUSFS_SET_PRIORITY_UID_FILTER);
 +        struct st_susfs_priority_uid_filter *p=(void *)d;
 +        assert(sizeof(*p)==sizeof(payload)&&__builtin_offsetof(struct priority_payload,err)==__builtin_offsetof(struct st_susfs_priority_uid_filter,err));
 +        assert(p->err==126||eq(test_case,"unhandled"));
@@ -2062,7 +3787,7 @@ index 0000000..d4cce47
 +    }
 +    if(n==174||n==175)return identity;
 +    if(n==56){assert(a==-100&&!strcmp((char *)b,"/sys/module/susfs_guard_lkm/parameters/priority_filter")&&c==0);return eq(test_case,"no-status")?-2:5;}
-+    if(n==63){assert(a==5);const char *s=eq(test_case,"not-ready")?"ready=0 configured=0 generation=0\n":"ready=1 configured=1 generation=2\n";assert((usize)c>strlen(s));memcpy((void *)b,s,strlen(s));return strlen(s);}
++    if(n==63){assert(a==5);const char *s=eq(test_case,"automatic-ready")?"ready=1 configured=0 generation=2 automatic=1 own_appid=10123 root_lookup=1\n":eq(test_case,"not-ready")?"ready=0 configured=0 generation=0\n":"ready=1 configured=1 generation=2\n";assert((usize)c>strlen(s));memcpy((void *)b,s,strlen(s));return strlen(s);}
 +    if(n==57){assert(a==5);return 0;}
 +    if(n==141||n==31){
 +        assert(a==(n==141?2:3));
@@ -2084,7 +3809,11 @@ index 0000000..d4cce47
 +}
 +int main(int argc,char **argv) {
 +    assert(argc==2);test_case=argv[1];char *args[]={"ctl","probe","19998","10001",NULL};int ac=4,expected=0;
-+    if(eq(test_case,"set")){args[1]="set";args[2]="com.hidden,com.second";ac=3;}
++    if(eq(test_case,"auto")||eq(test_case,"auto-unhandled")||eq(test_case,"auto-error")){args[1]="auto";args[2]="10123";ac=3;if(eq(test_case,"auto-unhandled")){unhandled=1;expected=1;}if(eq(test_case,"auto-error")){command_error=-95;expected=1;}}
++    else if(eq(test_case,"auto-off")){args[1]="auto-off";ac=2;}
++    else if(eq(test_case,"auto-invalid")){args[1]="auto";args[2]="9999";ac=3;expected=2;}
++    else if(eq(test_case,"automatic-ready")){}
++    else if(eq(test_case,"set")){args[1]="set";args[2]="com.hidden,com.second";ac=3;}
 +    else if(eq(test_case,"clear")){args[1]="clear";ac=2;}
 +    else if(eq(test_case,"status")){args[1]="status";ac=2;}
 +    else if(eq(test_case,"query")){args[1]="query";args[2]="10001";ac=3;identity=10002;}
@@ -2134,10 +3863,10 @@ index 0000000..018c3fb
 +a.output.with_suffix('.build.json').write_text(json.dumps(report,indent=2)+'\n');print('PASS ARM64 PIE client, no libc/interpreter/dynamic relocations')
 diff --git a/tools/check_priority_artifact.py b/tools/check_priority_artifact.py
 new file mode 100644
-index 0000000..0c4a797
+index 0000000..348ea48
 --- /dev/null
 +++ b/tools/check_priority_artifact.py
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,46 @@
 +#!/usr/bin/env python3
 +"""Verify all 22 syscall wrappers against real headers and preserve baseline ABI."""
 +import argparse,json,os,re,struct,subprocess
@@ -2153,7 +3882,9 @@ index 0000000..0c4a797
 + 'static syscall_fn_t expected_pointer __used = expected_syscall;',
 + 'static_assert(__same_type(susfs_syscall_fn_t, syscall_fn_t));',
 + 'static_assert(sizeof(struct st_susfs_priority_uid_filter)==65540);',
-+ 'static_assert(offsetof(struct st_susfs_priority_uid_filter,err)==65536);']
++ 'static_assert(offsetof(struct st_susfs_priority_uid_filter,err)==65536);',
++ 'static_assert(sizeof(struct st_rmgu_susfs_auto_root_apps)==12);',
++ 'static_assert(offsetof(struct st_rmgu_susfs_auto_root_apps,err)==8);']
 +for file in ['susfs_create_gate.c','susfs_priority_filter.c']:
 + for name,num in re.findall(r'^#define COMPAT_(\w+)_NR\s+(\d+)',(root/'kernel'/file).read_text(),re.M):lines.append(f'static_assert({num} == __NR_compat32_{name.lower()});')
 +lines.append('MODULE_LICENSE("GPL");');(fixture/'fixture.c').write_text('\n'.join(lines)+'\n');(fixture/'Makefile').write_text('obj-m := fixture.o\n')
@@ -2173,8 +3904,8 @@ index 0000000..0c4a797
 + 'all_incoming_kcfi_match_real_headers':all(v==word for v in words.values()),
 + 'all_have_call_landing_instructions':len(landings)==22 and all(v in [0xd503245f,0xd50324df,0xd503233f,0xd503237f] for v in landings.values()),
 + 'baseline_imports_preserved':not removed,
-+ 'new_imports_are_only_string_parsers':set(added)=={'_ctype','strim','strsep'},
-+ 'module_metadata_unchanged':candidate['modinfo']==before['modinfo'],
++ 'new_imports_are_only_string_parsers_and_preempt_schedule':set(added)=={'_ctype','strim','strsep','preempt_schedule'},
++ 'module_metadata_only_adds_readonly_auto_parameters':sorted(candidate['modinfo'])==sorted(before['modinfo']+['parmtype=priority_auto_root:bool','parmtype=priority_appid:int']),
 + 'version_table_shape_unchanged':candidate['version_section_sizes']==before['version_section_sizes'],
 + 'baseline_callback_types_preserved':all(candidate['types'].get(n)==v for n,v in before['types'].items() if n in candidate['types']),
 +}
@@ -2184,10 +3915,10 @@ index 0000000..0c4a797
 +raise SystemExit(not all(checks.values()))
 diff --git a/tools/check_priority_bzja.py b/tools/check_priority_bzja.py
 new file mode 100644
-index 0000000..d34bbf7
+index 0000000..71110e6
 --- /dev/null
 +++ b/tools/check_priority_bzja.py
-@@ -0,0 +1,54 @@
+@@ -0,0 +1,55 @@
 +#!/usr/bin/env python3
 +"""Offline BZJA dependency/CFI checks and comparison of its inlined I/O guard."""
 +import argparse,hashlib,json,struct
@@ -2234,7 +3965,8 @@ index 0000000..d34bbf7
 + else:assert after.mnemonic=='bl' and after.operands[0].imm&0xffffffffffffffff==names['__rcu_read_lock']
 + return normal
 +missing=sorted(set(candidate['imports'])-set(names));word=struct.unpack_from('<I',data,names['__arm64_sys_getpriority']-base-4)[0]
-+checks={'all_139_import_names_present':len(candidate['imports'])==139 and not missing,
++checks={'all_140_import_names_present':len(candidate['imports'])==140 and not missing,
++ 'policy_module_owner_lookup_present': '__module_address' in names,
 + 'new_string_helpers_present':all(n in names for n in ['_ctype','strim','strsep']),
 + 'priority_syscall_types_match_bzja':all(candidate['types'].get(n)==word for n in candidate['functions'] if n.startswith('prio_wrap_')),
 + 'native_inlined_guard_matches_resolved_helper':guard('__arm64_sys_ioprio_set')==guard('ioprio_check_cap')}
@@ -2244,10 +3976,10 @@ index 0000000..d34bbf7
 +raise SystemExit(not all(checks.values()))
 diff --git a/tools/rmgu_priority_ctl.c b/tools/rmgu_priority_ctl.c
 new file mode 100644
-index 0000000..2d59c0f
+index 0000000..a2fe204
 --- /dev/null
 +++ b/tools/rmgu_priority_ctl.c
-@@ -0,0 +1,130 @@
+@@ -0,0 +1,148 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/* Freestanding ARM64 priority-filter control and read-only verification client.
 + * set <comma-list> | clear | status | query <uid> | probe <caller-uid> <target-uid>
@@ -2258,6 +3990,9 @@ index 0000000..2d59c0f
 +typedef unsigned long usize;
 +typedef long sysarg;
 +struct priority_payload { char packages[65535]; int err; };
++struct automatic_payload {unsigned int enabled,own_appid;int err;};
++_Static_assert(sizeof(struct automatic_payload)==12,"automatic ABI size");
++_Static_assert(__builtin_offsetof(struct automatic_payload,err)==8,"automatic ABI result");
 +_Static_assert(sizeof(struct priority_payload) == 65540, "priority ABI size");
 +_Static_assert(__builtin_offsetof(struct priority_payload, err) == 65536, "priority ABI error");
 +
@@ -2314,7 +4049,13 @@ index 0000000..2d59c0f
 +static int ready(void) {
 +    static const char prefix[]="ready=1 configured=";
 +    usize i=0;for(;prefix[i];i++)if(status_text[i]!=prefix[i])return 0;
-+    return status_text[i]>='1'&&status_text[i]<='9';
++    if(status_text[i]>='1'&&status_text[i]<='9')return 1;
++    for(;status_text[i];i++)if(status_text[i]==' '){
++        static const char automatic[]=" automatic=1 ";usize n=0;
++        while(automatic[n]&&status_text[i+n]==automatic[n])n++;
++        if(!automatic[n])return 1;
++    }
++    return 0;
 +}
 +static int configure(const char *packages) {
 +    usize n=len(packages);if(n>=sizeof(payload.packages))return fail("Package list is too long",-7);
@@ -2322,6 +4063,13 @@ index 0000000..2d59c0f
 +    long rc=SC(142,0xDEADBEEFUL,0xFAFAFAFAUL,0x60030,&payload,0,0);
 +    put("{\"schema\":1,\"syscall\":");num(rc);put(",\"error\":");num(payload.err);put("}\n");
 +    return flush(rc==0&&payload.err==0?0:1);
++}
++static int configure_automatic(unsigned int enabled,unsigned int appid) {
++    if(enabled&&(appid<10000||appid>19999))return fail("Use the RMGU application ID",-22);
++    struct automatic_payload info={enabled,appid,126};
++    long rc=SC(142,0xDEADBEEFUL,0xFAFAFAFAUL,0x6f001,&info,0,0);
++    put("{\"schema\":1,\"syscall\":");num(rc);put(",\"error\":");num(info.err);put("}\n");
++    return flush(rc==0&&info.err==0?0:1);
 +}
 +static int probe(unsigned int caller,unsigned int target) {
 +    unsigned int app=caller%100000,target_app=target%100000;
@@ -2359,6 +4107,8 @@ index 0000000..2d59c0f
 +}
 +int priority_tool_main(int argc,char **argv) {
 +    unsigned int caller,target;used=0;
++    if(argc==3&&eq(argv[1],"auto")&&decimal(argv[2],&caller))return configure_automatic(1,caller);
++    if(argc==2&&eq(argv[1],"auto-off"))return configure_automatic(0,0);
 +    if(argc==2&&eq(argv[1],"clear"))return configure("");
 +    if(argc==3&&eq(argv[1],"set"))return configure(argv[2]);
 +    if(argc==2&&eq(argv[1],"status")){
@@ -2372,7 +4122,7 @@ index 0000000..2d59c0f
 +        put(",\"ioprio_get\":");num(SC(31,3,target,0,0,0,0));put("}\n");return flush(0);
 +    }
 +    if(argc==4&&eq(argv[1],"probe")&&decimal(argv[2],&caller)&&decimal(argv[3],&target))return probe(caller,target);
-+    return fail("Usage: set <comma-list> | clear | status | query <uid> | probe <caller-uid> <target-uid>",-22);
++    return fail("Usage: auto <appid> | auto-off | set <comma-list> | clear | status | query <uid> | probe <caller-uid> <target-uid>",-22);
 +}
 +#ifndef PRIORITY_TOOL_HOSTTEST
 +__attribute__((used)) static int start(usize *stack) {return priority_tool_main((int)stack[0],(char **)(stack+1));}

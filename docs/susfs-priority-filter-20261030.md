@@ -1,106 +1,126 @@
-# SusFS priority filtering test
+# SusFS automatic app protection test
 
-Some apps can discover other running apps by asking Android for their scheduling
-priority, even when ordinary package visibility is restricted. This adaptation of
-[upstream PR #158](https://github.com/inforcqb/susfs4ksu-for-lkm/pull/158) lets you
-choose packages whose app IDs should appear absent to those queries from
-untrusted apps. It covers four priority APIs in both 64-bit and 32-bit apps.
-This is one specific visibility gap; it does not hide every trace of an app.
+Some apps can discover running root-related apps by asking Android for their
+scheduling priority. This adaptation of [upstream PR #158](https://github.com/inforcqb/susfs4ksu-for-lkm/pull/158)
+closes that visibility gap for four priority APIs in both 64-bit and 32-bit apps.
+It does not hide every trace of an app.
 
-No packages are selected automatically. Existing SusFS activation and the app UI
-are unchanged. Rules last until a full reboot and can be replaced or cleared.
-Root, system services, trusted KernelSU profiles and an app querying itself keep
-their normal behavior. The caller boundary also covers SDK sandbox and app-zygote
-process UIDs, subject to the same KernelSU profile gate. Packages sharing a UID
-are inseparable. Selected app IDs
-apply across Android users, but configuration currently resolves packages in the
-main Android user only. Reapply the list after installing, removing or reinstalling
-a selected package: UID changes or reuse can make an old rule inaccurate.
+## Automatic selection
+
+When SusFS activates, RMGU automatically protects:
+
+- RMGU itself.
+- The backend's registered manager and apps currently granted root.
+- Installed known root managers and renamed KernelSU managers recognized by the
+  existing manager scanner or chosen in RMGU's settings.
+
+Root grants, revocations and registered-manager changes are followed directly by
+the kernel, even when RMGU is closed. Installed-manager extras are refreshed after
+unlock, on app resume and supported package-change events. Package scanning stays
+out of the boot root path. There is no recurring timer or grant scan.
+
+Android can defer install events while RMGU's process is stopped. A newly installed
+inactive manager can therefore wait until you next open the app or activate
+SusFS. The active manager and root-granted apps remain covered immediately.
+Only the main user's installed-manager inventory is scanned; explicit app IDs and
+RMGU's own ID apply across Android users, while root grants use the target user's
+actual UID. Apps sharing an app ID cannot be separated.
+
+Root, system services, trusted KernelSU profiles and apps querying themselves keep
+their normal behavior. Nothing needs to be entered manually.
 
 ## Install and check
 
-The test artifact contains the signed `1.3.0-priority-test1` APK, a signed rollback
-APK built from the tested 1.3.0 source, this guide, the standalone ARM64 control
-tool, and checksums. The rollback APK uses the same signing key and a higher
-version code, so it can replace this test build without clearing app data.
+The artifact contains the signed `1.3.0-priority-test2` APK, a signed 1.3.0 rollback
+APK, this guide, the optional ARM64 control tool, and checksums. The rollback uses
+the same signing key and a higher version code, preserving app data when installed
+over the test build.
 
-1. Install the test APK over the existing app. **Fully reboot**, then obtain root
-   and activate SusFS normally. A soft restart retains the old loaded module.
-2. Copy `rmgu-priority-ctl` to `/data/local/tmp/` and make it executable:
+1. Install `RootMyGalaxyUltra-1.3.0-priority-test2.apk` over the existing app.
+2. **Fully reboot**, then obtain root and activate SusFS normally. A soft restart
+   retains the old loaded module and cannot install this update into the kernel.
+3. Open RMGU after unlock. The SusFS status should say root-related apps are
+   selected automatically. Give root to an ordinary test app, then check your
+   usual root, modules, SusFS and soft-restart behavior.
 
-   ```sh
-   adb push rmgu-priority-ctl /data/local/tmp/
-   adb shell chmod 755 /data/local/tmp/rmgu-priority-ctl
-   adb shell "su -c '/data/local/tmp/rmgu-priority-ctl status'"
-   ```
-
-   Expect `ready=1 configured=0`. An unavailable status or `ready=0` means this
-   optional layer could not initialize; do not infer that filtering is active.
-3. After first unlock, choose a harmless package installed in the main user.
-   Replace the example below with its actual name. Open that app and keep it
-   running so there is a live target to observe.
-
-   ```sh
-   adb shell "su -c '/data/local/tmp/rmgu-priority-ctl set com.example.target'"
-   adb shell "su -c '/data/local/tmp/rmgu-priority-ctl status'"
-   ```
-
-   `set` replaces the entire list. Use comma-separated names for multiple apps.
-   Failed updates preserve the previous list. `configured` counts unique app IDs.
-4. Find the target UID and the UID of an ordinary, untrusted caller app using
-   `cmd package list packages -U`. Use distinct app IDs. Substitute those numbers:
-
-   ```sh
-   adb shell "su -c '/data/local/tmp/rmgu-priority-ctl probe 10124 10123'"
-   ```
-
-   `passed:true` verifies the modeled UID transition against a live root-visible
-   target. The probe isolates its own mount namespace before dropping its own
-   privileges, so KernelSU's unmount hooks cannot affect the parent namespace.
-   It reads priorities and checks one deliberately invalid request; it sends no
-   valid scheduling changes. Exit 0 means verified, 1 means an unexpected result,
-   and 2 means invalid arguments or an inconclusive/blocked check. This synthetic
-   caller does not reproduce a complete app's SELinux sandbox. A real app shell
-   can use `rmgu-priority-ctl query <target_uid>` for read-only comparison with
-   root; `query` reports observations and makes no filtering verdict by itself.
-5. Clear the list, check ordinary visibility returns, and verify normal root,
-   modules, SusFS commands and the usual soft restart on your firmware/backend:
-
-   ```sh
-   adb shell "su -c '/data/local/tmp/rmgu-priority-ctl clear'"
-   ```
+If automatic protection is unavailable, the status asks for an update/full reboot.
+Core SusFS may still be active; its activation result is separate from this
+optional layer. This build has passed host/static checks; phone testing is pending.
 
 To roll back, install `RootMyGalaxyUltra-1.3.0-rollback.apk` and **fully reboot**
-before obtaining root again. This restores the previous module on the next load.
-Avoid attempting to unload/replace a live module with `rmmod`.
+before obtaining root again. This restores the previous module on its next load.
+Use a full reboot to replace modules rather than attempting a live `rmmod`.
 
-The control executable is also bundled in the APK's native library directory as
-`librmgususfs_priority.so`. It is the same verified file as the standalone tool.
-There is no new settings screen or background package observer in this test.
+## Optional verification and manual control
 
-## Review and safeguards
+These commands are for testing; normal use needs none of them. Copy the supplied
+`rmgu-priority-ctl` to `/data/local/tmp/` and make it executable:
+
+```sh
+adb push rmgu-priority-ctl /data/local/tmp/
+adb shell chmod 755 /data/local/tmp/rmgu-priority-ctl
+adb shell "su -c '/data/local/tmp/rmgu-priority-ctl status'"
+```
+
+Expect `ready=1 automatic=1 root_lookup=1` with your RMGU app ID in `own_appid`.
+`configured` counts explicit manager app IDs, not live root grants. It can be zero
+while automatic protection is working. All state is boot-local.
+
+For a live target, compare root-visible priorities with an untrusted caller:
+
+```sh
+adb shell "su -c '/data/local/tmp/rmgu-priority-ctl probe 10124 10123'"
+```
+
+Replace both UIDs: target `10123` must be a running selected app; caller `10124`
+must be a different ordinary, untrusted app ID. `passed:true` verifies the modeled
+UID transition against a root-visible target. The probe isolates its own mount
+namespace before dropping privileges, reads priorities, and checks deliberately
+invalid input. It sends no valid scheduling changes. Exit 0 means verified,
+1 means an unexpected result, and 2 means invalid/inconclusive/blocked. This
+synthetic caller does not reproduce a complete app's SELinux sandbox. A real app
+shell can use `query <target_uid>` for read-only comparison with root.
+
+Advanced controls:
+
+```sh
+rmgu-priority-ctl auto <RMGU_app_id>
+rmgu-priority-ctl auto-off
+rmgu-priority-ctl set com.example.one,com.example.two
+rmgu-priority-ctl clear
+```
+
+Run them as root. `set` replaces explicit extras and `clear` clears only those
+extras; both preserve automatic mode. `auto-off` disables the live automatic mode
+while preserving extras. RMGU's next activation/background refresh restores its
+automatic selection. Failed list updates preserve the previous list; RMGU clears
+confirmed failed snapshots and retries once, but does not issue a competing
+fallback after an indeterminate timeout.
+
+## Implementation and validation
 
 Reviewed upstream head: `d55749105beaac03776d95241f4400a68292f831`.
-Samsung source parent: `961fb6a0585c4ad503f9a9e1fe107058d3595c92`.
+Samsung priority-filter parent: `fc114e5f01c797a3d0e30372c4422db7bb703852`.
+The earlier #158 adaptation is retained: separate native/compat originals,
+complete callback accounting, verified restoration, Tasks-RCU teardown, validated
+package names, transactional immutable bitmaps and original kernel I/O-priority
+validation. There is no credential or private SELinux blob mutation.
 
-The adaptation uses separate native/compat originals, complete callback accounting,
-verified restoration and the existing Tasks-RCU teardown. Installation must cover
-all required entries or the optional layer rolls back. Package input is validated,
-then a complete immutable bitmap is published atomically and retired with RCU.
-Readers perform no file lookup, allocation or credential mutation. Configuration
-uses the authorized root caller's existing SELinux domain and returns errors for
-denied lookups; it never writes private SELinux credential blobs. The actual kernel
-`ioprio_check_cap` preserves invalid-input and permission checks before a hidden
-UID is reported absent.
+Automatic mode consults the backend's existing live policy and retains its owning
+module until every SusFS hook is drained. Installed-manager extras use fresh
+package names after unlock, a coalesced Android job and a cross-process lock;
+no numeric UID list is stored between boots. A boot-local device-protected record
+keeps status consistent between the early-root and app processes.
 
-All 28 host suites pass in their 54 normal/sanitizer configurations, including
-production-code fault injection, concurrent readers/writers and failing negative
-controls. The ARM64 Android16/6.12 DDK build passes. All 22 syscall wrappers match
-the real-header CFI type; all 139 imported names exist in the recovered BZJA
-kernel. Its actual I/O-priority validation prefix also matches the callable helper.
-These checks do not establish complete kernel ABI compatibility or replace a
-phone test. This new layer has not yet been validated on hardware.
+All 29 native host suites pass in 56 normal/sanitizer configurations, including
+concurrent policy/list updates, initialization/fault cases, dependency lifetime
+and deliberately unsafe negative controls. The ARM64 DDK module and standalone
+client build successfully. All 22 syscall wrappers match real-header CFI types;
+all 140 imports and the module-owner lookup exist in the recovered BZJA kernel.
+The actual I/O-priority validation prefix still matches its callable helper.
+These checks do not establish complete ABI compatibility or replace phone testing.
 
-The complete source and evidence are in `backends/susfs/source.tar.gz` under
-`susfs/docs/priority-filter-20261030`. The manifest pins the source Git tree,
-commit, archive, module and client; `priority-filter.patch` is the focused delta.
+The complete source and evidence are in `backends/susfs/source.tar.gz`, especially
+`susfs/docs/auto-root-apps-20261031`. The manifest pins the source tree, commit,
+archive, module and client. `priority-filter.patch` includes the full delta from
+the stable Samsung integration. Stable 1.3.0 has not been replaced by this test.

@@ -621,6 +621,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        SusfsAutoApps.request(this)
         // Battery optimisation is a system setting, so it can change while the app is backgrounded.
         batteryUnrestricted = isBatteryUnrestricted()
         // A retry is armed on the run screen and consumed by a boot, so coming back from either is
