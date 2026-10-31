@@ -1,0 +1,34 @@
+{
+  "repository": "xorpix/Root-My-Galaxy-Ultra",
+  "verified_owner": "xorpix",
+  "public_destination": true,
+  "exact_prepared_tree": "52dbf78e1622bedb5f4a13ce740fd15803109ca2",
+  "exact_public_base_tree": "52bc686bbf9a78a4c4bd19b0fa1d16cfcf77edde",
+  "commits": [
+    {
+      "sha": "0879880188f3e754676aeabeff65c042da36162e",
+      "subject": "Finalize simple release notes and public backend build provenance",
+      "tree": "52dbf78e1622bedb5f4a13ce740fd15803109ca2"
+    },
+    {
+      "sha": "85c8232d74ebb4e1fca18de8190fba777524772f",
+      "subject": "Keep pending release notes reusable across backend refresh retries",
+      "tree": "9d23e3916fe0df5e7f7b3d6247b3d38bfbaba4ea"
+    },
+    {
+      "sha": "5bb265bf80133663798ae4954aaa961683c7c642",
+      "subject": "Stage 1.3.1 with four refreshed matched backends and verified managers",
+      "tree": "dbbc8ed28f110ea3fcd50443714d46648631c347"
+    },
+    {
+      "sha": "df7c69670851a031ab81b95ee7557254d078440a",
+      "subject": "Prepare 1.3.1 production app protection and reconcile backend refresh",
+      "tree": "b63a9a1f84cb7fda00f322d7e2d4e30c7992e30c"
+    }
+  ],
+  "tracked_paths_checked": 561,
+  "unique_blob_paths_checked": 601,
+  "credential_pattern_matches": 0,
+  "credential_file_paths": 0,
+  "includes_worktree_or_git_config": false
+}
