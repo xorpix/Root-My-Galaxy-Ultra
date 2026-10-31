@@ -1,14 +1,14 @@
 {
   "schema": 1,
-  "sourceCommit": "a69a039800d4e063b1bcfa8e7e77fc3d94a7560c",
-  "sourceTree": "112f567a7c4524304f92606d6029f0030f227dc2",
-  "sourceParent": "0c95e284270a1efc10331f218f11f9eed8658d52",
+  "sourceCommit": "98b5149536fdc564132ca82b08d3980114be298a",
+  "sourceTree": "5deb93b813cd7a9c7ca9332e92099a2ee56569c9",
+  "sourceParent": "a69a039800d4e063b1bcfa8e7e77fc3d94a7560c",
   "sourceArchive": "source.tar.gz",
-  "sourceArchiveSha256": "b31a0e99f25013a43c73f1c5ba0a37301bb801076a790fceaece283227f37296",
+  "sourceArchiveSha256": "1af6f47a8f8a9f36c0421eeeaeeb6527707fd0c5038327f5a65cc2ab365d99cd",
   "module": {
     "path": "app/src/main/assets/susfs/bzig/susfs_guard_lkm.ko",
-    "sha256": "34915043a9adc89f9f8fea0b5e0ac55aca99e3036a983f7758f3c1c13f26a792",
-    "bytes": 581560
+    "sha256": "5c7808bee0b376d91b993d2440f288319162c5a6861549bf10d9c937e5e58b77",
+    "bytes": 589032
   },
   "validation": {
     "hostSuites": 29,
@@ -24,7 +24,9 @@
     "automaticRootPolicy": true,
     "backendPolicyPins": 4,
     "initializationDiagnostics": true,
-    "phonePriorityInitialization": "unresolved_on_BZJA_test2"
+    "phonePriorityInitialization": "test3_EFAULT_table_write_fix_pending_test4_device_validation",
+    "priorityEntryProbes": true,
+    "probeCallbackTypes": 5
   },
   "priorityControl": {
     "path": "app/src/main/jniLibs/arm64-v8a/librmgususfs_priority.so",

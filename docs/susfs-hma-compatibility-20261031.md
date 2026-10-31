@@ -78,7 +78,7 @@ ordering. The bundled source includes the normal/sanitizer evidence. Android CI
 also covers package selection, renamed/split managers, unreadable APKs, stale boot
 records and command acknowledgements. These models do not load HMA OSS.
 
-For the phone check, install the signed `1.3.0-priority-test2` APK, fully reboot,
+For the phone check, install the signed `1.3.0-priority-test4` APK, fully reboot,
 obtain root and activate SusFS with HMA enabled. Keep the usual HMA templates on
 the intended target apps and RMGU unfiltered. Check manager launch/root prompts,
 module operation, HMA package filtering and normal app use; compare with HMA
@@ -97,3 +97,23 @@ if necessary; a soft restart retains the loaded kernel module.
 - [Zygote permissions and data mounts](https://github.com/frknkrc44/HMA-OSS/blob/1fe86ce2b4a6f21197e6e92d15e054d609b7d77c/zygote/src/main/java/org/frknkrc44/hma_oss/zygote/hook/ZygoteHook.kt)
 - [App data isolation](https://github.com/frknkrc44/HMA-OSS/blob/1fe86ce2b4a6f21197e6e92d15e054d609b7d77c/zygote/src/main/java/org/frknkrc44/hma_oss/zygote/hook/AppDataIsolationHook.kt)
 - [Broadcast filtering](https://github.com/frknkrc44/HMA-OSS/blob/1fe86ce2b4a6f21197e6e92d15e054d609b7d77c/zygote/src/main/java/org/frknkrc44/hma_oss/zygote/hook/BroadcastHook.kt)
+
+## Entry-probe fallback follow-up (test4)
+
+Reviewed native source `98b5149536fdc564132ca82b08d3980114be298a` after the
+BZJA phone reported EFAULT during the first priority table write. The optional
+layer now tries four kernel entry probes only after the table route fails with
+that error and verified cleanup finishes. It requires matching named core
+native/compat entries, refuses BTI kernel/call landings and unknown/foreign
+entries, retains all caller exclusions, and unregisters/drains every partial
+installation. HMA framework/package hooks and both apps' configuration are
+unchanged. This introduces no direct overlap with the reviewed HMA hooks.
+
+Actual production-C tests cover native/compat passthrough and filtering,
+trusted/system/self callers, live policy changes, validation ordering,
+registration failures and callback return-tail teardown. All 56 native host
+runner executions pass. These tests do not load HMA or prove on-phone
+coexistence; use test4 for the device checks above. Other kernel modules that
+redirect these syscall entries can still affect coverage and require their
+own review.
+
