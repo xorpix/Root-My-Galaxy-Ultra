@@ -80,10 +80,10 @@ The current source bundles these driver/daemon pairs:
 
 | Backend | Driver / UAPI | Verified compatible manager downloads |
 |---|---|---|
-| KernelSU | `32708 / 6` | [Manager APK (ZIP)](https://nightly.link/tiann/KernelSU/actions/runs/40990133111/manager.zip) · [Official build](https://github.com/tiann/KernelSU/actions/runs/40990133111) |
-| KernelSU-Next | `33445 / 6` | [Manager APK (ZIP)](https://nightly.link/KernelSU-Next/KernelSU-Next/actions/runs/40875488323/manager.zip) · [Official build](https://github.com/KernelSU-Next/KernelSU-Next/actions/runs/40875488323) |
-| BakaSU | `35252 / 6` | [Manager APKs (ZIP)](https://nightly.link/Baka-SU/BakaSU/actions/runs/40109566037/Manager-release.zip) · [Official build](https://github.com/Baka-SU/BakaSU/actions/runs/40109566037) |
-| KowSU | `32737 / 6` | [Manager APK (ZIP)](https://nightly.link/KOWX712/KernelSU/actions/runs/40204528615/manager.zip) · [Official build](https://github.com/KOWX712/KernelSU/actions/runs/40204528615) |
+| KernelSU | `32715 / 6` | [Manager APK (ZIP)](https://nightly.link/tiann/KernelSU/actions/runs/41207119894/manager.zip) · [Official build](https://github.com/tiann/KernelSU/actions/runs/41207119894) |
+| KernelSU-Next | `33452 / 6` | [Manager APK (ZIP)](https://nightly.link/KernelSU-Next/KernelSU-Next/actions/runs/41209311538/manager.zip) · [Official build](https://github.com/KernelSU-Next/KernelSU-Next/actions/runs/41209311538) |
+| BakaSU | `35257 / 6` | [Manager APKs (ZIP)](https://nightly.link/Baka-SU/BakaSU/actions/runs/41207077584/Manager-release.zip) · [Official build](https://github.com/Baka-SU/BakaSU/actions/runs/41207077584) |
+| KowSU | `32740 / 6` | [Manager APK (ZIP)](https://nightly.link/KOWX712/KernelSU/actions/runs/41043507953/manager.zip) · [Official build](https://github.com/KOWX712/KernelSU/actions/runs/41043507953) |
 
 Download the ZIP, extract it, and install the APK. For BakaSU on a Samsung phone,
 choose the APK ending in `-arm64-v8a-release.apk` from the archive.

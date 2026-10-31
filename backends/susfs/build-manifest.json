@@ -16,7 +16,7 @@
     "identityHeaderCases": 13,
     "pathEntryHeaderCases": 3,
     "kernelImports": 140,
-    "hardwareValidated": true,
+    "hardwareValidated": false,
     "syscallWrappers": 22,
     "dispatcherCasesPerMode": 40,
     "dispatcherNegativeControlsPerMode": 4,
@@ -26,7 +26,12 @@
     "priorityEntryProbes": true,
     "probeCallbackTypes": 5,
     "phonePriorityValidation": "test4 accepted by maintainer; HMA reports no failures",
-    "productionCleanup": true
+    "productionCleanup": true,
+    "acceptedHardwareBaseline": {
+      "sourceCommit": "98b5149536fdc564132ca82b08d3980114be298a",
+      "moduleSha256": "5c7808bee0b376d91b993d2440f288319162c5a6861549bf10d9c937e5e58b77",
+      "result": "Maintainer accepted test4 device testing and reported no HMA failures; production diagnostic cleanup checked by host/ABI/build validation."
+    }
   },
   "priorityControl": {
     "path": "app/src/main/jniLibs/arm64-v8a/librmgususfs_priority.so",

@@ -1,38 +1,38 @@
 [
   {
     "backend": "kernelsu",
-    "source": "bb5f9faaa846b7beb833d3f5303cff7ac2aaedcf",
-    "driver_sha256": "a4a30ed63d74917a0acd344c4786dc81d79879eb516977ae6d097e7ec0d6482b",
+    "source": "bec9c1347472e26d3d7c46cccb7be801a9c9a6b9",
+    "driver_sha256": "30d691d71cb9fafca4cd30fcd5c96a8e8893a8be592370788e53ce280d3d2763",
     "functions": {
-      "ksu_is_uid_granted_root": {
-        "size": 240,
-        "binding": "STB_GLOBAL"
-      },
       "ksu_uid_should_umount": {
         "size": 464,
+        "binding": "STB_GLOBAL"
+      },
+      "ksu_is_uid_granted_root": {
+        "size": 240,
         "binding": "STB_GLOBAL"
       }
     }
   },
   {
     "backend": "kernelsu-next",
-    "source": "31946acd2f529b2b24e5e4f0267cfacb5d13498c",
-    "driver_sha256": "134a95c61876078dfbd3374c5851d576382ba3cef066768b995456c7e8efb323",
+    "source": "cefb048b069b7439fb4020d043de2d338dbc00fa",
+    "driver_sha256": "b35b6c7ff5c517611d18602bd0b38ac4dcf0b035fe458f93bfe2c7de350d1af8",
     "functions": {
-      "ksu_is_uid_granted_root": {
-        "size": 240,
-        "binding": "STB_GLOBAL"
-      },
       "ksu_uid_should_umount": {
         "size": 464,
+        "binding": "STB_GLOBAL"
+      },
+      "ksu_is_uid_granted_root": {
+        "size": 240,
         "binding": "STB_GLOBAL"
       }
     }
   },
   {
     "backend": "resukisu",
-    "source": "d5e9e025b8b49155f8014684d64c91742b465f65",
-    "driver_sha256": "f9a71e5cf863a0a8af8a757f589bc1f2d1650f98468890d88c1231476c10f9de",
+    "source": "516d3e87fbc986ccefdde2c2765f1700612441a9",
+    "driver_sha256": "a6e3031dff09716ade3639df3f98e73d8547c6517d8731a966f34aee95e4a4bb",
     "functions": {
       "ksu_is_uid_granted_root": {
         "size": 204,
@@ -46,15 +46,15 @@
   },
   {
     "backend": "kowsu",
-    "source": "6366f25b89f2bc5e287c1983715ebae60cd5540e",
-    "driver_sha256": "4c0b9d8f242811d8474cebac444a8b137fc32183cb5c34bf8a37cbf931179991",
+    "source": "6ecdd69224fe6769e6c8715a4ef2b91602b23362",
+    "driver_sha256": "51b5f108f106a2a505eb79f03259137370019c17c671684cae866efd6995e278",
     "functions": {
-      "ksu_is_uid_granted_root": {
-        "size": 240,
-        "binding": "STB_GLOBAL"
-      },
       "ksu_uid_should_umount": {
         "size": 464,
+        "binding": "STB_GLOBAL"
+      },
+      "ksu_is_uid_granted_root": {
+        "size": 240,
         "binding": "STB_GLOBAL"
       }
     }

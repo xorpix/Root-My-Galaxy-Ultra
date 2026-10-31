@@ -1,15 +1,15 @@
 {
   "schema": 3,
-  "app_base": "57bd992fe15fd9de8f667cb0d214d12bacb6a4fb",
-  "checked_date": "2026-10-30",
+  "app_base": "df7c69670851a031ab81b95ee7557254d078440a",
+  "checked_date": "2026-10-31",
   "build_status": "built",
   "backends": {
     "kernelsu": {
       "repository": "tiann/KernelSU",
-      "commit": "bb5f9faaa846b7beb833d3f5303cff7ac2aaedcf",
-      "commit_count": 2708,
-      "version": 32708,
-      "daemon_version": "3.3.1-28-gbb5f9faa",
+      "commit": "bec9c1347472e26d3d7c46cccb7be801a9c9a6b9",
+      "commit_count": 2715,
+      "version": 32715,
+      "daemon_version": "3.3.1-35-gbec9c134",
       "rust": "1.98.1",
       "rebuild": false,
       "compat_sha256": "63dbc81b48338dbfc1527b71172fb869efe626d85817a79b2c6b61a718d7fb53",
@@ -19,10 +19,10 @@
     },
     "kernelsu-next": {
       "repository": "KernelSU-Next/KernelSU-Next",
-      "commit": "31946acd2f529b2b24e5e4f0267cfacb5d13498c",
-      "commit_count": 3445,
-      "version": 33445,
-      "daemon_version": "3.4.2-90-g31946acd",
+      "commit": "cefb048b069b7439fb4020d043de2d338dbc00fa",
+      "commit_count": 3452,
+      "version": 33452,
+      "daemon_version": "3.4.2-97-gcefb048b",
       "rust": "1.98.1",
       "rebuild": false,
       "compat_sha256": "3231d636ae649e3f6712c7ae5c51895156b4ff0d7fa70afb23dc9d6f21934a3a",
@@ -32,10 +32,10 @@
     },
     "resukisu": {
       "repository": "Baka-SU/BakaSU",
-      "commit": "d5e9e025b8b49155f8014684d64c91742b465f65",
-      "commit_count": 4552,
-      "version": 35252,
-      "daemon_version": "4.2.0-rc3-81-gd5e9e025",
+      "commit": "516d3e87fbc986ccefdde2c2765f1700612441a9",
+      "commit_count": 4557,
+      "version": 35257,
+      "daemon_version": "4.2.0-rc3-86-g516d3e87",
       "rust": "nightly-2026-09-25",
       "rebuild": false,
       "compat_sha256": "aaf1940255e776b3d065d0ec719e07479d5369f8d418de4e6dc8ea7355c0fb15",
@@ -46,15 +46,15 @@
     "kowsu": {
       "repository": "KOWX712/KernelSU",
       "branch": "master",
-      "commit": "6366f25b89f2bc5e287c1983715ebae60cd5540e",
-      "commit_count": 2737,
-      "version": 32737,
+      "commit": "6ecdd69224fe6769e6c8715a4ef2b91602b23362",
+      "commit_count": 2740,
+      "version": 32740,
       "version_offset": 30000,
-      "daemon_version": "3.3.0-136-g6366f25b",
+      "daemon_version": "3.3.0-139-g6ecdd692",
       "rust": "1.98.1",
       "uapi": 6,
       "rebuild": false,
-      "compat_sha256": "34602e1459801516686711cd78392611703043af9460c04f8394a9537b722e8c"
+      "compat_sha256": "233f7f222574ee4b70deb2f2e210ae17496aa66c0327151ff56de72ef6db68bc"
     }
   }
 }
