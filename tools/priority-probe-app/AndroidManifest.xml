@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="dev.experimental.rmgu.priorityprobe">
+    <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="36" />
+    <queries><package android:name="dev.experimental.azhlroot" /></queries>
+    <application android:label="Priority Probe" android:allowBackup="false" android:debuggable="false"
+        android:extractNativeLibs="true" android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <activity android:name="dev.experimental.rmgu.priorityprobe.MainActivity" android:exported="true">
+            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter>
+        </activity>
+    </application>
+</manifest>

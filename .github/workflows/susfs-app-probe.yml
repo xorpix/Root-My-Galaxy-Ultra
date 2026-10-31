@@ -1,0 +1,29 @@
+name: SusFS Ordinary App Probe
+on:
+  push:
+    branches: [test/susfs-app-probe-20261031]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+          accept-android-sdk-licenses: true
+      - name: Build and verify isolated diagnostic app
+        run: python3 tools/priority-probe-app/build.py --output "$RUNNER_TEMP/priority-probe-dist"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rmgu-ordinary-app-priority-probe
+          path: ${{ runner.temp }}/priority-probe-dist
+          if-no-files-found: warn
+          retention-days: 14
