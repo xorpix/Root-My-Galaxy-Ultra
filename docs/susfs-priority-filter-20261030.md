@@ -12,7 +12,8 @@ When SusFS activates, RMGU automatically protects:
 - RMGU itself.
 - The backend's registered manager and apps currently granted root.
 - Installed known root managers and renamed KernelSU managers recognized by the
-  existing manager scanner or chosen in RMGU's settings.
+  daemon-library scanner or chosen in RMGU's settings. Discovery checks extracted
+  libraries and base/split APKs, and does not require a known label or launcher icon.
 
 Root grants, revocations and registered-manager changes are followed directly by
 the kernel, even when RMGU is closed. Installed-manager extras are refreshed after

@@ -2,6 +2,10 @@ package dev.busung.s25uroot
 
 import org.junit.Assert.*
 import org.junit.Test
+import java.io.File
+import java.nio.file.Files
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 class SusfsAutoAppsTest {
     private fun result(text: String, code: Int = 0) = ShizukuController.ShellResult(code, text)
@@ -20,6 +24,52 @@ class SusfsAutoAppsTest {
         assertEquals(listOf("com.topjohnwu.magisk", "me.weishu.kernelsu", "random.renamed.manager"),
             susfsAutomaticManagers(apps, setOf("random.renamed.manager", "system.app", "../invalid")))
         assertTrue(susfsAutomaticManagers(emptyList(), setOf("me.weishu.kernelsu")).isEmpty())
+    }
+
+    @Test fun findsSpoofedManagerWithoutAnyKnownPackageLabelOrLauncher() {
+        val directory = Files.createTempDirectory("susfs-spoofed-manager-").toFile()
+        try {
+            val base = File(directory, "ordinary.camera.apk")
+            ZipOutputStream(base.outputStream()).use { zip ->
+                zip.putNextEntry(ZipEntry("lib/arm64-v8a/libksud.so")); zip.write(byteArrayOf(0x7f, 69, 76, 70)); zip.closeEntry()
+            }
+            assertTrue(susfsHasManagerDaemon(null, listOf(base), listOf("arm64-v8a")))
+            assertEquals(listOf("totally.random.identity"), susfsAutomaticManagers(
+                listOf(SusfsInstalledApp("totally.random.identity", 10137)), setOf("totally.random.identity")))
+            assertFalse(susfsHasManagerDaemon(null, listOf(base), listOf("x86_64")))
+        } finally { directory.deleteRecursively() }
+    }
+
+    @Test fun findsUnextractedDaemonInAnAbiSplitAndExtractedDaemonWithoutAnApk() {
+        val directory = Files.createTempDirectory("susfs-split-manager-").toFile()
+        try {
+            val base = File(directory, "base.apk")
+            val split = File(directory, "split_config.arm64_v8a.apk")
+            ZipOutputStream(base.outputStream()).use { zip ->
+                zip.putNextEntry(ZipEntry("assets/ordinary.txt")); zip.write(1); zip.closeEntry()
+            }
+            ZipOutputStream(split.outputStream()).use { zip ->
+                zip.putNextEntry(ZipEntry("lib/arm64-v8a/libksud.so")); zip.write(1); zip.closeEntry()
+            }
+            assertFalse(susfsHasManagerDaemon(null, listOf(base), listOf("arm64-v8a")))
+            assertTrue(susfsHasManagerDaemon(null, listOf(base, split), listOf("arm64-v8a")))
+            File(directory, "libksud.so").writeBytes(byteArrayOf(1))
+            assertTrue(susfsHasManagerDaemon(directory, emptyList(), listOf("arm64-v8a")))
+        } finally { directory.deleteRecursively() }
+    }
+
+    @Test fun unreadableApksAndOrdinaryAppsAreNotClassifiedFromTheirNames() {
+        val directory = Files.createTempDirectory("susfs-ordinary-app-").toFile()
+        try {
+            val apk = File(directory, "root.manager.apk").apply { writeText("not an APK") }
+            assertFalse(susfsHasManagerDaemon(null, listOf(apk, File(directory, "missing.apk")), listOf("arm64-v8a")))
+            ZipOutputStream(apk.outputStream()).use { zip ->
+                zip.putNextEntry(ZipEntry("assets/su")); zip.write(1); zip.closeEntry()
+                zip.putNextEntry(ZipEntry("lib/arm64-v8a/libksud.so")); zip.closeEntry()
+            }
+            assertFalse(susfsHasManagerDaemon(null, listOf(apk), listOf("arm64-v8a")))
+            assertTrue(susfsAutomaticManagers(listOf(SusfsInstalledApp("root.manager.apk", 10138)), emptySet()).isEmpty())
+        } finally { directory.deleteRecursively() }
     }
 
     @Test fun removalAndUidChangeUseTheFreshInventory() {
