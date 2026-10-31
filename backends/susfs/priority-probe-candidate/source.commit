@@ -1,0 +1,6 @@
+tree 5deb93b813cd7a9c7ca9332e92099a2ee56569c9
+parent a69a039800d4e063b1bcfa8e7e77fc3d94a7560c
+author Codex <codex@openai.com> 1793442085 +0100
+committer Codex <codex@openai.com> 1793442085 +0100
+
+Use verified priority entry probes when Samsung refuses table writes

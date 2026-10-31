@@ -1,0 +1,32 @@
+name: SusFS Priority Probe Native Review
+on:
+  push:
+    branches: [build/susfs-priority-probe-20261031]
+permissions:
+  contents: read
+concurrency:
+  group: susfs-priority-probe-native-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install artifact inspector
+        run: python3 -m pip install pyelftools==0.32
+      - name: Provision verified Android 16 DDK layers
+        run: python3 tools/provision_ddk.py "$RUNNER_TEMP/priority-ddk"
+      - name: Build and verify complete source candidate
+        run: python3 tools/build_priority_probe_candidate.py --output "$RUNNER_TEMP/priority-probe-review"
+      - name: Preserve native artifact and validation records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: susfs-priority-probe-native-review
+          path: ${{ runner.temp }}/priority-probe-review
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,1184 @@
+diff --git a/docs/priority-probe-20261031/README.md b/docs/priority-probe-20261031/README.md
+new file mode 100644
+index 0000000..5fc2a68
+--- /dev/null
++++ b/docs/priority-probe-20261031/README.md
+@@ -0,0 +1,63 @@
++# Samsung priority entry-probe fallback
++
++Phone observation: SM-S948B, firmware S948BXXU5BZJA, kernel
++6.12.69-android16-6-pa4ef354-abogkiS948BXXU5BZJA-4k. Test3 reported
++`init_errno=-14 stage=2 op=0`, both installation masks zero, compat table present,
++and `native_insn=compat_insn=d503233f`. This localizes the optional layer failure
++to the first table hook's no-fault write, before automatic selection is enabled.
++Repeated rebooting cannot change this write failure. Core SusFS remains active.
++
++The existing syscall-table path remains first choice. Only -EFAULT, after the
++FP helper has restored every published entry and drained callbacks, admits the
++entry-probe route. No protected-write workaround or kernel protection setting is
++added. All four kernel targets must be proven named core entry starts. Native
++and compat table entries must share each target (the four int-only priority
++APIs do so in the previously reviewed BZJA image). Separate compat targets,
++foreign hooks, missing/unreadable tables or entries, CONFIG_ARM64_BTI_KERNEL,
++and explicit BTI c/jc landing instructions disable this optional feature.
++
++The exact inspected addresses are registered. A post handler keeps probes
++unoptimized: Linux jump-optimized kprobes ignore pre-handler PC redirection.
++Each pre handler leaves the frame unchanged when passing through, or sets the
++return value and returns to the incoming LR before the original entry's PAC.
++The shared decision function preserves root/system/trusted/self/namespace,
++PID/process-group and default-UID exclusions and I/O-priority error ordering.
++It allocates nothing, takes no mutex and does no VFS/package work in a probe.
++KernelSU predicates are the existing non-sleeping policy lookups.
++
++Ready is published only after four successful registrations and a second table
++identity check. Partial failures unregister every armed probe. Exit disables
++filtering first, unregisters probes, then drains counters and Tasks RCU return
++tails before releasing policy/helper pointers. Probe addresses and disabled
++flags are reset for reuse. Existing table restoration/draining is unchanged.
++
++Status adds `route` (0=off, 1=table, 2=entry probes), `probe_mask` and
++`table_errno`. `init_errno=0 stage=0 route=2 probe_mask=f table_errno=-14` is the
++expected successful fallback; configuration/automatic flags are independent.
++Stage 4 identifies a refused or failed fallback. No function addresses are
++printed through status. All status fields retain the existing root-only mode.
++
++Recorded host evidence: all 29 suites / 56 normal and ASan/UBSan runner
++executions passed. Actual production C is exercised with CONFIG_COMPAT on/off,
++all four table/registration failures, missing/divergent/foreign targets,
++unreadable entries, both BTI landing pads, BTI kernel configuration, rearming,
++unchanged syscall frames, root policy changes, error ordering, concurrent rule
++updates and teardown while a callback's return tail is active. Deliberately
++unsafe variants are rejected. Kernel headers, incoming callback KCFI and module
++imports must still be verified by the pinned-DDK build.
++
++This route is limited to the four priority syscalls; no global syscall
++tracepoint, timer or scan is introduced. Probe breakpoint handling adds work on
++these calls. Hardware behavior and interaction with other runtime kernel hooks
++remain unverified until test4 is run on the phone. In particular, future code
++that redirects table entries after initialization can change coverage.
++
++HMA OSS uses Android framework package filtering in system_server rather than
++these kernel priority entry points, so this change adds no direct hook overlap.
++Keep RMGU out of HMA's filtered-caller scope so its PackageManager inventory can
++see inactive root managers. Hiding RMGU from other apps is compatible with that
++scope. No HMA templates/settings or inactive-manager names are changed here;
++phone coexistence still requires validation.
++
++References: https://docs.kernel.org/trace/kprobes.html and the source-pinned
++HMA review in the app repository, docs/susfs-hma-compatibility-20261031.md.
+diff --git a/docs/priority-probe-20261031/records/host-results.json b/docs/priority-probe-20261031/records/host-results.json
+new file mode 100644
+index 0000000..d08ad12
+--- /dev/null
++++ b/docs/priority-probe-20261031/records/host-results.json
+@@ -0,0 +1,397 @@
++{
++  "hardware_validated": false,
++  "results": [
++    {
++      "suite": "avc_spoof",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.72,
++      "log": "avc_spoof.log"
++    },
++    {
++      "suite": "avc_spoof",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.73,
++      "log": "avc_spoof-sanitizers.log"
++    },
++    {
++      "suite": "feature_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.52,
++      "log": "feature_hooks.log"
++    },
++    {
++      "suite": "feature_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 2.39,
++      "log": "feature_hooks-sanitizers.log"
++    },
++    {
++      "suite": "fp_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.82,
++      "log": "fp_hooks.log"
++    },
++    {
++      "suite": "fp_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.28,
++      "log": "fp_hooks-sanitizers.log"
++    },
++    {
++      "suite": "identity_controls",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 5.8,
++      "log": "identity_controls.log"
++    },
++    {
++      "suite": "identity_controls",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 7.07,
++      "log": "identity_controls-sanitizers.log"
++    },
++    {
++      "suite": "kprobe_reuse",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.32,
++      "log": "kprobe_reuse.log"
++    },
++    {
++      "suite": "kprobe_reuse",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.47,
++      "log": "kprobe_reuse-sanitizers.log"
++    },
++    {
++      "suite": "kstat_compat",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "kstat_compat.log"
++    },
++    {
++      "suite": "kstat_statx",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "kstat_statx.log"
++    },
++    {
++      "suite": "kstat_statx",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.02,
++      "log": "kstat_statx-sanitizers.log"
++    },
++    {
++      "suite": "ksu_policy",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 1.33,
++      "log": "ksu_policy.log"
++    },
++    {
++      "suite": "ksu_policy",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.63,
++      "log": "ksu_policy-sanitizers.log"
++    },
++    {
++      "suite": "lifecycle",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 5.2,
++      "log": "lifecycle.log"
++    },
++    {
++      "suite": "lifecycle",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 7.74,
++      "log": "lifecycle-sanitizers.log"
++    },
++    {
++      "suite": "lsm_lifetime",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.27,
++      "log": "lsm_lifetime.log"
++    },
++    {
++      "suite": "lsm_lifetime",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "lsm_lifetime-sanitizers.log"
++    },
++    {
++      "suite": "map_files",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 8.23,
++      "log": "map_files.log"
++    },
++    {
++      "suite": "map_files",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 9.29,
++      "log": "map_files-sanitizers.log"
++    },
++    {
++      "suite": "map_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.62,
++      "log": "map_hooks.log"
++    },
++    {
++      "suite": "map_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.08,
++      "log": "map_hooks-sanitizers.log"
++    },
++    {
++      "suite": "module_control",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.92,
++      "log": "module_control.log"
++    },
++    {
++      "suite": "mount_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 1.07,
++      "log": "mount_hooks.log"
++    },
++    {
++      "suite": "mount_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.93,
++      "log": "mount_hooks-sanitizers.log"
++    },
++    {
++      "suite": "mount_prefix",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.52,
++      "log": "mount_prefix.log"
++    },
++    {
++      "suite": "mount_prefix",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.67,
++      "log": "mount_prefix-sanitizers.log"
++    },
++    {
++      "suite": "mshow_filter",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.72,
++      "log": "mshow_filter.log"
++    },
++    {
++      "suite": "mshow_filter",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.12,
++      "log": "mshow_filter-sanitizers.log"
++    },
++    {
++      "suite": "patch_memory_flush",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.22,
++      "log": "patch_memory_flush.log"
++    },
++    {
++      "suite": "patch_memory_flush",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.32,
++      "log": "patch_memory_flush-sanitizers.log"
++    },
++    {
++      "suite": "path_creds",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 1.02,
++      "log": "path_creds.log"
++    },
++    {
++      "suite": "path_creds",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 2.28,
++      "log": "path_creds-sanitizers.log"
++    },
++    {
++      "suite": "path_entry",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.67,
++      "log": "path_entry.log"
++    },
++    {
++      "suite": "path_entry",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.33,
++      "log": "path_entry-sanitizers.log"
++    },
++    {
++      "suite": "path_index",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.32,
++      "log": "path_index.log"
++    },
++    {
++      "suite": "path_index",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.57,
++      "log": "path_index-sanitizers.log"
++    },
++    {
++      "suite": "path_listing",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.83,
++      "log": "path_listing.log"
++    },
++    {
++      "suite": "path_listing",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 11.09,
++      "log": "path_listing-sanitizers.log"
++    },
++    {
++      "suite": "path_readlink_lsm",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.92,
++      "log": "path_readlink_lsm.log"
++    },
++    {
++      "suite": "path_readlink_lsm",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.93,
++      "log": "path_readlink_lsm-sanitizers.log"
++    },
++    {
++      "suite": "priority_filter",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 13.92,
++      "log": "priority_filter.log"
++    },
++    {
++      "suite": "priority_filter",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 23.05,
++      "log": "priority_filter-sanitizers.log"
++    },
++    {
++      "suite": "priority_tool",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 2.38,
++      "log": "priority_tool.log"
++    },
++    {
++      "suite": "priority_tool",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 2.68,
++      "log": "priority_tool-sanitizers.log"
++    },
++    {
++      "suite": "r18_fixes",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 1.42,
++      "log": "r18_fixes.log"
++    },
++    {
++      "suite": "r18_fixes",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 2.58,
++      "log": "r18_fixes-sanitizers.log"
++    },
++    {
++      "suite": "redirect_entry",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "redirect_entry.log"
++    },
++    {
++      "suite": "redirect_entry",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.52,
++      "log": "redirect_entry-sanitizers.log"
++    },
++    {
++      "suite": "redirect_maps",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.32,
++      "log": "redirect_maps.log"
++    },
++    {
++      "suite": "redirect_maps",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.57,
++      "log": "redirect_maps-sanitizers.log"
++    },
++    {
++      "suite": "redirect_statfs",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.26,
++      "log": "redirect_statfs.log"
++    },
++    {
++      "suite": "redirect_statfs",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.47,
++      "log": "redirect_statfs-sanitizers.log"
++    },
++    {
++      "suite": "userspace",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.72,
++      "log": "userspace.log"
++    },
++    {
++      "suite": "userspace",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.07,
++      "log": "userspace-sanitizers.log"
++    }
++  ]
++}
+diff --git a/docs/priority-probe-20261031/records/priority_filter-sanitizers.log b/docs/priority-probe-20261031/records/priority_filter-sanitizers.log
+new file mode 100644
+index 0000000..9541168
+--- /dev/null
++++ b/docs/priority-probe-20261031/records/priority_filter-sanitizers.log
+@@ -0,0 +1,48 @@
++PASS compat=1 configuration
++PASS compat=1 abi-faults
++PASS compat=1 queries
++PASS compat=1 automatic
++PASS compat=1 boot-automatic
++PASS compat=1 validation
++PASS compat=1 initialization
++PASS compat=1 sleeping-teardown
++PASS compat=1 concurrency
++PASS compat=1 probe-queries
++PASS compat=1 probe-validation
++PASS compat=1 probe-automatic
++PASS compat=1 probe-concurrency
++PASS compat=1 probe-admission
++PASS compat=1 probe-teardown
++PASS compat=0 configuration
++PASS compat=0 abi-faults
++PASS compat=0 queries
++PASS compat=0 automatic
++PASS compat=0 boot-automatic
++PASS compat=0 validation
++PASS compat=0 initialization
++PASS compat=0 sleeping-teardown
++PASS compat=0 concurrency
++PASS compat=0 probe-queries
++PASS compat=0 probe-validation
++PASS compat=0 probe-automatic
++PASS compat=0 probe-concurrency
++PASS compat=0 probe-admission
++PASS compat=0 probe-teardown
++PASS priority filter case
++PASS probe CONFIG_ARM64_BTI_KERNEL refusal
++PASS negative/shared-compat-original
++PASS negative/omit-ioprio-validation
++PASS negative/skip-package-validation
++PASS negative/omit-callback-entry
++PASS negative/partial-compat-coverage
++PASS negative/narrow-app-caller-range
++PASS negative/omit-live-grants
++PASS negative/omit-own-app
++PASS negative/probe-compat-proof
++PASS negative/probe-no-post-handler
++PASS negative/probe-no-tail-drain
++PASS negative/probe-no-core-proof
++PASS negative/probe-no-bti-proof
++PASS negative/probe-no-unregister
++PASS negative/probe-ioprio-validation
++PASS negative/publication-uaf
+diff --git a/docs/priority-probe-20261031/records/priority_filter.log b/docs/priority-probe-20261031/records/priority_filter.log
+new file mode 100644
+index 0000000..c9dff0f
+--- /dev/null
++++ b/docs/priority-probe-20261031/records/priority_filter.log
+@@ -0,0 +1,47 @@
++PASS compat=1 configuration
++PASS compat=1 abi-faults
++PASS compat=1 queries
++PASS compat=1 automatic
++PASS compat=1 boot-automatic
++PASS compat=1 validation
++PASS compat=1 initialization
++PASS compat=1 sleeping-teardown
++PASS compat=1 concurrency
++PASS compat=1 probe-queries
++PASS compat=1 probe-validation
++PASS compat=1 probe-automatic
++PASS compat=1 probe-concurrency
++PASS compat=1 probe-admission
++PASS compat=1 probe-teardown
++PASS compat=0 configuration
++PASS compat=0 abi-faults
++PASS compat=0 queries
++PASS compat=0 automatic
++PASS compat=0 boot-automatic
++PASS compat=0 validation
++PASS compat=0 initialization
++PASS compat=0 sleeping-teardown
++PASS compat=0 concurrency
++PASS compat=0 probe-queries
++PASS compat=0 probe-validation
++PASS compat=0 probe-automatic
++PASS compat=0 probe-concurrency
++PASS compat=0 probe-admission
++PASS compat=0 probe-teardown
++PASS priority filter case
++PASS probe CONFIG_ARM64_BTI_KERNEL refusal
++PASS negative/shared-compat-original
++PASS negative/omit-ioprio-validation
++PASS negative/skip-package-validation
++PASS negative/omit-callback-entry
++PASS negative/partial-compat-coverage
++PASS negative/narrow-app-caller-range
++PASS negative/omit-live-grants
++PASS negative/omit-own-app
++PASS negative/probe-compat-proof
++PASS negative/probe-no-post-handler
++PASS negative/probe-no-tail-drain
++PASS negative/probe-no-core-proof
++PASS negative/probe-no-bti-proof
++PASS negative/probe-no-unregister
++PASS negative/probe-ioprio-validation
+diff --git a/kernel/susfs_priority_filter.c b/kernel/susfs_priority_filter.c
+index 8df2a2a..95d524d 100644
+--- a/kernel/susfs_priority_filter.c
++++ b/kernel/susfs_priority_filter.c
+@@ -5,8 +5,9 @@
+  *
+  * Configuration is transactional and uses the root caller's existing credentials.
+  * No credential/security blob is edited, and no path, mount or cred is retained.
+- * Native and compat entries have separate originals and complete FP lifetimes.
+- * All entries must install before this optional feature accepts configuration.
++ * Native and compat table entries have separate originals and complete lifetimes.
++ * A refused write can use verified shared entry probes, also with full draining.
++ * Complete coverage must install before this optional feature accepts configuration.
+  * Empty configuration is the default; the priority fast path never allocates.
+  */
+ #include <linux/module.h>
+@@ -25,12 +26,14 @@
+ #include <linux/uaccess.h>
+ #include <linux/resource.h>
+ #include <linux/ioprio.h>
++#include <linux/kprobes.h>
+ #include <asm/unistd.h>
+ #include <asm/ptrace.h>
+ 
+ #include "susfs.h"
+ #include "susfs_abi.h"
+ #include "susfs_fp_hook.h"
++#include "susfs_kprobe.h"
+ #include "symbol_resolver.h"
+ #include "ksu_umount_gate.h"
+ 
+@@ -67,13 +70,17 @@ static_assert(__same_type(typeof(prio_check_cap_fn), typeof(&ioprio_check_cap)))
+ static struct susfs_fp_hook prio_hooks[PRIO_OP_COUNT];
+ /* Retain the first initialization failure after rollback. Some production
+  * kernels expose no usable printk history; do not make recovery depend on it.
+- * stage: 0=ready, 1=I/O validation helper, 2=hook installation, 3=compat coverage.
++ * stage: 0=ready, 1=I/O helper, 2=table install, 3=compat coverage, 4=probe fallback.
+  * These fields are boot-local and read-only through the existing root status.
+  */
+ static int prio_init_errno, prio_init_stage, prio_init_op = -1;
+ static unsigned int prio_init_native_mask, prio_init_compat_mask;
+ static bool prio_init_compat_table;
+ static u32 prio_init_native_insn, prio_init_compat_insn;
++/* 0=off, 1=syscall tables, 2=entry probes. The original table error remains
++ * visible even when the supported probe route succeeds. */
++static unsigned int prio_route, prio_probe_mask;
++static int prio_table_errno;
+ 
+ static void prio_record_init(int error, int stage, int operation)
+ {
+@@ -133,26 +140,37 @@ static bool prio_should_hide_user(int which, int who, int user_class)
+     return hidden;
+ }
+ 
+-static __nocfi noinline long prio_dispatch(const struct pt_regs *regs,
+-                                          susfs_syscall_fn_t original,
+-                                          enum prio_operation operation)
++static __nocfi noinline bool prio_filter_result(const struct pt_regs *regs,
++                               enum prio_operation operation, long *result)
+ {
+     int user_class = operation == PRIO_IOGET || operation == PRIO_IOSET ?
+         IOPRIO_WHO_USER : PRIO_USER;
+     int rc;
+ 
+-    if (!original)
+-        return -ENOSYS;
+     if (!prio_should_hide_user((int)regs->regs[0], (int)regs->regs[1], user_class))
+-        return original(regs);
++        return false;
+     if (operation == PRIO_IOSET) {
+         /* Linux validates the priority/capabilities BEFORE looking up a UID.
+          * Keep those errors; returning ESRCH first creates a new detection signal. */
+         rc = prio_check_cap_fn((int)regs->regs[2]);
+-        if (rc)
+-            return rc;
++        if (rc) {
++            *result = rc;
++            return true;
++        }
+     }
+-    return -ESRCH;
++    *result = -ESRCH;
++    return true;
++}
++
++static __nocfi noinline long prio_dispatch(const struct pt_regs *regs,
++                                          susfs_syscall_fn_t original,
++                                          enum prio_operation operation)
++{
++    long result;
++
++    if (!original)
++        return -ENOSYS;
++    return prio_filter_result(regs, operation, &result) ? result : original(regs);
+ }
+ 
+ #define PRIO_WRAPPER(name, slot, operation) \
+@@ -192,6 +210,140 @@ static struct susfs_fp_hook prio_hooks[PRIO_OP_COUNT] = {
+       .compat_wrapper = prio_wrap_compat_ioprio_set, .orig_slot_compat = &prio_orig_compat_ioprio_set },
+ };
+ 
++/* Samsung RKP can refuse the data-only table write. Use the kernel's supported
++ * probe mechanism only after that exact failure and verified table restoration.
++ * The handler never calls an original syscall or sleeps: it either leaves the
++ * complete frame alone or returns the same filtered result before PAC executes.
++ */
++static int prio_probe_pre(struct pt_regs *regs, enum prio_operation operation)
++{
++    const struct pt_regs *syscall_regs = (const void *)regs->regs[0];
++    long result;
++    bool handled;
++
++    susfs_fp_callback_enter(&prio_hooks[operation]);
++    handled = prio_filter_result(syscall_regs, operation, &result);
++    if (handled) {
++        regs->pc = regs->regs[30];
++        regs->regs[0] = result;
++    }
++    return susfs_fp_callback_return(&prio_hooks[operation], handled ? 1 : 0);
++}
++
++#define PRIO_PROBE_PRE(name, operation) \
++static int name(struct kprobe *kp, struct pt_regs *regs) \
++{ \
++    return prio_probe_pre(regs, operation); \
++}
++PRIO_PROBE_PRE(prio_pre_getpriority, PRIO_GET)
++PRIO_PROBE_PRE(prio_pre_setpriority, PRIO_SET)
++PRIO_PROBE_PRE(prio_pre_ioprio_get, PRIO_IOGET)
++PRIO_PROBE_PRE(prio_pre_ioprio_set, PRIO_IOSET)
++
++/* A post handler prevents jump optimization, which ignores a pre handler's PC
++ * redirection. Unregister drains this handler; Tasks RCU covers return tails. */
++static void prio_probe_post(struct kprobe *kp, struct pt_regs *regs,
++                            unsigned long flags)
++{
++}
++
++static struct kprobe prio_probes[PRIO_OP_COUNT] = {
++    { .pre_handler = prio_pre_getpriority, .post_handler = prio_probe_post },
++    { .pre_handler = prio_pre_setpriority, .post_handler = prio_probe_post },
++    { .pre_handler = prio_pre_ioprio_get, .post_handler = prio_probe_post },
++    { .pre_handler = prio_pre_ioprio_set, .post_handler = prio_probe_post },
++};
++
++static int prio_probe_target(int operation, unsigned long *address)
++{
++    const struct susfs_fp_hook *hook = &prio_hooks[operation];
++    const unsigned long *native = (const void *)susfs_fp_syscall_table();
++    const unsigned long *compat = (const void *)susfs_fp_compat_syscall_table();
++    unsigned long entry, compat_entry;
++    u32 instruction;
++
++    if (IS_ENABLED(CONFIG_ARM64_BTI_KERNEL))
++        return -EOPNOTSUPP;
++    if (!native || (IS_ENABLED(CONFIG_COMPAT) && !compat))
++        return -ENOENT;
++    if (copy_from_kernel_nofault(&entry, &native[hook->nr], sizeof(entry)))
++        return -EFAULT;
++    if (!ksu_symbol_is_start(entry, hook->sym))
++        return -EOPNOTSUPP; /* no foreign hook, interior address or CFI stub */
++    if (IS_ENABLED(CONFIG_COMPAT)) {
++        if (copy_from_kernel_nofault(&compat_entry, &compat[hook->nr_compat],
++                                     sizeof(compat_entry)))
++            return -EFAULT;
++        /* These four int-only syscalls share their entry on this Samsung
++         * kernel. Reject a different ABI implementation rather than lose it. */
++        if (compat_entry != entry)
++            return -EOPNOTSUPP;
++    }
++    if (copy_from_kernel_nofault(&instruction, (const void *)entry,
++                                 sizeof(instruction)))
++        return -EFAULT;
++    if (instruction == 0xd503245fU || instruction == 0xd50324dfU)
++        return -EOPNOTSUPP; /* never replace a BTI call landing pad */
++    *address = entry;
++    return 0;
++}
++
++static void prio_remove_probes(void)
++{
++    unsigned int armed = prio_probe_mask;
++    int i;
++
++    for (i = PRIO_OP_COUNT - 1; i >= 0; i--) {
++        if (armed & (1U << i)) {
++            unregister_kprobe(&prio_probes[i]);
++            susfs_kp_forget_addr(&prio_probes[i]);
++        }
++    }
++    WRITE_ONCE(prio_probe_mask, 0);
++    for (i = 0; i < PRIO_OP_COUNT; i++)
++        if (armed & (1U << i))
++            susfs_fp_drain(&prio_hooks[i]);
++}
++
++static int prio_install_probes(int *failed_operation)
++{
++    unsigned long targets[PRIO_OP_COUNT], checked;
++    int i, rc;
++
++    /* The failed table attempt may not have reached all four counters. */
++    for (i = 0; i < PRIO_OP_COUNT; i++) {
++        atomic_set(&prio_hooks[i].active_callbacks, 0);
++        init_waitqueue_head(&prio_hooks[i].callback_waitq);
++    }
++    for (i = 0; i < PRIO_OP_COUNT; i++) {
++        *failed_operation = i;
++        rc = prio_probe_target(i, &targets[i]);
++        if (rc)
++            return rc;
++    }
++    for (i = 0; i < PRIO_OP_COUNT; i++) {
++        *failed_operation = i;
++        prio_probes[i].symbol_name = NULL;
++        prio_probes[i].addr = (kprobe_opcode_t *)targets[i];
++        prio_probes[i].flags = 0;
++        rc = register_kprobe(&prio_probes[i]);
++        if (rc) {
++            susfs_kp_forget_addr(&prio_probes[i]);
++            return rc;
++        }
++        WRITE_ONCE(prio_probe_mask, prio_probe_mask | (1U << i));
++    }
++    /* A changed/foreign table during registration must not silently bypass
++     * the probes. All four entries must still prove both ABIs before ready. */
++    for (i = 0; i < PRIO_OP_COUNT; i++) {
++        *failed_operation = i;
++        rc = prio_probe_target(i, &checked);
++        if (rc || checked != targets[i])
++            return rc ? rc : -EAGAIN;
++    }
++    return 0;
++}
++
+ static bool prio_package_valid(const char *package)
+ {
+     const unsigned char *p = (const unsigned char *)package;
+@@ -396,13 +548,14 @@ static int prio_status_show(char *buf, const struct kernel_param *kp)
+         length = scnprintf(buf, PAGE_SIZE,
+             "ready=%u configured=%u generation=%lu automatic=%u own_appid=%u root_lookup=%u "
+             "init_errno=%d stage=%d op=%d native_mask=%x compat_mask=%x compat_table=%u "
+-            "native_insn=%08x compat_insn=%08x\n",
++            "native_insn=%08x compat_insn=%08x route=%u probe_mask=%x table_errno=%d\n",
+             prio_ready ? 1 : 0, prio_count, prio_generation,
+             rules && rules->automatic ? 1 : 0, rules ? rules->own_appid : 0,
+             susfs_ksu_root_available() ? 1 : 0,
+             prio_init_errno, prio_init_stage, prio_init_op,
+             prio_init_native_mask, prio_init_compat_mask, prio_init_compat_table ? 1 : 0,
+-            prio_init_native_insn, prio_init_compat_insn);
++            prio_init_native_insn, prio_init_compat_insn,
++            prio_route, prio_probe_mask, prio_table_errno);
+     }
+     mutex_unlock(&prio_config_lock);
+     return length;
+@@ -423,17 +576,20 @@ void susfs_priority_filter_exit(void)
+     WRITE_ONCE(prio_count, 0);
+     WRITE_ONCE(prio_enabled, false);
+     mutex_unlock(&prio_config_lock);
++    prio_remove_probes();
+     for (i = PRIO_OP_COUNT - 1; i >= 0; i--)
+         susfs_fp_remove(&prio_hooks[i]);
+     synchronize_rcu();
+     kfree(previous);
+     prio_check_cap_fn = NULL;
++    WRITE_ONCE(prio_route, 0);
+ }
+ 
+ int susfs_priority_filter_init(void)
+ {
+-    int i, rc;
++    int i, rc, failed_operation;
+ 
++    prio_table_errno = 0;
+     prio_record_init(0, 1, -1);
+     prio_check_cap_fn = (void *)find_kernel_symbol_exact("ioprio_check_cap");
+     if (!prio_check_cap_fn) {
+@@ -443,7 +599,20 @@ int susfs_priority_filter_init(void)
+     for (i = 0; i < PRIO_OP_COUNT; i++) {
+         rc = susfs_fp_install(&prio_hooks[i]);
+         if (rc) {
++            prio_table_errno = rc;
+             prio_record_init(rc, 2, i);
++            if (rc == -EFAULT) {
++                /* remove() returns only after both tables are restored and
++                 * published callbacks have drained. No forced RKP writes. */
++                for (i = PRIO_OP_COUNT - 1; i >= 0; i--)
++                    susfs_fp_remove(&prio_hooks[i]);
++                rc = prio_install_probes(&failed_operation);
++                if (!rc) {
++                    WRITE_ONCE(prio_route, 2);
++                    goto ready;
++                }
++                prio_record_init(rc, 4, failed_operation);
++            }
+             goto rollback;
+         }
+         if (IS_ENABLED(CONFIG_COMPAT) && !prio_hooks[i].compat_installed) {
+@@ -452,6 +621,8 @@ int susfs_priority_filter_init(void)
+             goto rollback;
+         }
+     }
++    WRITE_ONCE(prio_route, 1);
++ready:
+     prio_record_init(0, 0, -1);
+     mutex_lock(&prio_config_lock);
+     WRITE_ONCE(prio_ready, true);
+diff --git a/tests/priority_filter/priority_test.c b/tests/priority_filter/priority_test.c
+index 2517f21..e772343 100644
+--- a/tests/priority_filter/priority_test.c
++++ b/tests/priority_filter/priority_test.c
+@@ -35,6 +35,9 @@
+ #define __NR_ioprio_get 31
+ #define __NR_ioprio_set 30
+ #define IS_ENABLED(v) (v)
++#ifndef CONFIG_ARM64_BTI_KERNEL
++#define CONFIG_ARM64_BTI_KERNEL 0
++#endif
+ #define scnprintf snprintf
+ #define pr_warn(...) ((void)0)
+ #define cond_resched() sched_yield()
+@@ -62,7 +65,14 @@ static bool susfs_ksu_umount_ask(uid_t uid) {(void)uid;return ksu_umount;}
+ 
+ typedef atomic_int atomic_t;
+ typedef struct {int unused;} wait_queue_head_t;
+-struct pt_regs {unsigned long regs[31];};
++struct pt_regs {unsigned long regs[31]; unsigned long pc;};
++#define atomic_set(p,v) atomic_store(p,v)
++#define init_waitqueue_head(p) ((p)->unused=1)
++typedef u32 kprobe_opcode_t;
++#define KPROBE_FLAG_DISABLED 1
++struct kprobe {const char *symbol_name; kprobe_opcode_t *addr; unsigned int flags; int (*pre_handler)(struct kprobe *,struct pt_regs *); void (*post_handler)(struct kprobe *,struct pt_regs *,unsigned long);};
++struct kretprobe {struct kprobe kp;};
++#include KP
+ #include FP
+ #include ABI
+ 
+@@ -115,9 +125,28 @@ static int kern_path(const char *name,int flags,struct path *out) {
+ static struct inode *d_backing_inode(struct dentry *d) {return &d->inode;}
+ static void path_put(struct path *p) {assert(p->dentry);free(p->dentry);atomic_fetch_sub(&lookup_refs,1);p->dentry=NULL;}
+ 
+-static int install_fail=-1,install_calls;
++static int install_fail=-1,install_calls,install_error=-EIO;
++static unsigned long native_table[512],compat_table[512];
++static u32 core_entries[4]={0xd503233f,0xd503233f,0xd503233f,0xd503233f};
++static bool native_available=true,read_fault,identity_fault;
++static int register_fail=-1,register_calls,unregister_calls,drain_calls,change_table_at=-1;
++static unsigned int armed_probes,active_table_hooks;
++static atomic_int callback_tails;
++static atomic_bool pause_tail,tail_entered,release_tail;
+ static bool compat_available=true,helper_available=true;
+-unsigned long susfs_fp_compat_syscall_table(void) { return compat_available ? 1 : 0; }
++unsigned long susfs_fp_syscall_table(void) {return native_available?(unsigned long)native_table:0;}
++unsigned long susfs_fp_compat_syscall_table(void) {return compat_available?(unsigned long)compat_table:0;}
++static int copy_from_kernel_nofault(void *d,const void *s,size_t n) {if(read_fault)return -EFAULT;memcpy(d,s,n);return 0;}
++static int ksu_symbol_is_start(unsigned long address,const char *s) {
++ const char *names[]={"__arm64_sys_getpriority","__arm64_sys_setpriority","__arm64_sys_ioprio_get","__arm64_sys_ioprio_set"};
++ if(identity_fault)return 0;for(int i=0;i<4;i++)if(!strcmp(s,names[i]))return address==(unsigned long)&core_entries[i];return 0;
++}
++static int register_kprobe(struct kprobe *p) {
++ int i=register_calls++;assert(!active_table_hooks);assert(p->addr&&!p->symbol_name&&!p->flags&&p->pre_handler&&p->post_handler);
++ if(i==register_fail){p->flags|=KPROBE_FLAG_DISABLED;return -EBUSY;}
++ armed_probes++;if(i==change_table_at)compat_table[96]=native_table[141]=(unsigned long)&core_entries[1];return 0;
++}
++static void unregister_kprobe(struct kprobe *p) {assert(armed_probes&&p->addr);armed_probes--;unregister_calls++;p->flags|=KPROBE_FLAG_DISABLED;}
+ static atomic_bool sleep_original,original_entered,release_original,exit_finished;
+ static _Thread_local struct susfs_fp_hook *expected_hook;
+ static _Thread_local unsigned int callback_depth;
+@@ -136,19 +165,27 @@ static long host_original(const struct pt_regs *r,bool compat) {
+ static long native_original(const struct pt_regs *r) {return host_original(r,false);}
+ static long compat_original(const struct pt_regs *r) {return host_original(r,true);}
+ int susfs_fp_install(struct susfs_fp_hook *h) {
+-    int i=install_calls++;atomic_store(&h->active_callbacks,0);
+-    *h->orig_slot=native_original;h->orig=native_original;h->installed=h->native_installed=true;
+-    if(i==install_fail)return -EIO; /* possible publication must roll back */
++    int i=install_calls++;atomic_store(&h->active_callbacks,0);init_waitqueue_head(&h->callback_waitq);
++    *h->orig_slot=native_original;h->orig=native_original;h->installed=h->native_installed=true;active_table_hooks++;
++    if(i==install_fail)return install_error; /* possible publication must roll back */
+     if(compat_available){*h->orig_slot_compat=compat_original;h->orig_compat=compat_original;h->compat_installed=true;}
+     return 0;
+ }
++void susfs_fp_drain(struct susfs_fp_hook *h) {
++ assert(h->callback_waitq.unused);drain_calls++;
++ while(atomic_load(&h->active_callbacks)||atomic_load(&callback_tails))sched_yield();
++}
+ void susfs_fp_remove(struct susfs_fp_hook *h) {
+     if(!h->installed)return;
+     while(atomic_load(&h->active_callbacks))sched_yield();
+-    h->installed=h->native_installed=h->compat_installed=false;
++    h->installed=h->native_installed=h->compat_installed=false;assert(active_table_hooks);active_table_hooks--;
+ }
+ void susfs_fp_callback_enter(struct susfs_fp_hook *h) {assert(h==expected_hook&&!callback_depth);callback_depth++;atomic_fetch_add(&h->active_callbacks,1);}
+-long susfs_fp_callback_return(struct susfs_fp_hook *h,long r) {assert(h==expected_hook&&callback_depth==1);callback_depth--;assert(atomic_fetch_sub(&h->active_callbacks,1)>0);return r;}
++long susfs_fp_callback_return(struct susfs_fp_hook *h,long r) {
++ assert(h==expected_hook&&callback_depth==1);callback_depth--;atomic_fetch_add(&callback_tails,1);assert(atomic_fetch_sub(&h->active_callbacks,1)>0);
++ if(atomic_load(&pause_tail)){atomic_store(&tail_entered,true);while(!atomic_load(&release_tail))sched_yield();}
++ atomic_fetch_sub(&callback_tails,1);return r;
++}
+ struct kernel_param {int unused;};
+ struct kernel_param_ops {int (*get)(char *,const struct kernel_param *);};
+ #define module_param_named(name,value,type,mode) static const unsigned int name##_permissions=mode
+@@ -162,15 +199,28 @@ static int apply(const char *text) {
+     assert(strlen(text)<sizeof(p->app_strings));strcpy(p->app_strings,text);p->err=126;
+     void *arg=p;susfs_priority_filter_supercall(&arg);int rc=p->err;free(p);return rc;
+ }
++static bool use_probes;
++static void reset_tables(void) {
++ int n[]={141,140,31,30},c[]={96,97,315,314};for(int i=0;i<4;i++){native_table[n[i]]=compat_table[c[i]]=(unsigned long)&core_entries[i];core_entries[i]=0xd503233f;}
++}
+ static long call(unsigned int op,bool compat,int which,int who,int priority) {
+     struct pt_regs r={.regs={(unsigned long)which,(unsigned long)who,(unsigned long)priority,9}};
+     struct pt_regs before=r;expected_hook=&prio_hooks[op];
+-    long out=(compat?prio_hooks[op].compat_wrapper:prio_hooks[op].wrapper)(&r);
++    long out;
++    if(prio_route==2){
++        struct pt_regs outer={.regs={(unsigned long)&r},.pc=(unsigned long)prio_probes[op].addr};
++        outer.regs[30]=0x1234;struct pt_regs outer_before=outer;
++        int handled=prio_probes[op].pre_handler(&prio_probes[op],&outer);
++        assert(handled==0||handled==1);
++        if(handled){out=(long)outer.regs[0];outer_before.pc=outer_before.regs[30];outer_before.regs[0]=outer.regs[0];}
++        else {out=compat?211:110;original_calls++;prio_probes[op].post_handler(&prio_probes[op],&outer,0);}
++        assert(!memcmp(&outer,&outer_before,sizeof(outer)));
++    }else out=(compat?prio_hooks[op].compat_wrapper:prio_hooks[op].wrapper)(&r);
+     assert(!memcmp(&r,&before,sizeof(r)));assert(!callback_depth);
+     return out;
+ }
+-static void init_ok(void) {as_root();install_calls=0;assert(!susfs_priority_filter_init());assert(prio_ready);}
+-static void finish(void) {susfs_priority_filter_exit();assert(!prio_ready&&!prio_count);assert(!atomic_load(&allocations)&&!atomic_load(&lookup_refs));for(int i=0;i<PRIO_OP_COUNT;i++)assert(!prio_hooks[i].installed);}
++static void init_ok(void) {as_root();reset_tables();install_calls=0;register_calls=0;if(use_probes){install_fail=0;install_error=-EFAULT;}assert(!susfs_priority_filter_init());assert(prio_ready);assert(prio_route==(use_probes?2:1));}
++static void finish(void) {susfs_priority_filter_exit();assert(!prio_ready&&!prio_count);assert(!atomic_load(&allocations)&&!atomic_load(&lookup_refs));for(int i=0;i<PRIO_OP_COUNT;i++)assert(!prio_hooks[i].installed);assert(!armed_probes&&!prio_probe_mask&&!prio_route);}
+ 
+ static void test_configuration(void) {
+     init_ok();assert(priority_filter_permissions==0400);
+@@ -212,7 +262,7 @@ static void test_queries(void) {
+         ksu_umount=false;assert(call(op,compat,cls,10001,0)==(compat?211:110));ksu_umount=true;
+         effective_uid=0;assert(call(op,compat,cls,10001,0)==(compat?211:110));as_app(10002);
+         susfs_syscall_fn_t *slot=compat?prio_hooks[op].orig_slot_compat:prio_hooks[op].orig_slot;
+-        susfs_syscall_fn_t saved=*slot;*slot=NULL;assert(call(op,compat,cls,10001,0)==-ENOSYS);*slot=saved;
++        if(prio_route==1){susfs_syscall_fn_t saved=*slot;*slot=NULL;assert(call(op,compat,cls,10001,0)==-ENOSYS);*slot=saved;}
+     }
+     for(unsigned int uid=0;uid<10000;uid+=1000){as_app(uid);assert(call(PRIO_GET,false,PRIO_USER,10001,0)==110);as_app(1000000+uid);assert(call(PRIO_GET,false,PRIO_USER,10001,0)==110);}
+     unsigned int app_callers[]={10000,19999,20000,29999,90000,98999,99000,99999};
+@@ -340,11 +390,61 @@ static void test_concurrency(void) {
+     for(int i=0;i<2;i++)pthread_join(r[i],NULL);assert(prio_generation>=2000);finish();
+ }
+ 
++
++static void expect_probe_failure(int error,int operation) {
++    install_calls=register_calls=0;install_fail=0;install_error=-EFAULT;
++    assert(susfs_priority_filter_init()==error);
++    assert(!prio_ready&&!prio_probe_mask&&!armed_probes&&!prio_route);
++    assert(prio_table_errno==-EFAULT&&prio_init_errno==error&&prio_init_stage==4&&prio_init_op==operation);
++    assert(!prio_check_cap_fn);for(int i=0;i<4;i++)assert(!prio_hooks[i].installed&&!prio_probes[i].addr&&!(prio_probes[i].flags&KPROBE_FLAG_DISABLED));
++    finish();
++}
++static void test_probe_admission(void) {
++    as_root();reset_tables();
++    for(int i=0;i<4;i++){register_fail=i;int removed=unregister_calls;int drained=drain_calls;expect_probe_failure(-EBUSY,i);assert(unregister_calls-removed==i&&drain_calls-drained==i);}
++    register_fail=-1;use_probes=true;
++    for(int i=0;i<4;i++){reset_tables();install_calls=register_calls=0;install_fail=i;install_error=-EFAULT;assert(!susfs_priority_filter_init());assert(prio_route==2&&!active_table_hooks);finish();}
++    native_available=false;expect_probe_failure(-ENOENT,0);native_available=true;
++    compat_available=false;
++    if(CONFIG_COMPAT)expect_probe_failure(-ENOENT,0);
++    compat_available=true;
++    identity_fault=true;expect_probe_failure(-EOPNOTSUPP,0);identity_fault=false;
++    read_fault=true;expect_probe_failure(-EFAULT,0);read_fault=false;
++    for(int i=0;i<4;i++){
++        reset_tables();core_entries[i]=0xd503245f;expect_probe_failure(-EOPNOTSUPP,i);
++        core_entries[i]=0xd50324df;expect_probe_failure(-EOPNOTSUPP,i);
++    }
++    reset_tables();
++    if(CONFIG_COMPAT){compat_table[315]=native_table[140];expect_probe_failure(-EOPNOTSUPP,2);reset_tables();}
++    change_table_at=3;expect_probe_failure(-EOPNOTSUPP,0);change_table_at=-1;
++    reset_tables();use_probes=true;
++    for(int i=0;i<20;i++){
++        int removed=unregister_calls,drained=drain_calls;init_ok();
++        char report[PAGE_SIZE];assert(prio_status_show(report,NULL)>0);
++        assert(strstr(report,"route=2 probe_mask=f table_errno=-14")&&strlen(report)<512);
++        assert(!prio_init_errno&&!prio_init_stage&&prio_init_op==-1);
++        assert(!apply("com.hidden"));as_app(10002);assert(call(PRIO_GET,false,PRIO_USER,10001,0)==-ESRCH);
++        finish();assert(unregister_calls-removed==4&&drain_calls-drained==4);
++    }
++}
++static void *probe_reader(void *arg) {(void)arg;as_app(10002);assert(call(PRIO_GET,false,PRIO_USER,10001,0)==-ESRCH);return NULL;}
++static void test_probe_teardown(void) {
++    pthread_t worker,exit_thread;use_probes=true;init_ok();assert(!apply("com.hidden"));atomic_store(&pause_tail,true);
++    pthread_create(&worker,NULL,probe_reader,NULL);while(!atomic_load(&tail_entered))sched_yield();
++    assert(!atomic_load(&prio_hooks[PRIO_GET].active_callbacks));
++    pthread_create(&exit_thread,NULL,exiter,NULL);usleep(20000);assert(!atomic_load(&exit_finished));
++    atomic_store(&release_tail,true);pthread_join(worker,NULL);pthread_join(exit_thread,NULL);finish();
++}
++static void test_probe_bti_config(void) {as_root();reset_tables();expect_probe_failure(-EOPNOTSUPP,0);assert(!register_calls);}
+ int main(int argc,char **argv) {
+     assert(argc==2);alarm(30);
++    if(!strncmp(argv[1],"probe-",6)&&strcmp(argv[1],"probe-admission")&&strcmp(argv[1],"probe-teardown")&&strcmp(argv[1],"probe-bti-config")){use_probes=true;argv[1]+=6;}
+     _Static_assert(sizeof(struct st_susfs_priority_uid_filter)==65540,"priority payload size");
+     _Static_assert(offsetof(struct st_susfs_priority_uid_filter,err)==65536,"priority result offset");
+-    if(!strcmp(argv[1],"configuration"))test_configuration();
++    if(!strcmp(argv[1],"probe-admission"))test_probe_admission();
++    else if(!strcmp(argv[1],"probe-teardown"))test_probe_teardown();
++    else if(!strcmp(argv[1],"probe-bti-config"))test_probe_bti_config();
++    else if(!strcmp(argv[1],"configuration"))test_configuration();
+     else if(!strcmp(argv[1],"abi-faults"))test_abi_faults();
+     else if(!strcmp(argv[1],"queries"))test_queries();
+     else if(!strcmp(argv[1],"automatic"))test_automatic();
+diff --git a/tests/priority_filter/run.py b/tests/priority_filter/run.py
+index ea99034..4288f48 100644
+--- a/tests/priority_filter/run.py
++++ b/tests/priority_filter/run.py
+@@ -10,18 +10,19 @@ sources={
+  'ABI':stripped(root/'kernel/susfs_abi.h'),
+  'FP':stripped(root/'kernel/susfs_fp_hook.h'),
+  'GATE':stripped(root/'kernel/ksu_umount_gate.h'),
++ 'KP':stripped(root/'kernel/susfs_kprobe.h'),
+ }
+ flags=['-O1','-g','-fsanitize=address,undefined','-fno-omit-frame-pointer','-no-pie'] if a.sanitizers else ['-O2']
+ env=dict(os.environ,ASAN_OPTIONS='detect_leaks=0:abort_on_error=1',UBSAN_OPTIONS='halt_on_error=1')
+-cases=['configuration','abi-faults','queries','automatic','boot-automatic','validation','initialization','sleeping-teardown','concurrency']
++cases=['configuration','abi-faults','queries','automatic','boot-automatic','validation','initialization','sleeping-teardown','concurrency','probe-queries','probe-validation','probe-automatic','probe-concurrency','probe-admission','probe-teardown']
+ with tempfile.TemporaryDirectory(prefix='susfs-priority-') as d:
+  d=Path(d)
+- def build(label,production,compat=1):
++ def build(label,production,compat=1,bti=0):
+   defines=[]
+   for name,text in dict(sources,PRODUCTION=production).items():
+    path=d/(label+name+'.h');path.write_text(text);defines.append(f'-D{name}="{path}"')
+   exe=d/label
+-  subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function','-Wno-unused-parameter','-Wno-unused-variable','-Wno-sign-compare','-Wno-misleading-indentation','-pthread',*flags,f'-DCONFIG_COMPAT={compat}',*defines,str(here/'priority_test.c'),'-o',str(exe)],check=True)
++  subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function','-Wno-unused-parameter','-Wno-unused-variable','-Wno-sign-compare','-Wno-misleading-indentation','-pthread',*flags,f'-DCONFIG_COMPAT={compat}',f'-DCONFIG_ARM64_BTI_KERNEL={bti}',*defines,str(here/'priority_test.c'),'-o',str(exe)],check=True)
+   return exe
+  for compat in [1,0]:
+   exe=build('production'+str(compat),sources['PRODUCTION'],compat)
+@@ -29,6 +30,9 @@ with tempfile.TemporaryDirectory(prefix='susfs-priority-') as d:
+    r=subprocess.run([str(exe),case],capture_output=True,text=True,env=env,timeout=40)
+    if r.returncode:raise RuntimeError(f'compat={compat} {case}:\n{r.stdout}\n{r.stderr}')
+    print(f'PASS compat={compat} {case}',flush=True)
++ exe=build('bti-config',sources['PRODUCTION'],bti=1)
++ subprocess.run([str(exe),'probe-bti-config'],check=True,env=env,timeout=40)
++ print('PASS probe CONFIG_ARM64_BTI_KERNEL refusal',flush=True)
+  negatives=[
+   ('shared-compat-original','READ_ONCE(slot), operation','READ_ONCE(prio_orig_getpriority), operation','queries'),
+   ('omit-ioprio-validation','rc = prio_check_cap_fn((int)regs->regs[2]);','rc = 0;','validation'),
+@@ -38,6 +42,13 @@ with tempfile.TemporaryDirectory(prefix='susfs-priority-') as d:
+   ('narrow-app-caller-range','if (caller_appid < PRIO_FIRST_APP)','if (!((caller_appid >= PRIO_FIRST_APP && caller_appid <= PRIO_LAST_APP) || susfs_uid_is_isolated(caller)))','queries'),
+   ('omit-live-grants','susfs_ksu_uid_granted_root(target)','false','automatic'),
+   ('omit-own-app','appid == rules->own_appid','false','automatic'),
++  ('probe-compat-proof','if (compat_entry != entry)','if (false)','probe-admission'),
++  ('probe-no-post-handler','.post_handler = prio_probe_post','.post_handler = NULL','probe-admission'),
++  ('probe-no-tail-drain','susfs_fp_drain(&prio_hooks[i]);','(void)0;','probe-teardown'),
++  ('probe-no-core-proof','if (!ksu_symbol_is_start(entry, hook->sym))','if (false)','probe-admission'),
++  ('probe-no-bti-proof','if (instruction == 0xd503245fU || instruction == 0xd50324dfU)','if (false)','probe-admission'),
++  ('probe-no-unregister','unregister_kprobe(&prio_probes[i]);','(void)0;','probe-admission'),
++  ('probe-ioprio-validation','rc = prio_check_cap_fn((int)regs->regs[2]);','rc = 0;','probe-validation'),
+   ('publication-uaf','if (next->count || next->automatic)\n        next = NULL;\n    mutex_unlock(&prio_config_lock);','mutex_unlock(&prio_config_lock);\n    sched_yield();\n    if (next->count || next->automatic)\n        next = NULL;','concurrency'),
+  ]
+  for label,before,after,case in negatives:
+diff --git a/tools/check_priority_artifact.py b/tools/check_priority_artifact.py
+index 348ea48..7df0415 100644
+--- a/tools/check_priority_artifact.py
++++ b/tools/check_priority_artifact.py
+@@ -5,12 +5,18 @@ from pathlib import Path
+ from elftools.elf.elffile import ELFFile
+ from review_cp15_artifact import inspect
+ p=argparse.ArgumentParser(description=__doc__)
++p.add_argument("--baseline-is-priority",action="store_true",help="Compare with the previous priority build rather than pre-priority stable")
+ for n in ('candidate','baseline','kdir','clang-bin','output'):p.add_argument('--'+n,type=Path,required=True)
+ a=p.parse_args();root=Path(__file__).resolve().parents[1];a.output.mkdir(parents=True,exist_ok=True)
+ fixture=a.output/'fixture';fixture.mkdir(exist_ok=True)
+-lines=['#include <linux/module.h>','#include <linux/ioprio.h>','#include <asm/syscall.h>','#include <asm/unistd_compat_32.h>',f'#include "{root / "kernel/susfs_fp_hook.h"}"',f'#include "{root / "kernel/susfs_abi.h"}"',
++lines=['#include <linux/kprobes.h>','#include <linux/module.h>','#include <linux/ioprio.h>','#include <asm/syscall.h>','#include <asm/unistd_compat_32.h>',f'#include "{root / "kernel/susfs_fp_hook.h"}"',f'#include "{root / "kernel/susfs_abi.h"}"',
+  'static __used long expected_syscall(const struct pt_regs *r) { return 0; }',
+  'static syscall_fn_t expected_pointer __used = expected_syscall;',
++ 'static __used int expected_pre(struct kprobe *p, struct pt_regs *r) { return 0; }',
++ 'static __used void expected_post(struct kprobe *p, struct pt_regs *r, unsigned long flags) {}',
++ 'static struct kprobe expected_probe __used = { .pre_handler=expected_pre, .post_handler=expected_post };',
++ 'static_assert(__same_type(typeof(&expected_pre), typeof(((struct kprobe *)0)->pre_handler)));',
++ 'static_assert(__same_type(typeof(&expected_post), typeof(((struct kprobe *)0)->post_handler)));',
+  'static_assert(__same_type(susfs_syscall_fn_t, syscall_fn_t));',
+  'static_assert(sizeof(struct st_susfs_priority_uid_filter)==65540);',
+  'static_assert(offsetof(struct st_susfs_priority_uid_filter,err)==65536);',
+@@ -29,18 +35,21 @@ with a.candidate.open('rb') as f:
+  for s in elf.get_section_by_name('.symtab').iter_symbols():
+   if s.name in wrappers:
+    sec=elf.get_section(s['st_shndx']);landings[s.name]=struct.unpack_from('<I',sec.data(),s['st_value']-sec['sh_addr'])[0]
++probe_names=['prio_pre_getpriority','prio_pre_setpriority','prio_pre_ioprio_get','prio_pre_ioprio_set','prio_probe_post']
++probe_words={n:candidate['types'].get(n) for n in probe_names}
+ added=sorted(set(candidate['imports'])-set(before['imports']));removed=sorted(set(before['imports'])-set(candidate['imports']))
+ checks={
+  '22_syscall_wrappers':len(wrappers)==22,
+  'all_incoming_kcfi_match_real_headers':all(v==word for v in words.values()),
+  'all_have_call_landing_instructions':len(landings)==22 and all(v in [0xd503245f,0xd50324df,0xd503233f,0xd503237f] for v in landings.values()),
++ 'priority_probe_callbacks_match_real_headers':all(probe_words[n]==expected['types']['expected_post' if n=='prio_probe_post' else 'expected_pre'] for n in probe_names),
+  'baseline_imports_preserved':not removed,
+- 'new_imports_are_only_string_parsers_and_preempt_schedule':set(added)=={'_ctype','strim','strsep','preempt_schedule'},
+- 'module_metadata_only_adds_readonly_auto_parameters':sorted(candidate['modinfo'])==sorted(before['modinfo']+['parmtype=priority_auto_root:bool','parmtype=priority_appid:int']),
++ 'imports_match_expected_baseline':set(added)==(set() if a.baseline_is_priority else {'_ctype','strim','strsep','preempt_schedule'}),
++ 'module_metadata_only_adds_readonly_auto_parameters':sorted(candidate['modinfo'])==sorted(before['modinfo']+([] if a.baseline_is_priority else ['parmtype=priority_auto_root:bool','parmtype=priority_appid:int'])),
+  'version_table_shape_unchanged':candidate['version_section_sizes']==before['version_section_sizes'],
+  'baseline_callback_types_preserved':all(candidate['types'].get(n)==v for n,v in before['types'].items() if n in candidate['types']),
+ }
+-report=dict(hardware_validated=False,checks=checks,wrapper_kcfi=words,wrapper_landing_instructions=landings,imports=candidate['imports'],added_imports=added,removed_imports=removed,version_section_sizes=candidate['version_section_sizes'],candidate_sha256=candidate['sha256'],baseline_sha256=before['sha256'])
++report=dict(hardware_validated=False,checks=checks,wrapper_kcfi=words,probe_callback_kcfi=probe_words,baseline_is_priority=a.baseline_is_priority,wrapper_landing_instructions=landings,imports=candidate['imports'],added_imports=added,removed_imports=removed,version_section_sizes=candidate['version_section_sizes'],candidate_sha256=candidate['sha256'],baseline_sha256=before['sha256'])
+ (a.output/'artifact.json').write_text(json.dumps(report,indent=2)+'\n')
+ for n,v in checks.items():print(('PASS ' if v else 'FAIL ')+n)
+ raise SystemExit(not all(checks.values()))

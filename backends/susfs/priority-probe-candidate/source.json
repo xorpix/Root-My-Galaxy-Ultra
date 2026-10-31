@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "sourceCommit": "98b5149536fdc564132ca82b08d3980114be298a",
+  "sourceTree": "5deb93b813cd7a9c7ca9332e92099a2ee56569c9",
+  "sourceParent": "a69a039800d4e063b1bcfa8e7e77fc3d94a7560c",
+  "sourceArchiveSha256": "1af6f47a8f8a9f36c0421eeeaeeb6527707fd0c5038327f5a65cc2ab365d99cd",
+  "baselineModuleSha256": "34915043a9adc89f9f8fea0b5e0ac55aca99e3036a983f7758f3c1c13f26a792",
+  "priorityControlSha256": "8a1d3f909d81b029241f8e512763f15a663f12143398b849c99b7f65f5b4a64e",
+  "hardwareValidated": false
+}
