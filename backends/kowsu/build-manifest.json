@@ -23,7 +23,7 @@
     "sha256": "8bea92389e8b9ddcf63de83b776e7baed25636d6c85d07490c9c7016a969fb29"
   },
   "created_utc": "2026-10-31",
-  "app_base_commit": "df7c69670851a031ab81b95ee7557254d078440a",
+  "app_base_commit": "8741b52713ef39b12bbc23aac65050f2afe4a34e",
   "upstream_repository": "https://github.com/KOWX712/KernelSU",
   "upstream_commit": "6ecdd69224fe6769e6c8715a4ef2b91602b23362",
   "upstream_commit_count": 2740,
@@ -81,5 +81,6 @@
     "userspace/ksud/src/utils.rs": "f1300cad6f81900e7cfb04dad768bc0125c8538c39634835c9f0f677479922bb"
   },
   "app_version": "1.3.1",
-  "previous_upstream_commit": "6366f25b89f2bc5e287c1983715ebae60cd5540e"
+  "previous_upstream_commit": "6366f25b89f2bc5e287c1983715ebae60cd5540e",
+  "local_app_base_commit": "df7c69670851a031ab81b95ee7557254d078440a"
 }

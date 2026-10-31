@@ -1,6 +1,6 @@
 {
   "schema": 3,
-  "app_base": "df7c69670851a031ab81b95ee7557254d078440a",
+  "app_base": "8741b52713ef39b12bbc23aac65050f2afe4a34e",
   "checked_date": "2026-10-31",
   "build_status": "built",
   "backends": {
@@ -56,5 +56,6 @@
       "rebuild": false,
       "compat_sha256": "233f7f222574ee4b70deb2f2e210ae17496aa66c0327151ff56de72ef6db68bc"
     }
-  }
+  },
+  "local_app_base": "df7c69670851a031ab81b95ee7557254d078440a"
 }
