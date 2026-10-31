@@ -903,5 +903,5 @@
     <string name="susfs_grant_body">SusFS kann erst starten, wenn diese App selbst Root-Rechte hat. Erteile ihr im Manager die su-Berechtigung. SusFS wird beim nächsten Durchlauf aktiviert.</string>
     <string name="action_got_it">Verstanden</string>
     <string name="settings_susfs_apps_automatic">Root-bezogene Apps werden automatisch ausgewählt.</string>
-    <string name="settings_susfs_apps_unavailable">Der automatische App-Schutz ist nicht verfügbar. Starte das Gerät nach dem Update vollständig neu und aktiviere SusFS erneut.</string>
+    <string name="settings_susfs_apps_unavailable">Der automatische App-Schutz konnte nicht gestartet werden. SusFS selbst ist aktiv.</string>
 </resources>

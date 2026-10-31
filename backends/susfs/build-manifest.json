@@ -1,14 +1,14 @@
 {
   "schema": 1,
-  "sourceCommit": "0c95e284270a1efc10331f218f11f9eed8658d52",
-  "sourceTree": "247e1aed231fc10e4df5ad5019a854c3d4f3be9e",
-  "sourceParent": "fc114e5f01c797a3d0e30372c4422db7bb703852",
+  "sourceCommit": "a69a039800d4e063b1bcfa8e7e77fc3d94a7560c",
+  "sourceTree": "112f567a7c4524304f92606d6029f0030f227dc2",
+  "sourceParent": "0c95e284270a1efc10331f218f11f9eed8658d52",
   "sourceArchive": "source.tar.gz",
-  "sourceArchiveSha256": "4f200d3e9e9f89ae0183437f155f9456c6cf5eac986e144781e20f25341b39f1",
+  "sourceArchiveSha256": "b31a0e99f25013a43c73f1c5ba0a37301bb801076a790fceaece283227f37296",
   "module": {
     "path": "app/src/main/assets/susfs/bzig/susfs_guard_lkm.ko",
-    "sha256": "a16acd2c1fa549b530628ab1a52502ce4bf732f2f75cf98de368e3e2c2c29710",
-    "bytes": 580112
+    "sha256": "34915043a9adc89f9f8fea0b5e0ac55aca99e3036a983f7758f3c1c13f26a792",
+    "bytes": 581560
   },
   "validation": {
     "hostSuites": 29,
@@ -22,11 +22,13 @@
     "dispatcherNegativeControlsPerMode": 4,
     "bzjaStaticPriorityCheck": true,
     "automaticRootPolicy": true,
-    "backendPolicyPins": 4
+    "backendPolicyPins": 4,
+    "initializationDiagnostics": true,
+    "phonePriorityInitialization": "unresolved_on_BZJA_test2"
   },
   "priorityControl": {
     "path": "app/src/main/jniLibs/arm64-v8a/librmgususfs_priority.so",
-    "sha256": "8f9f1052089b23ae8cfb274cd8a053db94918fca42c68a746b63867348e8327b",
+    "sha256": "8a1d3f909d81b029241f8e512763f15a663f12143398b849c99b7f65f5b4a64e",
     "bytes": 13056
   }
 }

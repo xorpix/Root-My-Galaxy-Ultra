@@ -889,5 +889,5 @@ Hold Power and Volume Down together for 7 seconds to restart it from there.</str
     <string name="d2_remove_failed">Removal could not finish. Restart your phone, activate root and try again.</string>
     <string name="d2_toggle_failed">Could not confirm the change. Reopen these settings before trying again.</string>
     <string name="settings_susfs_apps_automatic">Root-related apps are selected automatically.</string>
-    <string name="settings_susfs_apps_unavailable">Automatic app protection is unavailable. Fully reboot after updating, then activate SusFS again.</string>
+    <string name="settings_susfs_apps_unavailable">Automatic app protection could not start. Core SusFS is active.</string>
 </resources>

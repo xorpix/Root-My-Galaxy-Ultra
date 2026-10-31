@@ -101,6 +101,14 @@ class SusfsAutoAppsTest {
         assertNull(parseSusfsAutomaticStatus(null))
     }
 
+    @Test fun retainsUnreadyStateWithExtendedInitializationDiagnostics() {
+        val text = """{"schema":1,"status":"ready=0 configured=0 generation=0 automatic=0 own_appid=0 root_lookup=1 init_errno=-22 stage=2 op=0 native_mask=0 compat_mask=0 compat_table=1 native_insn=d503233f compat_insn=d503233f\n"}"""
+        val parsed = parseSusfsAutomaticStatus(result(text))!!
+        assertTrue(parsed.rootLookup)
+        assertFalse(parsed.ready)
+        assertFalse(parsed.protects(10303))
+    }
+
     @Test fun bootRecordCannotCarryProtectionAcrossRebootsOrUidChanges() {
         val text = """{"schema":1,"boot":"boot-a","appId":10123,"version":"v2.3.0","state":"Automatic"}"""
         assertEquals(SusfsAutoApps.State.Automatic, SusfsAutoApps.decodeRecord(text, "boot-a", 10123)!!.state)

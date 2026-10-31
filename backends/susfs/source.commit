@@ -1,8 +1,6 @@
-tree 247e1aed231fc10e4df5ad5019a854c3d4f3be9e
-parent fc114e5f01c797a3d0e30372c4422db7bb703852
-author Codex <codex@openai.com> 1793427952 +0100
-committer Codex <codex@openai.com> 1793427952 +0100
+tree 112f567a7c4524304f92606d6029f0030f227dc2
+parent 0c95e284270a1efc10331f218f11f9eed8658d52
+author Codex <codex@openai.com> 1793431602 +0100
+committer Codex <codex@openai.com> 1793431602 +0100
 
-Automatically protect root apps using the live KernelSU policy
-
-Retain the policy owner through all hook drains, keep manual extras transactional, and enable root/RMGU selection at module initialization. Preserve PR 158 wrapper, credential and error semantics; add production-C concurrency and lifetime regressions plus exact ARM64/BZJA evidence.
+Retain priority initialization failure after all-or-none rollback

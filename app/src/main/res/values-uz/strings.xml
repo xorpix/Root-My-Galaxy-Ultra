@@ -903,5 +903,5 @@
     <string name="susfs_grant_body">SusFS ishga tushishi uchun ushbu ilovaning o‘zi root huquqiga ega bo‘lishi kerak. Menejerda unga su ruxsatini bering — SusFS keyingi ishga tushirishda yoqiladi.</string>
     <string name="action_got_it">Tushunarli</string>
     <string name="settings_susfs_apps_automatic">Root bilan bog‘liq ilovalar avtomatik tanlanadi.</string>
-    <string name="settings_susfs_apps_unavailable">Ilovalarni avtomatik himoyalash mavjud emas. Yangilashdan so‘ng qurilmani to‘liq qayta yuklang va SusFS’ni qayta yoqing.</string>
+    <string name="settings_susfs_apps_unavailable">Ilovalarni avtomatik himoyalashni ishga tushirib bo‘lmadi. SusFS faol.</string>
 </resources>

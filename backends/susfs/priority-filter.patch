@@ -2333,6 +2333,417 @@ index 0000000..cef6ed4
 +PASS negative/valid-scheduling-write
 +PASS negative/omit-unsupported-sentinel
 +PASS negative/narrow-caller-range
+diff --git a/docs/priority-init-20261031/README.md b/docs/priority-init-20261031/README.md
+new file mode 100644
+index 0000000..2730f34
+--- /dev/null
++++ b/docs/priority-init-20261031/README.md
+@@ -0,0 +1,31 @@
++# Persistent priority initialization result
++
++The first phone test of automatic app selection used BZJA
++`6.12.69-android16-6-pa4ef354-abogkiS948BXXU5BZJA-4k`. The read-only status was
++`ready=0 configured=0 generation=0 automatic=0 own_appid=0 root_lookup=1`.
++The operator confirmed multiple full reboots, `fail_layer=0`, and the presence of
++`ioprio_check_cap`, `sys_call_table` and `compat_sys_call_table`. No relevant
++printk output was returned. The failure is in priority initialization, before
++automatic list activation; the exact failing step remains unknown.
++
++This diagnostic revision preserves the initialization errno, stage and operation
++after rollback in the existing root-only `priority_filter` status. Stage 1 means
++validation-helper lookup, 2 hook installation, 3 missing compat coverage, and 0
++successful initialization. Operation 0/1/2/3 means getpriority/setpriority/
++ioprio_get/ioprio_set; -1 means no operation. Native/compat masks capture the
++attempt before cleanup; they do not claim that failed hooks remain installed.
++The two entry-instruction words and compat-table presence help distinguish
++landing validation, symbol resolution and table admission. No kernel addresses
++are exposed. The client buffer is extended to 512 bytes.
++
++All hook admission, rollback, lifetime, caller gates, I/O-priority validation and
++automatic selection semantics are unchanged. This revision diagnoses the phone
++failure; it does not claim to repair it. The app no longer presents a generic
++reboot instruction for every unavailable result, and logs the bounded native
++status when readiness/policy checks fail.
++
++Focused production-C priority and control-client runners pass in normal and
++ASan/UBSan configurations. Initialization tests assert retained helper/install/
++compat errors after cleanup and reset on a subsequent successful initialization.
++The ARM64 module/client build and real-header/BZJA static checks also pass.
++These checks do not execute kernel hooks or establish phone compatibility.
+diff --git a/docs/priority-init-20261031/records/artifact.json b/docs/priority-init-20261031/records/artifact.json
+new file mode 100644
+index 0000000..8fd6828
+--- /dev/null
++++ b/docs/priority-init-20261031/records/artifact.json
+@@ -0,0 +1,217 @@
++{
++  "hardware_validated": false,
++  "checks": {
++    "22_syscall_wrappers": true,
++    "all_incoming_kcfi_match_real_headers": true,
++    "all_have_call_landing_instructions": true,
++    "baseline_imports_preserved": true,
++    "new_imports_are_only_string_parsers_and_preempt_schedule": true,
++    "module_metadata_only_adds_readonly_auto_parameters": true,
++    "version_table_shape_unchanged": true,
++    "baseline_callback_types_preserved": true
++  },
++  "wrapper_kcfi": {
++    "create_wrap_compat_linkat": 2009012525,
++    "create_wrap_compat_mkdirat": 2009012525,
++    "create_wrap_compat_mknodat": 2009012525,
++    "create_wrap_compat_symlinkat": 2009012525,
++    "create_wrap_linkat": 2009012525,
++    "create_wrap_mkdirat": 2009012525,
++    "create_wrap_mknodat": 2009012525,
++    "create_wrap_symlinkat": 2009012525,
++    "or_wrap_compat_open": 2009012525,
++    "or_wrap_compat_openat": 2009012525,
++    "or_wrap_compat_openat2": 2009012525,
++    "or_wrap_openat": 2009012525,
++    "or_wrap_openat2": 2009012525,
++    "prio_wrap_compat_getpriority": 2009012525,
++    "prio_wrap_compat_ioprio_get": 2009012525,
++    "prio_wrap_compat_ioprio_set": 2009012525,
++    "prio_wrap_compat_setpriority": 2009012525,
++    "prio_wrap_getpriority": 2009012525,
++    "prio_wrap_ioprio_get": 2009012525,
++    "prio_wrap_ioprio_set": 2009012525,
++    "prio_wrap_setpriority": 2009012525,
++    "supercall_reboot_wrapper": 2009012525
++  },
++  "wrapper_landing_instructions": {
++    "create_wrap_mkdirat": 3573752639,
++    "create_wrap_compat_mkdirat": 3573752639,
++    "create_wrap_mknodat": 3573752639,
++    "create_wrap_compat_mknodat": 3573752639,
++    "create_wrap_symlinkat": 3573752639,
++    "create_wrap_compat_symlinkat": 3573752639,
++    "create_wrap_linkat": 3573752639,
++    "create_wrap_compat_linkat": 3573752639,
++    "or_wrap_openat": 3573752639,
++    "or_wrap_openat2": 3573752639,
++    "or_wrap_compat_open": 3573752639,
++    "or_wrap_compat_openat": 3573752639,
++    "or_wrap_compat_openat2": 3573752639,
++    "prio_wrap_getpriority": 3573752639,
++    "prio_wrap_compat_getpriority": 3573752639,
++    "prio_wrap_setpriority": 3573752639,
++    "prio_wrap_compat_setpriority": 3573752639,
++    "prio_wrap_ioprio_get": 3573752639,
++    "prio_wrap_compat_ioprio_get": 3573752639,
++    "prio_wrap_ioprio_set": 3573752639,
++    "prio_wrap_compat_ioprio_set": 3573752639,
++    "supercall_reboot_wrapper": 3573752639
++  },
++  "imports": [
++    "___ratelimit",
++    "__arch_clear_user",
++    "__arch_copy_from_user",
++    "__arch_copy_to_user",
++    "__check_object_size",
++    "__copy_overflow",
++    "__cpu_online_mask",
++    "__fortify_panic",
++    "__init_waitqueue_head",
++    "__kmalloc_cache_noprof",
++    "__kmalloc_large_noprof",
++    "__kmalloc_noprof",
++    "__kvmalloc_node_noprof",
++    "__list_add_valid_or_report",
++    "__list_del_entry_valid_or_report",
++    "__mmap_lock_do_trace_acquire_returned",
++    "__mmap_lock_do_trace_released",
++    "__mmap_lock_do_trace_start_locking",
++    "__num_online_cpus",
++    "__put_task_struct",
++    "__rcu_read_lock",
++    "__rcu_read_unlock",
++    "__seq_puts",
++    "__set_fixmap",
++    "__stack_chk_fail",
++    "__tracepoint_mmap_lock_acquire_returned",
++    "__tracepoint_mmap_lock_released",
++    "__tracepoint_mmap_lock_start_locking",
++    "__tracepoint_sys_exit",
++    "__wake_up",
++    "__warn_printk",
++    "_ctype",
++    "_printk",
++    "_raw_spin_lock",
++    "_raw_spin_lock_irqsave",
++    "_raw_spin_unlock",
++    "_raw_spin_unlock_irqrestore",
++    "abort_creds",
++    "alt_cb_patch_nops",
++    "arm64_use_ng_mappings",
++    "backing_file_user_path",
++    "bcmp",
++    "cancel_delayed_work_sync",
++    "cancel_work_sync",
++    "copy_from_kernel_nofault",
++    "copy_to_kernel_nofault",
++    "d_path",
++    "delayed_work_timer_fn",
++    "down_read",
++    "down_read_killable",
++    "find_vma",
++    "finish_wait",
++    "get_pid_task",
++    "get_task_mm",
++    "ihold",
++    "init_mm",
++    "init_user_ns",
++    "init_wait_entry",
++    "inode_permission",
++    "iput",
++    "kern_path",
++    "kfree",
++    "kmalloc_caches",
++    "kstrtobool",
++    "kstrtoll",
++    "kvfree",
++    "mas_find",
++    "mem_alloc_profiling_key",
++    "memchr",
++    "memcpy",
++    "memmove",
++    "memset",
++    "memstart_addr",
++    "mmput",
++    "module_put",
++    "msleep",
++    "mtree_load",
++    "mutex_lock",
++    "mutex_trylock",
++    "mutex_unlock",
++    "nop_mnt_idmap",
++    "ns_capable",
++    "override_creds",
++    "param_ops_bool",
++    "param_ops_int",
++    "param_ops_string",
++    "param_ops_ulong",
++    "path_get",
++    "path_put",
++    "preempt_schedule",
++    "prepare_creds",
++    "prepare_to_wait_event",
++    "proc_create",
++    "proc_remove",
++    "queue_delayed_work_on",
++    "queue_work_on",
++    "rb_first",
++    "rb_next",
++    "refcount_warn_saturate",
++    "register_kprobe",
++    "register_kretprobe",
++    "revert_creds",
++    "saved_boot_config",
++    "schedule",
++    "scnprintf",
++    "security_secctx_to_secid",
++    "seq_lseek",
++    "seq_open",
++    "seq_printf",
++    "seq_read",
++    "seq_release",
++    "seq_write",
++    "single_open",
++    "single_release",
++    "sized_strscpy",
++    "snprintf",
++    "static_key_enable",
++    "stop_machine",
++    "strcmp",
++    "strim",
++    "strlen",
++    "strncmp",
++    "strnlen",
++    "strnlen_user",
++    "strrchr",
++    "strsep",
++    "strstr",
++    "synchronize_rcu",
++    "synchronize_rcu_tasks",
++    "synchronize_srcu",
++    "system_wq",
++    "task_work_add",
++    "tracepoint_probe_register",
++    "tracepoint_probe_unregister",
++    "tracepoint_srcu",
++    "try_module_get",
++    "unregister_kprobe",
++    "unregister_kretprobe",
++    "up_read",
++    "vsnprintf"
++  ],
++  "added_imports": [
++    "_ctype",
++    "preempt_schedule",
++    "strim",
++    "strsep"
++  ],
++  "removed_imports": [],
++  "version_section_sizes": {
++    "__versions": 0,
++    "__version_ext_crcs": 0,
++    "__version_ext_names": 1
++  },
++  "candidate_sha256": "dab0879d87e56c2c71a9ce67c03c681425a22a16de5347dba533d3c989c8e1ea",
++  "baseline_sha256": "f3a5e86347eef1710f1decde1318048839263605812ef22127fe29987db37f92"
++}
+diff --git a/docs/priority-init-20261031/records/build.json b/docs/priority-init-20261031/records/build.json
+new file mode 100644
+index 0000000..a9a8d4d
+--- /dev/null
++++ b/docs/priority-init-20261031/records/build.json
+@@ -0,0 +1,53 @@
++{
++  "kind": "host cross-compilation only; no kernel module execution",
++  "module": {
++    "bytes": 3501760,
++    "sha256": "dab0879d87e56c2c71a9ce67c03c681425a22a16de5347dba533d3c989c8e1ea"
++  },
++  "commands": [
++    {
++      "argv": [
++        "make",
++        "-C",
++        "/workspace/scratch/8188798a6a94/auto-ddk/ddk-root/opt/ddk/kdir/android16-6.12",
++        "M=/workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel",
++        "ARCH=arm64",
++        "CC=clang",
++        "LLVM=1",
++        "LLVM_IAS=1",
++        "CONFIG_DEBUG_INFO_BTF_MODULES=",
++        "clean"
++      ],
++      "exit_code": 0
++    },
++    {
++      "argv": [
++        "make",
++        "-C",
++        "/workspace/scratch/8188798a6a94/auto-ddk/ddk-root/opt/ddk/kdir/android16-6.12",
++        "M=/workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel",
++        "ARCH=arm64",
++        "CC=clang",
++        "LLVM=1",
++        "LLVM_IAS=1",
++        "CONFIG_DEBUG_INFO_BTF_MODULES=",
++        "modules",
++        "-j2"
++      ],
++      "exit_code": 0
++    }
++  ],
++  "compiler": "Android (14043575, +pgo, +bolt, +lto, +mlgo, based on r536225) clang version 19.0.1 (https://android.googlesource.com/toolchain/llvm-project b3a530ec6537146650e42be89f1089e9a3588460)\nTarget: x86_64-unknown-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/8188798a6a94/auto-ddk/ddk-root/opt/ddk/clang/clang-r536225/bin",
++  "kernel_release_header": "#define UTS_RELEASE \"6.12.76-4k\"",
++  "autoconf_sha256": "1fbc9de7fd352a6a44f0a67296bad10464b956bf59144382f404ac17d7e2fde2",
++  "module_symvers_sha256": "7d6930b74c649e4e2ceda3ef24e74774458844c34a41d29e042ccf916b509f96",
++  "module_btf_generation_omitted": true,
++  "config": {
++    "CONFIG_CFI_CLANG": true,
++    "CONFIG_CFI_ICALL_NORMALIZE_INTEGERS": true,
++    "CONFIG_TASKS_RCU": true,
++    "CONFIG_MODVERSIONS": true,
++    "CONFIG_ARM64_4K_PAGES": true
++  },
++  "hardware_validated": false
++}
+diff --git a/docs/priority-init-20261031/records/bzja.json b/docs/priority-init-20261031/records/bzja.json
+new file mode 100644
+index 0000000..4dfb039
+--- /dev/null
++++ b/docs/priority-init-20261031/records/bzja.json
+@@ -0,0 +1,14 @@
++{
++  "hardware_validated": false,
++  "kernel_sha256": "62163366f26c083b7722c61960cab02d3b33acd7d07f8a99049acd078a404695",
++  "checks": {
++    "all_140_import_names_present": true,
++    "policy_module_owner_lookup_present": true,
++    "new_string_helpers_present": true,
++    "priority_syscall_types_match_bzja": true,
++    "native_inlined_guard_matches_resolved_helper": true
++  },
++  "missing_imports": [],
++  "kernel_syscall_kcfi": 2009012525,
++  "scope": "Import names and syscall CFI; I/O validation comparison normalizes only input register, 32-bit error return register and local branch labels in 19 actual instructions. It does not establish complete kernel ABI compatibility."
++}
+diff --git a/docs/priority-init-20261031/records/client-build.json b/docs/priority-init-20261031/records/client-build.json
+new file mode 100644
+index 0000000..2c7090a
+--- /dev/null
++++ b/docs/priority-init-20261031/records/client-build.json
+@@ -0,0 +1,31 @@
++{
++  "compiler": "Android (14043575, +pgo, +bolt, +lto, +mlgo, based on r536225) clang version 19.0.1 (https://android.googlesource.com/toolchain/llvm-project b3a530ec6537146650e42be89f1089e9a3588460)\nTarget: x86_64-unknown-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/8188798a6a94/auto-ddk/ddk-root/opt/ddk/clang/clang-r536225/bin",
++  "argv": [
++    "/workspace/scratch/8188798a6a94/auto-ddk/ddk-root/opt/ddk/clang/clang-r536225/bin/clang",
++    "--target=aarch64-linux-gnu",
++    "-O2",
++    "-Wall",
++    "-Wextra",
++    "-Werror",
++    "-Wno-misleading-indentation",
++    "-nostdlib",
++    "-static-pie",
++    "-ffreestanding",
++    "-fno-builtin",
++    "-fno-stack-protector",
++    "-fuse-ld=lld",
++    "-Wl,-e,_start",
++    "-Wl,--build-id=none",
++    "-Wl,-z,max-page-size=4096",
++    "-o",
++    "/workspace/scratch/356d6352d386/priority-diagnostics/rmgu-priority-ctl",
++    "/workspace/scratch/8188798a6a94/susfs-auto-source/susfs/tools/rmgu_priority_ctl.c"
++  ],
++  "source_sha256": "273f2dec607ac69a17ce204dcc40f50ab3d75a89af90c02537ef3b1bb99fcc05",
++  "sha256": "8a1d3f909d81b029241f8e512763f15a663f12143398b849c99b7f65f5b4a64e",
++  "bytes": 13056,
++  "arm64_pie": true,
++  "interpreter": false,
++  "dynamic_relocations": false,
++  "hardware_validated": false
++}
+diff --git a/docs/priority-init-20261031/records/compile.log b/docs/priority-init-20261031/records/compile.log
+new file mode 100644
+index 0000000..25a5c8d
+--- /dev/null
++++ b/docs/priority-init-20261031/records/compile.log
+@@ -0,0 +1,29 @@
++make: Entering directory '/workspace/scratch/8188798a6a94/auto-ddk/ddk-root/opt/ddk/kdir/android16-6.12'
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_main.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/patch_memory.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/symbol_resolver.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/lsm_hook.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/lsm_lifetime.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_fp_hook.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_create_gate.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_uname.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_kstat.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/sus_map.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/sus_path.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/sus_path_creds.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/sus_mount.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/spoof_cmdline.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_open_redirect.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_or_entry.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_enable_log.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_avc_spoof.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_priority_filter.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_supercall.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_hide_syms.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/ksu_umount_gate.o
++  LD [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_guard_lkm.o
++  MODPOST /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/Module.symvers
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_guard_lkm.mod.o
++  CC [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/.module-common.o
++  LD [M]  /workspace/scratch/8188798a6a94/susfs-auto-source/susfs/kernel/susfs_guard_lkm.ko
++make: Leaving directory '/workspace/scratch/8188798a6a94/auto-ddk/ddk-root/opt/ddk/kdir/android16-6.12'
 diff --git a/kernel/Makefile b/kernel/Makefile
 index 6646f87..5aa4092 100644
 --- a/kernel/Makefile
@@ -2600,10 +3011,10 @@ index 0c9ad0c..77a5249 100644
  
 diff --git a/kernel/susfs_priority_filter.c b/kernel/susfs_priority_filter.c
 new file mode 100644
-index 0000000..c1cec37
+index 0000000..8df2a2a
 --- /dev/null
 +++ b/kernel/susfs_priority_filter.c
-@@ -0,0 +1,422 @@
+@@ -0,0 +1,468 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Samsung adaptation of inforcqb/susfs4ksu-for-lkm PR #158, d55749105bea.
@@ -2671,6 +3082,40 @@ index 0000000..c1cec37
 +static int (*prio_check_cap_fn)(int ioprio);
 +static_assert(__same_type(typeof(prio_check_cap_fn), typeof(&ioprio_check_cap)));
 +static struct susfs_fp_hook prio_hooks[PRIO_OP_COUNT];
++/* Retain the first initialization failure after rollback. Some production
++ * kernels expose no usable printk history; do not make recovery depend on it.
++ * stage: 0=ready, 1=I/O validation helper, 2=hook installation, 3=compat coverage.
++ * These fields are boot-local and read-only through the existing root status.
++ */
++static int prio_init_errno, prio_init_stage, prio_init_op = -1;
++static unsigned int prio_init_native_mask, prio_init_compat_mask;
++static bool prio_init_compat_table;
++static u32 prio_init_native_insn, prio_init_compat_insn;
++
++static void prio_record_init(int error, int stage, int operation)
++{
++    unsigned int native = 0, compat = 0;
++    int i, inspect = operation >= 0 ? operation : 0;
++
++    for (i = 0; i < PRIO_OP_COUNT; i++) {
++        if (prio_hooks[i].native_installed)
++            native |= 1U << i;
++        if (prio_hooks[i].compat_installed)
++            compat |= 1U << i;
++    }
++    mutex_lock(&prio_config_lock);
++    prio_init_errno = error;
++    prio_init_stage = stage;
++    prio_init_op = operation;
++    prio_init_native_mask = native;
++    prio_init_compat_mask = compat;
++    prio_init_compat_table = !!susfs_fp_compat_syscall_table();
++    prio_init_native_insn = prio_hooks[inspect].wrapper ?
++        READ_ONCE(*(const u32 *)(void *)prio_hooks[inspect].wrapper) : 0;
++    prio_init_compat_insn = prio_hooks[inspect].compat_wrapper ?
++        READ_ONCE(*(const u32 *)(void *)prio_hooks[inspect].compat_wrapper) : 0;
++    mutex_unlock(&prio_config_lock);
++}
 +
 +static bool prio_should_hide_user(int which, int who, int user_class)
 +{
@@ -2966,10 +3411,15 @@ index 0000000..c1cec37
 +    {
 +        struct prio_uid_rules *rules = rcu_dereference_protected(prio_rules, lockdep_is_held(&prio_config_lock));
 +        length = scnprintf(buf, PAGE_SIZE,
-+            "ready=%u configured=%u generation=%lu automatic=%u own_appid=%u root_lookup=%u\n",
++            "ready=%u configured=%u generation=%lu automatic=%u own_appid=%u root_lookup=%u "
++            "init_errno=%d stage=%d op=%d native_mask=%x compat_mask=%x compat_table=%u "
++            "native_insn=%08x compat_insn=%08x\n",
 +            prio_ready ? 1 : 0, prio_count, prio_generation,
 +            rules && rules->automatic ? 1 : 0, rules ? rules->own_appid : 0,
-+            susfs_ksu_root_available() ? 1 : 0);
++            susfs_ksu_root_available() ? 1 : 0,
++            prio_init_errno, prio_init_stage, prio_init_op,
++            prio_init_native_mask, prio_init_compat_mask, prio_init_compat_table ? 1 : 0,
++            prio_init_native_insn, prio_init_compat_insn);
 +    }
 +    mutex_unlock(&prio_config_lock);
 +    return length;
@@ -3001,18 +3451,25 @@ index 0000000..c1cec37
 +{
 +    int i, rc;
 +
++    prio_record_init(0, 1, -1);
 +    prio_check_cap_fn = (void *)find_kernel_symbol_exact("ioprio_check_cap");
-+    if (!prio_check_cap_fn)
++    if (!prio_check_cap_fn) {
++        prio_record_init(-EOPNOTSUPP, 1, -1);
 +        return -EOPNOTSUPP;
++    }
 +    for (i = 0; i < PRIO_OP_COUNT; i++) {
 +        rc = susfs_fp_install(&prio_hooks[i]);
-+        if (rc)
++        if (rc) {
++            prio_record_init(rc, 2, i);
 +            goto rollback;
++        }
 +        if (IS_ENABLED(CONFIG_COMPAT) && !prio_hooks[i].compat_installed) {
 +            rc = -EOPNOTSUPP;
++            prio_record_init(rc, 3, i);
 +            goto rollback;
 +        }
 +    }
++    prio_record_init(0, 0, -1);
 +    mutex_lock(&prio_config_lock);
 +    WRITE_ONCE(prio_ready, true);
 +    mutex_unlock(&prio_config_lock);
@@ -3275,10 +3732,10 @@ index 0000000..a772499
 +establish live kernel behavior or Samsung protected-memory compatibility.
 diff --git a/tests/priority_filter/priority_test.c b/tests/priority_filter/priority_test.c
 new file mode 100644
-index 0000000..38006e4
+index 0000000..2517f21
 --- /dev/null
 +++ b/tests/priority_filter/priority_test.c
-@@ -0,0 +1,342 @@
+@@ -0,0 +1,358 @@
 +/* Execute the actual priority-filter C with instrumented kernel API models. */
 +#include <assert.h>
 +#include <ctype.h>
@@ -3398,6 +3855,7 @@ index 0000000..38006e4
 +
 +static int install_fail=-1,install_calls;
 +static bool compat_available=true,helper_available=true;
++unsigned long susfs_fp_compat_syscall_table(void) { return compat_available ? 1 : 0; }
 +static atomic_bool sleep_original,original_entered,release_original,exit_finished;
 +static _Thread_local struct susfs_fp_hook *expected_hook;
 +static _Thread_local unsigned int callback_depth;
@@ -3567,11 +4025,26 @@ index 0000000..38006e4
 +}
 +
 +static void test_initialization(void) {
-+    as_root();helper_available=false;assert(susfs_priority_filter_init()==-EOPNOTSUPP);helper_available=true;finish();
-+    for(int i=0;i<PRIO_OP_COUNT;i++){install_fail=i;install_calls=0;assert(susfs_priority_filter_init()==-EIO);finish();}
++    char report[PAGE_SIZE];
++    as_root();helper_available=false;assert(susfs_priority_filter_init()==-EOPNOTSUPP);
++    assert(prio_init_errno==-EOPNOTSUPP&&prio_init_stage==1&&prio_init_op==-1);
++    helper_available=true;finish();
++    assert(prio_init_errno==-EOPNOTSUPP&&prio_init_stage==1);
++    for(int i=0;i<PRIO_OP_COUNT;i++){
++        install_fail=i;install_calls=0;assert(susfs_priority_filter_init()==-EIO);finish();
++        assert(prio_init_errno==-EIO&&prio_init_stage==2&&prio_init_op==i);
++        assert(prio_status_show(report,NULL)>0);
++        assert(strstr(report,"ready=0 ")&&strstr(report,"init_errno=-5 stage=2 "));
++        assert(strstr(report,"compat_table=1 ")&&strlen(report)<512);
++    }
 +    install_fail=-1;compat_available=false;install_calls=0;
-+    int rc=susfs_priority_filter_init();assert(rc==(CONFIG_COMPAT?-EOPNOTSUPP:0));finish();compat_available=true;
-+    for(int i=0;i<20;i++){init_ok();assert(!apply("com.hidden"));finish();}
++    int rc=susfs_priority_filter_init();assert(rc==(CONFIG_COMPAT?-EOPNOTSUPP:0));
++    if(CONFIG_COMPAT)assert(prio_init_errno==-EOPNOTSUPP&&prio_init_stage==3&&prio_init_op==0&&!prio_init_compat_table);
++    finish();compat_available=true;
++    for(int i=0;i<20;i++){
++        init_ok();assert(!prio_init_errno&&!prio_init_stage&&prio_init_op==-1);
++        assert(!apply("com.hidden"));finish();
++    }
 +    assert(apply("com.hidden")==-ENODEV);assert(!atomic_load(&allocations));
 +}
 +
@@ -3976,7 +4449,7 @@ index 0000000..71110e6
 +raise SystemExit(not all(checks.values()))
 diff --git a/tools/rmgu_priority_ctl.c b/tools/rmgu_priority_ctl.c
 new file mode 100644
-index 0000000..a2fe204
+index 0000000..7170f97
 --- /dev/null
 +++ b/tools/rmgu_priority_ctl.c
 @@ -0,0 +1,148 @@
@@ -4010,7 +4483,7 @@ index 0000000..a2fe204
 +#endif
 +#define SC(n,a,b,c,d,e,f) priority_sys6(n,(sysarg)(a),(sysarg)(b),(sysarg)(c),(sysarg)(d),(sysarg)(e),(sysarg)(f))
 +static struct priority_payload payload;
-+static char output[2048],status_text[256];
++static char output[2048],status_text[512];
 +static usize used;
 +static usize len(const char *s) {usize n=0;while(s[n])n++;return n;}
 +static int eq(const char *a,const char *b) {while(*a&&*a==*b){a++;b++;}return *a==*b;}

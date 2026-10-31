@@ -132,9 +132,13 @@ internal object SusfsAutoApps {
     private fun ensureAutomatic(context: Context, shell: SusfsShell): Boolean {
         val tool = SusfsRuntime.priorityTool(context)
         val command = shellQuote(tool.path)
-        val status = parseSusfsAutomaticStatus(shell("$command status", 8))
+        val answer = shell("$command status", 8)
+        val status = parseSusfsAutomaticStatus(answer)
         if (status?.protects(appId(context)) == true) return true
-        if (status?.ready != true || !status.rootLookup) return false
+        if (status?.ready != true || !status.rootLookup) {
+            AppLog.warn(AppLogTags.KERNEL_SU, "SusFS automatic selection status (exit ${answer?.exitCode}): ${answer?.output?.take(1024).orEmpty()}")
+            return false
+        }
         return susfsCommandSucceeded(shell("$command auto ${appId(context)}", 8))
     }
 
@@ -153,7 +157,7 @@ internal object SusfsAutoApps {
         }
         if (automatic) request(context)
         val detail = if (automatic) "Root-related apps are selected automatically."
-            else "Automatic app protection is unavailable. Fully reboot after updating the app."
+            else "Automatic app protection could not start. Core SusFS is active."
         return core.copy(status = core.status.copy(detail = core.status.detail + ". " + detail),
             report = core.report + "\nApp protection: " + detail)
     }

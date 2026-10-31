@@ -898,5 +898,5 @@
     <string name="susfs_grant_body">SusFS chỉ có thể khởi chạy khi chính ứng dụng này có quyền root. Hãy cấp quyền su cho ứng dụng trong trình quản lý; SusFS sẽ được bật ở lần chạy tiếp theo.</string>
     <string name="action_got_it">Đã hiểu</string>
     <string name="settings_susfs_apps_automatic">Các ứng dụng liên quan đến root được chọn tự động.</string>
-    <string name="settings_susfs_apps_unavailable">Không thể bảo vệ ứng dụng tự động. Sau khi cập nhật, hãy khởi động lại hoàn toàn thiết bị rồi bật lại SusFS.</string>
+    <string name="settings_susfs_apps_unavailable">Không thể khởi động bảo vệ ứng dụng tự động. SusFS vẫn đang hoạt động.</string>
 </resources>

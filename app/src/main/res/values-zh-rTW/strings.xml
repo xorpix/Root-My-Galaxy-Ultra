@@ -898,5 +898,5 @@
     <string name="susfs_grant_body">只有本應用程式自身取得 root 許可權後，SusFS 才能啟動。請在管理器中為本應用程式授予 su 許可權，SusFS 將在下次執行時啟用。</string>
     <string name="action_got_it">瞭解</string>
     <string name="settings_susfs_apps_automatic">自動選取與 root 相關的應用程式。</string>
-    <string name="settings_susfs_apps_unavailable">無法使用自動應用程式保護。更新後請完整重新啟動裝置，再重新啟用 SusFS。</string>
+    <string name="settings_susfs_apps_unavailable">無法啟動自動應用程式保護。SusFS 核心功能已啟用。</string>
 </resources>

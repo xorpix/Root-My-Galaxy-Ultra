@@ -7,3 +7,8 @@
 Run `python3 tools/check_susfs_bundle.py` from the app repository to verify the module, control client and all firmware profiles, and reconstruct and verify the archive's Git tree and commit hashes. `--apk path/to/app.apk` also verifies the packaged bytes.
 
 This is the Samsung Android16/6.12 implementation. The source snapshot includes historical documentation and upstream build workflows for context; those do not imply device validation of other kernel variants. See [the current app integration notes](../../docs/susfs-priority-filter-20261030.md).
+
+The test3 diagnostic revision retains a failed priority initialization result in
+the root-only status. See `susfs/docs/priority-init-20261031/README.md` in the
+source archive. A BZJA test2 phone reported `ready=0 root_lookup=1`; the exact
+initialization failure remains under investigation.

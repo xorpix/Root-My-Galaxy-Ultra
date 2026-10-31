@@ -32,19 +32,21 @@ their normal behavior. Nothing needs to be entered manually.
 
 ## Install and check
 
-The artifact contains the signed `1.3.0-priority-test2` APK, a signed 1.3.0 rollback
+The artifact contains the signed `1.3.0-priority-test3` APK, a signed 1.3.0 rollback
 APK, this guide, the optional ARM64 control tool, and checksums. The rollback uses
 the same signing key and a higher version code, preserving app data when installed
 over the test build.
 
-1. Install `RootMyGalaxyUltra-1.3.0-priority-test2.apk` over the existing app.
+1. Install `RootMyGalaxyUltra-1.3.0-priority-test3.apk` over the existing app.
 2. **Fully reboot**, then obtain root and activate SusFS normally. A soft restart
    retains the old loaded module and cannot install this update into the kernel.
 3. Open RMGU after unlock. The SusFS status should say root-related apps are
    selected automatically. Give root to an ordinary test app, then check your
    usual root, modules, SusFS and soft-restart behavior.
 
-If automatic protection is unavailable, the status asks for an update/full reboot.
+If automatic protection is unavailable, core SusFS remains active. This diagnostic
+build retains the initialization error and failed operation in its read-only status.
+The message no longer suggests that another reboot necessarily resolves a failure.
 Core SusFS may still be active; its activation result is separate from this
 optional layer. This build has passed host/static checks; phone testing is pending.
 
@@ -125,3 +127,26 @@ The complete source and evidence are in `backends/susfs/source.tar.gz`, especial
 `susfs/docs/auto-root-apps-20261031`. The manifest pins the source tree, commit,
 archive, module and client. `priority-filter.patch` includes the full delta from
 the stable Samsung integration. Stable 1.3.0 has not been replaced by this test.
+
+## Priority initialization diagnostic (test3)
+
+A BZJA phone reported `ready=0 root_lookup=1` despite full reboots. This confirms
+that live KernelSU policy is available while the optional priority layer is not.
+The required kernel symbol names are present and `fail_layer=0`; the phone has
+returned no relevant printk history. The exact initialization failure is still
+unknown. Test3 preserves that error after rollback rather than requiring dmesg.
+It does not claim to fix the underlying hook failure.
+
+After installing test3, perform one full reboot to replace the loaded module,
+obtain root and activate SusFS. Then run this read-only command:
+
+```sh
+su -c 'cat /sys/module/susfs_guard_lkm/parameters/priority_filter'
+```
+
+The added fields are `init_errno`, `stage` (0=ready, 1=validation-helper lookup,
+2=hook installation, 3=compat coverage), `op` (-1=none, 0=getpriority,
+1=setpriority, 2=ioprio_get, 3=ioprio_set), native/compat installation bitmasks,
+compat-table availability and the two wrapper entry instructions. These values
+are retained after all-or-none rollback, remain root-only and contain no kernel
+addresses. Automatic-selection and permission/error semantics are unchanged.
