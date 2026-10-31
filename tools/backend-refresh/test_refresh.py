@@ -369,6 +369,26 @@ class RefreshTests(unittest.TestCase):
             self.assertNotIn('<!-- RMGU_BACKEND_TABLE -->', rendered)
             self.assertEqual(rendered, (work / 'result/release-notes.md').read_text())
 
+            # An unpublished release may be refreshed again after the first
+            # build filled its table. Keep the prose and replace only that table.
+            config['backends']['resukisu']['version'] = 12346
+            rerendered = refresh.render_curated_notes(rendered, config)
+            self.assertIn('| BakaSU (updated) | 12346 / 5 |', rerendered)
+            self.assertNotIn('| BakaSU (updated) | 12345 / 5 |', rerendered)
+            self.assertTrue(rerendered.startswith(template.split('<!-- RMGU_BACKEND_TABLE -->')[0]))
+            self.assertEqual(1, rerendered.count('<!-- RMGU_BACKEND_TABLE_BEGIN -->'))
+            self.assertEqual(rerendered, refresh.render_curated_notes(rerendered, config))
+
+    def test_curated_backend_notes_reject_ambiguous_managed_blocks(self):
+        config = {'backends': {}}
+        begin = '<!-- RMGU_BACKEND_TABLE_BEGIN -->'
+        end = '<!-- RMGU_BACKEND_TABLE_END -->'
+        for text in ('No table marker', begin, end + begin,
+                     begin + end + begin + end,
+                     '<!-- RMGU_BACKEND_TABLE -->' + begin + end):
+            with self.subTest(template=text), self.assertRaises(ValueError):
+                refresh.render_curated_notes(text, config)
+
     def test_unreviewed_uapi_stops_before_native_build(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

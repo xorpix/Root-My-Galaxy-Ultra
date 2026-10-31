@@ -1,8 +1,12 @@
 diff --git a/README.md b/README.md
-index ff7c143..1dfbd49 100644
+index ff7c143ab2a9e1d1626341e156b0b38df6aeed1b..688680250d7c481de9dc88652d6322b11c4455a4 100644
 --- a/README.md
 +++ b/README.md
-@@ -1,3 +1,11 @@
+@@ -1,3 +1,15 @@
++# Samsung production release
++
++See [RMGU 1.3.1 cleanup and validation](docs/production-20261031/README.md). Earlier test instructions below are historical.
++
 +# Samsung automatic root-app selection
 +
 +See [automatic selection and policy lifetime review](docs/auto-root-apps-20261031/README.md).
@@ -16,7 +20,7 @@ index ff7c143..1dfbd49 100644
  See [29 October dispatcher adaptation and validation](docs/dispatcher-20261029/README.md) for the current Samsung changes. It retains the [27 October audit repairs](docs/audit-20261027/README.md).
 diff --git a/docs/auto-root-apps-20261031/README.md b/docs/auto-root-apps-20261031/README.md
 new file mode 100644
-index 0000000..37254a9
+index 0000000000000000000000000000000000000000..37254a90ed79a44032431836c390be211008f100
 --- /dev/null
 +++ b/docs/auto-root-apps-20261031/README.md
 @@ -0,0 +1,92 @@
@@ -114,7 +118,7 @@ index 0000000..37254a9
 +rollback instructions. Full source, tests and previous evidence are retained.
 diff --git a/docs/auto-root-apps-20261031/records/artifact.json b/docs/auto-root-apps-20261031/records/artifact.json
 new file mode 100644
-index 0000000..ee91394
+index 0000000000000000000000000000000000000000..ee9139418a0121262a6ebc354f930a2ebf50a589
 --- /dev/null
 +++ b/docs/auto-root-apps-20261031/records/artifact.json
 @@ -0,0 +1,217 @@
@@ -337,7 +341,7 @@ index 0000000..ee91394
 +}
 diff --git a/docs/auto-root-apps-20261031/records/backend-policy.json b/docs/auto-root-apps-20261031/records/backend-policy.json
 new file mode 100644
-index 0000000..6177ad5
+index 0000000000000000000000000000000000000000..6177ad542a5b41a77ef035fba5191c208d855ad2
 --- /dev/null
 +++ b/docs/auto-root-apps-20261031/records/backend-policy.json
 @@ -0,0 +1,33 @@
@@ -376,7 +380,7 @@ index 0000000..6177ad5
 +}
 diff --git a/docs/auto-root-apps-20261031/records/build.json b/docs/auto-root-apps-20261031/records/build.json
 new file mode 100644
-index 0000000..fd1f7f8
+index 0000000000000000000000000000000000000000..fd1f7f846ce8c8843da6e81a3575f4367c73b61d
 --- /dev/null
 +++ b/docs/auto-root-apps-20261031/records/build.json
 @@ -0,0 +1,93 @@
@@ -475,7 +479,7 @@ index 0000000..fd1f7f8
 +}
 diff --git a/docs/auto-root-apps-20261031/records/bzja-static.json b/docs/auto-root-apps-20261031/records/bzja-static.json
 new file mode 100644
-index 0000000..4dfb039
+index 0000000000000000000000000000000000000000..4dfb039b84fd42e82799cd18abd89b5b8d87c6d9
 --- /dev/null
 +++ b/docs/auto-root-apps-20261031/records/bzja-static.json
 @@ -0,0 +1,14 @@
@@ -495,7 +499,7 @@ index 0000000..4dfb039
 +}
 diff --git a/docs/auto-root-apps-20261031/records/client-build.json b/docs/auto-root-apps-20261031/records/client-build.json
 new file mode 100644
-index 0000000..e22a43c
+index 0000000000000000000000000000000000000000..e22a43cb4af180a8d599e51f878813c15d7694a1
 --- /dev/null
 +++ b/docs/auto-root-apps-20261031/records/client-build.json
 @@ -0,0 +1,31 @@
@@ -532,7 +536,7 @@ index 0000000..e22a43c
 +}
 diff --git a/docs/auto-root-apps-20261031/records/compile.log b/docs/auto-root-apps-20261031/records/compile.log
 new file mode 100644
-index 0000000..7abefe5
+index 0000000000000000000000000000000000000000..7abefe5f22e1c6db7813b88fd896f5d26fce8e64
 --- /dev/null
 +++ b/docs/auto-root-apps-20261031/records/compile.log
 @@ -0,0 +1,27 @@
@@ -565,7 +569,7 @@ index 0000000..7abefe5
 +make: Leaving directory '/workspace/scratch/8188798a6a94/auto-ddk/ddk-root/opt/ddk/kdir/android16-6.12'
 diff --git a/docs/auto-root-apps-20261031/records/distribution.json b/docs/auto-root-apps-20261031/records/distribution.json
 new file mode 100644
-index 0000000..fa29a9b
+index 0000000000000000000000000000000000000000..fa29a9bda70b9b4b4edcb33f3435b3016a0afcb4
 --- /dev/null
 +++ b/docs/auto-root-apps-20261031/records/distribution.json
 @@ -0,0 +1,11 @@
@@ -582,7 +586,7 @@ index 0000000..fa29a9b
 +}
 diff --git a/docs/auto-root-apps-20261031/records/host-results.json b/docs/auto-root-apps-20261031/records/host-results.json
 new file mode 100644
-index 0000000..1750ef6
+index 0000000000000000000000000000000000000000..1750ef65470d5ee41297e41964e18cd77abb2437
 --- /dev/null
 +++ b/docs/auto-root-apps-20261031/records/host-results.json
 @@ -0,0 +1,397 @@
@@ -985,7 +989,7 @@ index 0000000..1750ef6
 +}
 diff --git a/docs/auto-root-apps-20261031/records/ksu_policy-sanitizers.log b/docs/auto-root-apps-20261031/records/ksu_policy-sanitizers.log
 new file mode 100644
-index 0000000..bfb42cd
+index 0000000000000000000000000000000000000000..bfb42cd4d1d5abcd6b790b5846723f4b9840c7c8
 --- /dev/null
 +++ b/docs/auto-root-apps-20261031/records/ksu_policy-sanitizers.log
 @@ -0,0 +1,13 @@
@@ -1004,7 +1008,7 @@ index 0000000..bfb42cd
 +PASS negative/unproven-core
 diff --git a/docs/auto-root-apps-20261031/records/ksu_policy.log b/docs/auto-root-apps-20261031/records/ksu_policy.log
 new file mode 100644
-index 0000000..bfb42cd
+index 0000000000000000000000000000000000000000..bfb42cd4d1d5abcd6b790b5846723f4b9840c7c8
 --- /dev/null
 +++ b/docs/auto-root-apps-20261031/records/ksu_policy.log
 @@ -0,0 +1,13 @@
@@ -1023,7 +1027,7 @@ index 0000000..bfb42cd
 +PASS negative/unproven-core
 diff --git a/docs/auto-root-apps-20261031/records/lifecycle-sanitizers.log b/docs/auto-root-apps-20261031/records/lifecycle-sanitizers.log
 new file mode 100644
-index 0000000..7a4c0c1
+index 0000000000000000000000000000000000000000..7a4c0c1a724e5411978c66a3fb8e074e62749a29
 --- /dev/null
 +++ b/docs/auto-root-apps-20261031/records/lifecycle-sanitizers.log
 @@ -0,0 +1,44 @@
@@ -1073,7 +1077,7 @@ index 0000000..7a4c0c1
 +PASS rejected bti-fallback
 diff --git a/docs/auto-root-apps-20261031/records/lifecycle.log b/docs/auto-root-apps-20261031/records/lifecycle.log
 new file mode 100644
-index 0000000..7a4c0c1
+index 0000000000000000000000000000000000000000..7a4c0c1a724e5411978c66a3fb8e074e62749a29
 --- /dev/null
 +++ b/docs/auto-root-apps-20261031/records/lifecycle.log
 @@ -0,0 +1,44 @@
@@ -1123,7 +1127,7 @@ index 0000000..7a4c0c1
 +PASS rejected bti-fallback
 diff --git a/docs/auto-root-apps-20261031/records/priority_filter-sanitizers.log b/docs/auto-root-apps-20261031/records/priority_filter-sanitizers.log
 new file mode 100644
-index 0000000..9c3ea3d
+index 0000000000000000000000000000000000000000..9c3ea3d55a691857faf9a3bcaccd07bcee6dd187
 --- /dev/null
 +++ b/docs/auto-root-apps-20261031/records/priority_filter-sanitizers.log
 @@ -0,0 +1,27 @@
@@ -1156,7 +1160,7 @@ index 0000000..9c3ea3d
 +PASS negative/publication-uaf
 diff --git a/docs/auto-root-apps-20261031/records/priority_filter.log b/docs/auto-root-apps-20261031/records/priority_filter.log
 new file mode 100644
-index 0000000..0d866a3
+index 0000000000000000000000000000000000000000..0d866a3b0ca4d60b4c9e0fc551689d90238d0d0b
 --- /dev/null
 +++ b/docs/auto-root-apps-20261031/records/priority_filter.log
 @@ -0,0 +1,26 @@
@@ -1188,7 +1192,7 @@ index 0000000..0d866a3
 +PASS negative/omit-own-app
 diff --git a/docs/auto-root-apps-20261031/records/priority_tool-sanitizers.log b/docs/auto-root-apps-20261031/records/priority_tool-sanitizers.log
 new file mode 100644
-index 0000000..7976be5
+index 0000000000000000000000000000000000000000..7976be59efdfc5984acae80b4c33fd067c015b5f
 --- /dev/null
 +++ b/docs/auto-root-apps-20261031/records/priority_tool-sanitizers.log
 @@ -0,0 +1,34 @@
@@ -1228,7 +1232,7 @@ index 0000000..7976be5
 +PASS negative/narrow-caller-range
 diff --git a/docs/auto-root-apps-20261031/records/priority_tool.log b/docs/auto-root-apps-20261031/records/priority_tool.log
 new file mode 100644
-index 0000000..7976be5
+index 0000000000000000000000000000000000000000..7976be59efdfc5984acae80b4c33fd067c015b5f
 --- /dev/null
 +++ b/docs/auto-root-apps-20261031/records/priority_tool.log
 @@ -0,0 +1,34 @@
@@ -1268,7 +1272,7 @@ index 0000000..7976be5
 +PASS negative/narrow-caller-range
 diff --git a/docs/priority-filter-20261030/README.md b/docs/priority-filter-20261030/README.md
 new file mode 100644
-index 0000000..e515ff5
+index 0000000000000000000000000000000000000000..e515ff598381e11916434eda5b7694a1bb9d1f1f
 --- /dev/null
 +++ b/docs/priority-filter-20261030/README.md
 @@ -0,0 +1,123 @@
@@ -1397,7 +1401,7 @@ index 0000000..e515ff5
 +Records in this directory identify the compiler/build and all validation results.
 diff --git a/docs/priority-filter-20261030/records/artifact.json b/docs/priority-filter-20261030/records/artifact.json
 new file mode 100644
-index 0000000..cd3535c
+index 0000000000000000000000000000000000000000..cd3535c3f8a7a11574b1f35e4b215e6cb502e849
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/artifact.json
 @@ -0,0 +1,215 @@
@@ -1618,7 +1622,7 @@ index 0000000..cd3535c
 +}
 diff --git a/docs/priority-filter-20261030/records/build.json b/docs/priority-filter-20261030/records/build.json
 new file mode 100644
-index 0000000..963d02f
+index 0000000000000000000000000000000000000000..963d02f6beb8850ac4b98d54b3be193e1a2bba8f
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/build.json
 @@ -0,0 +1,93 @@
@@ -1717,7 +1721,7 @@ index 0000000..963d02f
 +}
 diff --git a/docs/priority-filter-20261030/records/bzja-static.json b/docs/priority-filter-20261030/records/bzja-static.json
 new file mode 100644
-index 0000000..d3368d5
+index 0000000000000000000000000000000000000000..d3368d538c43fc747bdecb6e1f0fcb1a1f4c877b
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/bzja-static.json
 @@ -0,0 +1,13 @@
@@ -1736,7 +1740,7 @@ index 0000000..d3368d5
 +}
 diff --git a/docs/priority-filter-20261030/records/client-build.json b/docs/priority-filter-20261030/records/client-build.json
 new file mode 100644
-index 0000000..8231605
+index 0000000000000000000000000000000000000000..8231605fbf5e4a94419ade33b5f4dd9e1ed72dff
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/client-build.json
 @@ -0,0 +1,31 @@
@@ -1773,7 +1777,7 @@ index 0000000..8231605
 +}
 diff --git a/docs/priority-filter-20261030/records/compile.log b/docs/priority-filter-20261030/records/compile.log
 new file mode 100644
-index 0000000..6a7be1b
+index 0000000000000000000000000000000000000000..6a7be1be847eb6f3b3f4aff17b81a9960b170333
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/compile.log
 @@ -0,0 +1,29 @@
@@ -1808,7 +1812,7 @@ index 0000000..6a7be1b
 +make: Leaving directory '/workspace/scratch/8188798a6a94/priority-ddk-toolchain/ddk-root/opt/ddk/kdir/android16-6.12'
 diff --git a/docs/priority-filter-20261030/records/distribution.json b/docs/priority-filter-20261030/records/distribution.json
 new file mode 100644
-index 0000000..5e5bb81
+index 0000000000000000000000000000000000000000..5e5bb81cc273879e58f91fd47087ea44738a719f
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/distribution.json
 @@ -0,0 +1,11 @@
@@ -1825,7 +1829,7 @@ index 0000000..5e5bb81
 +}
 diff --git a/docs/priority-filter-20261030/records/host-results.json b/docs/priority-filter-20261030/records/host-results.json
 new file mode 100644
-index 0000000..6f7b069
+index 0000000000000000000000000000000000000000..6f7b06920988e7fd6cd3a3679423aad16f7a66e6
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/host-results.json
 @@ -0,0 +1,383 @@
@@ -2214,7 +2218,7 @@ index 0000000..6f7b069
 +}
 diff --git a/docs/priority-filter-20261030/records/priority_filter-sanitizers.log b/docs/priority-filter-20261030/records/priority_filter-sanitizers.log
 new file mode 100644
-index 0000000..21b8ab9
+index 0000000000000000000000000000000000000000..21b8ab9b82e131aa88b7c4598d093823d78bc465
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/priority_filter-sanitizers.log
 @@ -0,0 +1,21 @@
@@ -2241,7 +2245,7 @@ index 0000000..21b8ab9
 +PASS negative/publication-uaf
 diff --git a/docs/priority-filter-20261030/records/priority_filter.log b/docs/priority-filter-20261030/records/priority_filter.log
 new file mode 100644
-index 0000000..03c3846
+index 0000000000000000000000000000000000000000..03c3846aa593a83588629cdd8e901123567b95e2
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/priority_filter.log
 @@ -0,0 +1,20 @@
@@ -2267,7 +2271,7 @@ index 0000000..03c3846
 +PASS negative/narrow-app-caller-range
 diff --git a/docs/priority-filter-20261030/records/priority_tool-sanitizers.log b/docs/priority-filter-20261030/records/priority_tool-sanitizers.log
 new file mode 100644
-index 0000000..cef6ed4
+index 0000000000000000000000000000000000000000..cef6ed4f4d529cda07d53a631a9f598042e10efa
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/priority_tool-sanitizers.log
 @@ -0,0 +1,28 @@
@@ -2301,7 +2305,7 @@ index 0000000..cef6ed4
 +PASS negative/narrow-caller-range
 diff --git a/docs/priority-filter-20261030/records/priority_tool.log b/docs/priority-filter-20261030/records/priority_tool.log
 new file mode 100644
-index 0000000..cef6ed4
+index 0000000000000000000000000000000000000000..cef6ed4f4d529cda07d53a631a9f598042e10efa
 --- /dev/null
 +++ b/docs/priority-filter-20261030/records/priority_tool.log
 @@ -0,0 +1,28 @@
@@ -2335,7 +2339,7 @@ index 0000000..cef6ed4
 +PASS negative/narrow-caller-range
 diff --git a/docs/priority-init-20261031/README.md b/docs/priority-init-20261031/README.md
 new file mode 100644
-index 0000000..2730f34
+index 0000000000000000000000000000000000000000..2730f342ccbcb7fffcf468d906860a6f70670a09
 --- /dev/null
 +++ b/docs/priority-init-20261031/README.md
 @@ -0,0 +1,31 @@
@@ -2372,7 +2376,7 @@ index 0000000..2730f34
 +These checks do not execute kernel hooks or establish phone compatibility.
 diff --git a/docs/priority-init-20261031/records/artifact.json b/docs/priority-init-20261031/records/artifact.json
 new file mode 100644
-index 0000000..8fd6828
+index 0000000000000000000000000000000000000000..8fd6828e5d7c3b982339c9edea30e4278abb0311
 --- /dev/null
 +++ b/docs/priority-init-20261031/records/artifact.json
 @@ -0,0 +1,217 @@
@@ -2595,7 +2599,7 @@ index 0000000..8fd6828
 +}
 diff --git a/docs/priority-init-20261031/records/build.json b/docs/priority-init-20261031/records/build.json
 new file mode 100644
-index 0000000..a9a8d4d
+index 0000000000000000000000000000000000000000..a9a8d4df95e9d8897c6b3ef8042be9785112baf9
 --- /dev/null
 +++ b/docs/priority-init-20261031/records/build.json
 @@ -0,0 +1,53 @@
@@ -2654,7 +2658,7 @@ index 0000000..a9a8d4d
 +}
 diff --git a/docs/priority-init-20261031/records/bzja.json b/docs/priority-init-20261031/records/bzja.json
 new file mode 100644
-index 0000000..4dfb039
+index 0000000000000000000000000000000000000000..4dfb039b84fd42e82799cd18abd89b5b8d87c6d9
 --- /dev/null
 +++ b/docs/priority-init-20261031/records/bzja.json
 @@ -0,0 +1,14 @@
@@ -2674,7 +2678,7 @@ index 0000000..4dfb039
 +}
 diff --git a/docs/priority-init-20261031/records/client-build.json b/docs/priority-init-20261031/records/client-build.json
 new file mode 100644
-index 0000000..2c7090a
+index 0000000000000000000000000000000000000000..2c7090a6493a2afd47494b6968a7eda349feaebf
 --- /dev/null
 +++ b/docs/priority-init-20261031/records/client-build.json
 @@ -0,0 +1,31 @@
@@ -2711,7 +2715,7 @@ index 0000000..2c7090a
 +}
 diff --git a/docs/priority-init-20261031/records/compile.log b/docs/priority-init-20261031/records/compile.log
 new file mode 100644
-index 0000000..25a5c8d
+index 0000000000000000000000000000000000000000..25a5c8de4a0b8c79f6d5d911f0fe4b4bce75a6ba
 --- /dev/null
 +++ b/docs/priority-init-20261031/records/compile.log
 @@ -0,0 +1,29 @@
@@ -2746,7 +2750,7 @@ index 0000000..25a5c8d
 +make: Leaving directory '/workspace/scratch/8188798a6a94/auto-ddk/ddk-root/opt/ddk/kdir/android16-6.12'
 diff --git a/docs/priority-probe-20261031/README.md b/docs/priority-probe-20261031/README.md
 new file mode 100644
-index 0000000..5fc2a68
+index 0000000000000000000000000000000000000000..5fc2a68e93226d57c31f33b32ee3524c0bd99d0f
 --- /dev/null
 +++ b/docs/priority-probe-20261031/README.md
 @@ -0,0 +1,63 @@
@@ -2815,7 +2819,7 @@ index 0000000..5fc2a68
 +HMA review in the app repository, docs/susfs-hma-compatibility-20261031.md.
 diff --git a/docs/priority-probe-20261031/records/host-results.json b/docs/priority-probe-20261031/records/host-results.json
 new file mode 100644
-index 0000000..d08ad12
+index 0000000000000000000000000000000000000000..d08ad12a8eb0a8112ea70f23a6b1033e9ebc998b
 --- /dev/null
 +++ b/docs/priority-probe-20261031/records/host-results.json
 @@ -0,0 +1,397 @@
@@ -3218,7 +3222,7 @@ index 0000000..d08ad12
 +}
 diff --git a/docs/priority-probe-20261031/records/priority_filter-sanitizers.log b/docs/priority-probe-20261031/records/priority_filter-sanitizers.log
 new file mode 100644
-index 0000000..9541168
+index 0000000000000000000000000000000000000000..95411682cbf20f53e1527f5aefec18a15e521f58
 --- /dev/null
 +++ b/docs/priority-probe-20261031/records/priority_filter-sanitizers.log
 @@ -0,0 +1,48 @@
@@ -3272,7 +3276,7 @@ index 0000000..9541168
 +PASS negative/publication-uaf
 diff --git a/docs/priority-probe-20261031/records/priority_filter.log b/docs/priority-probe-20261031/records/priority_filter.log
 new file mode 100644
-index 0000000..c9dff0f
+index 0000000000000000000000000000000000000000..c9dff0f2ed751967b5f78d536898d66fba75adbc
 --- /dev/null
 +++ b/docs/priority-probe-20261031/records/priority_filter.log
 @@ -0,0 +1,47 @@
@@ -3323,8 +3327,2741 @@ index 0000000..c9dff0f
 +PASS negative/probe-no-bti-proof
 +PASS negative/probe-no-unregister
 +PASS negative/probe-ioprio-validation
+diff --git a/docs/production-20261031/README.md b/docs/production-20261031/README.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..d65609add94bad5d7d6fb4b4d4358305ed6bfe0e
+--- /dev/null
++++ b/docs/production-20261031/README.md
+@@ -0,0 +1,22 @@
++# Production cleanup for RMGU 1.3.1
++
++The maintainer accepted the priority-test4 device testing and reported no HMA
++failures on 31 October 2026. The priority hooks, verified Samsung fallback,
++callback lifetime handling, caller exclusions and automatic policy are retained.
++
++The shipping control client now exposes configuration and status only. Temporary
++UID-transition probes and raw priority queries are removed. Verbose initialization
++fields and the module fail_layer parameter are removed from the kernel module.
++The rollback tests now inject failures into the host model without a shipping
++fault-injection switch. The normal root-only automatic-protection status remains.
++
++All 29 host suites / 56 normal and sanitizer configurations passed. The rebuilt
++Android16/6.12 module preserves the 22 syscall wrappers, five probe callback types,
++140 imports, symbol-version layout and baseline callback types against real
++kernel headers. The freestanding ARM64 client has no interpreter or relocator.
++The production cleanup itself has build/host/ABI validation; the accepted phone
++results were obtained with test4 before these diagnostic-only removals.
++
++See records/ for the build, ABI and host regression evidence. Earlier test guides
++in this archive are historical; their removed probe commands do not apply to the
++production client.
+diff --git a/docs/production-20261031/records/abi.json b/docs/production-20261031/records/abi.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..65a1be8144ad929d4958d80b3f34e461ab1f0226
+--- /dev/null
++++ b/docs/production-20261031/records/abi.json
+@@ -0,0 +1,221 @@
++{
++  "hardware_validated": false,
++  "checks": {
++    "22_syscall_wrappers": true,
++    "all_incoming_kcfi_match_real_headers": true,
++    "all_have_call_landing_instructions": true,
++    "priority_probe_callbacks_match_real_headers": true,
++    "baseline_imports_preserved": true,
++    "imports_match_expected_baseline": true,
++    "module_metadata_only_adds_readonly_auto_parameters": true,
++    "version_table_shape_unchanged": true,
++    "baseline_callback_types_preserved": true
++  },
++  "wrapper_kcfi": {
++    "create_wrap_compat_linkat": 2009012525,
++    "create_wrap_compat_mkdirat": 2009012525,
++    "create_wrap_compat_mknodat": 2009012525,
++    "create_wrap_compat_symlinkat": 2009012525,
++    "create_wrap_linkat": 2009012525,
++    "create_wrap_mkdirat": 2009012525,
++    "create_wrap_mknodat": 2009012525,
++    "create_wrap_symlinkat": 2009012525,
++    "or_wrap_compat_open": 2009012525,
++    "or_wrap_compat_openat": 2009012525,
++    "or_wrap_compat_openat2": 2009012525,
++    "or_wrap_openat": 2009012525,
++    "or_wrap_openat2": 2009012525,
++    "prio_wrap_compat_getpriority": 2009012525,
++    "prio_wrap_compat_ioprio_get": 2009012525,
++    "prio_wrap_compat_ioprio_set": 2009012525,
++    "prio_wrap_compat_setpriority": 2009012525,
++    "prio_wrap_getpriority": 2009012525,
++    "prio_wrap_ioprio_get": 2009012525,
++    "prio_wrap_ioprio_set": 2009012525,
++    "prio_wrap_setpriority": 2009012525,
++    "supercall_reboot_wrapper": 2009012525
++  },
++  "probe_callback_kcfi": {
++    "prio_pre_getpriority": 3228810359,
++    "prio_pre_setpriority": 3228810359,
++    "prio_pre_ioprio_get": 3228810359,
++    "prio_pre_ioprio_set": 3228810359,
++    "prio_probe_post": 45826967
++  },
++  "baseline_is_priority": true,
++  "wrapper_landing_instructions": {
++    "create_wrap_mkdirat": 3573752639,
++    "create_wrap_compat_mkdirat": 3573752639,
++    "create_wrap_mknodat": 3573752639,
++    "create_wrap_compat_mknodat": 3573752639,
++    "create_wrap_symlinkat": 3573752639,
++    "create_wrap_compat_symlinkat": 3573752639,
++    "create_wrap_linkat": 3573752639,
++    "create_wrap_compat_linkat": 3573752639,
++    "or_wrap_openat": 3573752639,
++    "or_wrap_openat2": 3573752639,
++    "or_wrap_compat_open": 3573752639,
++    "or_wrap_compat_openat": 3573752639,
++    "or_wrap_compat_openat2": 3573752639,
++    "prio_wrap_getpriority": 3573752639,
++    "prio_wrap_compat_getpriority": 3573752639,
++    "prio_wrap_setpriority": 3573752639,
++    "prio_wrap_compat_setpriority": 3573752639,
++    "prio_wrap_ioprio_get": 3573752639,
++    "prio_wrap_compat_ioprio_get": 3573752639,
++    "prio_wrap_ioprio_set": 3573752639,
++    "prio_wrap_compat_ioprio_set": 3573752639,
++    "supercall_reboot_wrapper": 3573752639
++  },
++  "imports": [
++    "___ratelimit",
++    "__arch_clear_user",
++    "__arch_copy_from_user",
++    "__arch_copy_to_user",
++    "__check_object_size",
++    "__copy_overflow",
++    "__cpu_online_mask",
++    "__fortify_panic",
++    "__init_waitqueue_head",
++    "__kmalloc_cache_noprof",
++    "__kmalloc_large_noprof",
++    "__kmalloc_noprof",
++    "__kvmalloc_node_noprof",
++    "__list_add_valid_or_report",
++    "__list_del_entry_valid_or_report",
++    "__mmap_lock_do_trace_acquire_returned",
++    "__mmap_lock_do_trace_released",
++    "__mmap_lock_do_trace_start_locking",
++    "__num_online_cpus",
++    "__put_task_struct",
++    "__rcu_read_lock",
++    "__rcu_read_unlock",
++    "__seq_puts",
++    "__set_fixmap",
++    "__stack_chk_fail",
++    "__tracepoint_mmap_lock_acquire_returned",
++    "__tracepoint_mmap_lock_released",
++    "__tracepoint_mmap_lock_start_locking",
++    "__tracepoint_sys_exit",
++    "__wake_up",
++    "__warn_printk",
++    "_ctype",
++    "_printk",
++    "_raw_spin_lock",
++    "_raw_spin_lock_irqsave",
++    "_raw_spin_unlock",
++    "_raw_spin_unlock_irqrestore",
++    "abort_creds",
++    "alt_cb_patch_nops",
++    "arm64_use_ng_mappings",
++    "backing_file_user_path",
++    "bcmp",
++    "cancel_delayed_work_sync",
++    "cancel_work_sync",
++    "copy_from_kernel_nofault",
++    "copy_to_kernel_nofault",
++    "d_path",
++    "delayed_work_timer_fn",
++    "down_read",
++    "down_read_killable",
++    "find_vma",
++    "finish_wait",
++    "get_pid_task",
++    "get_task_mm",
++    "ihold",
++    "init_mm",
++    "init_user_ns",
++    "init_wait_entry",
++    "inode_permission",
++    "iput",
++    "kern_path",
++    "kfree",
++    "kmalloc_caches",
++    "kstrtobool",
++    "kstrtoll",
++    "kvfree",
++    "mas_find",
++    "mem_alloc_profiling_key",
++    "memchr",
++    "memcpy",
++    "memmove",
++    "memset",
++    "memstart_addr",
++    "mmput",
++    "module_put",
++    "msleep",
++    "mtree_load",
++    "mutex_lock",
++    "mutex_trylock",
++    "mutex_unlock",
++    "nop_mnt_idmap",
++    "ns_capable",
++    "override_creds",
++    "param_ops_bool",
++    "param_ops_int",
++    "param_ops_string",
++    "param_ops_ulong",
++    "path_get",
++    "path_put",
++    "preempt_schedule",
++    "prepare_creds",
++    "prepare_to_wait_event",
++    "proc_create",
++    "proc_remove",
++    "queue_delayed_work_on",
++    "queue_work_on",
++    "rb_first",
++    "rb_next",
++    "refcount_warn_saturate",
++    "register_kprobe",
++    "register_kretprobe",
++    "revert_creds",
++    "saved_boot_config",
++    "schedule",
++    "scnprintf",
++    "security_secctx_to_secid",
++    "seq_lseek",
++    "seq_open",
++    "seq_printf",
++    "seq_read",
++    "seq_release",
++    "seq_write",
++    "single_open",
++    "single_release",
++    "sized_strscpy",
++    "snprintf",
++    "static_key_enable",
++    "stop_machine",
++    "strcmp",
++    "strim",
++    "strlen",
++    "strncmp",
++    "strnlen",
++    "strnlen_user",
++    "strrchr",
++    "strsep",
++    "strstr",
++    "synchronize_rcu",
++    "synchronize_rcu_tasks",
++    "synchronize_srcu",
++    "system_wq",
++    "task_work_add",
++    "tracepoint_probe_register",
++    "tracepoint_probe_unregister",
++    "tracepoint_srcu",
++    "try_module_get",
++    "unregister_kprobe",
++    "unregister_kretprobe",
++    "up_read",
++    "vsnprintf"
++  ],
++  "added_imports": [],
++  "removed_imports": [],
++  "version_section_sizes": {
++    "__versions": 0,
++    "__version_ext_crcs": 0,
++    "__version_ext_names": 1
++  },
++  "candidate_sha256": "fae9dd660e80d43a3adbc8b341da513d2b89e2a4e04d82f350abb6d31043c856",
++  "baseline_sha256": "5c7808bee0b376d91b993d2440f288319162c5a6861549bf10d9c937e5e58b77"
++}
+diff --git a/docs/production-20261031/records/build.json b/docs/production-20261031/records/build.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..9baa090748b8b85745fc6a52f10617a9de998456
+--- /dev/null
++++ b/docs/production-20261031/records/build.json
+@@ -0,0 +1,53 @@
++{
++  "kind": "host cross-compilation only; no kernel module execution",
++  "module": {
++    "bytes": 3508288,
++    "sha256": "fae9dd660e80d43a3adbc8b341da513d2b89e2a4e04d82f350abb6d31043c856"
++  },
++  "commands": [
++    {
++      "argv": [
++        "make",
++        "-C",
++        "/workspace/scratch/f5332bc782c8/native-build/ddk-root/opt/ddk/kdir/android16-6.12",
++        "M=/workspace/scratch/f5332bc782c8/susfs-native/susfs/kernel",
++        "ARCH=arm64",
++        "CC=clang",
++        "LLVM=1",
++        "LLVM_IAS=1",
++        "CONFIG_DEBUG_INFO_BTF_MODULES=",
++        "clean"
++      ],
++      "exit_code": 0
++    },
++    {
++      "argv": [
++        "make",
++        "-C",
++        "/workspace/scratch/f5332bc782c8/native-build/ddk-root/opt/ddk/kdir/android16-6.12",
++        "M=/workspace/scratch/f5332bc782c8/susfs-native/susfs/kernel",
++        "ARCH=arm64",
++        "CC=clang",
++        "LLVM=1",
++        "LLVM_IAS=1",
++        "CONFIG_DEBUG_INFO_BTF_MODULES=",
++        "modules",
++        "-j4"
++      ],
++      "exit_code": 0
++    }
++  ],
++  "compiler": "Android (14043575, +pgo, +bolt, +lto, +mlgo, based on r536225) clang version 19.0.1 (https://android.googlesource.com/toolchain/llvm-project b3a530ec6537146650e42be89f1089e9a3588460)\nTarget: x86_64-unknown-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/f5332bc782c8/native-build/ddk-root/opt/ddk/clang/clang-r536225/bin",
++  "kernel_release_header": "#define UTS_RELEASE \"6.12.76-4k\"",
++  "autoconf_sha256": "1fbc9de7fd352a6a44f0a67296bad10464b956bf59144382f404ac17d7e2fde2",
++  "module_symvers_sha256": "7d6930b74c649e4e2ceda3ef24e74774458844c34a41d29e042ccf916b509f96",
++  "module_btf_generation_omitted": true,
++  "config": {
++    "CONFIG_CFI_CLANG": true,
++    "CONFIG_CFI_ICALL_NORMALIZE_INTEGERS": true,
++    "CONFIG_TASKS_RCU": true,
++    "CONFIG_MODVERSIONS": true,
++    "CONFIG_ARM64_4K_PAGES": true
++  },
++  "hardware_validated": false
++}
+diff --git a/docs/production-20261031/records/client.json b/docs/production-20261031/records/client.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..2a364be278c4b8c78a02ea3acfbdc85798d7ed18
+--- /dev/null
++++ b/docs/production-20261031/records/client.json
+@@ -0,0 +1,31 @@
++{
++  "compiler": "Android (14043575, +pgo, +bolt, +lto, +mlgo, based on r536225) clang version 19.0.1 (https://android.googlesource.com/toolchain/llvm-project b3a530ec6537146650e42be89f1089e9a3588460)\nTarget: x86_64-unknown-linux-gnu\nThread model: posix\nInstalledDir: /workspace/scratch/f5332bc782c8/native-build/ddk-root/opt/ddk/clang/clang-r536225/bin",
++  "argv": [
++    "/opt/ddk/clang/clang-r536225/bin/clang",
++    "--target=aarch64-linux-gnu",
++    "-O2",
++    "-Wall",
++    "-Wextra",
++    "-Werror",
++    "-Wno-misleading-indentation",
++    "-nostdlib",
++    "-static-pie",
++    "-ffreestanding",
++    "-fno-builtin",
++    "-fno-stack-protector",
++    "-fuse-ld=lld",
++    "-Wl,-e,_start",
++    "-Wl,--build-id=none",
++    "-Wl,-z,max-page-size=4096",
++    "-o",
++    "/workspace/scratch/f5332bc782c8/native-evidence/librmgususfs_priority.so",
++    "/workspace/scratch/f5332bc782c8/susfs-native/susfs/tools/rmgu_priority_ctl.c"
++  ],
++  "source_sha256": "ccbf603e6255aa4a412f32db3038404a1ceaf25fe5951f5885dc203f22e3ce60",
++  "sha256": "531750059f934b2aaeaa6000a5d2775a978c9832fdbd33753cf4dd7a2892fb5d",
++  "bytes": 7072,
++  "arm64_pie": true,
++  "interpreter": false,
++  "dynamic_relocations": false,
++  "hardware_validated": false
++}
+diff --git a/docs/production-20261031/records/host-results.json b/docs/production-20261031/records/host-results.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..5a13d03ce1c1136ec66fc73e08df9605d992bce8
+--- /dev/null
++++ b/docs/production-20261031/records/host-results.json
+@@ -0,0 +1,397 @@
++{
++  "hardware_validated": false,
++  "results": [
++    {
++      "suite": "avc_spoof",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "avc_spoof.log"
++    },
++    {
++      "suite": "avc_spoof",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.62,
++      "log": "avc_spoof-sanitizers.log"
++    },
++    {
++      "suite": "feature_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.42,
++      "log": "feature_hooks.log"
++    },
++    {
++      "suite": "feature_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.67,
++      "log": "feature_hooks-sanitizers.log"
++    },
++    {
++      "suite": "fp_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.53,
++      "log": "fp_hooks.log"
++    },
++    {
++      "suite": "fp_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.87,
++      "log": "fp_hooks-sanitizers.log"
++    },
++    {
++      "suite": "identity_controls",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 3.7,
++      "log": "identity_controls.log"
++    },
++    {
++      "suite": "identity_controls",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 5.46,
++      "log": "identity_controls-sanitizers.log"
++    },
++    {
++      "suite": "kprobe_reuse",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.22,
++      "log": "kprobe_reuse.log"
++    },
++    {
++      "suite": "kprobe_reuse",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "kprobe_reuse-sanitizers.log"
++    },
++    {
++      "suite": "kstat_compat",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.32,
++      "log": "kstat_compat.log"
++    },
++    {
++      "suite": "kstat_statx",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.27,
++      "log": "kstat_statx.log"
++    },
++    {
++      "suite": "kstat_statx",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.42,
++      "log": "kstat_statx-sanitizers.log"
++    },
++    {
++      "suite": "ksu_policy",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.57,
++      "log": "ksu_policy.log"
++    },
++    {
++      "suite": "ksu_policy",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.82,
++      "log": "ksu_policy-sanitizers.log"
++    },
++    {
++      "suite": "lifecycle",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 3.34,
++      "log": "lifecycle.log"
++    },
++    {
++      "suite": "lifecycle",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 5.56,
++      "log": "lifecycle-sanitizers.log"
++    },
++    {
++      "suite": "lsm_lifetime",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.22,
++      "log": "lsm_lifetime.log"
++    },
++    {
++      "suite": "lsm_lifetime",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.27,
++      "log": "lsm_lifetime-sanitizers.log"
++    },
++    {
++      "suite": "map_files",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 6.06,
++      "log": "map_files.log"
++    },
++    {
++      "suite": "map_files",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 6.16,
++      "log": "map_files-sanitizers.log"
++    },
++    {
++      "suite": "map_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.42,
++      "log": "map_hooks.log"
++    },
++    {
++      "suite": "map_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.73,
++      "log": "map_hooks-sanitizers.log"
++    },
++    {
++      "suite": "module_control",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.72,
++      "log": "module_control.log"
++    },
++    {
++      "suite": "mount_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.77,
++      "log": "mount_hooks.log"
++    },
++    {
++      "suite": "mount_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.48,
++      "log": "mount_hooks-sanitizers.log"
++    },
++    {
++      "suite": "mount_prefix",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.17,
++      "log": "mount_prefix.log"
++    },
++    {
++      "suite": "mount_prefix",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "mount_prefix-sanitizers.log"
++    },
++    {
++      "suite": "mshow_filter",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.57,
++      "log": "mshow_filter.log"
++    },
++    {
++      "suite": "mshow_filter",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.88,
++      "log": "mshow_filter-sanitizers.log"
++    },
++    {
++      "suite": "patch_memory_flush",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.17,
++      "log": "patch_memory_flush.log"
++    },
++    {
++      "suite": "patch_memory_flush",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.22,
++      "log": "patch_memory_flush-sanitizers.log"
++    },
++    {
++      "suite": "path_creds",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.77,
++      "log": "path_creds.log"
++    },
++    {
++      "suite": "path_creds",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.48,
++      "log": "path_creds-sanitizers.log"
++    },
++    {
++      "suite": "path_entry",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.47,
++      "log": "path_entry.log"
++    },
++    {
++      "suite": "path_entry",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.72,
++      "log": "path_entry-sanitizers.log"
++    },
++    {
++      "suite": "path_index",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.22,
++      "log": "path_index.log"
++    },
++    {
++      "suite": "path_index",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.52,
++      "log": "path_index-sanitizers.log"
++    },
++    {
++      "suite": "path_listing",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.67,
++      "log": "path_listing.log"
++    },
++    {
++      "suite": "path_listing",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 8.96,
++      "log": "path_listing-sanitizers.log"
++    },
++    {
++      "suite": "path_readlink_lsm",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.82,
++      "log": "path_readlink_lsm.log"
++    },
++    {
++      "suite": "path_readlink_lsm",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.58,
++      "log": "path_readlink_lsm-sanitizers.log"
++    },
++    {
++      "suite": "priority_filter",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 8.88,
++      "log": "priority_filter.log"
++    },
++    {
++      "suite": "priority_filter",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 14.5,
++      "log": "priority_filter-sanitizers.log"
++    },
++    {
++      "suite": "priority_tool",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.36,
++      "log": "priority_tool.log"
++    },
++    {
++      "suite": "priority_tool",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.43,
++      "log": "priority_tool-sanitizers.log"
++    },
++    {
++      "suite": "r18_fixes",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.87,
++      "log": "r18_fixes.log"
++    },
++    {
++      "suite": "r18_fixes",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.68,
++      "log": "r18_fixes-sanitizers.log"
++    },
++    {
++      "suite": "redirect_entry",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.22,
++      "log": "redirect_entry.log"
++    },
++    {
++      "suite": "redirect_entry",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.47,
++      "log": "redirect_entry-sanitizers.log"
++    },
++    {
++      "suite": "redirect_maps",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.42,
++      "log": "redirect_maps.log"
++    },
++    {
++      "suite": "redirect_maps",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.42,
++      "log": "redirect_maps-sanitizers.log"
++    },
++    {
++      "suite": "redirect_statfs",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.22,
++      "log": "redirect_statfs.log"
++    },
++    {
++      "suite": "redirect_statfs",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "redirect_statfs-sanitizers.log"
++    },
++    {
++      "suite": "userspace",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.47,
++      "log": "userspace.log"
++    },
++    {
++      "suite": "userspace",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.73,
++      "log": "userspace-sanitizers.log"
++    }
++  ]
++}
+diff --git a/docs/production-20261031/records/logs/avc_spoof-sanitizers.log b/docs/production-20261031/records/logs/avc_spoof-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..d0621b9c2fce7413d57ab9a3fc4327c2b42c6a98
+--- /dev/null
++++ b/docs/production-20261031/records/logs/avc_spoof-sanitizers.log
+@@ -0,0 +1,17 @@
++PASS source rewrites both sids and derives avc_ssid_arg
++PASS nostate/source-match
++PASS nostate/target-match
++PASS nostate/both-match
++PASS nostate/neither
++PASS nostate/disabled
++PASS nostate/su-unresolved-zero
++PASS nostate/priv-unresolved
++PASS state/source-match
++PASS state/target-match
++PASS state/both-match
++PASS state/neither
++PASS state/disabled
++PASS state/su-unresolved-zero
++PASS state/priv-unresolved
++PASS target-only negative control leaves scontext=ksu visible
++PASS AVC handler spoofs the su domain on both source and target
+diff --git a/docs/production-20261031/records/logs/avc_spoof.log b/docs/production-20261031/records/logs/avc_spoof.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..d0621b9c2fce7413d57ab9a3fc4327c2b42c6a98
+--- /dev/null
++++ b/docs/production-20261031/records/logs/avc_spoof.log
+@@ -0,0 +1,17 @@
++PASS source rewrites both sids and derives avc_ssid_arg
++PASS nostate/source-match
++PASS nostate/target-match
++PASS nostate/both-match
++PASS nostate/neither
++PASS nostate/disabled
++PASS nostate/su-unresolved-zero
++PASS nostate/priv-unresolved
++PASS state/source-match
++PASS state/target-match
++PASS state/both-match
++PASS state/neither
++PASS state/disabled
++PASS state/su-unresolved-zero
++PASS state/priv-unresolved
++PASS target-only negative control leaves scontext=ksu visible
++PASS AVC handler spoofs the su domain on both source and target
+diff --git a/docs/production-20261031/records/logs/feature_hooks-sanitizers.log b/docs/production-20261031/records/logs/feature_hooks-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..db36100e5808bc3cad50ce9683fcbd8c212a037d
+--- /dev/null
++++ b/docs/production-20261031/records/logs/feature_hooks-sanitizers.log
+@@ -0,0 +1,13 @@
++PASS syscall/cross-abi
++PASS syscall/native-stat
++PASS syscall/compat-stat
++PASS syscall/dirent
++PASS syscall/errors-null
++PASS syscall/ordinary-syscalls
++PASS syscall/legacy-wrap
++PASS fdinfo/duplicates-lifecycle
++PASS fdinfo/partial-failures
++PASS fdinfo/phone-leak
++PASS fdinfo/file-credentials
++PASS fdinfo/decimal-width
++PASS fdinfo/decimal-bounds
+diff --git a/docs/production-20261031/records/logs/feature_hooks.log b/docs/production-20261031/records/logs/feature_hooks.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..db36100e5808bc3cad50ce9683fcbd8c212a037d
+--- /dev/null
++++ b/docs/production-20261031/records/logs/feature_hooks.log
+@@ -0,0 +1,13 @@
++PASS syscall/cross-abi
++PASS syscall/native-stat
++PASS syscall/compat-stat
++PASS syscall/dirent
++PASS syscall/errors-null
++PASS syscall/ordinary-syscalls
++PASS syscall/legacy-wrap
++PASS fdinfo/duplicates-lifecycle
++PASS fdinfo/partial-failures
++PASS fdinfo/phone-leak
++PASS fdinfo/file-credentials
++PASS fdinfo/decimal-width
++PASS fdinfo/decimal-bounds
+diff --git a/docs/production-20261031/records/logs/fp_hooks-sanitizers.log b/docs/production-20261031/records/logs/fp_hooks-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..d059ffd60f3c14f46a1ee5de7a1dfd8714f9012d
+--- /dev/null
++++ b/docs/production-20261031/records/logs/fp_hooks-sanitizers.log
+@@ -0,0 +1,19 @@
++PASS success
++PASS restore-retry
++PASS foreign-native
++PASS already-restored
++PASS native-fail-before
++PASS native-fail-after
++PASS compat-fail-before
++PASS compat-fail-after
++PASS rollback-fail
++PASS no-store
++PASS invalid
++PASS missing-compat
++PASS empty
++PASS sleeping-tail
++PASS late-entry
++PASS multiple
++PASS wake-tail
++PASS all 13 wrappers: balanced lifetime and correct original
++PASS syscall table numbering and separate native/compat wrappers
+diff --git a/docs/production-20261031/records/logs/fp_hooks.log b/docs/production-20261031/records/logs/fp_hooks.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..d059ffd60f3c14f46a1ee5de7a1dfd8714f9012d
+--- /dev/null
++++ b/docs/production-20261031/records/logs/fp_hooks.log
+@@ -0,0 +1,19 @@
++PASS success
++PASS restore-retry
++PASS foreign-native
++PASS already-restored
++PASS native-fail-before
++PASS native-fail-after
++PASS compat-fail-before
++PASS compat-fail-after
++PASS rollback-fail
++PASS no-store
++PASS invalid
++PASS missing-compat
++PASS empty
++PASS sleeping-tail
++PASS late-entry
++PASS multiple
++PASS wake-tail
++PASS all 13 wrappers: balanced lifetime and correct original
++PASS syscall table numbering and separate native/compat wrappers
+diff --git a/docs/production-20261031/records/logs/identity_controls-sanitizers.log b/docs/production-20261031/records/logs/identity_controls-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..c9319ad6c032a84853288b8c17617122321531d2
+--- /dev/null
++++ b/docs/production-20261031/records/logs/identity_controls-sanitizers.log
+@@ -0,0 +1,38 @@
++PASS boot-cycle
++PASS boot-null
++PASS boot-allocation
++PASS boot-foreign
++PASS boot-reset-input
++PASS boot-abi-errors
++PASS boot-concurrency
++PASS boot-reclaim-bound
++PASS boot-reader-replace
++PASS boot-reader-reset
++PASS boot-foreign-unload
++PASS boot-exit
++PASS uname-shorter
++PASS uname-default
++PASS uname-initial-parameter
++PASS uname-snapshot
++PASS uname-writers
++PASS uname-registration-failure
++PASS uname-exit
++PASS uname-incomplete
++PASS variant-label
++PASS avc-register-selection
++PASS avc-repeat
++PASS avc-sid-unavailable
++PASS avc-register-failure
++PASS avc-proc-input
++PASS avc-abi-input
++PASS avc-concurrency
++PASS avc-unload
++PASS avc-unload-disabled
++PASS negative/mixed-uname-pair
++PASS negative/old-avc-register
++PASS negative/allow-avc-after-exit
++PASS negative/retain-disabled-probe
++PASS negative/free-published-bootconfig
++PASS negative/omit-reader-grace
++PASS negative/omit-uname-padding
++PASS negative/overwrite-foreign-bootconfig
+diff --git a/docs/production-20261031/records/logs/identity_controls.log b/docs/production-20261031/records/logs/identity_controls.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..c9319ad6c032a84853288b8c17617122321531d2
+--- /dev/null
++++ b/docs/production-20261031/records/logs/identity_controls.log
+@@ -0,0 +1,38 @@
++PASS boot-cycle
++PASS boot-null
++PASS boot-allocation
++PASS boot-foreign
++PASS boot-reset-input
++PASS boot-abi-errors
++PASS boot-concurrency
++PASS boot-reclaim-bound
++PASS boot-reader-replace
++PASS boot-reader-reset
++PASS boot-foreign-unload
++PASS boot-exit
++PASS uname-shorter
++PASS uname-default
++PASS uname-initial-parameter
++PASS uname-snapshot
++PASS uname-writers
++PASS uname-registration-failure
++PASS uname-exit
++PASS uname-incomplete
++PASS variant-label
++PASS avc-register-selection
++PASS avc-repeat
++PASS avc-sid-unavailable
++PASS avc-register-failure
++PASS avc-proc-input
++PASS avc-abi-input
++PASS avc-concurrency
++PASS avc-unload
++PASS avc-unload-disabled
++PASS negative/mixed-uname-pair
++PASS negative/old-avc-register
++PASS negative/allow-avc-after-exit
++PASS negative/retain-disabled-probe
++PASS negative/free-published-bootconfig
++PASS negative/omit-reader-grace
++PASS negative/omit-uname-padding
++PASS negative/overwrite-foreign-bootconfig
+diff --git a/docs/production-20261031/records/logs/kprobe_reuse-sanitizers.log b/docs/production-20261031/records/logs/kprobe_reuse-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..7ee42272d205da37743c0489ae992fe58ed4841e
+--- /dev/null
++++ b/docs/production-20261031/records/logs/kprobe_reuse-sanitizers.log
+@@ -0,0 +1,14 @@
++PASS production/kprobe-cycles
++PASS production/kprobe-failed-lookup
++PASS production/kprobe-preserve-flags
++PASS production/kprobe-idempotent
++PASS production/kretprobe-cycles
++PASS production/kretprobe-failed-lookup
++PASS production/kretprobe-preserve-flags
++PASS production/kretprobe-idempotent
++PASS without-fix/kprobe-cycles
++PASS without-fix/kprobe-failed-lookup
++PASS without-fix/kprobe-preserve-flags
++PASS without-fix/kretprobe-cycles
++PASS without-fix/kretprobe-failed-lookup
++PASS without-fix/kretprobe-preserve-flags
+diff --git a/docs/production-20261031/records/logs/kprobe_reuse.log b/docs/production-20261031/records/logs/kprobe_reuse.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..7ee42272d205da37743c0489ae992fe58ed4841e
+--- /dev/null
++++ b/docs/production-20261031/records/logs/kprobe_reuse.log
+@@ -0,0 +1,14 @@
++PASS production/kprobe-cycles
++PASS production/kprobe-failed-lookup
++PASS production/kprobe-preserve-flags
++PASS production/kprobe-idempotent
++PASS production/kretprobe-cycles
++PASS production/kretprobe-failed-lookup
++PASS production/kretprobe-preserve-flags
++PASS production/kretprobe-idempotent
++PASS without-fix/kprobe-cycles
++PASS without-fix/kprobe-failed-lookup
++PASS without-fix/kprobe-preserve-flags
++PASS without-fix/kretprobe-cycles
++PASS without-fix/kretprobe-failed-lookup
++PASS without-fix/kretprobe-preserve-flags
+diff --git a/docs/production-20261031/records/logs/kstat_compat.log b/docs/production-20261031/records/logs/kstat_compat.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..1043c4b047b6fefb9ee7215e97ab465c8f02d0b5
+--- /dev/null
++++ b/docs/production-20261031/records/logs/kstat_compat.log
+@@ -0,0 +1 @@
++PASS compat_stat: all fields/canaries, exact-width boundaries, overflow refusal, read/write faults, identity, gate and empty/no-flag rules
+diff --git a/docs/production-20261031/records/logs/kstat_statx-sanitizers.log b/docs/production-20261031/records/logs/kstat_statx-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..ae79d6025ab51e77c42dcf0e5b58f7bff9241353
+--- /dev/null
++++ b/docs/production-20261031/records/logs/kstat_statx-sanitizers.log
+@@ -0,0 +1,11 @@
++PASS statx/phone-device
++PASS statx/device-identity
++PASS statx/wide-device
++PASS statx/masks
++PASS statx/field-widths
++PASS statx/gates-control
++PASS statx/empty-noflag
++PASS statx/read-faults
++PASS statx/write-faults
++PASS statx/snapshot
++PASS statx/compat-layout
+diff --git a/docs/production-20261031/records/logs/kstat_statx.log b/docs/production-20261031/records/logs/kstat_statx.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..ae79d6025ab51e77c42dcf0e5b58f7bff9241353
+--- /dev/null
++++ b/docs/production-20261031/records/logs/kstat_statx.log
+@@ -0,0 +1,11 @@
++PASS statx/phone-device
++PASS statx/device-identity
++PASS statx/wide-device
++PASS statx/masks
++PASS statx/field-widths
++PASS statx/gates-control
++PASS statx/empty-noflag
++PASS statx/read-faults
++PASS statx/write-faults
++PASS statx/snapshot
++PASS statx/compat-layout
+diff --git a/docs/production-20261031/records/logs/ksu_policy-sanitizers.log b/docs/production-20261031/records/logs/ksu_policy-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..bfb42cd4d1d5abcd6b790b5846723f4b9840c7c8
+--- /dev/null
++++ b/docs/production-20261031/records/logs/ksu_policy-sanitizers.log
+@@ -0,0 +1,13 @@
++PASS module
++PASS builtin
++PASS missing-umount
++PASS missing-root
++PASS missing-lookup
++PASS going
++PASS foreign-root
++PASS unowned
++PASS negative/omit-owner-ref
++PASS negative/omit-preempt-guard
++PASS negative/foreign-owner
++PASS negative/omit-return-drain
++PASS negative/unproven-core
+diff --git a/docs/production-20261031/records/logs/ksu_policy.log b/docs/production-20261031/records/logs/ksu_policy.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..bfb42cd4d1d5abcd6b790b5846723f4b9840c7c8
+--- /dev/null
++++ b/docs/production-20261031/records/logs/ksu_policy.log
+@@ -0,0 +1,13 @@
++PASS module
++PASS builtin
++PASS missing-umount
++PASS missing-root
++PASS missing-lookup
++PASS going
++PASS foreign-root
++PASS unowned
++PASS negative/omit-owner-ref
++PASS negative/omit-preempt-guard
++PASS negative/foreign-owner
++PASS negative/omit-return-drain
++PASS negative/unproven-core
+diff --git a/docs/production-20261031/records/logs/lifecycle-sanitizers.log b/docs/production-20261031/records/logs/lifecycle-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..7a4c0c1a724e5411978c66a3fb8e074e62749a29
+--- /dev/null
++++ b/docs/production-20261031/records/logs/lifecycle-sanitizers.log
+@@ -0,0 +1,44 @@
++PASS queued (table)
++PASS queued (kprobe)
++PASS init-window (table)
++PASS init-window (kprobe)
++PASS allocation (table)
++PASS allocation (kprobe)
++PASS enqueue (table)
++PASS enqueue (kprobe)
++PASS rejected (table)
++PASS rejected (kprobe)
++PASS payload-errors (table)
++PASS payload-errors (kprobe)
++PASS multiple (table)
++PASS multiple (kprobe)
++PASS sleeping (table)
++PASS sleeping (kprobe)
++PASS return-tail (table)
++PASS return-tail (kprobe)
++PASS rollback (table)
++PASS rollback (kprobe)
++PASS partial-failures (table)
++PASS partial-failures (kprobe)
++PASS admission-race (table)
++PASS admission-race (kprobe)
++PASS table-preferred (table)
++PASS fallback (table)
++PASS bti-c (table)
++PASS bti-jc (table)
++PASS unknown-entry (table)
++PASS unreadable-entry (table)
++PASS both-fail (table)
++PASS rollback-before-fallback (table)
++PASS table-forward (table)
++PASS sleeping-original (table)
++PASS wrapper-tail (table)
++PASS repeat-routes (table)
++PASS null-probe-regs (kprobe)
++PASS no-tasks-rcu (table)
++PASS bti-config (kprobe)
++PASS table-preferred (table)
++PASS rejected init-admission
++PASS rejected sleeping-wrapper
++PASS rejected task-work-tail
++PASS rejected bti-fallback
+diff --git a/docs/production-20261031/records/logs/lifecycle.log b/docs/production-20261031/records/logs/lifecycle.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..7a4c0c1a724e5411978c66a3fb8e074e62749a29
+--- /dev/null
++++ b/docs/production-20261031/records/logs/lifecycle.log
+@@ -0,0 +1,44 @@
++PASS queued (table)
++PASS queued (kprobe)
++PASS init-window (table)
++PASS init-window (kprobe)
++PASS allocation (table)
++PASS allocation (kprobe)
++PASS enqueue (table)
++PASS enqueue (kprobe)
++PASS rejected (table)
++PASS rejected (kprobe)
++PASS payload-errors (table)
++PASS payload-errors (kprobe)
++PASS multiple (table)
++PASS multiple (kprobe)
++PASS sleeping (table)
++PASS sleeping (kprobe)
++PASS return-tail (table)
++PASS return-tail (kprobe)
++PASS rollback (table)
++PASS rollback (kprobe)
++PASS partial-failures (table)
++PASS partial-failures (kprobe)
++PASS admission-race (table)
++PASS admission-race (kprobe)
++PASS table-preferred (table)
++PASS fallback (table)
++PASS bti-c (table)
++PASS bti-jc (table)
++PASS unknown-entry (table)
++PASS unreadable-entry (table)
++PASS both-fail (table)
++PASS rollback-before-fallback (table)
++PASS table-forward (table)
++PASS sleeping-original (table)
++PASS wrapper-tail (table)
++PASS repeat-routes (table)
++PASS null-probe-regs (kprobe)
++PASS no-tasks-rcu (table)
++PASS bti-config (kprobe)
++PASS table-preferred (table)
++PASS rejected init-admission
++PASS rejected sleeping-wrapper
++PASS rejected task-work-tail
++PASS rejected bti-fallback
+diff --git a/docs/production-20261031/records/logs/lsm_lifetime-sanitizers.log b/docs/production-20261031/records/logs/lsm_lifetime-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..4672bd56d9dfc48ab2980bc00d9c42d33a0c749b
+--- /dev/null
++++ b/docs/production-20261031/records/logs/lsm_lifetime-sanitizers.log
+@@ -0,0 +1,5 @@
++PASS empty
++PASS sleeping-tail
++PASS late-entry
++PASS multiple
++PASS wake-tail
+diff --git a/docs/production-20261031/records/logs/lsm_lifetime.log b/docs/production-20261031/records/logs/lsm_lifetime.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..4672bd56d9dfc48ab2980bc00d9c42d33a0c749b
+--- /dev/null
++++ b/docs/production-20261031/records/logs/lsm_lifetime.log
+@@ -0,0 +1,5 @@
++PASS empty
++PASS sleeping-tail
++PASS late-entry
++PASS multiple
++PASS wake-tail
+diff --git a/docs/production-20261031/records/logs/map_files-sanitizers.log b/docs/production-20261031/records/logs/map_files-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..f64b9161e112af0015f62bd175a69074a0cc2186
+--- /dev/null
++++ b/docs/production-20261031/records/logs/map_files-sanitizers.log
+@@ -0,0 +1,58 @@
++PASS range-parser
++PASS hidden-readlink
++PASS visible-readlink
++PASS path-errors
++PASS root-passthrough
++PASS empty-rules
++PASS ptrace-denied
++PASS follow-ownership
++PASS follow-security
++PASS enumeration
++PASS small-buffer
++PASS lock-interrupt
++PASS device-isolation
++PASS padding-aware
++PASS remap-identity
++PASS restore-rules
++PASS missing-symbol
++PASS ambiguous-symbol
++PASS missing-access-helper
++PASS missing-padding-helper
++PASS wrong-callback
++PASS first-probe-failure
++PASS later-probe-failure
++PASS wrong-entry
++PASS sleeping-teardown
++PASS no-table-write
++PASS repeat-install
++PASS unrelated-readlink
++PASS task-guard-isolation
++PASS diverted-entry-teardown
++PASS missing-instantiate-helper
++PASS lookup-probe-failure
++PASS revalidate-probe-failure
++PASS cached-hidden
++PASS cached-control
++PASS cached-rcu
++PASS cached-native-failures
++PASS cached-restore
++PASS cached-remap
++PASS cold-hidden
++PASS cold-control
++PASS cold-errors
++PASS cold-instantiate-failure
++PASS metadata-root-empty
++PASS metadata-device-isolation
++PASS metadata-sleeping-teardown
++PASS readlink-reference-leak negative control
++PASS follow-double-release negative control
++PASS directory-entry-leak negative control
++PASS wrong-incoming-type negative control
++PASS missing-recursion-guard negative control
++PASS missing-entry-accounting negative control
++PASS shared-readlink-unscoped negative control
++PASS missing-probe-flag-reset negative control
++PASS cached-metadata-leak negative control
++PASS cold-metadata-leak negative control
++PASS cold-mm-reference-leak negative control
++PASS cached-wrong-incoming-type negative control
+diff --git a/docs/production-20261031/records/logs/map_files.log b/docs/production-20261031/records/logs/map_files.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..f64b9161e112af0015f62bd175a69074a0cc2186
+--- /dev/null
++++ b/docs/production-20261031/records/logs/map_files.log
+@@ -0,0 +1,58 @@
++PASS range-parser
++PASS hidden-readlink
++PASS visible-readlink
++PASS path-errors
++PASS root-passthrough
++PASS empty-rules
++PASS ptrace-denied
++PASS follow-ownership
++PASS follow-security
++PASS enumeration
++PASS small-buffer
++PASS lock-interrupt
++PASS device-isolation
++PASS padding-aware
++PASS remap-identity
++PASS restore-rules
++PASS missing-symbol
++PASS ambiguous-symbol
++PASS missing-access-helper
++PASS missing-padding-helper
++PASS wrong-callback
++PASS first-probe-failure
++PASS later-probe-failure
++PASS wrong-entry
++PASS sleeping-teardown
++PASS no-table-write
++PASS repeat-install
++PASS unrelated-readlink
++PASS task-guard-isolation
++PASS diverted-entry-teardown
++PASS missing-instantiate-helper
++PASS lookup-probe-failure
++PASS revalidate-probe-failure
++PASS cached-hidden
++PASS cached-control
++PASS cached-rcu
++PASS cached-native-failures
++PASS cached-restore
++PASS cached-remap
++PASS cold-hidden
++PASS cold-control
++PASS cold-errors
++PASS cold-instantiate-failure
++PASS metadata-root-empty
++PASS metadata-device-isolation
++PASS metadata-sleeping-teardown
++PASS readlink-reference-leak negative control
++PASS follow-double-release negative control
++PASS directory-entry-leak negative control
++PASS wrong-incoming-type negative control
++PASS missing-recursion-guard negative control
++PASS missing-entry-accounting negative control
++PASS shared-readlink-unscoped negative control
++PASS missing-probe-flag-reset negative control
++PASS cached-metadata-leak negative control
++PASS cold-metadata-leak negative control
++PASS cold-mm-reference-leak negative control
++PASS cached-wrong-incoming-type negative control
+diff --git a/docs/production-20261031/records/logs/map_hooks-sanitizers.log b/docs/production-20261031/records/logs/map_hooks-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..22d19638fc8f508f9822d647c616474a0accb82a
+--- /dev/null
++++ b/docs/production-20261031/records/logs/map_hooks-sanitizers.log
+@@ -0,0 +1,28 @@
++PASS empty-fast-path
++PASS add-delete
++PASS device-isolation
++PASS duplicates
++PASS capacity-reuse
++PASS clear
++PASS maps-root-exclusion
++PASS sentinel
++PASS restore-callback
++PASS supercall-add-delete
++PASS invalid-input
++PASS unavailable
++PASS failed-registration
++PASS retry-registration
++PASS optional-retry
++PASS repeat-lifecycle
++PASS concurrent-rules
++PASS gup-return-contract
++PASS pin-return-contract
++PASS gup-gap-boundaries
++PASS gup-zero-pages
++PASS gup-root-control
++PASS gup-output-lock-preservation
++PASS gup-null-anonymous
++PASS gup-restoration
++PASS pin-optional-retry
++PASS maps-inlined-formatter
++PASS required-map-files
+diff --git a/docs/production-20261031/records/logs/map_hooks.log b/docs/production-20261031/records/logs/map_hooks.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..22d19638fc8f508f9822d647c616474a0accb82a
+--- /dev/null
++++ b/docs/production-20261031/records/logs/map_hooks.log
+@@ -0,0 +1,28 @@
++PASS empty-fast-path
++PASS add-delete
++PASS device-isolation
++PASS duplicates
++PASS capacity-reuse
++PASS clear
++PASS maps-root-exclusion
++PASS sentinel
++PASS restore-callback
++PASS supercall-add-delete
++PASS invalid-input
++PASS unavailable
++PASS failed-registration
++PASS retry-registration
++PASS optional-retry
++PASS repeat-lifecycle
++PASS concurrent-rules
++PASS gup-return-contract
++PASS pin-return-contract
++PASS gup-gap-boundaries
++PASS gup-zero-pages
++PASS gup-root-control
++PASS gup-output-lock-preservation
++PASS gup-null-anonymous
++PASS gup-restoration
++PASS pin-optional-retry
++PASS maps-inlined-formatter
++PASS required-map-files
+diff --git a/docs/production-20261031/records/logs/module_control.log b/docs/production-20261031/records/logs/module_control.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..fc1416b02f4646f197638e91c090e0fa9dddac38
+--- /dev/null
++++ b/docs/production-20261031/records/logs/module_control.log
+@@ -0,0 +1,8 @@
++PASS exact-list
++PASS parse-failure-preserves-list
++PASS rescan-late-module
++PASS distinct-sysfs-errors
++PASS long-module-path
++PASS capacity
++PASS concurrent-writers
++PASS missing-writer-serialization negative control
+diff --git a/docs/production-20261031/records/logs/mount_hooks-sanitizers.log b/docs/production-20261031/records/logs/mount_hooks-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..c10cef53ef8a440f48a2619a896ec8ef4e1d1a6e
+--- /dev/null
++++ b/docs/production-20261031/records/logs/mount_hooks-sanitizers.log
+@@ -0,0 +1,44 @@
++PASS bind-parent
++PASS namespace-copy
++PASS shared-source
++PASS long-source
++PASS device-inode-isolation
++PASS null-root
++PASS drop-and-reuse
++PASS repeat-enable
++PASS partial-retry
++PASS failed-registration-retry
++PASS optional-retry
++PASS fdinfo-partial-retry
++PASS idempotent-enable
++PASS callback-second-enable
++PASS fdinfo-second-enable
++PASS required-hook-retry
++PASS ksu-default
++PASS module-hosts
++PASS path-boundaries
++PASS backing-bind
++PASS backing-upper
++PASS backing-lower
++PASS backing-nested
++PASS backing-other-device
++PASS backing-lookalike
++PASS backing-missing-helper
++PASS backing-cycle
++PASS backing-long-path
++PASS backing-cross-view
++PASS idmap-over64
++PASS idmap-recycle
++PASS idmap-drop-dev
++PASS idmap-allocation-failure
++PASS idmap-cap
++PASS statfs-erofs
++PASS statfs-root
++PASS statfs-ordinary-overlay
++PASS statfs-upper-only
++PASS statfs-writable-lower
++PASS statfs-nested
++PASS statfs-cycle
++PASS scan-stable-ids
++PASS diagnostics-format
++PASS identity reader excludes retirement/reuse until its snapshot is complete
+diff --git a/docs/production-20261031/records/logs/mount_hooks.log b/docs/production-20261031/records/logs/mount_hooks.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..c10cef53ef8a440f48a2619a896ec8ef4e1d1a6e
+--- /dev/null
++++ b/docs/production-20261031/records/logs/mount_hooks.log
+@@ -0,0 +1,44 @@
++PASS bind-parent
++PASS namespace-copy
++PASS shared-source
++PASS long-source
++PASS device-inode-isolation
++PASS null-root
++PASS drop-and-reuse
++PASS repeat-enable
++PASS partial-retry
++PASS failed-registration-retry
++PASS optional-retry
++PASS fdinfo-partial-retry
++PASS idempotent-enable
++PASS callback-second-enable
++PASS fdinfo-second-enable
++PASS required-hook-retry
++PASS ksu-default
++PASS module-hosts
++PASS path-boundaries
++PASS backing-bind
++PASS backing-upper
++PASS backing-lower
++PASS backing-nested
++PASS backing-other-device
++PASS backing-lookalike
++PASS backing-missing-helper
++PASS backing-cycle
++PASS backing-long-path
++PASS backing-cross-view
++PASS idmap-over64
++PASS idmap-recycle
++PASS idmap-drop-dev
++PASS idmap-allocation-failure
++PASS idmap-cap
++PASS statfs-erofs
++PASS statfs-root
++PASS statfs-ordinary-overlay
++PASS statfs-upper-only
++PASS statfs-writable-lower
++PASS statfs-nested
++PASS statfs-cycle
++PASS scan-stable-ids
++PASS diagnostics-format
++PASS identity reader excludes retirement/reuse until its snapshot is complete
+diff --git a/docs/production-20261031/records/logs/mount_prefix-sanitizers.log b/docs/production-20261031/records/logs/mount_prefix-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..5a2b86c43955397b896eb19a602cb731b32b2179
+--- /dev/null
++++ b/docs/production-20261031/records/logs/mount_prefix-sanitizers.log
+@@ -0,0 +1 @@
++PASS 64 mount prefixes: limits, truncation, allocation failure and coherent concurrent snapshots
+diff --git a/docs/production-20261031/records/logs/mount_prefix.log b/docs/production-20261031/records/logs/mount_prefix.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..5a2b86c43955397b896eb19a602cb731b32b2179
+--- /dev/null
++++ b/docs/production-20261031/records/logs/mount_prefix.log
+@@ -0,0 +1 @@
++PASS 64 mount prefixes: limits, truncation, allocation failure and coherent concurrent snapshots
+diff --git a/docs/production-20261031/records/logs/mshow_filter-sanitizers.log b/docs/production-20261031/records/logs/mshow_filter-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..18dc71903d15bbaeb3798213b4ee23e0723c8c20
+--- /dev/null
++++ b/docs/production-20261031/records/logs/mshow_filter-sanitizers.log
+@@ -0,0 +1,19 @@
++PASS m_show armed by name: no table resolve, explicit .symbol_name
++PASS current/enlisted-susfs
++PASS current/enlisted-kernelsu
++PASS current/not-enlisted-okmodule
++PASS current/null-p-shown
++PASS current/m-op-irrelevant
++PASS current/m-null-impossible-call
++PASS current/op-match-still-hides
++PASS current/op-mismatch-suppresses
++PASS reference/enlisted-susfs
++PASS reference/enlisted-kernelsu
++PASS reference/not-enlisted-okmodule
++PASS reference/null-p-shown
++PASS reference/m-op-irrelevant
++PASS reference/m-null-impossible-call
++PASS reference/op-match-still-hides
++PASS reference/op-mismatch-suppresses
++PASS missing-identity-detach negative control (gate can suppress hiding)
++PASS m_show filter behaves like the phone-qualified 1.2.16 handler
+diff --git a/docs/production-20261031/records/logs/mshow_filter.log b/docs/production-20261031/records/logs/mshow_filter.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..18dc71903d15bbaeb3798213b4ee23e0723c8c20
+--- /dev/null
++++ b/docs/production-20261031/records/logs/mshow_filter.log
+@@ -0,0 +1,19 @@
++PASS m_show armed by name: no table resolve, explicit .symbol_name
++PASS current/enlisted-susfs
++PASS current/enlisted-kernelsu
++PASS current/not-enlisted-okmodule
++PASS current/null-p-shown
++PASS current/m-op-irrelevant
++PASS current/m-null-impossible-call
++PASS current/op-match-still-hides
++PASS current/op-mismatch-suppresses
++PASS reference/enlisted-susfs
++PASS reference/enlisted-kernelsu
++PASS reference/not-enlisted-okmodule
++PASS reference/null-p-shown
++PASS reference/m-op-irrelevant
++PASS reference/m-null-impossible-call
++PASS reference/op-match-still-hides
++PASS reference/op-mismatch-suppresses
++PASS missing-identity-detach negative control (gate can suppress hiding)
++PASS m_show filter behaves like the phone-qualified 1.2.16 handler
+diff --git a/docs/production-20261031/records/logs/patch_memory_flush-sanitizers.log b/docs/production-20261031/records/logs/patch_memory_flush-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..8dd449621f599a0244526073ec85ad2d78815a8d
+--- /dev/null
++++ b/docs/production-20261031/records/logs/patch_memory_flush-sanitizers.log
+@@ -0,0 +1,10 @@
++PASS guard: resolves by name
++PASS guard: no build-time KSU_NEW_DCACHE_FLUSH macro
++PASS guard: ksu_patch_text_nosync refuses before the store
++PASS both-dcache
++PASS new-preferred
++PASS old-only
++PASS no-dcache
++PASS icache-fallback
++PASS no-icache
++PASS flush helper resolved by name, new-first, with fallback and clean refusal
+diff --git a/docs/production-20261031/records/logs/patch_memory_flush.log b/docs/production-20261031/records/logs/patch_memory_flush.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..8dd449621f599a0244526073ec85ad2d78815a8d
+--- /dev/null
++++ b/docs/production-20261031/records/logs/patch_memory_flush.log
+@@ -0,0 +1,10 @@
++PASS guard: resolves by name
++PASS guard: no build-time KSU_NEW_DCACHE_FLUSH macro
++PASS guard: ksu_patch_text_nosync refuses before the store
++PASS both-dcache
++PASS new-preferred
++PASS old-only
++PASS no-dcache
++PASS icache-fallback
++PASS no-icache
++PASS flush helper resolved by name, new-first, with fallback and clean refusal
+diff --git a/docs/production-20261031/records/logs/path_creds-sanitizers.log b/docs/production-20261031/records/logs/path_creds-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..0fc44e8b002343f3160e76d3e63df66c8f49ccc9
+--- /dev/null
++++ b/docs/production-20261031/records/logs/path_creds-sanitizers.log
+@@ -0,0 +1,15 @@
++PASS protected-caller
++PASS caller-exit
++PASS allocation-failure
++PASS prepare-failure
++PASS duplicate
++PASS capacity
++PASS per-rule-callers
++PASS resolve-release
++PASS manual-complete
++PASS delete-during-lookup
++PASS clear-during-lookup
++PASS replace-during-lookup
++PASS lookup-errors
++PASS cleanup
++PASS missing-borrow-reference negative control
+diff --git a/docs/production-20261031/records/logs/path_creds.log b/docs/production-20261031/records/logs/path_creds.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..0fc44e8b002343f3160e76d3e63df66c8f49ccc9
+--- /dev/null
++++ b/docs/production-20261031/records/logs/path_creds.log
+@@ -0,0 +1,15 @@
++PASS protected-caller
++PASS caller-exit
++PASS allocation-failure
++PASS prepare-failure
++PASS duplicate
++PASS capacity
++PASS per-rule-callers
++PASS resolve-release
++PASS manual-complete
++PASS delete-during-lookup
++PASS clear-during-lookup
++PASS replace-during-lookup
++PASS lookup-errors
++PASS cleanup
++PASS missing-borrow-reference negative control
+diff --git a/docs/production-20261031/records/logs/path_entry-sanitizers.log b/docs/production-20261031/records/logs/path_entry-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..b4ab95c66ba6cdbbe4f883db5b281a9e744774a7
+--- /dev/null
++++ b/docs/production-20261031/records/logs/path_entry-sanitizers.log
+@@ -0,0 +1 @@
++PASS production path entry: dirent byte lengths/identity/owner/position, O_PATH pre-install denial, readlink native errors/retry/reference ownership, probe rollback and diverted-entry teardown
+diff --git a/docs/production-20261031/records/logs/path_entry.log b/docs/production-20261031/records/logs/path_entry.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..b4ab95c66ba6cdbbe4f883db5b281a9e744774a7
+--- /dev/null
++++ b/docs/production-20261031/records/logs/path_entry.log
+@@ -0,0 +1 @@
++PASS production path entry: dirent byte lengths/identity/owner/position, O_PATH pre-install denial, readlink native errors/retry/reference ownership, probe rollback and diverted-entry teardown
+diff --git a/docs/production-20261031/records/logs/path_index-sanitizers.log b/docs/production-20261031/records/logs/path_index-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..b656163f777df23f29ec983c02e306cbaee5122c
+--- /dev/null
++++ b/docs/production-20261031/records/logs/path_index-sanitizers.log
+@@ -0,0 +1,6 @@
++PASS rules=0 max_bucket=0 negative_lookup_ns=1.90 (host only)
++PASS rules=16 max_bucket=1 negative_lookup_ns=10.63 (host only)
++PASS rules=128 max_bucket=1 negative_lookup_ns=15.21 (host only)
++PASS rules=1024 max_bucket=6 negative_lookup_ns=19.56 (host only)
++PASS rules=8192 max_bucket=34 negative_lookup_ns=125.73 (host only)
++PASS pending exclusion, inode-zero pointer matching and complete removal
+diff --git a/docs/production-20261031/records/logs/path_index.log b/docs/production-20261031/records/logs/path_index.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..73c24feb1841d27862e516b93a584cc81c0be5ec
+--- /dev/null
++++ b/docs/production-20261031/records/logs/path_index.log
+@@ -0,0 +1,6 @@
++PASS rules=0 max_bucket=0 negative_lookup_ns=0.54 (host only)
++PASS rules=16 max_bucket=1 negative_lookup_ns=7.58 (host only)
++PASS rules=128 max_bucket=1 negative_lookup_ns=7.85 (host only)
++PASS rules=1024 max_bucket=6 negative_lookup_ns=13.58 (host only)
++PASS rules=8192 max_bucket=34 negative_lookup_ns=57.60 (host only)
++PASS pending exclusion, inode-zero pointer matching and complete removal
+diff --git a/docs/production-20261031/records/logs/path_listing-sanitizers.log b/docs/production-20261031/records/logs/path_listing-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..d58a2a9730def5da544d10afe835bc16f92ba1cd
+--- /dev/null
++++ b/docs/production-20261031/records/logs/path_listing-sanitizers.log
+@@ -0,0 +1,16 @@
++PASS empty
++PASS multi-page
++PASS maximum-table
++PASS short-reads-seek
++PASS immutable-after-delete
++PASS pending-protected-values
++PASS allocation-failure
++PASS growth-retry
++PASS growth-exhaustion
++PASS count-mismatch
++PASS capacity-overflow
++PASS seq-open-failure
++PASS app-denial
++PASS write-only
++PASS sysfs-bounds
++PASS missing-tail negative control
+diff --git a/docs/production-20261031/records/logs/path_listing.log b/docs/production-20261031/records/logs/path_listing.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..d58a2a9730def5da544d10afe835bc16f92ba1cd
+--- /dev/null
++++ b/docs/production-20261031/records/logs/path_listing.log
+@@ -0,0 +1,16 @@
++PASS empty
++PASS multi-page
++PASS maximum-table
++PASS short-reads-seek
++PASS immutable-after-delete
++PASS pending-protected-values
++PASS allocation-failure
++PASS growth-retry
++PASS growth-exhaustion
++PASS count-mismatch
++PASS capacity-overflow
++PASS seq-open-failure
++PASS app-denial
++PASS write-only
++PASS sysfs-bounds
++PASS missing-tail negative control
+diff --git a/docs/production-20261031/records/logs/path_readlink_lsm-sanitizers.log b/docs/production-20261031/records/logs/path_readlink_lsm-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..976ad8e511dd3de2cbf0b6a004a31f08facce895
+--- /dev/null
++++ b/docs/production-20261031/records/logs/path_readlink_lsm-sanitizers.log
+@@ -0,0 +1,46 @@
++PASS 601 hidden
++PASS 601 visible-denied
++PASS 601 visible-allowed
++PASS 601 visible-retry
++PASS 601 visible-other-error
++PASS 601 umount-bypass
++PASS 601 owner-bypass
++PASS 601 root-bypass
++PASS 601 gate-disabled
++PASS 601 self-protected-shell
++PASS 601 self-protected-root
++PASS 601 same-identity
++PASS 601 other-mount
++PASS 601 self-protected-proc-instance
++PASS 601 unrelated-filesystem
++PASS 601 pending
++PASS 601 negative-dentry
++PASS 601 null-dentry
++PASS 601 resolver
++PASS 601 empty-table
++PASS 601 sleeping-original
++PASS 612 hidden
++PASS 612 visible-denied
++PASS 612 visible-allowed
++PASS 612 visible-retry
++PASS 612 visible-other-error
++PASS 612 umount-bypass
++PASS 612 owner-bypass
++PASS 612 root-bypass
++PASS 612 gate-disabled
++PASS 612 self-protected-shell
++PASS 612 self-protected-root
++PASS 612 same-identity
++PASS 612 other-mount
++PASS 612 self-protected-proc-instance
++PASS 612 unrelated-filesystem
++PASS 612 pending
++PASS 612 negative-dentry
++PASS 612 null-dentry
++PASS 612 resolver
++PASS 612 empty-table
++PASS 612 sleeping-original
++PASS 601 missing-readlink-denial negative control
++PASS 612 missing-readlink-denial negative control
++PASS 612 missing-original-call-exit negative control
++PASS production readlink LSM: 42 cases, 3 runtime negative controls
+diff --git a/docs/production-20261031/records/logs/path_readlink_lsm.log b/docs/production-20261031/records/logs/path_readlink_lsm.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..976ad8e511dd3de2cbf0b6a004a31f08facce895
+--- /dev/null
++++ b/docs/production-20261031/records/logs/path_readlink_lsm.log
+@@ -0,0 +1,46 @@
++PASS 601 hidden
++PASS 601 visible-denied
++PASS 601 visible-allowed
++PASS 601 visible-retry
++PASS 601 visible-other-error
++PASS 601 umount-bypass
++PASS 601 owner-bypass
++PASS 601 root-bypass
++PASS 601 gate-disabled
++PASS 601 self-protected-shell
++PASS 601 self-protected-root
++PASS 601 same-identity
++PASS 601 other-mount
++PASS 601 self-protected-proc-instance
++PASS 601 unrelated-filesystem
++PASS 601 pending
++PASS 601 negative-dentry
++PASS 601 null-dentry
++PASS 601 resolver
++PASS 601 empty-table
++PASS 601 sleeping-original
++PASS 612 hidden
++PASS 612 visible-denied
++PASS 612 visible-allowed
++PASS 612 visible-retry
++PASS 612 visible-other-error
++PASS 612 umount-bypass
++PASS 612 owner-bypass
++PASS 612 root-bypass
++PASS 612 gate-disabled
++PASS 612 self-protected-shell
++PASS 612 self-protected-root
++PASS 612 same-identity
++PASS 612 other-mount
++PASS 612 self-protected-proc-instance
++PASS 612 unrelated-filesystem
++PASS 612 pending
++PASS 612 negative-dentry
++PASS 612 null-dentry
++PASS 612 resolver
++PASS 612 empty-table
++PASS 612 sleeping-original
++PASS 601 missing-readlink-denial negative control
++PASS 612 missing-readlink-denial negative control
++PASS 612 missing-original-call-exit negative control
++PASS production readlink LSM: 42 cases, 3 runtime negative controls
+diff --git a/docs/production-20261031/records/logs/priority_filter-sanitizers.log b/docs/production-20261031/records/logs/priority_filter-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..95411682cbf20f53e1527f5aefec18a15e521f58
+--- /dev/null
++++ b/docs/production-20261031/records/logs/priority_filter-sanitizers.log
+@@ -0,0 +1,48 @@
++PASS compat=1 configuration
++PASS compat=1 abi-faults
++PASS compat=1 queries
++PASS compat=1 automatic
++PASS compat=1 boot-automatic
++PASS compat=1 validation
++PASS compat=1 initialization
++PASS compat=1 sleeping-teardown
++PASS compat=1 concurrency
++PASS compat=1 probe-queries
++PASS compat=1 probe-validation
++PASS compat=1 probe-automatic
++PASS compat=1 probe-concurrency
++PASS compat=1 probe-admission
++PASS compat=1 probe-teardown
++PASS compat=0 configuration
++PASS compat=0 abi-faults
++PASS compat=0 queries
++PASS compat=0 automatic
++PASS compat=0 boot-automatic
++PASS compat=0 validation
++PASS compat=0 initialization
++PASS compat=0 sleeping-teardown
++PASS compat=0 concurrency
++PASS compat=0 probe-queries
++PASS compat=0 probe-validation
++PASS compat=0 probe-automatic
++PASS compat=0 probe-concurrency
++PASS compat=0 probe-admission
++PASS compat=0 probe-teardown
++PASS priority filter case
++PASS probe CONFIG_ARM64_BTI_KERNEL refusal
++PASS negative/shared-compat-original
++PASS negative/omit-ioprio-validation
++PASS negative/skip-package-validation
++PASS negative/omit-callback-entry
++PASS negative/partial-compat-coverage
++PASS negative/narrow-app-caller-range
++PASS negative/omit-live-grants
++PASS negative/omit-own-app
++PASS negative/probe-compat-proof
++PASS negative/probe-no-post-handler
++PASS negative/probe-no-tail-drain
++PASS negative/probe-no-core-proof
++PASS negative/probe-no-bti-proof
++PASS negative/probe-no-unregister
++PASS negative/probe-ioprio-validation
++PASS negative/publication-uaf
+diff --git a/docs/production-20261031/records/logs/priority_filter.log b/docs/production-20261031/records/logs/priority_filter.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..c9dff0f2ed751967b5f78d536898d66fba75adbc
+--- /dev/null
++++ b/docs/production-20261031/records/logs/priority_filter.log
+@@ -0,0 +1,47 @@
++PASS compat=1 configuration
++PASS compat=1 abi-faults
++PASS compat=1 queries
++PASS compat=1 automatic
++PASS compat=1 boot-automatic
++PASS compat=1 validation
++PASS compat=1 initialization
++PASS compat=1 sleeping-teardown
++PASS compat=1 concurrency
++PASS compat=1 probe-queries
++PASS compat=1 probe-validation
++PASS compat=1 probe-automatic
++PASS compat=1 probe-concurrency
++PASS compat=1 probe-admission
++PASS compat=1 probe-teardown
++PASS compat=0 configuration
++PASS compat=0 abi-faults
++PASS compat=0 queries
++PASS compat=0 automatic
++PASS compat=0 boot-automatic
++PASS compat=0 validation
++PASS compat=0 initialization
++PASS compat=0 sleeping-teardown
++PASS compat=0 concurrency
++PASS compat=0 probe-queries
++PASS compat=0 probe-validation
++PASS compat=0 probe-automatic
++PASS compat=0 probe-concurrency
++PASS compat=0 probe-admission
++PASS compat=0 probe-teardown
++PASS priority filter case
++PASS probe CONFIG_ARM64_BTI_KERNEL refusal
++PASS negative/shared-compat-original
++PASS negative/omit-ioprio-validation
++PASS negative/skip-package-validation
++PASS negative/omit-callback-entry
++PASS negative/partial-compat-coverage
++PASS negative/narrow-app-caller-range
++PASS negative/omit-live-grants
++PASS negative/omit-own-app
++PASS negative/probe-compat-proof
++PASS negative/probe-no-post-handler
++PASS negative/probe-no-tail-drain
++PASS negative/probe-no-core-proof
++PASS negative/probe-no-bti-proof
++PASS negative/probe-no-unregister
++PASS negative/probe-ioprio-validation
+diff --git a/docs/production-20261031/records/logs/priority_tool-sanitizers.log b/docs/production-20261031/records/logs/priority_tool-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..71629a51aff6034d4cd128b9e7207622ff42c7a6
+--- /dev/null
++++ b/docs/production-20261031/records/logs/priority_tool-sanitizers.log
+@@ -0,0 +1,15 @@
++PASS priority client auto
++PASS priority client auto-off
++PASS priority client auto-invalid
++PASS priority client auto-unhandled
++PASS priority client auto-error
++PASS priority client set
++PASS priority client clear
++PASS priority client status
++PASS priority client unhandled
++PASS priority client command-error
++PASS priority client no-status
++PASS priority client overflow
++PASS priority client retired-query
++PASS priority client retired-probe
++PASS negative/omit-unsupported-sentinel
+diff --git a/docs/production-20261031/records/logs/priority_tool.log b/docs/production-20261031/records/logs/priority_tool.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..71629a51aff6034d4cd128b9e7207622ff42c7a6
+--- /dev/null
++++ b/docs/production-20261031/records/logs/priority_tool.log
+@@ -0,0 +1,15 @@
++PASS priority client auto
++PASS priority client auto-off
++PASS priority client auto-invalid
++PASS priority client auto-unhandled
++PASS priority client auto-error
++PASS priority client set
++PASS priority client clear
++PASS priority client status
++PASS priority client unhandled
++PASS priority client command-error
++PASS priority client no-status
++PASS priority client overflow
++PASS priority client retired-query
++PASS priority client retired-probe
++PASS negative/omit-unsupported-sentinel
+diff --git a/docs/production-20261031/records/logs/r18_fixes-sanitizers.log b/docs/production-20261031/records/logs/r18_fixes-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..90721d66c7ea6314869bc9ed69609f536d064464
+--- /dev/null
++++ b/docs/production-20261031/records/logs/r18_fixes-sanitizers.log
+@@ -0,0 +1,48 @@
++PASS production/dirent/native-mixed
++PASS production/dirent/native-all-hidden
++PASS production/dirent/native-all-hidden-next-chunk
++PASS production/dirent/native-partial-fault
++PASS production/dirent/native-first-fault
++PASS production/dirent/native-malformed-first
++PASS production/dirent/native-no-rules
++PASS production/dirent/native-tail-scrub-fault
++PASS production/dirent/native-partial-and-scrub-fault
++PASS production/dirent/native-placeholder-scrub-fault
++PASS production/dirent/compat-mixed
++PASS production/dirent/compat-all-hidden
++PASS production/dirent/compat-all-hidden-next-chunk
++PASS production/dirent/compat-partial-fault
++PASS production/dirent/compat-first-fault
++PASS production/dirent/compat-malformed-first
++PASS production/dirent/compat-no-rules
++PASS production/dirent/compat-tail-scrub-fault
++PASS production/dirent/compat-partial-and-scrub-fault
++PASS production/dirent/compat-placeholder-scrub-fault
++PASS production/redirect/publication
++PASS production/redirect/replacement-capacity
++PASS production/redirect/replacement-success
++PASS production/redirect/reserved-target
++PASS production/probe-kstat/exit-live
++PASS production/probe-kstat/exit-unarmed
++PASS production/probe-kstat/failed-retry
++PASS production/probe-kstat/concurrent-arm
++PASS production/probe-kstat/late-writer
++PASS production/probe-uname/exit-live
++PASS production/probe-uname/exit-unarmed
++PASS production/probe-uname/failed-retry
++PASS production/probe-uname/concurrent-arm
++PASS production/probe-uname/late-writer
++PASS production/probe-redirect/exit-live
++PASS production/probe-redirect/exit-unarmed
++PASS production/probe-redirect/failed-retry
++PASS production/probe-redirect/concurrent-arm
++PASS production/probe-redirect/late-writer
++PASS production/elf/table-wrap
++PASS production/elf/table-past-end
++PASS production/elf/table-truncated
++PASS production/elf/shstr-wrap
++PASS production/elf/symtab-wrap
++PASS production/elf/strtab-wrap
++PASS production/elf/modinfo-wrap
++PASS production/elf/size-wrap
++PASS production/elf/valid-ranges
+diff --git a/docs/production-20261031/records/logs/r18_fixes.log b/docs/production-20261031/records/logs/r18_fixes.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..90721d66c7ea6314869bc9ed69609f536d064464
+--- /dev/null
++++ b/docs/production-20261031/records/logs/r18_fixes.log
+@@ -0,0 +1,48 @@
++PASS production/dirent/native-mixed
++PASS production/dirent/native-all-hidden
++PASS production/dirent/native-all-hidden-next-chunk
++PASS production/dirent/native-partial-fault
++PASS production/dirent/native-first-fault
++PASS production/dirent/native-malformed-first
++PASS production/dirent/native-no-rules
++PASS production/dirent/native-tail-scrub-fault
++PASS production/dirent/native-partial-and-scrub-fault
++PASS production/dirent/native-placeholder-scrub-fault
++PASS production/dirent/compat-mixed
++PASS production/dirent/compat-all-hidden
++PASS production/dirent/compat-all-hidden-next-chunk
++PASS production/dirent/compat-partial-fault
++PASS production/dirent/compat-first-fault
++PASS production/dirent/compat-malformed-first
++PASS production/dirent/compat-no-rules
++PASS production/dirent/compat-tail-scrub-fault
++PASS production/dirent/compat-partial-and-scrub-fault
++PASS production/dirent/compat-placeholder-scrub-fault
++PASS production/redirect/publication
++PASS production/redirect/replacement-capacity
++PASS production/redirect/replacement-success
++PASS production/redirect/reserved-target
++PASS production/probe-kstat/exit-live
++PASS production/probe-kstat/exit-unarmed
++PASS production/probe-kstat/failed-retry
++PASS production/probe-kstat/concurrent-arm
++PASS production/probe-kstat/late-writer
++PASS production/probe-uname/exit-live
++PASS production/probe-uname/exit-unarmed
++PASS production/probe-uname/failed-retry
++PASS production/probe-uname/concurrent-arm
++PASS production/probe-uname/late-writer
++PASS production/probe-redirect/exit-live
++PASS production/probe-redirect/exit-unarmed
++PASS production/probe-redirect/failed-retry
++PASS production/probe-redirect/concurrent-arm
++PASS production/probe-redirect/late-writer
++PASS production/elf/table-wrap
++PASS production/elf/table-past-end
++PASS production/elf/table-truncated
++PASS production/elf/shstr-wrap
++PASS production/elf/symtab-wrap
++PASS production/elf/strtab-wrap
++PASS production/elf/modinfo-wrap
++PASS production/elf/size-wrap
++PASS production/elf/valid-ranges
+diff --git a/docs/production-20261031/records/logs/redirect_entry-sanitizers.log b/docs/production-20261031/records/logs/redirect_entry-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..7bd7c81b8f83a597759aee5ce0a2a12da3495ef6
+--- /dev/null
++++ b/docs/production-20261031/records/logs/redirect_entry-sanitizers.log
+@@ -0,0 +1,32 @@
++PASS guard: 32-bit flag truncation (no high-bit bypass)
++PASS guard: O_LARGEFILE added on arm64
++PASS guard: each wrapper forwards its own entry kind
++PASS openat-redirect
++PASS openat-highbit-flag
++PASS openat-unknown-flag
++PASS openat-opath
++PASS openat-cloexec
++PASS openat-redirect-nonotify
++PASS copen-redirect
++PASS copenat-redirect
++PASS copenat2-redirect
++PASS openat2-redirect
++PASS openat2-largerzeroed
++PASS openat-tmpfile
++PASS openat-miss
++PASS openat-empty-target
++PASS openat-lookup-fails
++PASS openat-not-ready
++PASS openat-not-active
++PASS openat2-short
++PASS openat2-unknown-resolve
++PASS openat2-beneath-inroot
++PASS openat2-cached-create
++PASS openat2-unknown-flag
++PASS openat2-bad-mode
++PASS openat2-opath-extraflag
++PASS openat2-largernonzero
++PASS openat2-larger-nochecker
++PASS openat-filp-error
++PASS openat-emfile
++PASS forward wrapper redirects the right opens, hands the rest back, orders fd/open/install correctly
+diff --git a/docs/production-20261031/records/logs/redirect_entry.log b/docs/production-20261031/records/logs/redirect_entry.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..7bd7c81b8f83a597759aee5ce0a2a12da3495ef6
+--- /dev/null
++++ b/docs/production-20261031/records/logs/redirect_entry.log
+@@ -0,0 +1,32 @@
++PASS guard: 32-bit flag truncation (no high-bit bypass)
++PASS guard: O_LARGEFILE added on arm64
++PASS guard: each wrapper forwards its own entry kind
++PASS openat-redirect
++PASS openat-highbit-flag
++PASS openat-unknown-flag
++PASS openat-opath
++PASS openat-cloexec
++PASS openat-redirect-nonotify
++PASS copen-redirect
++PASS copenat-redirect
++PASS copenat2-redirect
++PASS openat2-redirect
++PASS openat2-largerzeroed
++PASS openat-tmpfile
++PASS openat-miss
++PASS openat-empty-target
++PASS openat-lookup-fails
++PASS openat-not-ready
++PASS openat-not-active
++PASS openat2-short
++PASS openat2-unknown-resolve
++PASS openat2-beneath-inroot
++PASS openat2-cached-create
++PASS openat2-unknown-flag
++PASS openat2-bad-mode
++PASS openat2-opath-extraflag
++PASS openat2-largernonzero
++PASS openat2-larger-nochecker
++PASS openat-filp-error
++PASS openat-emfile
++PASS forward wrapper redirects the right opens, hands the rest back, orders fd/open/install correctly
+diff --git a/docs/production-20261031/records/logs/redirect_maps-sanitizers.log b/docs/production-20261031/records/logs/redirect_maps-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..5189c9285c3b1b0f3fcc1c9d832f04ef641e3e0b
+--- /dev/null
++++ b/docs/production-20261031/records/logs/redirect_maps-sanitizers.log
+@@ -0,0 +1,12 @@
++PASS inlined-maps
++PASS outofline-smaps
++PASS row-scope
++PASS path-prefix
++PASS deleted
++PASS capacity-growth
++PASS failed-show
++PASS buffer-change
++PASS root-control
++PASS arm-cycles
++PASS arm-first-failure
++PASS arm-second-retry
+diff --git a/docs/production-20261031/records/logs/redirect_maps.log b/docs/production-20261031/records/logs/redirect_maps.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..5189c9285c3b1b0f3fcc1c9d832f04ef641e3e0b
+--- /dev/null
++++ b/docs/production-20261031/records/logs/redirect_maps.log
+@@ -0,0 +1,12 @@
++PASS inlined-maps
++PASS outofline-smaps
++PASS row-scope
++PASS path-prefix
++PASS deleted
++PASS capacity-growth
++PASS failed-show
++PASS buffer-change
++PASS root-control
++PASS arm-cycles
++PASS arm-first-failure
++PASS arm-second-retry
+diff --git a/docs/production-20261031/records/logs/redirect_statfs-sanitizers.log b/docs/production-20261031/records/logs/redirect_statfs-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..45d2502d30c4cfd85e6374affd6137cdb088da33
+--- /dev/null
++++ b/docs/production-20261031/records/logs/redirect_statfs-sanitizers.log
+@@ -0,0 +1,9 @@
++PASS app-match
++PASS kernel-error
++PASS root-exclusion
++PASS inode-device-control
++PASS dead-and-empty
++PASS invalid-paths
++PASS proc-empty
++PASS proc-live
++PASS proc-dead
+diff --git a/docs/production-20261031/records/logs/redirect_statfs.log b/docs/production-20261031/records/logs/redirect_statfs.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..45d2502d30c4cfd85e6374affd6137cdb088da33
+--- /dev/null
++++ b/docs/production-20261031/records/logs/redirect_statfs.log
+@@ -0,0 +1,9 @@
++PASS app-match
++PASS kernel-error
++PASS root-exclusion
++PASS inode-device-control
++PASS dead-and-empty
++PASS invalid-paths
++PASS proc-empty
++PASS proc-live
++PASS proc-dead
+diff --git a/docs/production-20261031/records/logs/results.json b/docs/production-20261031/records/logs/results.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..5a13d03ce1c1136ec66fc73e08df9605d992bce8
+--- /dev/null
++++ b/docs/production-20261031/records/logs/results.json
+@@ -0,0 +1,397 @@
++{
++  "hardware_validated": false,
++  "results": [
++    {
++      "suite": "avc_spoof",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "avc_spoof.log"
++    },
++    {
++      "suite": "avc_spoof",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.62,
++      "log": "avc_spoof-sanitizers.log"
++    },
++    {
++      "suite": "feature_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.42,
++      "log": "feature_hooks.log"
++    },
++    {
++      "suite": "feature_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.67,
++      "log": "feature_hooks-sanitizers.log"
++    },
++    {
++      "suite": "fp_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.53,
++      "log": "fp_hooks.log"
++    },
++    {
++      "suite": "fp_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.87,
++      "log": "fp_hooks-sanitizers.log"
++    },
++    {
++      "suite": "identity_controls",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 3.7,
++      "log": "identity_controls.log"
++    },
++    {
++      "suite": "identity_controls",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 5.46,
++      "log": "identity_controls-sanitizers.log"
++    },
++    {
++      "suite": "kprobe_reuse",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.22,
++      "log": "kprobe_reuse.log"
++    },
++    {
++      "suite": "kprobe_reuse",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "kprobe_reuse-sanitizers.log"
++    },
++    {
++      "suite": "kstat_compat",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.32,
++      "log": "kstat_compat.log"
++    },
++    {
++      "suite": "kstat_statx",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.27,
++      "log": "kstat_statx.log"
++    },
++    {
++      "suite": "kstat_statx",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.42,
++      "log": "kstat_statx-sanitizers.log"
++    },
++    {
++      "suite": "ksu_policy",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.57,
++      "log": "ksu_policy.log"
++    },
++    {
++      "suite": "ksu_policy",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.82,
++      "log": "ksu_policy-sanitizers.log"
++    },
++    {
++      "suite": "lifecycle",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 3.34,
++      "log": "lifecycle.log"
++    },
++    {
++      "suite": "lifecycle",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 5.56,
++      "log": "lifecycle-sanitizers.log"
++    },
++    {
++      "suite": "lsm_lifetime",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.22,
++      "log": "lsm_lifetime.log"
++    },
++    {
++      "suite": "lsm_lifetime",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.27,
++      "log": "lsm_lifetime-sanitizers.log"
++    },
++    {
++      "suite": "map_files",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 6.06,
++      "log": "map_files.log"
++    },
++    {
++      "suite": "map_files",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 6.16,
++      "log": "map_files-sanitizers.log"
++    },
++    {
++      "suite": "map_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.42,
++      "log": "map_hooks.log"
++    },
++    {
++      "suite": "map_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.73,
++      "log": "map_hooks-sanitizers.log"
++    },
++    {
++      "suite": "module_control",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.72,
++      "log": "module_control.log"
++    },
++    {
++      "suite": "mount_hooks",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.77,
++      "log": "mount_hooks.log"
++    },
++    {
++      "suite": "mount_hooks",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.48,
++      "log": "mount_hooks-sanitizers.log"
++    },
++    {
++      "suite": "mount_prefix",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.17,
++      "log": "mount_prefix.log"
++    },
++    {
++      "suite": "mount_prefix",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "mount_prefix-sanitizers.log"
++    },
++    {
++      "suite": "mshow_filter",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.57,
++      "log": "mshow_filter.log"
++    },
++    {
++      "suite": "mshow_filter",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.88,
++      "log": "mshow_filter-sanitizers.log"
++    },
++    {
++      "suite": "patch_memory_flush",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.17,
++      "log": "patch_memory_flush.log"
++    },
++    {
++      "suite": "patch_memory_flush",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.22,
++      "log": "patch_memory_flush-sanitizers.log"
++    },
++    {
++      "suite": "path_creds",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.77,
++      "log": "path_creds.log"
++    },
++    {
++      "suite": "path_creds",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.48,
++      "log": "path_creds-sanitizers.log"
++    },
++    {
++      "suite": "path_entry",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.47,
++      "log": "path_entry.log"
++    },
++    {
++      "suite": "path_entry",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.72,
++      "log": "path_entry-sanitizers.log"
++    },
++    {
++      "suite": "path_index",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.22,
++      "log": "path_index.log"
++    },
++    {
++      "suite": "path_index",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.52,
++      "log": "path_index-sanitizers.log"
++    },
++    {
++      "suite": "path_listing",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.67,
++      "log": "path_listing.log"
++    },
++    {
++      "suite": "path_listing",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 8.96,
++      "log": "path_listing-sanitizers.log"
++    },
++    {
++      "suite": "path_readlink_lsm",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.82,
++      "log": "path_readlink_lsm.log"
++    },
++    {
++      "suite": "path_readlink_lsm",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.58,
++      "log": "path_readlink_lsm-sanitizers.log"
++    },
++    {
++      "suite": "priority_filter",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 8.88,
++      "log": "priority_filter.log"
++    },
++    {
++      "suite": "priority_filter",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 14.5,
++      "log": "priority_filter-sanitizers.log"
++    },
++    {
++      "suite": "priority_tool",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.36,
++      "log": "priority_tool.log"
++    },
++    {
++      "suite": "priority_tool",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.43,
++      "log": "priority_tool-sanitizers.log"
++    },
++    {
++      "suite": "r18_fixes",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.87,
++      "log": "r18_fixes.log"
++    },
++    {
++      "suite": "r18_fixes",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 1.68,
++      "log": "r18_fixes-sanitizers.log"
++    },
++    {
++      "suite": "redirect_entry",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.22,
++      "log": "redirect_entry.log"
++    },
++    {
++      "suite": "redirect_entry",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.47,
++      "log": "redirect_entry-sanitizers.log"
++    },
++    {
++      "suite": "redirect_maps",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.42,
++      "log": "redirect_maps.log"
++    },
++    {
++      "suite": "redirect_maps",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.42,
++      "log": "redirect_maps-sanitizers.log"
++    },
++    {
++      "suite": "redirect_statfs",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.22,
++      "log": "redirect_statfs.log"
++    },
++    {
++      "suite": "redirect_statfs",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.37,
++      "log": "redirect_statfs-sanitizers.log"
++    },
++    {
++      "suite": "userspace",
++      "sanitizers": false,
++      "exit_code": 0,
++      "seconds": 0.47,
++      "log": "userspace.log"
++    },
++    {
++      "suite": "userspace",
++      "sanitizers": true,
++      "exit_code": 0,
++      "seconds": 0.73,
++      "log": "userspace-sanitizers.log"
++    }
++  ]
++}
+diff --git a/docs/production-20261031/records/logs/userspace-sanitizers.log b/docs/production-20261031/records/logs/userspace-sanitizers.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..5ba86135f14d2844af05591b3c28462485d0caa5
+--- /dev/null
++++ b/docs/production-20261031/records/logs/userspace-sanitizers.log
+@@ -0,0 +1,34 @@
++{
++  "sanitizers": true,
++  "results": [
++    {
++      "case": "vermagic-preservation",
++      "result": "PASS",
++      "detail": "PASS: kernel-only symbols, long/short magic, metadata, sections, symbols, refusal paths, kptr restoration/retry"
++    },
++    {
++      "case": "live",
++      "result": "PASS"
++    },
++    {
++      "case": "syscall-refusal",
++      "result": "PASS"
++    },
++    {
++      "case": "unchanged-sentinel",
++      "result": "PASS"
++    },
++    {
++      "case": "feature-error",
++      "result": "PASS"
++    },
++    {
++      "case": "unterminated",
++      "result": "PASS"
++    },
++    {
++      "case": "json-escaping",
++      "result": "PASS"
++    }
++  ]
++}
+diff --git a/docs/production-20261031/records/logs/userspace.log b/docs/production-20261031/records/logs/userspace.log
+new file mode 100644
+index 0000000000000000000000000000000000000000..38f966419db6fa2c18c5e18a54a31fed2142aeda
+--- /dev/null
++++ b/docs/production-20261031/records/logs/userspace.log
+@@ -0,0 +1,34 @@
++{
++  "sanitizers": false,
++  "results": [
++    {
++      "case": "vermagic-preservation",
++      "result": "PASS",
++      "detail": "PASS: kernel-only symbols, long/short magic, metadata, sections, symbols, refusal paths, kptr restoration/retry"
++    },
++    {
++      "case": "live",
++      "result": "PASS"
++    },
++    {
++      "case": "syscall-refusal",
++      "result": "PASS"
++    },
++    {
++      "case": "unchanged-sentinel",
++      "result": "PASS"
++    },
++    {
++      "case": "feature-error",
++      "result": "PASS"
++    },
++    {
++      "case": "unterminated",
++      "result": "PASS"
++    },
++    {
++      "case": "json-escaping",
++      "result": "PASS"
++    }
++  ]
++}
 diff --git a/kernel/Makefile b/kernel/Makefile
-index 6646f87..5aa4092 100644
+index 6646f87302fb2b9eee650f5d448821ba2d751d92..5aa409255a58d21edd689c1dfdd01feb0eb42d5e 100644
 --- a/kernel/Makefile
 +++ b/kernel/Makefile
 @@ -12,7 +12,7 @@ susfs_guard_lkm-objs := susfs_main.o patch_memory.o symbol_resolver.o lsm_hook.o
@@ -3337,7 +6074,7 @@ index 6646f87..5aa4092 100644
  
  # 5.14+ replaced __flush_dcache_area/__flush_icache_range with
 diff --git a/kernel/ksu_umount_gate.c b/kernel/ksu_umount_gate.c
-index f951eb8..88b7741 100644
+index f951eb8cede5725b02fc8d9e982a6f7bbf77eafc..88b77419e9e49fd9914f916c8089692399db7af5 100644
 --- a/kernel/ksu_umount_gate.c
 +++ b/kernel/ksu_umount_gate.c
 @@ -1,74 +1,92 @@
@@ -3489,7 +6226,7 @@ index f951eb8..88b7741 100644
 +        module_put(owner);
  }
 diff --git a/kernel/ksu_umount_gate.h b/kernel/ksu_umount_gate.h
-index 855c0e6..472067e 100644
+index 855c0e66760051c92e905d60eb1ecf33c3ea38f8..472067e04ac4aabc5cfa5fd86cc5529ecad96bdf 100644
 --- a/kernel/ksu_umount_gate.h
 +++ b/kernel/ksu_umount_gate.h
 @@ -107,5 +107,8 @@ static inline bool susfs_is_current_proc_umounted(void)
@@ -3502,7 +6239,7 @@ index 855c0e6..472067e 100644
  
  #endif /* __SUSFS_KSU_UMOUNT_GATE_H */
 diff --git a/kernel/susfs.h b/kernel/susfs.h
-index 400853b..cfc961d 100644
+index 400853bde606bb6a96bb3d349207d5800bfd94f7..cfc961ddab2f4e1b6290207b9cd97805985258d1 100644
 --- a/kernel/susfs.h
 +++ b/kernel/susfs.h
 @@ -145,6 +145,7 @@ enum susfs_feature {
@@ -3525,7 +6262,7 @@ index 400853b..cfc961d 100644
  int susfs_hide_syms_init(void);
  void susfs_hide_syms_exit(void);
 diff --git a/kernel/susfs_abi.h b/kernel/susfs_abi.h
-index c64ac9a..0f08a95 100644
+index c64ac9ae259c465f1249ae7e688a900f21b15303..0f08a95b44725c5c9359c27ff3bf4fd73e75444a 100644
 --- a/kernel/susfs_abi.h
 +++ b/kernel/susfs_abi.h
 @@ -41,6 +41,10 @@
@@ -3557,19 +6294,23 @@ index c64ac9a..0f08a95 100644
 +
  #endif
 diff --git a/kernel/susfs_main.c b/kernel/susfs_main.c
-index 0c9ad0c..77a5249 100644
+index 0c9ad0c2301fec4e8211cc18f0be2d5c3ad8c4fc..77708b3bfcf3761257acc9703a146f4844fd4695 100644
 --- a/kernel/susfs_main.c
 +++ b/kernel/susfs_main.c
-@@ -118,7 +118,7 @@ static struct {
-      * works - so a failure here is a degradation, not a reason to refuse the module.  Skipping this
-      * init entirely (fail_layer=2) is safe for the same reason: the flag it sets defaults to the
-      * pre-#34 answer. */
+@@ -115,10 +115,8 @@ static struct {
+     { "fp_hook",	susfs_fp_init,			NULL,			false, true,  -1 },
+     /* NOT fatal: this layer only decides whether KernelSU's predicate was found at load.
+      * When it was not, the gates answer the pre-#34 way (uid >= 10000) and every other layer still
+-     * works - so a failure here is a degradation, not a reason to refuse the module.  Skipping this
+-     * init entirely (fail_layer=2) is safe for the same reason: the flag it sets defaults to the
+-     * pre-#34 answer. */
 -    { "ksu_umount_gate",	susfs_ksu_umount_gate_init,	NULL,			false, false, -1 },
++     * works - so a failure here is a degradation, not a reason to refuse the module.  The flag defaults to the pre-#34 answer until initialization succeeds. */
 +    { "ksu_umount_gate",	susfs_ksu_umount_gate_init,	susfs_ksu_umount_gate_exit,			false, false, -1 },
      /* FATAL: every LSM layer below (sus_path first) inserts through this file's table hooks.
       * A module that loads without it would accept rules no LSM layer can apply - the same
       * "loaded but inert" shape fp_hook is fatal for.  ksu_lsm_hook_init() itself only
-@@ -138,6 +138,9 @@ static struct {
+@@ -138,23 +136,14 @@ static struct {
      { "enable_log",	susfs_enable_log_init,		susfs_enable_log_exit,	false, true,  SUSFS_FEAT_ENABLE_LOG },
      { "avc_spoof",	susfs_avc_spoof_init,		susfs_avc_spoof_exit,	false, true,  SUSFS_FEAT_AVC_SPOOF },
      { "hide_syms",	susfs_hide_syms_init,		susfs_hide_syms_exit,	false, true,  SUSFS_FEAT_HIDE_SYMS },
@@ -3579,21 +6320,44 @@ index 0c9ad0c..77a5249 100644
      /* Requests can use every feature above.  Stop/drain this entry point before
       * tearing down any feature, including hide_syms. */
      { "supercall",	susfs_supercall_init,		susfs_supercall_exit,	false, true,  -1 },
-@@ -151,7 +154,7 @@ static struct {
-  * Layer index map (1-based):
-  *   1 fp_hook   2 ksu_umount_gate  3 lsm_hook   4 sus_path   5 create_gate
-  *   6 uname     7 kstat            8 sus_map    9 sus_mount  10 cmdline
-- *   11 open_redirect  12 enable_log  13 avc_spoof  14 hide_syms  15 supercall */
-+ *   11 open_redirect  12 enable_log  13 avc_spoof  14 hide_syms  15 priority_filter  16 supercall */
- static int fail_layer;
- module_param_named(fail_layer, fail_layer, int, 0644);
+ };
  
+-/* Diagnostic: make one layer's init fail, by 1-based index, to exercise the rollback path
+- * on the device - a `fatal` layer failing must leave the load with nothing armed.
+- * `fail_layer=2` forces the ksu_umount_gate init to fail WITHOUT failing the load (that
+- * layer is not fatal): its flag stays on the pre-#34 answer, which is exactly what that
+- * layer's own failure is, so the two diagnostic routes are equivalent there.
+- * Layer index map (1-based):
+- *   1 fp_hook   2 ksu_umount_gate  3 lsm_hook   4 sus_path   5 create_gate
+- *   6 uname     7 kstat            8 sus_map    9 sus_mount  10 cmdline
+- *   11 open_redirect  12 enable_log  13 avc_spoof  14 hide_syms  15 supercall */
+-static int fail_layer;
+-module_param_named(fail_layer, fail_layer, int, 0644);
+-
+ /* Not __init/__exit: it is called from both, and an __exit callee in __init code is a
+  * modpost section mismatch. */
+ static void susfs_layers_down(int upto)
+@@ -204,13 +193,7 @@ static int __init susfs_init(void)
+         /* Marked before the call: a layer that half-ran still has to be taken down. */
+         susfs_layers[i].armed = true;
+ 
+-        if (fail_layer == i + 1) {
+-            pr_warn("susfs_guard_lkm: fail_layer=%d - forcing %s's init to fail (diagnostic)\n",
+-                    fail_layer, susfs_layers[i].name);
+-            ret = -EIO;
+-        } else {
+-            ret = susfs_layers[i].init ? susfs_layers[i].init() : 0;
+-        }
++        ret = susfs_layers[i].init ? susfs_layers[i].init() : 0;
+ 
+         if (!ret) {
+             /* Arm the feature only after its layer's init reported success: the SHOW
 diff --git a/kernel/susfs_priority_filter.c b/kernel/susfs_priority_filter.c
 new file mode 100644
-index 0000000..95d524d
+index 0000000000000000000000000000000000000000..9d07f46ca1e17e7156bff5a4f246c1268c37d13a
 --- /dev/null
 +++ b/kernel/susfs_priority_filter.c
-@@ -0,0 +1,639 @@
+@@ -0,0 +1,581 @@
 +// SPDX-License-Identifier: GPL-2.0
 +/*
 + * Samsung adaptation of inforcqb/susfs4ksu-for-lkm PR #158, d55749105bea.
@@ -3664,44 +6428,8 @@ index 0000000..95d524d
 +static int (*prio_check_cap_fn)(int ioprio);
 +static_assert(__same_type(typeof(prio_check_cap_fn), typeof(&ioprio_check_cap)));
 +static struct susfs_fp_hook prio_hooks[PRIO_OP_COUNT];
-+/* Retain the first initialization failure after rollback. Some production
-+ * kernels expose no usable printk history; do not make recovery depend on it.
-+ * stage: 0=ready, 1=I/O helper, 2=table install, 3=compat coverage, 4=probe fallback.
-+ * These fields are boot-local and read-only through the existing root status.
-+ */
-+static int prio_init_errno, prio_init_stage, prio_init_op = -1;
-+static unsigned int prio_init_native_mask, prio_init_compat_mask;
-+static bool prio_init_compat_table;
-+static u32 prio_init_native_insn, prio_init_compat_insn;
-+/* 0=off, 1=syscall tables, 2=entry probes. The original table error remains
-+ * visible even when the supported probe route succeeds. */
-+static unsigned int prio_route, prio_probe_mask;
-+static int prio_table_errno;
-+
-+static void prio_record_init(int error, int stage, int operation)
-+{
-+    unsigned int native = 0, compat = 0;
-+    int i, inspect = operation >= 0 ? operation : 0;
-+
-+    for (i = 0; i < PRIO_OP_COUNT; i++) {
-+        if (prio_hooks[i].native_installed)
-+            native |= 1U << i;
-+        if (prio_hooks[i].compat_installed)
-+            compat |= 1U << i;
-+    }
-+    mutex_lock(&prio_config_lock);
-+    prio_init_errno = error;
-+    prio_init_stage = stage;
-+    prio_init_op = operation;
-+    prio_init_native_mask = native;
-+    prio_init_compat_mask = compat;
-+    prio_init_compat_table = !!susfs_fp_compat_syscall_table();
-+    prio_init_native_insn = prio_hooks[inspect].wrapper ?
-+        READ_ONCE(*(const u32 *)(void *)prio_hooks[inspect].wrapper) : 0;
-+    prio_init_compat_insn = prio_hooks[inspect].compat_wrapper ?
-+        READ_ONCE(*(const u32 *)(void *)prio_hooks[inspect].compat_wrapper) : 0;
-+    mutex_unlock(&prio_config_lock);
-+}
++/* Tracks registered entry probes so partial installation can be drained. */
++static unsigned int prio_probe_mask;
 +
 +static bool prio_should_hide_user(int which, int who, int user_class)
 +{
@@ -3901,7 +6629,7 @@ index 0000000..95d524d
 +            susfs_fp_drain(&prio_hooks[i]);
 +}
 +
-+static int prio_install_probes(int *failed_operation)
++static int prio_install_probes(void)
 +{
 +    unsigned long targets[PRIO_OP_COUNT], checked;
 +    int i, rc;
@@ -3912,13 +6640,11 @@ index 0000000..95d524d
 +        init_waitqueue_head(&prio_hooks[i].callback_waitq);
 +    }
 +    for (i = 0; i < PRIO_OP_COUNT; i++) {
-+        *failed_operation = i;
 +        rc = prio_probe_target(i, &targets[i]);
 +        if (rc)
 +            return rc;
 +    }
 +    for (i = 0; i < PRIO_OP_COUNT; i++) {
-+        *failed_operation = i;
 +        prio_probes[i].symbol_name = NULL;
 +        prio_probes[i].addr = (kprobe_opcode_t *)targets[i];
 +        prio_probes[i].flags = 0;
@@ -3932,7 +6658,6 @@ index 0000000..95d524d
 +    /* A changed/foreign table during registration must not silently bypass
 +     * the probes. All four entries must still prove both ABIs before ready. */
 +    for (i = 0; i < PRIO_OP_COUNT; i++) {
-+        *failed_operation = i;
 +        rc = prio_probe_target(i, &checked);
 +        if (rc || checked != targets[i])
 +            return rc ? rc : -EAGAIN;
@@ -4142,16 +6867,10 @@ index 0000000..95d524d
 +    {
 +        struct prio_uid_rules *rules = rcu_dereference_protected(prio_rules, lockdep_is_held(&prio_config_lock));
 +        length = scnprintf(buf, PAGE_SIZE,
-+            "ready=%u configured=%u generation=%lu automatic=%u own_appid=%u root_lookup=%u "
-+            "init_errno=%d stage=%d op=%d native_mask=%x compat_mask=%x compat_table=%u "
-+            "native_insn=%08x compat_insn=%08x route=%u probe_mask=%x table_errno=%d\n",
++            "ready=%u configured=%u generation=%lu automatic=%u own_appid=%u root_lookup=%u\n",
 +            prio_ready ? 1 : 0, prio_count, prio_generation,
 +            rules && rules->automatic ? 1 : 0, rules ? rules->own_appid : 0,
-+            susfs_ksu_root_available() ? 1 : 0,
-+            prio_init_errno, prio_init_stage, prio_init_op,
-+            prio_init_native_mask, prio_init_compat_mask, prio_init_compat_table ? 1 : 0,
-+            prio_init_native_insn, prio_init_compat_insn,
-+            prio_route, prio_probe_mask, prio_table_errno);
++            susfs_ksu_root_available() ? 1 : 0);
 +    }
 +    mutex_unlock(&prio_config_lock);
 +    return length;
@@ -4178,48 +6897,35 @@ index 0000000..95d524d
 +    synchronize_rcu();
 +    kfree(previous);
 +    prio_check_cap_fn = NULL;
-+    WRITE_ONCE(prio_route, 0);
 +}
 +
 +int susfs_priority_filter_init(void)
 +{
-+    int i, rc, failed_operation;
-+
-+    prio_table_errno = 0;
-+    prio_record_init(0, 1, -1);
++    int i, rc;
 +    prio_check_cap_fn = (void *)find_kernel_symbol_exact("ioprio_check_cap");
 +    if (!prio_check_cap_fn) {
-+        prio_record_init(-EOPNOTSUPP, 1, -1);
 +        return -EOPNOTSUPP;
 +    }
 +    for (i = 0; i < PRIO_OP_COUNT; i++) {
 +        rc = susfs_fp_install(&prio_hooks[i]);
 +        if (rc) {
-+            prio_table_errno = rc;
-+            prio_record_init(rc, 2, i);
 +            if (rc == -EFAULT) {
 +                /* remove() returns only after both tables are restored and
 +                 * published callbacks have drained. No forced RKP writes. */
 +                for (i = PRIO_OP_COUNT - 1; i >= 0; i--)
 +                    susfs_fp_remove(&prio_hooks[i]);
-+                rc = prio_install_probes(&failed_operation);
-+                if (!rc) {
-+                    WRITE_ONCE(prio_route, 2);
++                rc = prio_install_probes();
++                if (!rc)
 +                    goto ready;
-+                }
-+                prio_record_init(rc, 4, failed_operation);
 +            }
 +            goto rollback;
 +        }
 +        if (IS_ENABLED(CONFIG_COMPAT) && !prio_hooks[i].compat_installed) {
 +            rc = -EOPNOTSUPP;
-+            prio_record_init(rc, 3, i);
 +            goto rollback;
 +        }
 +    }
-+    WRITE_ONCE(prio_route, 1);
 +ready:
-+    prio_record_init(0, 0, -1);
 +    mutex_lock(&prio_config_lock);
 +    WRITE_ONCE(prio_ready, true);
 +    mutex_unlock(&prio_config_lock);
@@ -4234,7 +6940,7 @@ index 0000000..95d524d
 +    return rc;
 +}
 diff --git a/kernel/susfs_supercall.c b/kernel/susfs_supercall.c
-index 5444e43..7ca5094 100644
+index 5444e4325ed5179a836d77fd07f139dce359f73a..7ca50942b5b0975533e5dba3b0cdb147a6ff6e1e 100644
 --- a/kernel/susfs_supercall.c
 +++ b/kernel/susfs_supercall.c
 @@ -206,6 +206,12 @@ static void susfs_tw_func(struct callback_head *cb)
@@ -4274,7 +6980,7 @@ index 5444e43..7ca5094 100644
  }
 diff --git a/tests/ksu_policy/policy_test.c b/tests/ksu_policy/policy_test.c
 new file mode 100644
-index 0000000..9899003
+index 0000000000000000000000000000000000000000..98990039cdd7a1c4602f5cf25172e269a7fdabd0
 --- /dev/null
 +++ b/tests/ksu_policy/policy_test.c
 @@ -0,0 +1,65 @@
@@ -4345,7 +7051,7 @@ index 0000000..9899003
 +}
 diff --git a/tests/ksu_policy/run.py b/tests/ksu_policy/run.py
 new file mode 100644
-index 0000000..91d82d9
+index 0000000000000000000000000000000000000000..91d82d971430d607b3eb76b6d9ad5fef2290fd6b
 --- /dev/null
 +++ b/tests/ksu_policy/run.py
 @@ -0,0 +1,31 @@
@@ -4381,7 +7087,7 @@ index 0000000..91d82d9
 +  assert r.returncode,'Negative control not detected: '+label
 +  print('PASS negative/'+label,flush=True)
 diff --git a/tests/lifecycle/lifecycle_test.c b/tests/lifecycle/lifecycle_test.c
-index 41e003f..d49e33a 100644
+index 41e003fdb54fbcb12b3c8f0306ab189d28ed6349..f9988d092c80eada9417a2b9cb787f91e6b9e596 100644
 --- a/tests/lifecycle/lifecycle_test.c
 +++ b/tests/lifecycle/lifecycle_test.c
 @@ -9,6 +9,7 @@
@@ -4434,16 +7140,28 @@ index 41e003f..d49e33a 100644
      current->uid = 0;
      atomic_store(&host_module.state, MODULE_STATE_GOING);
      assert(request(CMD_SUSFS_SHOW_VERSION, &payload) == 0);
-@@ -537,6 +547,8 @@ static void test_partial_failures(void)
+@@ -532,13 +542,19 @@ static void test_rollback(void)
+     check_released();
+ }
+ 
++static int fail_layer_init(void) { return -EIO; }
++
+ static void test_partial_failures(void)
+ {
      current->uid = 0;
      atomic_store(&host_module.state, MODULE_STATE_COMING);
      for (int i = 1; i <= (int)ARRAY_SIZE(susfs_layers); ++i) {
+-        fail_layer = i;
 +        /* Each iteration models a fresh module image, whose feature bitmap is zeroed. */
 +        memset(susfs_armed_features, 0, sizeof(susfs_armed_features));
-         fail_layer = i;
++        int (*original_init)(void) = susfs_layers[i - 1].init;
++        susfs_layers[i - 1].init = fail_layer_init;
          int rc = susfs_init();
++        susfs_layers[i - 1].init = original_init;
          if (susfs_layers[i - 1].fatal) {
-@@ -556,6 +568,14 @@ static void test_partial_failures(void)
+             /* A fatal row's forced failure rolls the load back before anything
+              * responds: no command becomes reachable, and the version request
+@@ -556,6 +572,14 @@ static void test_partial_failures(void)
               * stays off" means, and why their failure is not a refusal. */
              assert(rc == 0 && entry_registered() && !current->pending);
              atomic_store(&host_module.state, MODULE_STATE_LIVE);
@@ -4460,7 +7178,7 @@ index 41e003f..d49e33a 100644
          }
 diff --git a/tests/priority_filter/README.md b/tests/priority_filter/README.md
 new file mode 100644
-index 0000000..a772499
+index 0000000000000000000000000000000000000000..a7724991771d97b790f388c5e765d2e591e56bad
 --- /dev/null
 +++ b/tests/priority_filter/README.md
 @@ -0,0 +1,16 @@
@@ -4482,10 +7200,10 @@ index 0000000..a772499
 +establish live kernel behavior or Samsung protected-memory compatibility.
 diff --git a/tests/priority_filter/priority_test.c b/tests/priority_filter/priority_test.c
 new file mode 100644
-index 0000000..e772343
+index 0000000000000000000000000000000000000000..918a065170690fb4a41eebf35cdc637d1c4d786f
 --- /dev/null
 +++ b/tests/priority_filter/priority_test.c
-@@ -0,0 +1,458 @@
+@@ -0,0 +1,457 @@
 +/* Execute the actual priority-filter C with instrumented kernel API models. */
 +#include <assert.h>
 +#include <ctype.h>
@@ -4695,7 +7413,7 @@ index 0000000..e772343
 +    struct pt_regs r={.regs={(unsigned long)which,(unsigned long)who,(unsigned long)priority,9}};
 +    struct pt_regs before=r;expected_hook=&prio_hooks[op];
 +    long out;
-+    if(prio_route==2){
++    if(prio_probe_mask){
 +        struct pt_regs outer={.regs={(unsigned long)&r},.pc=(unsigned long)prio_probes[op].addr};
 +        outer.regs[30]=0x1234;struct pt_regs outer_before=outer;
 +        int handled=prio_probes[op].pre_handler(&prio_probes[op],&outer);
@@ -4707,8 +7425,8 @@ index 0000000..e772343
 +    assert(!memcmp(&r,&before,sizeof(r)));assert(!callback_depth);
 +    return out;
 +}
-+static void init_ok(void) {as_root();reset_tables();install_calls=0;register_calls=0;if(use_probes){install_fail=0;install_error=-EFAULT;}assert(!susfs_priority_filter_init());assert(prio_ready);assert(prio_route==(use_probes?2:1));}
-+static void finish(void) {susfs_priority_filter_exit();assert(!prio_ready&&!prio_count);assert(!atomic_load(&allocations)&&!atomic_load(&lookup_refs));for(int i=0;i<PRIO_OP_COUNT;i++)assert(!prio_hooks[i].installed);assert(!armed_probes&&!prio_probe_mask&&!prio_route);}
++static void init_ok(void) {as_root();reset_tables();install_calls=0;register_calls=0;if(use_probes){install_fail=0;install_error=-EFAULT;}assert(!susfs_priority_filter_init());assert(prio_ready);}
++static void finish(void) {susfs_priority_filter_exit();assert(!prio_ready&&!prio_count);assert(!atomic_load(&allocations)&&!atomic_load(&lookup_refs));for(int i=0;i<PRIO_OP_COUNT;i++)assert(!prio_hooks[i].installed);assert(!armed_probes&&!prio_probe_mask);}
 +
 +static void test_configuration(void) {
 +    init_ok();assert(priority_filter_permissions==0400);
@@ -4750,7 +7468,7 @@ index 0000000..e772343
 +        ksu_umount=false;assert(call(op,compat,cls,10001,0)==(compat?211:110));ksu_umount=true;
 +        effective_uid=0;assert(call(op,compat,cls,10001,0)==(compat?211:110));as_app(10002);
 +        susfs_syscall_fn_t *slot=compat?prio_hooks[op].orig_slot_compat:prio_hooks[op].orig_slot;
-+        if(prio_route==1){susfs_syscall_fn_t saved=*slot;*slot=NULL;assert(call(op,compat,cls,10001,0)==-ENOSYS);*slot=saved;}
++        if(!prio_probe_mask){susfs_syscall_fn_t saved=*slot;*slot=NULL;assert(call(op,compat,cls,10001,0)==-ENOSYS);*slot=saved;}
 +    }
 +    for(unsigned int uid=0;uid<10000;uid+=1000){as_app(uid);assert(call(PRIO_GET,false,PRIO_USER,10001,0)==110);as_app(1000000+uid);assert(call(PRIO_GET,false,PRIO_USER,10001,0)==110);}
 +    unsigned int app_callers[]={10000,19999,20000,29999,90000,98999,99000,99999};
@@ -4827,22 +7545,22 @@ index 0000000..e772343
 +static void test_initialization(void) {
 +    char report[PAGE_SIZE];
 +    as_root();helper_available=false;assert(susfs_priority_filter_init()==-EOPNOTSUPP);
-+    assert(prio_init_errno==-EOPNOTSUPP&&prio_init_stage==1&&prio_init_op==-1);
++
 +    helper_available=true;finish();
-+    assert(prio_init_errno==-EOPNOTSUPP&&prio_init_stage==1);
++
 +    for(int i=0;i<PRIO_OP_COUNT;i++){
 +        install_fail=i;install_calls=0;assert(susfs_priority_filter_init()==-EIO);finish();
-+        assert(prio_init_errno==-EIO&&prio_init_stage==2&&prio_init_op==i);
++
 +        assert(prio_status_show(report,NULL)>0);
-+        assert(strstr(report,"ready=0 ")&&strstr(report,"init_errno=-5 stage=2 "));
-+        assert(strstr(report,"compat_table=1 ")&&strlen(report)<512);
++        assert(strstr(report,"ready=0 ")&&!strstr(report,"init_errno="));
++        assert(strlen(report)<256);
 +    }
 +    install_fail=-1;compat_available=false;install_calls=0;
 +    int rc=susfs_priority_filter_init();assert(rc==(CONFIG_COMPAT?-EOPNOTSUPP:0));
-+    if(CONFIG_COMPAT)assert(prio_init_errno==-EOPNOTSUPP&&prio_init_stage==3&&prio_init_op==0&&!prio_init_compat_table);
++
 +    finish();compat_available=true;
 +    for(int i=0;i<20;i++){
-+        init_ok();assert(!prio_init_errno&&!prio_init_stage&&prio_init_op==-1);
++        init_ok();
 +        assert(!apply("com.hidden"));finish();
 +    }
 +    assert(apply("com.hidden")==-ENODEV);assert(!atomic_load(&allocations));
@@ -4882,8 +7600,8 @@ index 0000000..e772343
 +static void expect_probe_failure(int error,int operation) {
 +    install_calls=register_calls=0;install_fail=0;install_error=-EFAULT;
 +    assert(susfs_priority_filter_init()==error);
-+    assert(!prio_ready&&!prio_probe_mask&&!armed_probes&&!prio_route);
-+    assert(prio_table_errno==-EFAULT&&prio_init_errno==error&&prio_init_stage==4&&prio_init_op==operation);
++    assert(!prio_ready&&!prio_probe_mask&&!armed_probes);
++    (void)operation;
 +    assert(!prio_check_cap_fn);for(int i=0;i<4;i++)assert(!prio_hooks[i].installed&&!prio_probes[i].addr&&!(prio_probes[i].flags&KPROBE_FLAG_DISABLED));
 +    finish();
 +}
@@ -4891,7 +7609,7 @@ index 0000000..e772343
 +    as_root();reset_tables();
 +    for(int i=0;i<4;i++){register_fail=i;int removed=unregister_calls;int drained=drain_calls;expect_probe_failure(-EBUSY,i);assert(unregister_calls-removed==i&&drain_calls-drained==i);}
 +    register_fail=-1;use_probes=true;
-+    for(int i=0;i<4;i++){reset_tables();install_calls=register_calls=0;install_fail=i;install_error=-EFAULT;assert(!susfs_priority_filter_init());assert(prio_route==2&&!active_table_hooks);finish();}
++    for(int i=0;i<4;i++){reset_tables();install_calls=register_calls=0;install_fail=i;install_error=-EFAULT;assert(!susfs_priority_filter_init());assert(prio_probe_mask==15&&!active_table_hooks);finish();}
 +    native_available=false;expect_probe_failure(-ENOENT,0);native_available=true;
 +    compat_available=false;
 +    if(CONFIG_COMPAT)expect_probe_failure(-ENOENT,0);
@@ -4909,8 +7627,7 @@ index 0000000..e772343
 +    for(int i=0;i<20;i++){
 +        int removed=unregister_calls,drained=drain_calls;init_ok();
 +        char report[PAGE_SIZE];assert(prio_status_show(report,NULL)>0);
-+        assert(strstr(report,"route=2 probe_mask=f table_errno=-14")&&strlen(report)<512);
-+        assert(!prio_init_errno&&!prio_init_stage&&prio_init_op==-1);
++        assert(strstr(report,"ready=1 ")&&!strstr(report,"table_errno=")&&strlen(report)<256);
 +        assert(!apply("com.hidden"));as_app(10002);assert(call(PRIO_GET,false,PRIO_USER,10001,0)==-ESRCH);
 +        finish();assert(unregister_calls-removed==4&&drain_calls-drained==4);
 +    }
@@ -4946,7 +7663,7 @@ index 0000000..e772343
 +}
 diff --git a/tests/priority_filter/run.py b/tests/priority_filter/run.py
 new file mode 100644
-index 0000000..4288f48
+index 0000000000000000000000000000000000000000..4288f48d88f540a8156ec5b0933ebe08d2d06cb2
 --- /dev/null
 +++ b/tests/priority_filter/run.py
 @@ -0,0 +1,60 @@
@@ -5012,26 +7729,23 @@ index 0000000..4288f48
 +  print('PASS negative/'+label,flush=True)
 diff --git a/tests/priority_tool/README.md b/tests/priority_tool/README.md
 new file mode 100644
-index 0000000..b64488a
+index 0000000000000000000000000000000000000000..03116cccad30ed4da09cbf22d78cfc84ccbfa268
 --- /dev/null
 +++ b/tests/priority_tool/README.md
-@@ -0,0 +1,10 @@
-+# Priority client host checks
+@@ -0,0 +1,7 @@
++# Production priority control client tests
 +
-+The production freestanding client runs against a syscall model, never real host
-+UID-changing calls. Tests enforce namespace isolation/private mounts before ID
-+changes, complete group/UID dropping, read-only probes, invalid-only scheduling
-+validation, unsupported-command sentinels, correct JSON/exit states, and every
-+failure before dropping IDs. Negative controls must detect removing mount privacy,
-+sending a valid scheduling update, accepting an unanswered ABI command, or
-+rejecting SDK sandbox callers through an ordinary-app-only UID gate. Successful
-+probes include ordinary, SDK sandbox and app-zygote caller IDs.
++The real control client runs against a modeled syscall boundary. Tests cover
++configuration ABI size, unsupported-command sentinels, result propagation,
++root-only status, overflow rejection, short writes and rejection of retired
++query/probe commands. Any unexpected identity or scheduling syscall fails.
++Run `python3 tests/priority_tool/run.py`, optionally with `--sanitizers`.
 diff --git a/tests/priority_tool/run.py b/tests/priority_tool/run.py
 new file mode 100644
-index 0000000..01698c3
+index 0000000000000000000000000000000000000000..c5a8fd6392dcdadddb845e21322c33ae401fa0c2
 --- /dev/null
 +++ b/tests/priority_tool/run.py
-@@ -0,0 +1,33 @@
+@@ -0,0 +1,30 @@
 +#!/usr/bin/env python3
 +"""Compile the production control client with a syscall model; never changes host IDs."""
 +import argparse,json,os,re,subprocess,tempfile
@@ -5042,7 +7756,7 @@ index 0000000..01698c3
 +abi=re.sub(r'^#include[^\n]*\n','',(root/'kernel/susfs_abi.h').read_text(),flags=re.M)
 +flags=['-O1','-g','-fsanitize=address,undefined','-fno-omit-frame-pointer','-no-pie'] if a.sanitizers else ['-O2']
 +env=dict(os.environ,ASAN_OPTIONS='detect_leaks=0:abort_on_error=1',UBSAN_OPTIONS='halt_on_error=1')
-+cases=['auto','auto-off','auto-invalid','auto-unhandled','auto-error','automatic-ready','set','clear','status','query','probe','probe-sdk','probe-app-zygote','unhandled','command-error','visible','wrong-validation','missing-target','not-root','no-status','not-ready','overflow','self',*[f'fail-{s}' for s in ['namespace','private','keepcaps','nnp','groups','gids','uids']]]
++cases=['auto','auto-off','auto-invalid','auto-unhandled','auto-error','set','clear','status','unhandled','command-error','no-status','overflow','retired-query','retired-probe']
 +with tempfile.TemporaryDirectory(prefix='priority-tool-') as d:
 + d=Path(d);(d/'abi.h').write_text(abi)
 + def build(label,source):
@@ -5056,10 +7770,7 @@ index 0000000..01698c3
 +  assert json.loads(r.stdout)['schema']==1
 +  print('PASS priority client '+case,flush=True)
 + for label,before,after,case in [
-+  ('omit-private-mounts','0x4000|0x40000','0x4000','probe'),
-+  ('valid-scheduling-write','invalid=SC(30,3,target,-1','invalid=SC(30,3,target,0','probe'),
-+  ('omit-unsupported-sentinel','payload.err=126','payload.err=0','unhandled'),
-+  ('narrow-caller-range','if(app<10000||','if((app<10000||app>19999)||','probe-sdk')]:
++  ('omit-unsupported-sentinel','payload.err=126','payload.err=0','unhandled')]:
 +  assert before in text
 +  exe=build(label,text.replace(before,after,1))
 +  r=subprocess.run([str(exe),case],capture_output=True,text=True,env=env,timeout=10)
@@ -5067,15 +7778,14 @@ index 0000000..01698c3
 +  print('PASS negative/'+label,flush=True)
 diff --git a/tests/priority_tool/tool_test.c b/tests/priority_tool/tool_test.c
 new file mode 100644
-index 0000000..f772e9c
+index 0000000000000000000000000000000000000000..77e453cbe3a71ec8f4e441133c47f0c6484c325d
 --- /dev/null
 +++ b/tests/priority_tool/tool_test.c
-@@ -0,0 +1,98 @@
+@@ -0,0 +1,56 @@
 +#include <assert.h>
 +#include <stdint.h>
 +#include <stdbool.h>
 +#include <stdio.h>
-+#include <stdlib.h>
 +#include <string.h>
 +typedef uint32_t u32;
 +typedef uint64_t u64;
@@ -5084,25 +7794,16 @@ index 0000000..f772e9c
 +#include ABI
 +#define PRIORITY_TOOL_HOSTTEST
 +#include PRODUCTION
-+static char captured[8192];static unsigned long captured_len;
++static char captured[8192];
++static usize captured_len;
 +static const char *test_case;
-+static int ns_created,private_mount,keepcaps,nnp,groups,gids,ids;
-+static long identity,baseline_error,invalid_error=-22,probe_uid=19998;
-+static int hidden=1,unhandled,command_error;
-+static int failing(long n,long option) {
-+    if(!strncmp(test_case,"fail-",5)){
-+        const char *s=test_case+5;
-+        return (eq(s,"namespace")&&n==97)||(eq(s,"private")&&n==40)||
-+          (eq(s,"keepcaps")&&n==167&&option==8)||(eq(s,"nnp")&&n==167&&option==38)||
-+          (eq(s,"groups")&&n==159)||(eq(s,"gids")&&n==149)||(eq(s,"uids")&&n==147);
-+    }return 0;
-+}
++static int unhandled,command_error;
 +sysarg priority_sys6(sysarg n,sysarg a,sysarg b,sysarg c,sysarg d,sysarg e,sysarg f) {
 +    (void)e;(void)f;
 +    if(n==64){assert(a==1&&captured_len+(usize)c<sizeof(captured));long amount=c>17?17:c;memcpy(captured+captured_len,(void *)b,amount);captured_len+=amount;return amount;}
 +    if(n==142){
 +        assert((usize)a==KSU_INSTALL_MAGIC1&&(usize)b==SUSFS_MAGIC);
-+        if(c==CMD_RMGU_SUSFS_AUTO_ROOT_APPS) {
++        if(c==CMD_RMGU_SUSFS_AUTO_ROOT_APPS){
 +            struct st_rmgu_susfs_auto_root_apps *p=(void *)d;
 +            assert(sizeof(*p)==sizeof(struct automatic_payload)&&p->err==126);
 +            assert(p->enabled==(eq(test_case,"auto-off")?0:1));
@@ -5119,64 +7820,32 @@ index 0000000..f772e9c
 +        if(!unhandled)p->err=command_error;
 +        return 0;
 +    }
-+    if(n==174||n==175)return identity;
 +    if(n==56){assert(a==-100&&!strcmp((char *)b,"/sys/module/susfs_guard_lkm/parameters/priority_filter")&&c==0);return eq(test_case,"no-status")?-2:5;}
-+    if(n==63){assert(a==5);const char *s=eq(test_case,"automatic-ready")?"ready=1 configured=0 generation=2 automatic=1 own_appid=10123 root_lookup=1\n":eq(test_case,"not-ready")?"ready=0 configured=0 generation=0\n":"ready=1 configured=1 generation=2\n";assert((usize)c>strlen(s));memcpy((void *)b,s,strlen(s));return strlen(s);}
++    if(n==63){const char *s="ready=1 configured=0 generation=2 automatic=1 own_appid=10123 root_lookup=1\n";assert(a==5&&(usize)c>strlen(s));memcpy((void *)b,s,strlen(s));return strlen(s);}
 +    if(n==57){assert(a==5);return 0;}
-+    if(n==141||n==31){
-+        assert(a==(n==141?2:3));
-+        if(eq(test_case,"query")){assert(identity==10002&&!ids&&!ns_created&&b==10001);return -3;}
-+        if(!identity){assert(b==10001);return baseline_error?baseline_error:(n==141?20:0);}
-+        assert(ids&&identity==probe_uid);
-+        if(b==probe_uid)return n==141?20:0;
-+        assert(b==10001);return hidden?-3:(n==141?20:0);
-+    }
-+    if(failing(n,a))return -1;
-+    if(n==97){assert(!identity&&a==0x20000);ns_created=1;return 0;}
-+    if(n==40){assert(ns_created&&!identity&&a==0&&!strcmp((char *)b,"/")&&c==0&&d==(0x4000|0x40000));private_mount=1;return 0;}
-+    if(n==167){assert(private_mount&&!identity);if(a==8){assert(!b);keepcaps=1;}else{assert(a==38&&b==1&&keepcaps);nnp=1;}return 0;}
-+    if(n==159){assert(private_mount&&nnp&&!a&&!b);groups=1;return 0;}
-+    if(n==149){assert(groups&&!identity&&a==probe_uid&&b==a&&c==a);gids=1;return 0;}
-+    if(n==147){assert(private_mount&&gids&&!identity&&a==probe_uid&&b==a&&c==a);ids=1;identity=a;return 0;}
-+    if(n==30){assert(ids&&identity==probe_uid&&a==3&&b==10001&&c==-1);return invalid_error;}
-+    assert(!"unexpected syscall");return -1;
++    assert(!"Production client must not query or change identities/priorities");return -1;
 +}
-+int main(int argc,char **argv) {
-+    assert(argc==2);test_case=argv[1];char *args[]={"ctl","probe","19998","10001",NULL};int ac=4,expected=0;
-+    if(eq(test_case,"auto")||eq(test_case,"auto-unhandled")||eq(test_case,"auto-error")){args[1]="auto";args[2]="10123";ac=3;if(eq(test_case,"auto-unhandled")){unhandled=1;expected=1;}if(eq(test_case,"auto-error")){command_error=-95;expected=1;}}
-+    else if(eq(test_case,"auto-off")){args[1]="auto-off";ac=2;}
-+    else if(eq(test_case,"auto-invalid")){args[1]="auto";args[2]="9999";ac=3;expected=2;}
-+    else if(eq(test_case,"automatic-ready")){}
-+    else if(eq(test_case,"set")){args[1]="set";args[2]="com.hidden,com.second";ac=3;}
-+    else if(eq(test_case,"clear")){args[1]="clear";ac=2;}
-+    else if(eq(test_case,"status")){args[1]="status";ac=2;}
-+    else if(eq(test_case,"query")){args[1]="query";args[2]="10001";ac=3;identity=10002;}
-+    else if(eq(test_case,"probe-sdk")){args[2]="20002";probe_uid=20002;}
-+    else if(eq(test_case,"probe-app-zygote")){args[2]="90002";probe_uid=90002;}
-+    else if(eq(test_case,"unhandled")){args[1]="clear";ac=2;unhandled=1;expected=1;}
-+    else if(eq(test_case,"command-error")){args[1]="clear";ac=2;command_error=-13;expected=1;}
-+    else if(eq(test_case,"visible")){hidden=0;expected=1;}
-+    else if(eq(test_case,"wrong-validation")){invalid_error=-3;expected=1;}
-+    else if(eq(test_case,"missing-target")){baseline_error=-3;expected=2;}
-+    else if(eq(test_case,"not-root")){identity=10002;expected=2;}
-+    else if(eq(test_case,"no-status")||eq(test_case,"not-ready")){expected=2;}
++int main(int argc,char **argv){
++    assert(argc==2);test_case=argv[1];char *args[]={"ctl","auto","10123","10001",NULL};int ac=3,expected=0;
++    if(eq(test_case,"auto-unhandled")){unhandled=1;expected=1;}
++    else if(eq(test_case,"auto-error")){command_error=-95;expected=1;}
++    else if(eq(test_case,"auto-invalid")){args[2]="9999";expected=2;}
 +    else if(eq(test_case,"overflow")){args[2]="2147483648";expected=2;}
-+    else if(eq(test_case,"self")){args[2]="10001";expected=2;}
-+    else if(!strncmp(test_case,"fail-",5)){expected=2;}
-+    else assert(eq(test_case,"probe"));
-+    int rc=priority_tool_main(ac,args);assert(rc==expected);captured[captured_len]=0;
-+    if(!strncmp(test_case,"fail-",5))assert(!identity&&!ids);
-+    if(eq(test_case,"probe")||eq(test_case,"probe-sdk")||eq(test_case,"probe-app-zygote"))assert(strstr(captured,"\"passed\":true"));
-+    fputs(captured,stdout);return 0;
++    else if(eq(test_case,"set")){args[1]="set";args[2]="com.hidden,com.second";}
++    else if(eq(test_case,"unhandled")||eq(test_case,"command-error")){args[1]="clear";ac=2;unhandled=eq(test_case,"unhandled");command_error=-13;expected=1;}
++    else if(eq(test_case,"no-status")){args[1]="status";ac=2;expected=2;}
++    else if(eq(test_case,"retired-query")||eq(test_case,"retired-probe")){args[1]=eq(test_case,"retired-query")?"query":"probe";ac=eq(test_case,"retired-query")?3:4;expected=2;}
++    else if(!eq(test_case,"auto")){assert(eq(test_case,"auto-off")||eq(test_case,"clear")||eq(test_case,"status"));args[1]=(char *)test_case;ac=2;}
++    assert(priority_tool_main(ac,args)==expected);captured[captured_len]=0;fputs(captured,stdout);return 0;
 +}
 diff --git a/tools/build_priority_client.py b/tools/build_priority_client.py
 new file mode 100644
-index 0000000..018c3fb
+index 0000000000000000000000000000000000000000..7b7dcc0b02805fe5321fe28344c0d7b20225146f
 --- /dev/null
 +++ b/tools/build_priority_client.py
 @@ -0,0 +1,20 @@
 +#!/usr/bin/env python3
-+"""Build and verify the freestanding ARM64 configuration/probe client."""
++"""Build and verify the freestanding ARM64 configuration client."""
 +import argparse,hashlib,json,struct,subprocess
 +from pathlib import Path
 +p=argparse.ArgumentParser(description=__doc__);p.add_argument('--clang-bin',type=Path,required=True);p.add_argument('--output',type=Path,required=True);a=p.parse_args()
@@ -5197,7 +7866,7 @@ index 0000000..018c3fb
 +a.output.with_suffix('.build.json').write_text(json.dumps(report,indent=2)+'\n');print('PASS ARM64 PIE client, no libc/interpreter/dynamic relocations')
 diff --git a/tools/check_priority_artifact.py b/tools/check_priority_artifact.py
 new file mode 100644
-index 0000000..7df0415
+index 0000000000000000000000000000000000000000..d8f2dc1593dcbe24b814f085253aa82427bb964f
 --- /dev/null
 +++ b/tools/check_priority_artifact.py
 @@ -0,0 +1,55 @@
@@ -5248,7 +7917,7 @@ index 0000000..7df0415
 + 'priority_probe_callbacks_match_real_headers':all(probe_words[n]==expected['types']['expected_post' if n=='prio_probe_post' else 'expected_pre'] for n in probe_names),
 + 'baseline_imports_preserved':not removed,
 + 'imports_match_expected_baseline':set(added)==(set() if a.baseline_is_priority else {'_ctype','strim','strsep','preempt_schedule'}),
-+ 'module_metadata_only_adds_readonly_auto_parameters':sorted(candidate['modinfo'])==sorted(before['modinfo']+([] if a.baseline_is_priority else ['parmtype=priority_auto_root:bool','parmtype=priority_appid:int'])),
++ 'module_metadata_matches_production_parameters':sorted(candidate['modinfo'])==sorted([v for v in before['modinfo'] if v != 'parmtype=fail_layer:int']+([] if a.baseline_is_priority else ['parmtype=priority_auto_root:bool','parmtype=priority_appid:int'])),
 + 'version_table_shape_unchanged':candidate['version_section_sizes']==before['version_section_sizes'],
 + 'baseline_callback_types_preserved':all(candidate['types'].get(n)==v for n,v in before['types'].items() if n in candidate['types']),
 +}
@@ -5258,7 +7927,7 @@ index 0000000..7df0415
 +raise SystemExit(not all(checks.values()))
 diff --git a/tools/check_priority_bzja.py b/tools/check_priority_bzja.py
 new file mode 100644
-index 0000000..71110e6
+index 0000000000000000000000000000000000000000..71110e652e10af0dea336d80b965c25120643f7e
 --- /dev/null
 +++ b/tools/check_priority_bzja.py
 @@ -0,0 +1,55 @@
@@ -5319,16 +7988,13 @@ index 0000000..71110e6
 +raise SystemExit(not all(checks.values()))
 diff --git a/tools/rmgu_priority_ctl.c b/tools/rmgu_priority_ctl.c
 new file mode 100644
-index 0000000..7170f97
+index 0000000000000000000000000000000000000000..750694552be7bb2beb7b431363fafd3b72d617bb
 --- /dev/null
 +++ b/tools/rmgu_priority_ctl.c
-@@ -0,0 +1,148 @@
+@@ -0,0 +1,93 @@
 +// SPDX-License-Identifier: GPL-2.0
-+/* Freestanding ARM64 priority-filter control and read-only verification client.
-+ * set <comma-list> | clear | status | query <uid> | probe <caller-uid> <target-uid>
-+ * Probe observes a running target, isolates its own mount namespace, drops all
-+ * IDs/groups, then issues reads and ONE deliberately invalid ioprio_set request.
-+ * It never sends a valid scheduling update and never changes another task's UID.
++/* Freestanding ARM64 priority-filter configuration client.
++ * auto <appid> | auto-off | set <comma-list> | clear | status
 + */
 +typedef unsigned long usize;
 +typedef long sysarg;
@@ -5389,17 +8055,6 @@ index 0000000..7170f97
 +    if(n<=0)return n<0?(int)n:-5;
 +    status_text[n]=0;return 0;
 +}
-+static int ready(void) {
-+    static const char prefix[]="ready=1 configured=";
-+    usize i=0;for(;prefix[i];i++)if(status_text[i]!=prefix[i])return 0;
-+    if(status_text[i]>='1'&&status_text[i]<='9')return 1;
-+    for(;status_text[i];i++)if(status_text[i]==' '){
-+        static const char automatic[]=" automatic=1 ";usize n=0;
-+        while(automatic[n]&&status_text[i+n]==automatic[n])n++;
-+        if(!automatic[n])return 1;
-+    }
-+    return 0;
-+}
 +static int configure(const char *packages) {
 +    usize n=len(packages);if(n>=sizeof(payload.packages))return fail("Package list is too long",-7);
 +    for(usize i=0;i<=n;i++)payload.packages[i]=packages[i];payload.err=126;
@@ -5414,42 +8069,8 @@ index 0000000..7170f97
 +    put("{\"schema\":1,\"syscall\":");num(rc);put(",\"error\":");num(info.err);put("}\n");
 +    return flush(rc==0&&info.err==0?0:1);
 +}
-+static int probe(unsigned int caller,unsigned int target) {
-+    unsigned int app=caller%100000,target_app=target%100000;
-+    long rc,root_gp,root_io,gp,io,self_gp,self_io,invalid;
-+    if(app<10000||target_app<10000||target_app>19999||app==target_app)
-+        return fail("Use distinct application IDs for caller and target",-22);
-+    if(SC(174,0,0,0,0,0,0)!=0||SC(175,0,0,0,0,0,0)!=0)
-+        return fail("Probe must start as root",-1);
-+    rc=status_read();if(rc)return fail("Priority status is unavailable; fully reboot into the test module",rc);
-+    if(!ready())return fail("Priority filter is not ready or has no configured rules",-19);
-+    root_gp=SC(141,2,target,0,0,0,0);root_io=SC(31,3,target,0,0,0,0);
-+    if(root_gp<0||root_io<0)return fail("Target is not observable as root; open the target app and retry",-3);
-+    /* A KernelSU setuid hook may unmount modules. Isolate BEFORE changing IDs
-+     * and make mounts private, so that operation cannot affect the parent. */
-+    rc=SC(97,0x00020000,0,0,0,0,0);if(rc)return fail("Cannot isolate the probe mount namespace",rc);
-+    rc=SC(40,0,"/",0,0x4000|0x40000,0,0);if(rc)return fail("Cannot make probe mounts private",rc);
-+    rc=SC(167,8,0,0,0,0,0);if(rc)return fail("Cannot clear keep-caps",rc);
-+    rc=SC(167,38,1,0,0,0,0);if(rc)return fail("Cannot set no-new-privileges",rc);
-+    rc=SC(159,0,0,0,0,0,0);if(rc)return fail("Cannot clear supplementary groups",rc);
-+    rc=SC(149,caller,caller,caller,0,0,0);if(rc)return fail("Cannot drop group IDs",rc);
-+    rc=SC(147,caller,caller,caller,0,0,0);if(rc)return fail("Cannot drop user IDs",rc);
-+    if(SC(174,0,0,0,0,0,0)!=(long)caller||SC(175,0,0,0,0,0,0)!=(long)caller)
-+        return fail("Caller identity did not change",-1);
-+    gp=SC(141,2,target,0,0,0,0);io=SC(31,3,target,0,0,0,0);
-+    self_gp=SC(141,2,caller,0,0,0,0);self_io=SC(31,3,caller,0,0,0,0);
-+    /* Invalid class: the kernel must reject it before it can change scheduling. */
-+    invalid=SC(30,3,target,-1,0,0,0);
-+    int passed=gp==-3&&io==-3&&self_gp>=0&&self_io>=0&&invalid==-22;
-+    put("{\"schema\":1,\"caller_uid\":");num(caller);put(",\"target_uid\":");num(target);
-+    put(",\"root_getpriority\":");num(root_gp);put(",\"root_ioprio_get\":");num(root_io);
-+    put(",\"getpriority\":");num(gp);put(",\"ioprio_get\":");num(io);
-+    put(",\"self_getpriority\":");num(self_gp);put(",\"self_ioprio_get\":");num(self_io);
-+    put(",\"invalid_ioprio_set\":");num(invalid);put(",\"passed\":");put(passed?"true":"false");put("}\n");
-+    return flush(passed?0:1);
-+}
 +int priority_tool_main(int argc,char **argv) {
-+    unsigned int caller,target;used=0;
++    unsigned int caller;used=0;
 +    if(argc==3&&eq(argv[1],"auto")&&decimal(argv[2],&caller))return configure_automatic(1,caller);
 +    if(argc==2&&eq(argv[1],"auto-off"))return configure_automatic(0,0);
 +    if(argc==2&&eq(argv[1],"clear"))return configure("");
@@ -5458,21 +8079,14 @@ index 0000000..7170f97
 +        int rc=status_read();if(rc)return fail("Priority status is unavailable",rc);
 +        put("{\"schema\":1,\"status\":");string(status_text);put("}\n");return flush(0);
 +    }
-+    if(argc==3&&eq(argv[1],"query")&&decimal(argv[2],&target)){
-+        put("{\"schema\":1,\"query_only\":true,\"caller_uid\":");num(SC(174,0,0,0,0,0,0));
-+        put(",\"target_uid\":");num(target);
-+        put(",\"getpriority\":");num(SC(141,2,target,0,0,0,0));
-+        put(",\"ioprio_get\":");num(SC(31,3,target,0,0,0,0));put("}\n");return flush(0);
-+    }
-+    if(argc==4&&eq(argv[1],"probe")&&decimal(argv[2],&caller)&&decimal(argv[3],&target))return probe(caller,target);
-+    return fail("Usage: auto <appid> | auto-off | set <comma-list> | clear | status | query <uid> | probe <caller-uid> <target-uid>",-22);
++    return fail("Usage: auto <appid> | auto-off | set <comma-list> | clear | status",-22);
 +}
 +#ifndef PRIORITY_TOOL_HOSTTEST
 +__attribute__((used)) static int start(usize *stack) {return priority_tool_main((int)stack[0],(char **)(stack+1));}
 +__asm__(".text\n.global _start\n.type _start,%function\n_start:\nmov x29,#0\nmov x0,sp\nbl start\nmov x8,#93\nsvc #0\n");
 +#endif
 diff --git a/tools/susfs_sc.c b/tools/susfs_sc.c
-index 2782890..c98658b 100644
+index 27828901539bdf03ee062c8fd538bc58254f7d24..c98658b0d4731a0d7ff9befbc7a68a32383123c4 100644
 --- a/tools/susfs_sc.c
 +++ b/tools/susfs_sc.c
 @@ -44,10 +44,10 @@ typedef long s64;

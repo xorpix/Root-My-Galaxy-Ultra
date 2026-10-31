@@ -1,14 +1,14 @@
 {
   "schema": 1,
-  "sourceCommit": "98b5149536fdc564132ca82b08d3980114be298a",
-  "sourceTree": "5deb93b813cd7a9c7ca9332e92099a2ee56569c9",
-  "sourceParent": "a69a039800d4e063b1bcfa8e7e77fc3d94a7560c",
+  "sourceCommit": "8b9d19b3b348439b519260706896247e25633ec9",
+  "sourceTree": "5eed14dedfcfe5b6cda92d53b29896c1f2784a56",
+  "sourceParent": "e67f3d9f73a03f66af02acad9e40f5382bf111e3",
   "sourceArchive": "source.tar.gz",
-  "sourceArchiveSha256": "1af6f47a8f8a9f36c0421eeeaeeb6527707fd0c5038327f5a65cc2ab365d99cd",
+  "sourceArchiveSha256": "953216c328b35ab9bf5ebb7599d0f9a5627565276a0ea340d2be1372a1fddd46",
   "module": {
     "path": "app/src/main/assets/susfs/bzig/susfs_guard_lkm.ko",
-    "sha256": "5c7808bee0b376d91b993d2440f288319162c5a6861549bf10d9c937e5e58b77",
-    "bytes": 589032
+    "sha256": "d8008ad50ae174ca321c2320ca66152b540f84a72fc92d845b751ac93bd783c7",
+    "bytes": 582552
   },
   "validation": {
     "hostSuites": 29,
@@ -23,14 +23,19 @@
     "bzjaStaticPriorityCheck": true,
     "automaticRootPolicy": true,
     "backendPolicyPins": 4,
-    "initializationDiagnostics": true,
-    "phonePriorityInitialization": "test3_EFAULT_table_write_fix_pending_test4_device_validation",
     "priorityEntryProbes": true,
-    "probeCallbackTypes": 5
+    "probeCallbackTypes": 5,
+    "phonePriorityValidation": "test4 accepted by maintainer; HMA reports no failures",
+    "productionCleanup": true,
+    "acceptedHardwareBaseline": {
+      "sourceCommit": "98b5149536fdc564132ca82b08d3980114be298a",
+      "moduleSha256": "5c7808bee0b376d91b993d2440f288319162c5a6861549bf10d9c937e5e58b77",
+      "result": "Maintainer accepted test4 device testing and reported no HMA failures; production diagnostic cleanup checked by host/ABI/build validation."
+    }
   },
   "priorityControl": {
     "path": "app/src/main/jniLibs/arm64-v8a/librmgususfs_priority.so",
-    "sha256": "8a1d3f909d81b029241f8e512763f15a663f12143398b849c99b7f65f5b4a64e",
-    "bytes": 13056
+    "sha256": "531750059f934b2aaeaa6000a5d2775a978c9832fdbd33753cf4dd7a2892fb5d",
+    "bytes": 7072
   }
 }

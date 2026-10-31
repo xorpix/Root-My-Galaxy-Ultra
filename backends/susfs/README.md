@@ -1,16 +1,22 @@
 # Bundled Samsung SusFS source
 
-`source.tar.gz` contains the complete source tree, tests, tools and validation records used for the bundled module. Extract it with `tar -xzf source.tar.gz`; current priority fallback instructions are in `susfs/docs/priority-probe-20261031/README.md`, with automatic selection, dispatcher and audit records retained.
+`source.tar.gz` contains the complete corresponding source, tests, tools and
+validation records for the bundled module. Extract it with `tar -xzf source.tar.gz`;
+current production cleanup and checks are in `susfs/docs/production-20261031`.
+Earlier test guides in the archive are historical.
 
-`build-manifest.json` pins the source archive SHA-256, source Git commit and tree, parent source commit, stripped module SHA-256, and ARM64 priority control client. `source.commit` is the raw Git commit object, allowing its identifier to be verified without relying on a remote source branch. `priority-filter.patch` records the current delta from source `961fb6a`; `dispatcher.patch` and `audit-fixes.patch` retain the earlier deltas. The kernel source retains its GPL license.
+`build-manifest.json` pins the source archive SHA-256, source Git commit/tree,
+parent source commit, stripped module and ARM64 control client. `source.commit`
+is the raw Git commit object. `priority-filter.patch` records the cumulative
+delta from Samsung source `961fb6a`; dispatcher/audit patches retain earlier deltas.
+The corresponding kernel source retains its GPL license.
 
-Run `python3 tools/check_susfs_bundle.py` from the app repository to verify the module, control client and all firmware profiles, and reconstruct and verify the archive's Git tree and commit hashes. `--apk path/to/app.apk` also verifies the packaged bytes.
+Run `python3 tools/check_susfs_bundle.py` from the app repository to verify the
+module, control client, firmware profiles and reconstructed Git tree/commit.
+`--apk path/to/app.apk` also verifies packaged bytes.
 
-This is the Samsung Android16/6.12 implementation. The source snapshot includes historical documentation and upstream build workflows for context; those do not imply device validation of other kernel variants. See [the current app integration notes](../../docs/susfs-priority-filter-20261030.md).
-
-The BZJA test3 diagnostic identified EFAULT during the first priority syscall-table
-write. Test4 adds a conservative entry-probe fallback after verified restoration,
-with named core/shared native-compat entry checks, complete callback draining and
-retained route/error status. See `susfs/docs/priority-probe-20261031/README.md` in
-the source archive. Host and real-header checks pass; phone validation is pending.
-
+The maintainer accepted test4 phone validation with HMA reporting no failures.
+Production removes temporary phone probes, initialization diagnostics and device
+fault injection while retaining the tested priority hooks/fallback and automatic
+selection. Production host/sanitizer, ARM64 build and real-header ABI checks pass.
+See [app integration notes](../../docs/susfs-priority-filter-20261030.md).

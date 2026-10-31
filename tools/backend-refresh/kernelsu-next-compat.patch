@@ -1,5 +1,5 @@
 diff --git a/kernel/Kbuild b/kernel/Kbuild
-index f8fc9a9cd17e7beadbf171e981be328b3b89a1e3..8bcd12f9f8fa56e8678e3b76719c64558aac1bf3 100644
+index a02fd187706a2aca3bf2dab46387e59ffdf33bd1..de7a40e19bb180af45ab6a8332ce3d6971caddc0 100644
 --- a/kernel/Kbuild
 +++ b/kernel/Kbuild
 @@ -1,5 +1,8 @@
@@ -11,7 +11,7 @@ index f8fc9a9cd17e7beadbf171e981be328b3b89a1e3..8bcd12f9f8fa56e8678e3b76719c6455
  kernelsu-objs += feature/kernel_umount.o
  kernelsu-objs += feature/module_blacklist.o
  kernelsu-objs += feature/sulog.o
-@@ -70,9 +73,22 @@ endif
+@@ -72,9 +75,22 @@ endif
  ifeq ($(CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER),y)
  ccflags-y += -DCONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER=1
  endif
@@ -34,7 +34,7 @@ index f8fc9a9cd17e7beadbf171e981be328b3b89a1e3..8bcd12f9f8fa56e8678e3b76719c6455
  ccflags-y += -I$(objtree)/security/selinux -include $(srctree)/include/uapi/asm-generic/errno.h
  
  ifneq ($(KBUILD_EXTMOD),)
-@@ -88,7 +104,7 @@ else
+@@ -90,7 +106,7 @@ else
  KSU_KERNEL_DIR := $(src)
  endif
  
@@ -443,7 +443,7 @@ index 0000000000000000000000000000000000000000..2104f2e9a82be77e46603bec3c4292dc
 +#endif
 +}
 diff --git a/kernel/core/init.c b/kernel/core/init.c
-index a5e95e7cf78f3c223c0e288bce225ebf6a829cff..33098c457b3c8e6d94bcdd60414c8e47dac2bd17 100644
+index a14faa545164c1eb6aa8875e440730f20a9137f8..987e93b9105c13914fcbbfe529f549352f901551 100644
 --- a/kernel/core/init.c
 +++ b/kernel/core/init.c
 @@ -28,6 +28,13 @@
@@ -460,7 +460,7 @@ index a5e95e7cf78f3c223c0e288bce225ebf6a829cff..33098c457b3c8e6d94bcdd60414c8e47
  
  #if defined(__x86_64__) && !defined(CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER)
  #include <asm/cpufeature.h>
-@@ -134,13 +141,35 @@ int __init kernelsu_init(void)
+@@ -136,22 +143,41 @@ int __init kernelsu_init(void)
  		pr_alert("shell is allowed at init!");
  	}
  
@@ -484,20 +484,29 @@ index a5e95e7cf78f3c223c0e288bce225ebf6a829cff..33098c457b3c8e6d94bcdd60414c8e47
  		return -ENOSYS;
  	}
  
+-	pr_info("initializing symbol resolver\n");
 -	ksu_init_symbol_resolver();
-+	{
-+		int ret = ksu_samsung_defex_init();
-+
-+		if (ret) {
-+			ksu_put_cred(ksu_cred);
-+			ksu_samsung_kdp_exit();
-+			return ret;
-+		}
+-
+ 	ret = ksu_selinux_inode_init();
+ 	if (ret) {
+-		put_cred(ksu_cred);
++		ksu_put_cred(ksu_cred);
+ 		ksu_cred = NULL;
++		ksu_samsung_kdp_exit();
+ 		return ret;
+ 	}
+ 
++	ret = ksu_samsung_defex_init();
++	if (ret) {
++		ksu_put_cred(ksu_cred);
++		ksu_cred = NULL;
++		ksu_samsung_kdp_exit();
++		return ret;
 +	}
  	ksu_syscall_hook_init();
  
  	// Block modules early, before vendor modules are loaded in second stage.
-@@ -178,6 +207,10 @@ int __init kernelsu_init(void)
+@@ -189,6 +215,10 @@ int __init kernelsu_init(void)
  		ksu_file_wrapper_init();
  
  		ksu_boot_completed = true;
@@ -508,7 +517,7 @@ index a5e95e7cf78f3c223c0e288bce225ebf6a829cff..33098c457b3c8e6d94bcdd60414c8e47
  		track_throne(false);
  
  		ksu_feature_apply_forced();
-@@ -239,7 +272,9 @@ void __exit kernelsu_exit(void)
+@@ -250,7 +280,9 @@ void __exit kernelsu_exit(void)
  	ksu_feature_exit();
  	ksu_module_blacklist_exit();
  
@@ -895,13 +904,14 @@ index 6274c47dadf9d94081170a77f5fd70544dbcb16b..d579a676d12d4adcbd1bad30a158cefd
  	ksu_unregister_feature_handler(KSU_FEATURE_SU_COMPAT);
  }
 diff --git a/kernel/hook/arm64/patch_memory.c b/kernel/hook/arm64/patch_memory.c
-index d58f2e45ca5357b2352570688d0b94033e201f8c..db3c0d6d34138a09a36d3b7c014bb9009b2a2596 100644
+index 016d16f7515db4d59cece805064ca53614928d29..05e35b56e2d7ab66f9fbbf19bac4c896601eaf6a 100644
 --- a/kernel/hook/arm64/patch_memory.c
 +++ b/kernel/hook/arm64/patch_memory.c
-@@ -192,6 +192,11 @@ static int ksu_patch_text_cb(void *arg)
+@@ -175,7 +175,11 @@ static int ksu_patch_text_cb(void *arg)
  
  int ksu_patch_text(void *dst, void *src, size_t len, int flags)
  {
+-    int ret;
 +#ifdef CONFIG_KSU_SAMSUNG_NO_PATCH_TEXT
 +    pr_warn("patch_text disabled for this Samsung target: dst=0x%lx len=%zu flags=0x%x\n", (unsigned long)dst, len,
 +            flags);
@@ -910,10 +920,15 @@ index d58f2e45ca5357b2352570688d0b94033e201f8c..db3c0d6d34138a09a36d3b7c014bb900
      struct patch_text_info info = {
          .dst = dst,
          .src = src,
-@@ -201,6 +206,7 @@ int ksu_patch_text(void *dst, void *src, size_t len, int flags)
+@@ -184,10 +188,8 @@ int ksu_patch_text(void *dst, void *src, size_t len, int flags)
+         .flags = flags,
      };
  
-     return stop_machine(ksu_patch_text_cb, &info, cpu_online_mask);
+-    ret = stop_machine(ksu_patch_text_cb, &info, cpu_online_mask);
+-    if (ret)
+-        pr_err("failed to patch kernel address 0x%lx: %d\n", (unsigned long)dst, ret);
+-    return ret;
++    return stop_machine(ksu_patch_text_cb, &info, cpu_online_mask);
 +#endif
  }
  
@@ -1366,20 +1381,21 @@ index cf21fed88a7ae2704d2950b00295472f31b28674..4f57b6fb3b5d9dfa0ce6545d79646435
      unregister_trace_sys_enter(ksu_sys_enter_handler, NULL);
      tracepoint_synchronize_unregister();
 diff --git a/kernel/hook/tp_marker.c b/kernel/hook/tp_marker.c
-index 489a0d7babfc70c9eec7af66f8d8da51a2862015..8adec1251fa1a99139443f3cd96829b6e97c92c8 100644
+index 85f388b5bab940668a91836fed25d417808bf9a6..2cd58cc16e2d054d36f7335807c9db13ad4201ea 100644
 --- a/kernel/hook/tp_marker.c
 +++ b/kernel/hook/tp_marker.c
-@@ -7,6 +7,7 @@
+@@ -7,6 +7,8 @@
  #include <linux/sched/task.h>
  
  #include "policy/allowlist.h"
 +#include "ksu_samsung_kdp.h"
- #include "klog.h" // IWYU pragma: keep
++#include "klog.h" // IWYU pragma: keep
  #include "selinux/selinux.h"
  
-@@ -103,7 +104,7 @@ void ksu_mark_running_process_locked(void)
-             pr_info("tp_marker: unmark process: pid:%d, uid: %d, comm:%s\n",
-                     t->pid, uid, t->comm);
+ // Tracepoint registration count management
+@@ -96,7 +98,7 @@ void ksu_mark_running_process_locked(void)
+         } else {
+             ksu_clear_task_tracepoint_flag(t);
          }
 -        put_cred(cred);
 +        ksu_put_cred(cred);

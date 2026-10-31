@@ -1,0 +1,20 @@
+{
+  "published_preparation_commit": "8741b52713ef39b12bbc23aac65050f2afe4a34e",
+  "published_preparation_tree": "16b85c4937267f292134a944a27458de4f7a60ce",
+  "local_build_base_commit": "df7c69670851a031ab81b95ee7557254d078440a",
+  "native_build_functions_identical": true,
+  "files": {
+    "tools/build_backend.py": "4abd7fbfcac077a5efbe5e7524f29747d3ef3aba7263981765a550ad1a1db1e7",
+    "tools/backend-refresh/common.py": "12a834a73f5a95be7d0e80a2b4c5b88bc2a291b2b743ccc41b7c653096bb5d2f",
+    "tools/backend-refresh/stage.py": "ed2adcbe1038f6d9080ff43082ae4768104ed75ad5101ddbf67330fbba9d0a2d",
+    "tools/backend-refresh/patching.py": "9c977c899feed3547ab71cc312502b689be013578af0321cc2a3c988bcffaa15",
+    "tools/backend-refresh/targets.json": "41f428227e57b32aff819ca8981a288f569df0e64a5440e9f892aac14116f057",
+    "tools/provision_ddk.py": "bd266bd41ba29188b1dbac73b959c04c06fe4941447f347e3064d3eb95d542e3",
+    "tools/provision_android.py": "3bd3e08b29337dad6dcbd5d1414ab96064dbb85922f1d35730db0eed443f116f",
+    "tools/backend-refresh/kernelsu-compat.patch": "63dbc81b48338dbfc1527b71172fb869efe626d85817a79b2c6b61a718d7fb53",
+    "tools/backend-refresh/kernelsu-next-compat.patch": "3231d636ae649e3f6712c7ae5c51895156b4ff0d7fa70afb23dc9d6f21934a3a",
+    "tools/backend-refresh/resukisu-compat.patch": "aaf1940255e776b3d065d0ec719e07479d5369f8d418de4e6dc8ea7355c0fb15",
+    "tools/backend-refresh/kowsu-compat.patch": "34602e1459801516686711cd78392611703043af9460c04f8394a9537b722e8c"
+  },
+  "note": "The local preparation and published preparation have identical native build inputs. Only release-note rendering/tests and the truthful SusFS validation record differ; neither changes native compilation. Manifests use the corresponding public preparation commit and retain the original local build base."
+}
