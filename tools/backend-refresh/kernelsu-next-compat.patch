@@ -895,25 +895,23 @@ index 6274c47dadf9d94081170a77f5fd70544dbcb16b..d579a676d12d4adcbd1bad30a158cefd
  	ksu_unregister_feature_handler(KSU_FEATURE_SU_COMPAT);
  }
 diff --git a/kernel/hook/arm64/patch_memory.c b/kernel/hook/arm64/patch_memory.c
-index d58f2e45ca5357b2352570688d0b94033e201f8c..db3c0d6d34138a09a36d3b7c014bb9009b2a2596 100644
+index 016d16f7515db4d59cece805064ca53614928d29..31205e4f932a726c454a2a2b2e84793e241b2f35 100644
 --- a/kernel/hook/arm64/patch_memory.c
 +++ b/kernel/hook/arm64/patch_memory.c
-@@ -192,6 +192,11 @@ static int ksu_patch_text_cb(void *arg)
+@@ -175,6 +175,9 @@ static int ksu_patch_text_cb(void *arg)
  
  int ksu_patch_text(void *dst, void *src, size_t len, int flags)
  {
 +#ifdef CONFIG_KSU_SAMSUNG_NO_PATCH_TEXT
-+    pr_warn("patch_text disabled for this Samsung target: dst=0x%lx len=%zu flags=0x%x\n", (unsigned long)dst, len,
-+            flags);
 +    return -EOPNOTSUPP;
 +#else
+     int ret;
      struct patch_text_info info = {
          .dst = dst,
-         .src = src,
-@@ -201,6 +206,7 @@ int ksu_patch_text(void *dst, void *src, size_t len, int flags)
-     };
- 
-     return stop_machine(ksu_patch_text_cb, &info, cpu_online_mask);
+@@ -188,6 +191,7 @@ int ksu_patch_text(void *dst, void *src, size_t len, int flags)
+     if (ret)
+         pr_err("failed to patch kernel address 0x%lx: %d\n", (unsigned long)dst, ret);
+     return ret;
 +#endif
  }
  
@@ -1366,7 +1364,7 @@ index cf21fed88a7ae2704d2950b00295472f31b28674..4f57b6fb3b5d9dfa0ce6545d79646435
      unregister_trace_sys_enter(ksu_sys_enter_handler, NULL);
      tracepoint_synchronize_unregister();
 diff --git a/kernel/hook/tp_marker.c b/kernel/hook/tp_marker.c
-index 489a0d7babfc70c9eec7af66f8d8da51a2862015..8adec1251fa1a99139443f3cd96829b6e97c92c8 100644
+index 85f388b5bab940668a91836fed25d417808bf9a6..05158ec9871a8076f04baf444678124daeafd397 100644
 --- a/kernel/hook/tp_marker.c
 +++ b/kernel/hook/tp_marker.c
 @@ -7,6 +7,7 @@
@@ -1374,12 +1372,12 @@ index 489a0d7babfc70c9eec7af66f8d8da51a2862015..8adec1251fa1a99139443f3cd96829b6
  
  #include "policy/allowlist.h"
 +#include "ksu_samsung_kdp.h"
- #include "klog.h" // IWYU pragma: keep
  #include "selinux/selinux.h"
  
-@@ -103,7 +104,7 @@ void ksu_mark_running_process_locked(void)
-             pr_info("tp_marker: unmark process: pid:%d, uid: %d, comm:%s\n",
-                     t->pid, uid, t->comm);
+ // Tracepoint registration count management
+@@ -96,7 +97,7 @@ void ksu_mark_running_process_locked(void)
+         } else {
+             ksu_clear_task_tracepoint_flag(t);
          }
 -        put_cred(cred);
 +        ksu_put_cred(cred);
