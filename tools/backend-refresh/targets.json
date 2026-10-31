@@ -12,7 +12,7 @@
       "daemon_version": "3.3.1-28-gbb5f9faa",
       "rust": "1.98.1",
       "rebuild": false,
-      "compat_sha256": "e9a0dadeb56af97e6a1d171733ba64e1d968beedf2d2605677dbad9064af965c",
+      "compat_sha256": "ecb34b5a394de5fd6b9cea97d67af0dfa8cf400210086186e6d61a3bebf32729",
       "branch": "main",
       "version_offset": 30000,
       "uapi": 6
