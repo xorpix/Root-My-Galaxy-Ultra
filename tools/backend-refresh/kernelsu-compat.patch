@@ -1,5 +1,5 @@
 diff --git a/kernel/Kbuild b/kernel/Kbuild
-index ee5af0ba2e8ceb2af3c3b7aeddbe3305864fb6eb..29d3436dd9200db95988d3418e04613c13e2bda7 100644
+index 66aa2ba98ee24e0e090634cfae96398fb5fbdd4d..efa924c8be299df3a6a438044e5f6358d36d49af 100644
 --- a/kernel/Kbuild
 +++ b/kernel/Kbuild
 @@ -1,5 +1,8 @@
@@ -11,7 +11,7 @@ index ee5af0ba2e8ceb2af3c3b7aeddbe3305864fb6eb..29d3436dd9200db95988d3418e04613c
  kernelsu-objs += feature/kernel_umount.o
  kernelsu-objs += feature/module_blacklist.o
  kernelsu-objs += feature/sulog.o
-@@ -69,9 +72,22 @@ endif
+@@ -71,9 +74,22 @@ endif
  ifeq ($(CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER),y)
  ccflags-y += -DCONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER=1
  endif
@@ -34,7 +34,7 @@ index ee5af0ba2e8ceb2af3c3b7aeddbe3305864fb6eb..29d3436dd9200db95988d3418e04613c
  ccflags-y += -I$(objtree)/security/selinux -include $(srctree)/include/uapi/asm-generic/errno.h
  
  ifneq ($(KBUILD_EXTMOD),)
-@@ -88,7 +104,7 @@ KSU_KERNEL_DIR := $(src)
+@@ -90,7 +106,7 @@ KSU_KERNEL_DIR := $(src)
  endif
  endif
  
@@ -43,7 +43,7 @@ index ee5af0ba2e8ceb2af3c3b7aeddbe3305864fb6eb..29d3436dd9200db95988d3418e04613c
  
  # preinit runner: a static nolibc binary embedded into kernelsu, see preinit/.
  # It is built against the installed UAPI headers of the target kernel
-@@ -160,7 +176,9 @@ ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
+@@ -162,7 +178,9 @@ ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
  else
  # If there is no .git directory, use default version
  $(warning "KSU_GIT_VERSION not defined! It is better to make KernelSU a git repository!")
@@ -415,7 +415,7 @@ index 0000000000000000000000000000000000000000..2104f2e9a82be77e46603bec3c4292dc
 +#endif
 +}
 diff --git a/kernel/core/init.c b/kernel/core/init.c
-index 6ee1c35de07c806c5c4c5b1710bb97852580585b..08a0972157991295938443c4dc8fb17f01739458 100644
+index 81f3b6584c278b6baa9a4cf1e5d6131a5f8e4d2e..5b739ba2144e09990fe54fe71f0e1387c9103d6c 100644
 --- a/kernel/core/init.c
 +++ b/kernel/core/init.c
 @@ -8,6 +8,7 @@
@@ -434,7 +434,7 @@ index 6ee1c35de07c806c5c4c5b1710bb97852580585b..08a0972157991295938443c4dc8fb17f
  
  #if defined(__x86_64__) && !defined(CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER)
  #include <asm/cpufeature.h>
-@@ -129,13 +131,36 @@ int __init kernelsu_init(void)
+@@ -131,22 +133,43 @@ int __init kernelsu_init(void)
          pr_alert("shell is allowed at init!");
      }
  
@@ -458,21 +458,31 @@ index 6ee1c35de07c806c5c4c5b1710bb97852580585b..08a0972157991295938443c4dc8fb17f
          return -ENOSYS;
      }
  
+-    pr_info("initializing symbol resolver\n");
 -    ksu_init_symbol_resolver();
-+    {
-+        int ret = ksu_samsung_defex_init();
-+
-+        if (ret) {
-+            ksu_put_cred(ksu_cred);
-+            ksu_samsung_kdp_exit();
-+            return ret;
-+        }
+-
+     ret = ksu_selinux_inode_init();
+     if (ret) {
+-        put_cred(ksu_cred);
++        ksu_put_cred(ksu_cred);
+         ksu_cred = NULL;
++        ksu_samsung_kdp_exit();
+         return ret;
+     }
+ 
++    ret = ksu_samsung_defex_init();
++    if (ret) {
++        ksu_put_cred(ksu_cred);
++        ksu_cred = NULL;
++        ksu_samsung_kdp_exit();
++        return ret;
 +    }
++
 +
      ksu_syscall_hook_init();
  
      // Block modules early, before vendor modules are loaded in second stage.
-@@ -234,7 +259,9 @@ void __exit kernelsu_exit(void)
+@@ -245,7 +268,9 @@ void __exit kernelsu_exit(void)
      ksu_feature_exit();
      ksu_module_blacklist_exit();
  
@@ -859,13 +869,14 @@ index 003f86b615ffa26f4e50da452d5dcba2cd5ea6f9..f0acd5007942c027639ec72c3ce1297f
      ksu_unregister_feature_handler(KSU_FEATURE_SU_COMPAT);
  }
 diff --git a/kernel/hook/arm64/patch_memory.c b/kernel/hook/arm64/patch_memory.c
-index c344bd5517e165478518ea202ab21c9edea767ca..cd631aefb377dd7ca8992ec7b564ef110893ec55 100644
+index fdbb5dea8bde0c951c47d78d9accafb53e805e9d..b489a975de48ece2480745d2ea47920a4110d25c 100644
 --- a/kernel/hook/arm64/patch_memory.c
 +++ b/kernel/hook/arm64/patch_memory.c
-@@ -188,6 +188,11 @@ static int ksu_patch_text_cb(void *arg)
+@@ -176,7 +176,11 @@ static int ksu_patch_text_cb(void *arg)
  
  int ksu_patch_text(void *dst, void *src, size_t len, int flags)
  {
+-    int ret;
 +#ifdef CONFIG_KSU_SAMSUNG_NO_PATCH_TEXT
 +    pr_warn("patch_text disabled for this Samsung target: dst=0x%lx len=%zu flags=0x%x\n", (unsigned long)dst, len,
 +            flags);
@@ -874,10 +885,15 @@ index c344bd5517e165478518ea202ab21c9edea767ca..cd631aefb377dd7ca8992ec7b564ef11
      struct patch_text_info info = {
          .dst = dst,
          .src = src,
-@@ -197,6 +202,7 @@ int ksu_patch_text(void *dst, void *src, size_t len, int flags)
+@@ -185,10 +189,8 @@ int ksu_patch_text(void *dst, void *src, size_t len, int flags)
+         .flags = flags,
      };
  
-     return stop_machine(ksu_patch_text_cb, &info, cpu_online_mask);
+-    ret = stop_machine(ksu_patch_text_cb, &info, cpu_online_mask);
+-    if (ret)
+-        pr_err("failed to patch kernel address 0x%lx: %d\n", (unsigned long)dst, ret);
+-    return ret;
++    return stop_machine(ksu_patch_text_cb, &info, cpu_online_mask);
 +#endif
  }
  
@@ -1321,20 +1337,21 @@ index c11eb9d48e751af9502ee8482abbdb98b2b1f3be..2c235d22422cc9321fbb7387deb0ab18
      unregister_trace_sys_enter(ksu_sys_enter_handler, NULL);
      tracepoint_synchronize_unregister();
 diff --git a/kernel/hook/tp_marker.c b/kernel/hook/tp_marker.c
-index c78bbbdd930a452f359aca054f945e51b43c4a79..5666403a0eaf6b30d76b9ecfa1351e4e291bce3b 100644
+index 61935e3c6ed8cf0aa38eac1ff1ce35a0d6abbf9b..3307e6943f20b8395d60b9fefe2af4592557be59 100644
 --- a/kernel/hook/tp_marker.c
 +++ b/kernel/hook/tp_marker.c
-@@ -7,6 +7,7 @@
+@@ -7,6 +7,8 @@
  #include <linux/sched/task.h>
  
  #include "policy/allowlist.h"
 +#include "ksu_samsung_kdp.h"
- #include "klog.h" // IWYU pragma: keep
++#include "klog.h" // IWYU pragma: keep
  #include "selinux/selinux.h"
  
-@@ -100,7 +101,7 @@ void ksu_mark_running_process_locked(void)
+ // Tracepoint registration count management
+@@ -95,7 +97,7 @@ void ksu_mark_running_process_locked(void)
+         } else {
              ksu_clear_task_tracepoint_flag(t);
-             pr_info("tp_marker: unmark process: pid:%d, uid: %d, comm:%s\n", t->pid, uid, t->comm);
          }
 -        put_cred(cred);
 +        ksu_put_cred(cred);

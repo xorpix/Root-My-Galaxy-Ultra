@@ -14,8 +14,8 @@ data isolation and launches. RMGU's new SusFS feature instead filters the kernel
 queries an explicit app UID. It adds no PackageManager, Binder, ART or Zygisk hook.
 Neither layer writes the other's configuration or list.
 
-This is a source review and host/CI verification, not an on-phone coexistence
-result. Other modules require their own review if they modify these syscall
+The maintainer completed the test4 phone checks on 31 October 2026 and reported
+no HMA failures. Production cleanup removes only temporary diagnostic paths. Other modules require their own review if they modify these syscall
 entries, KernelSU policy, credentials or namespaces.
 
 ## HMA configuration
@@ -68,24 +68,15 @@ broadcast filtering. An inactive manager can therefore wait for the next app
 resume, unlock or SusFS activation to refresh its extras. Live kernel selection
 continues without those broadcasts.
 
-## Verification and remaining device checks
+## Validation
 
-The existing production-C priority suite covers all native/compat entries,
-root/system/trusted/self passthrough, isolated/SDK-sandbox/app-zygote callers,
-live grants and revocations, registered-manager changes, per-user root grants,
-empty/manual extras coexisting with automatic mode, and I/O-priority validation
-ordering. The bundled source includes the normal/sanitizer evidence. Android CI
-also covers package selection, renamed/split managers, unreadable APKs, stale boot
-records and command acknowledgements. These models do not load HMA OSS.
-
-For the phone check, install the signed `1.3.0-priority-test4` APK, fully reboot,
-obtain root and activate SusFS with HMA enabled. Keep the usual HMA templates on
-the intended target apps and RMGU unfiltered. Check manager launch/root prompts,
-module operation, HMA package filtering and normal app use; compare with HMA
-disabled if a regression appears. Root grant/revoke changes should apply while
-RMGU is closed. Reopen RMGU after installing/removing an inactive manager to check
-the optional extras refresh. Use the same-key stable rollback and a full reboot
-if necessary; a soft restart retains the loaded kernel module.
+The production-C suites cover native/compat queries, caller exclusions, live
+root grants/revocations, registered-manager changes, per-user grants, transactional
+extras and I/O-priority validation order. Android tests cover automatic package
+selection, renamed/split managers, unreadable APKs and boot-local state.
+The maintainer accepted the device testing and reported no HMA failures; no
+further phone test is required for this release. Fully reboot when installing
+1.3.1 so the production module replaces the loaded test module.
 
 ## Reviewed HMA sources
 
@@ -113,7 +104,8 @@ Actual production-C tests cover native/compat passthrough and filtering,
 trusted/system/self callers, live policy changes, validation ordering,
 registration failures and callback return-tail teardown. All 56 native host
 runner executions pass. These tests do not load HMA or prove on-phone
-coexistence; use test4 for the device checks above. Other kernel modules that
+coexistence by themselves. The maintainer subsequently accepted phone testing
+and reported no HMA failures. Other kernel modules that
 redirect these syscall entries can still affect coverage and require their
 own review.
 

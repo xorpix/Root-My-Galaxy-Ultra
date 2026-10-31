@@ -135,10 +135,7 @@ internal object SusfsAutoApps {
         val answer = shell("$command status", 8)
         val status = parseSusfsAutomaticStatus(answer)
         if (status?.protects(appId(context)) == true) return true
-        if (status?.ready != true || !status.rootLookup) {
-            AppLog.warn(AppLogTags.KERNEL_SU, "SusFS automatic selection status (exit ${answer?.exitCode}): ${answer?.output?.take(1024).orEmpty()}")
-            return false
-        }
+        if (status?.ready != true || !status.rootLookup) return false
         return susfsCommandSucceeded(shell("$command auto ${appId(context)}", 8))
     }
 

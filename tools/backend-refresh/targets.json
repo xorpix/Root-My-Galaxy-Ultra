@@ -12,7 +12,7 @@
       "daemon_version": "3.3.1-28-gbb5f9faa",
       "rust": "1.98.1",
       "rebuild": false,
-      "compat_sha256": "e9a0dadeb56af97e6a1d171733ba64e1d968beedf2d2605677dbad9064af965c",
+      "compat_sha256": "63dbc81b48338dbfc1527b71172fb869efe626d85817a79b2c6b61a718d7fb53",
       "branch": "main",
       "version_offset": 30000,
       "uapi": 6
@@ -25,7 +25,7 @@
       "daemon_version": "3.4.2-90-g31946acd",
       "rust": "1.98.1",
       "rebuild": false,
-      "compat_sha256": "ed2b3a76512bf24656e3a74f5338bd779bacb0253b638cc0a619fc406724eb96",
+      "compat_sha256": "3231d636ae649e3f6712c7ae5c51895156b4ff0d7fa70afb23dc9d6f21934a3a",
       "branch": "dev",
       "version_offset": 30000,
       "uapi": 6
@@ -38,7 +38,7 @@
       "daemon_version": "4.2.0-rc3-81-gd5e9e025",
       "rust": "nightly-2026-09-25",
       "rebuild": false,
-      "compat_sha256": "c892b5391d1c920b0573386614ed045baf0ced2b73538056d33832e0e159d2d1",
+      "compat_sha256": "aaf1940255e776b3d065d0ec719e07479d5369f8d418de4e6dc8ea7355c0fb15",
       "branch": "main",
       "version_offset": 30700,
       "uapi": 6

@@ -1,5 +1,5 @@
 diff --git a/kernel/Kbuild b/kernel/Kbuild
-index ef9b1379dfd3a453f25fa3395bf0f4a4e830802b..88e6464a1e41a0cead005231ae32c8fe4ed6af3d 100644
+index 666dcde2c63a418b782f3d7228393ee9d231c4b5..13f004212f016abce558af72b7570307d3d5ed17 100644
 --- a/kernel/Kbuild
 +++ b/kernel/Kbuild
 @@ -19,6 +19,8 @@ kernelsu-objs += manager/manager.o
@@ -11,7 +11,7 @@ index ef9b1379dfd3a453f25fa3395bf0f4a4e830802b..88e6464a1e41a0cead005231ae32c8fe
  kernelsu-objs += infra/su_mount_ns.o
  kernelsu-objs += infra/seccomp_cache.o
  kernelsu-objs += infra/file_wrapper.o
-@@ -50,6 +52,22 @@ ccflags-y += -I$(srctree)/security/selinux -I$(srctree)/security/selinux/include
+@@ -52,6 +54,22 @@ ccflags-y += -I$(srctree)/security/selinux -I$(srctree)/security/selinux/include
  ccflags-y += -I$(srctree)/$(src) -I$(srctree)/$(src)/include
  ccflags-y += -I$(src) -I$(src)/include
  
@@ -445,7 +445,7 @@ index 0000000000000000000000000000000000000000..2104f2e9a82be77e46603bec3c4292dc
 +#endif
 +}
 diff --git a/kernel/core/init.c b/kernel/core/init.c
-index 65f40a454ab0a0dd58633695cc0e27a663916f15..c07a24bd3d74845efc74277d2550aed7fa8b4ea0 100644
+index d68c253213128ddb7cc175b99ca6195915df3f72..9505a80697895c12ac44226b7b64873166c11c67 100644
 --- a/kernel/core/init.c
 +++ b/kernel/core/init.c
 @@ -38,6 +38,8 @@
@@ -457,9 +457,9 @@ index 65f40a454ab0a0dd58633695cc0e27a663916f15..c07a24bd3d74845efc74277d2550aed7
  
  #ifdef CONFIG_ARM64
  #include "compat/apatch_conflict.h"
-@@ -228,13 +230,37 @@ int __init kernelsu_init(void)
-     ksu_start_apatch_conflict_check();
- #endif
+@@ -226,20 +228,41 @@ int __init kernelsu_init(void)
+         pr_alert("shell is allowed at init!");
+     }
  
 +    // The symbol resolver first: the Samsung layers below resolve every symbol they need through it,
 +    // and they have to be in place before anything else starts calling into the kernel on this
@@ -480,23 +480,29 @@ index 65f40a454ab0a0dd58633695cc0e27a663916f15..c07a24bd3d74845efc74277d2550aed7
          return -ENOSYS;
      }
  
+-    pr_info("initializing symbol resolver\n");
 -    ksu_init_symbol_resolver();
-+    // DEFEX before any hook is installed: it decides whether this process may touch a file at all,
-+    // and a hook that runs after it has already refused is a hook that never sees the call.
-+    {
-+        int ret = ksu_samsung_defex_init();
+     ret = ksu_selinux_inode_init();
+     if (ret) {
+-        put_cred(ksu_cred);
++        ksu_put_cred(ksu_cred);
+         ksu_cred = NULL;
++        ksu_samsung_kdp_exit();
+         return ret;
+     }
 +
-+        if (ret) {
-+            put_cred(ksu_cred);
-+            ksu_samsung_kdp_exit();
-+            return ret;
-+        }
++    ret = ksu_samsung_defex_init();
++    if (ret) {
++        ksu_put_cred(ksu_cred);
++        ksu_cred = NULL;
++        ksu_samsung_kdp_exit();
++        return ret;
 +    }
 +
-     ksu_selinux_init();
-     ksu_feature_init();
-     ksu_sulog_init();
-@@ -333,7 +359,10 @@ void __exit kernelsu_exit(void)
+ #ifdef CONFIG_ARM64
+     ksu_start_apatch_conflict_check();
+ #endif
+@@ -341,7 +364,10 @@ void __exit kernelsu_exit(void)
      ksu_feature_exit();
      ksu_module_blacklist_exit();
  

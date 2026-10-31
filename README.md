@@ -1,5 +1,7 @@
 # Root My Galaxy Ultra
 
+[Automatic SusFS app protection (1.3.1)](docs/susfs-priority-filter-20261030.md)
+
 Temporary root for **Samsung Galaxy S26 Ultra (m3q) regional and carrier variants**, with a choice
 of **KernelSU**, **KernelSU-Next**, **BakaSU (former ReSukiSU)** or **KowSU**. Root is lost after a full
 reboot; activate it again through the app or enable optional automatic restoration,
