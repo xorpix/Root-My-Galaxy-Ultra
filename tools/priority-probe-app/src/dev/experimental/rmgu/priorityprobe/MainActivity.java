@@ -58,10 +58,14 @@ public final class MainActivity extends Activity {
         Button copy = new Button(this); copy.setText("Copy results"); layout.addView(copy);
         results = text("Root permission is not used. This app runs two native query-only commands from its own app sandbox.\n\nA missing target can also return ESRCH, so a live root reference is required.",14);
         results.setTypeface(Typeface.MONOSPACE); results.setTextIsSelectable(true); layout.addView(results);
-        run.setOnClickListener(v -> begin());
-        copy.setOnClickListener(v -> {
-            if (!lastReport.isEmpty()) ((ClipboardManager)getSystemService(CLIPBOARD_SERVICE))
-                .setPrimaryClip(ClipData.newPlainText("Priority Probe",lastReport));
+        run.setOnClickListener(new android.view.View.OnClickListener() {
+            @Override public void onClick(android.view.View v) {begin();}
+        });
+        copy.setOnClickListener(new android.view.View.OnClickListener() {
+            @Override public void onClick(android.view.View v) {
+                if (!lastReport.isEmpty()) ((ClipboardManager)getSystemService(CLIPBOARD_SERVICE))
+                    .setPrimaryClip(ClipData.newPlainText("Priority Probe",lastReport));
+            }
         });
     }
     @Override protected void onSaveInstanceState(Bundle out) {
@@ -76,12 +80,18 @@ public final class MainActivity extends Activity {
             if (appid<10000 || appid>19999 || target==Process.myUid()) throw new IllegalArgumentException();
         } catch (RuntimeException e) { results.setText("Enter a different ordinary app UID, such as 10303."); return; }
         run.setEnabled(false); results.setText("Running queries…");
-        worker.execute(() -> {
+        worker.execute(new Runnable() {
+            @Override public void run() {
             String value;
             try { value = collect(target).toString(2); }
             catch (Exception e) { value = "Probe error: " + e.getClass().getSimpleName() + ": " + e.getMessage(); }
             final String report=value;
-            runOnUiThread(() -> { if (!isDestroyed()) {lastReport=report;results.setText(report);run.setEnabled(true);} });
+            runOnUiThread(new Runnable() {
+                @Override public void run() {
+                    if (!isDestroyed()) {lastReport=report;results.setText(report);MainActivity.this.run.setEnabled(true);}
+                }
+            });
+            }
         });
     }
     private JSONObject collect(int target) throws Exception {
