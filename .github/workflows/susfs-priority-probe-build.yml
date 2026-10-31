@@ -28,5 +28,6 @@ jobs:
         with:
           name: susfs-priority-probe-native-review
           path: ${{ runner.temp }}/priority-probe-review
+          include-hidden-files: true
           if-no-files-found: warn
           retention-days: 14
