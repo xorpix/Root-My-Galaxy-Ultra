@@ -49,6 +49,92 @@ def plan_for(source):
     return config
 
 
+class HistoryTests(unittest.TestCase):
+    """Exercise the release lineage gate with actual advertised/unadvertised Git history."""
+
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+        self.root = Path(self.directory.name)
+        self.remote = self.root / 'remote'
+        self.logs = self.root / 'logs'
+        self.logs.mkdir()
+        subprocess.run(['git', 'init', '--quiet', '-b', 'old', self.remote], check=True)
+        for key, value in [('user.name', 'History test'), ('user.email', 'test@example.invalid')]:
+            self.git('config', key, value)
+        self.old = self.commit('old source')
+        self.git('checkout', '--quiet', '--orphan', 'reviewed')
+        self.anchor = self.commit('reviewed source')
+        self.tip = self.commit('next source')
+        self.git('checkout', '--quiet', '--orphan', 'unrelated')
+        self.other = self.commit('next source')  # Identical tree, unrelated ancestry.
+        self.git('checkout', '--quiet', 'reviewed')
+        self.git('branch', '-D', 'old')
+        self.repo = self.root / 'clone'
+        subprocess.run(['git', 'clone', '--quiet', '--no-local', self.remote, self.repo], check=True)
+        self.assertFalse(self.present(self.old))
+        self.bridge = patch.object(refresh, 'REVIEWED_HISTORY_BRIDGES', {('kowsu', self.old): self.anchor})
+        self.bridge.start()
+        self.addCleanup(self.bridge.stop)
+
+    def git(self, *args, repo=None):
+        return common.capture(['git', *args], repo or self.remote)
+
+    def commit(self, text):
+        (self.remote / 'source.c').write_text(text + '\n')
+        self.git('add', 'source.c')
+        self.git('commit', '--quiet', '-m', text)
+        return self.git('rev-parse', 'HEAD')
+
+    def present(self, sha):
+        return subprocess.run(['git', 'cat-file', '-e', sha + '^{commit}'], cwd=self.repo,
+                              stderr=subprocess.DEVNULL).returncode == 0
+
+    def test_reviewed_replacement_and_later_commits_retrieve_the_exact_old_pin(self):
+        for current in (self.anchor, self.tip):
+            with self.subTest(current=current):
+                refresh.verify_history(self.repo, 'kowsu', self.old, current, self.logs)
+                self.assertTrue(self.present(self.old))
+                self.assertEqual(self.tip, self.git('rev-parse', 'HEAD', repo=self.repo))
+                self.assertEqual('', self.git('status', '--porcelain', repo=self.repo))
+        self.assertTrue((self.logs / 'kowsu-reviewed-base-fetch.log').is_file())
+
+    def test_normal_descendants_still_work_without_a_history_exception(self):
+        refresh.verify_history(self.repo, 'kowsu', self.anchor, self.tip, self.logs)
+        self.assertEqual([], list(self.logs.iterdir()))
+
+    def test_unreviewed_missing_base_is_not_fetched(self):
+        with patch.object(refresh, 'REVIEWED_HISTORY_BRIDGES', {}):
+            with self.assertRaisesRegex(ValueError, 'no longer reachable'):
+                refresh.verify_history(self.repo, 'kowsu', self.old, self.tip, self.logs)
+        self.assertFalse(self.present(self.old))
+        self.assertEqual([], list(self.logs.iterdir()))
+
+    def test_another_rewrite_is_rejected_even_with_identical_source(self):
+        refresh.fetch_snapshot_commit(self.repo, self.old, self.logs / 'fixture-fetch.log')
+        self.assertEqual(self.git('rev-parse', self.tip + '^{tree}'),
+                         self.git('rev-parse', self.other + '^{tree}'))
+        with self.assertRaisesRegex(ValueError, 'not a descendant'):
+            refresh.verify_history(self.repo, 'kowsu', self.old, self.other, self.logs)
+
+    def test_bridge_is_scoped_to_backend_old_pin_and_proven_ancestry(self):
+        refresh.fetch_snapshot_commit(self.repo, self.old, self.logs / 'fixture-fetch.log')
+        for backend, previous in [('kernelsu', self.old), ('kowsu', self.other)]:
+            with self.subTest(backend=backend, previous=previous):
+                with self.assertRaisesRegex(ValueError, 'not a descendant'):
+                    refresh.verify_history(self.repo, backend, previous, self.tip, self.logs)
+        self.assertTrue(refresh.reviewed_history_transition('kowsu', self.old, self.anchor))
+        self.assertFalse(refresh.reviewed_history_transition('kowsu', self.old, self.tip))
+        with patch.object(refresh, 'REVIEWED_HISTORY_BRIDGES', {('kowsu', self.old): 'b' * 40}):
+            with self.assertRaisesRegex(ValueError, 'not a descendant'):
+                refresh.verify_history(self.repo, 'kowsu', self.old, self.tip, self.logs)
+
+    def test_broken_git_lookup_stops_instead_of_approving_a_transition(self):
+        with self.assertRaisesRegex(RuntimeError, 'could not verify reviewed history anchor'):
+            refresh.verify_history(self.repo, 'kowsu', self.old, 'a' * 40, self.logs)
+        self.assertFalse(self.present(self.old))
+
+
 class RefreshTests(unittest.TestCase):
     def test_forks_with_overlapping_driver_numbers_keep_their_own_versions(self):
         previous = {n: t['version'] for n, t in common.load_config()['backends'].items()}

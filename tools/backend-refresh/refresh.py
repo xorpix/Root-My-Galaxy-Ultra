@@ -42,9 +42,34 @@ REVIEWED_HISTORY_TRANSITIONS = {
      'b427a3f9c2421a443f961007bfce66b25486643f'),
 }
 
+# The old pin remains the built baseline until a matched pair is staged. Accept
+# this reviewed replacement and ordinary descendants of it, even if upstream
+# advances before the next scheduled build. Another rewrite still needs review.
+REVIEWED_HISTORY_BRIDGES = {
+    ('kowsu', '6366f25b89f2bc5e287c1983715ebae60cd5540e'):
+        '6ecdd69224fe6769e6c8715a4ef2b91602b23362',
+}
 
-def reviewed_history_transition(name, previous, current):
-    return (name, previous, current) in REVIEWED_HISTORY_TRANSITIONS
+
+def reviewed_history_transition(name, previous, current, repo=None):
+    if (name, previous, current) in REVIEWED_HISTORY_TRANSITIONS:
+        return True
+    anchor = REVIEWED_HISTORY_BRIDGES.get((name, previous))
+    if anchor is None:
+        return False
+    if current == anchor:
+        return True
+    if repo is None:
+        return False
+    present = subprocess.run(['git', 'cat-file', '-e', anchor + '^{commit}'],
+                             cwd=repo, stderr=subprocess.DEVNULL).returncode == 0
+    if not present:
+        return False
+    ancestor = subprocess.run(['git', 'merge-base', '--is-ancestor', anchor, current],
+                              cwd=repo, stderr=subprocess.DEVNULL).returncode
+    if ancestor not in (0, 1):
+        raise RuntimeError(f'{name}: could not verify reviewed history anchor {anchor}')
+    return ancestor == 0
 
 
 def run(args, log, cwd=None, env=None):
@@ -65,6 +90,33 @@ def fetch_snapshot_commit(repo, sha, log):
                              cwd=repo, stderr=subprocess.DEVNULL).returncode == 0
     if not present:
         run(['git', 'fetch', '--no-tags', 'origin', sha], log, repo)
+
+
+def verify_history(repo, name, previous, current, logs):
+    """Check lineage before version/patch checks, retrieving only reviewed old pins."""
+    reviewed = reviewed_history_transition(name, previous, current, repo)
+    present = subprocess.run(['git', 'cat-file', '-e', previous + '^{commit}'],
+                             cwd=repo, stderr=subprocess.DEVNULL).returncode == 0
+    if not present and reviewed:
+        run(['git', 'fetch', '--no-tags', 'origin', previous],
+            logs / f'{name}-reviewed-base-fetch.log', repo)
+        present = subprocess.run(['git', 'cat-file', '-e', previous + '^{commit}'],
+                                 cwd=repo, stderr=subprocess.DEVNULL).returncode == 0
+    if not present:
+        raise ValueError(
+            f'{name}: pinned base {previous} is no longer reachable upstream (history '
+            f'rebased); review the replacement lineage and {name}-compat.patch')
+    ancestor = subprocess.run(['git', 'merge-base', '--is-ancestor', previous, current],
+                              cwd=repo).returncode
+    if ancestor == 1 and not reviewed:
+        raise ValueError(
+            f'{name}: new head {current} is not a descendant of pinned base {previous} '
+            f'(upstream rollback or rewritten history); manual review required')
+    if ancestor not in (0, 1):
+        raise RuntimeError(
+            f'{name}: git merge-base failed comparing {previous}..{current} (exit {ancestor})')
+    if ancestor == 1:
+        print(f'{name}: using reviewed history transition {previous} -> {current}', flush=True)
 
 
 def restore_pinned_version_tags(repo, expected, log):
@@ -147,35 +199,7 @@ def discover(project, work, snapshot):
             logs / f'{name}-clone.log')
         fetch_snapshot_commit(repo, sha, logs / f'{name}-snapshot-fetch.log')
         run(['git', 'checkout', '--detach', sha], logs / f'{name}-checkout.log', repo)
-        # Refuse a rewritten history or an accidental rollback - cleanly. 'git merge-base
-        # --is-ancestor' returns 1 for "not an ancestor" (a normal result, not an error) and
-        # the pinned base can be gone entirely after an upstream rebase (exit 128), so
-        # check=True would crash on both instead of reporting a verdict.
-        prev = target['commit']
-        reviewed_transition = reviewed_history_transition(name, prev, sha)
-        present = subprocess.run(['git', 'cat-file', '-e', prev + '^{commit}'],
-                                 cwd=repo, stderr=subprocess.DEVNULL).returncode == 0
-        if not present and reviewed_transition:
-            run(['git', 'fetch', '--no-tags', 'origin', prev],
-                logs / f'{name}-reviewed-base-fetch.log', repo)
-            present = subprocess.run(['git', 'cat-file', '-e', prev + '^{commit}'],
-                                     cwd=repo, stderr=subprocess.DEVNULL).returncode == 0
-        if not present:
-            raise ValueError(
-                f'{name}: pinned base {prev} is no longer reachable upstream (history '
-                f'rebased); re-pin {name} in targets.json to a current commit and '
-                f're-validate {name}-compat.patch')
-        ancestor = subprocess.run(['git', 'merge-base', '--is-ancestor', prev, sha],
-                                  cwd=repo).returncode
-        if ancestor == 1 and not reviewed_transition:
-            raise ValueError(
-                f'{name}: new head {sha} is not a descendant of pinned base {prev} '
-                f'(upstream rollback or rewritten history); manual review required')
-        if ancestor not in (0, 1):
-            raise RuntimeError(
-                f'{name}: git merge-base failed comparing {prev}..{sha} (exit {ancestor})')
-        if ancestor == 1:
-            print(f'{name}: using reviewed history transition {prev} -> {sha}', flush=True)
+        verify_history(repo, name, target['commit'], sha, logs)
         if not source_changed:
             restore_pinned_version_tags(repo, target['daemon_version'],
                                         logs / f'{name}-pinned-version-tags.log')
@@ -277,7 +301,7 @@ def prepare_release(source, work, config):
     rows += ['', '## Validation and current limits', '',
              '- Backend builds, Android unit tests, driver/daemon matching, APK bundle integrity and release-signature checks passed.',
              '- Firmware support and exploit/bridge files are unchanged. The refreshed backend revisions still need device testing.',
-             '- SusFS LKM remains experimental. Installed-app/package-list detections are a separate layer.', '',
+             '- SusFS keeps its existing configuration. Installed-app/package-list visibility is a separate layer.', '',
              '## Updating', '',
              f'1. Install **RootMyGalaxyUltra-{version}.apk** over the existing app; it uses the same package and release signing key.',
              '2. Perform a **full reboot** to replace the loaded backend and SusFS module. A soft reboot keeps the existing kernel modules loaded.',
