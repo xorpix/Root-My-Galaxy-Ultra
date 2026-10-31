@@ -907,4 +907,6 @@
     <string name="susfs_grant_title">O SusFS precisa de permissão root</string>
     <string name="susfs_grant_body">O SusFS só pode iniciar quando este próprio app tiver acesso root. Conceda a permissão su a ele no gerenciador; o SusFS será ativado na próxima execução.</string>
     <string name="action_got_it">Entendi</string>
+    <string name="settings_susfs_apps_automatic">Os apps relacionados ao root são selecionados automaticamente.</string>
+    <string name="settings_susfs_apps_unavailable">Não foi possível iniciar a proteção automática de apps. O SusFS continua ativo.</string>
 </resources>

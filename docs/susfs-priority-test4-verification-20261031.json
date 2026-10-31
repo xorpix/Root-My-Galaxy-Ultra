@@ -1,0 +1,60 @@
+{
+  "head": "19d12fab867f0a204beb578c04d7124c6aa0e9a1",
+  "hardwareValidated": false,
+  "apks": [
+    {
+      "file": "RootMyGalaxyUltra-1.3.0-priority-test4.apk",
+      "sha256": "8c73eef85ab13978b8e07e6ce88390bf7e3468149a6fa63d9eff4391c83196fc",
+      "bytes": 86089393,
+      "v2_rsa_sha256_signature": true,
+      "v2_content_digest": true,
+      "certificate_sha256": "ca4190d702c2b36e4b38c050f84fce732a37530a74fddbc35e63b555a17e5981"
+    },
+    {
+      "file": "RootMyGalaxyUltra-1.3.0-rollback.apk",
+      "sha256": "a29bca60fdf1d801261198ea0cbb88eb93f682c6c4c148a5752dd42279bf1858",
+      "bytes": 86046301,
+      "v2_rsa_sha256_signature": true,
+      "v2_content_digest": true,
+      "certificate_sha256": "ca4190d702c2b36e4b38c050f84fce732a37530a74fddbc35e63b555a17e5981"
+    }
+  ],
+  "builds": [
+    {
+      "sourceCommit": "19d12fab867f0a204beb578c04d7124c6aa0e9a1",
+      "applicationId": "dev.experimental.azhlroot",
+      "versionName": "1.3.0-priority-test4",
+      "versionCode": 26217483
+    },
+    {
+      "sourceCommit": "b75e542957dfc38d574bcc0df585578c8dd9c10d",
+      "applicationId": "dev.experimental.azhlroot",
+      "versionName": "1.3.0",
+      "versionCode": 26217601
+    }
+  ],
+  "checksumsVerified": true,
+  "sourcePinnedModuleAndClientVerified": true,
+  "unchangedStableNativePayloads": 18,
+  "rollbackStablePayloads": 19,
+  "twoRecompiledLibrariesMatchAllocatedSectionsExceptBuildId": true,
+  "jobServicePermissionAndReceiverExportVerified": true,
+  "stableBaseline": "Verified signed test2 rollback from stable commit b75e542",
+  "signedWorkflowRun": 41193234957,
+  "ciArtifact": 13040126780,
+  "ciArtifactSha256": "a0ca3e1a3b315adcd30b247c780b4ea750dcabd3f600ade7d4f397160a1fa155",
+  "nativeWorkflowRun": 41192868334,
+  "nativeSource": "98b5149536fdc564132ca82b08d3980114be298a",
+  "nativeHostRunnerExecutions": 56,
+  "androidUnitTests": "passed",
+  "translations": "passed",
+  "upstreamRefresh": {
+    "dailyRun": 41193238646,
+    "weeklyRun": 41193238622,
+    "result": "both failed; no bundle was published",
+    "backend": "kernelsu",
+    "upstreamCommit": "b1fce49eb3cd147dcd09a9356f60f487683cf8fa",
+    "reason": "kernelsu-compat.patch needs review",
+    "test4UsesExistingVerifiedPins": true
+  }
+}

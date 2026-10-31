@@ -36,6 +36,9 @@ internal object SusfsRuntime {
         return file
     }
 
+    internal fun priorityTool(context: Context): File =
+        nativeTool(context, profile(context, SHARED_MODULE_DIR), "priorityControl")
+
     private fun module(context: Context, profile: JSONObject): File {
         val entry = profile.getJSONObject("module")
         // Single shared binary: it carries a generic vermagic and the loader
@@ -107,7 +110,7 @@ internal object SusfsRuntime {
         if (!isRootAnswer(root)) return unavailable("Grant this app root permission in your manager, then retry.", needsGrant = true)
         // A module may now spoof uname. A live or partial ABI must prevent another load first.
         val before = readStatus(context, profile, shell)
-        if (before.status.state != SusfsState.Absent) return before
+        if (before.status.state != SusfsState.Absent) return SusfsAutoApps.attach(context, before, shell)
         val runningRelease = root?.output?.lineSequence()?.map { it.trim() }
             ?.firstOrNull { it.contains("android") }.orEmpty()
         // Family kernels use the shared bytes; the live feature check proves activation.
@@ -124,6 +127,7 @@ internal object SusfsRuntime {
         // Uname remains genuine until a user explicitly configures a spoof through the ABI.
         val command = "${shellQuote(loader.path)} ${shellQuote(module.path)} " +
             "uname_spoof_enabled=0 hide_modules=kernelsu,susfs_guard_lkm " +
+            "priority_auto_root=1 priority_appid=${context.applicationInfo.uid % 100000} " +
             "su_ctx=${shellQuote(rootContext)} or_su_ctx=${shellQuote(rootContext)} avc_su_ctx=${shellQuote(rootContext)}"
         val loaded = shell(command, 60)
             ?: return unavailable("The loader did not finish. Refresh status before retrying.")
@@ -135,6 +139,6 @@ internal object SusfsRuntime {
         val status = if (after.status.state == SusfsState.Absent) after.status.copy(
             detail = "SusFS is not active after the load attempt (loader exit ${loaded.exitCode}). See the report.",
         ) else after.status
-        return after.copy(status = status, report = report)
+        return SusfsAutoApps.attach(context, after.copy(status = status, report = report), shell)
     }
 }

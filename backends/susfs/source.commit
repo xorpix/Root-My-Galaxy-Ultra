@@ -1,6 +1,6 @@
-tree 8fd0d9cab6fc13e4bb0161b479294f1a86a3a132
-parent cc2b27a3f66f11cd9b6bf511a60b8e47c128eae4
-author RMGU source maintenance <rmgu-source@users.noreply.github.com> 1793298541 +0000
-committer RMGU source maintenance <rmgu-source@users.noreply.github.com> 1793298541 +0000
+tree 5deb93b813cd7a9c7ca9332e92099a2ee56569c9
+parent a69a039800d4e063b1bcfa8e7e77fc3d94a7560c
+author Codex <codex@openai.com> 1793442085 +0100
+committer Codex <codex@openai.com> 1793442085 +0100
 
-supercall: prefer verified table delivery with guarded Samsung fallback
+Use verified priority entry probes when Samsung refuses table writes

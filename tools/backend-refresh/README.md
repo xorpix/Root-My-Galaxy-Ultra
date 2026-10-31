@@ -137,6 +137,15 @@ that exact backend/revision transition; other rewrites still require review.
 The bundled targets remain pinned to their existing built binaries until the
 normal matched driver/daemon build, validation and staging steps finish.
 
+KoW's 2026-10-30 rebase from `6366f25b` to `6ecdd692` is recorded as a reviewed
+replacement anchor. Its UAPI and version formulas are unchanged, the version
+increases from 32737 to 32740, and the Samsung patch applies directly. That exact
+backend/old-pin pair can advance to the anchor or a Git-proven descendant of it;
+this allows normal updates arriving before the next build. A different old pin,
+another backend, missing anchor or another unrelated rewrite still stops. The
+old pin must remain retrievable, and all UAPI/version, patch and native-build
+checks still run. See [the source review](../../docs/kowsu-history-review-20261031.md).
+
 The existing Samsung compatibility patch must apply to the selected upstream
 revision directly or through a conflict-free Git three-way merge using the
 original source blobs. Samsung initialization variables are scoped inside the

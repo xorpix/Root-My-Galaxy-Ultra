@@ -1,0 +1,44 @@
+{
+  "nativeSource": {
+    "schema": 1,
+    "sourceCommit": "98b5149536fdc564132ca82b08d3980114be298a",
+    "sourceTree": "5deb93b813cd7a9c7ca9332e92099a2ee56569c9",
+    "sourceParent": "a69a039800d4e063b1bcfa8e7e77fc3d94a7560c",
+    "sourceArchiveSha256": "1af6f47a8f8a9f36c0421eeeaeeb6527707fd0c5038327f5a65cc2ab365d99cd",
+    "baselineModuleSha256": "34915043a9adc89f9f8fea0b5e0ac55aca99e3036a983f7758f3c1c13f26a792",
+    "priorityControlSha256": "8a1d3f909d81b029241f8e512763f15a663f12143398b849c99b7f65f5b4a64e",
+    "hardwareValidated": false
+  },
+  "buildRepository": "xorpix/Root-My-Galaxy-Ultra",
+  "buildBranch": "build/susfs-priority-probe-20261031",
+  "buildCommit": "880fd96040114ea22aa0eda288dff38836935d61",
+  "runId": 41192868334,
+  "artifactId": 13040025957,
+  "artifactSha256": "21254c3e894a898e435036e32d0fcf486cf90bbc46f9ea8050f38f7089b988fe",
+  "allManifestFilesVerified": true,
+  "strippedAllocatedSectionsMatchValidatedModule": true,
+  "checks": {
+    "22_syscall_wrappers": true,
+    "all_incoming_kcfi_match_real_headers": true,
+    "all_have_call_landing_instructions": true,
+    "priority_probe_callbacks_match_real_headers": true,
+    "baseline_imports_preserved": true,
+    "imports_match_expected_baseline": true,
+    "module_metadata_only_adds_readonly_auto_parameters": true,
+    "version_table_shape_unchanged": true,
+    "baseline_callback_types_preserved": true
+  },
+  "hostSuites": 29,
+  "hostExecutions": 56,
+  "kernelImports": 140,
+  "addedImports": [],
+  "module": {
+    "bytes": 589032,
+    "sha256": "5c7808bee0b376d91b993d2440f288319162c5a6861549bf10d9c937e5e58b77"
+  },
+  "client": {
+    "bytes": 13056,
+    "sha256": "8a1d3f909d81b029241f8e512763f15a663f12143398b849c99b7f65f5b4a64e"
+  },
+  "hardwareValidated": false
+}

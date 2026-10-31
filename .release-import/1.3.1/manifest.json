@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "version": "1.3.1",
+  "bundle_bytes": 3342768,
+  "chunk_bytes": 65536,
+  "parts": 52,
+  "bundle_sha256": "d1a91802d1c3cde9d769d8b71fa5eda088d74b9ff52f89d582e01f3c279d4f07",
+  "base_commit": "0785fa9b30f8954ae54dda1d81d89c55f7df576d",
+  "source_commit": "0879880188f3e754676aeabeff65c042da36162e",
+  "source_tree": "52dbf78e1622bedb5f4a13ce740fd15803109ca2",
+  "destination": "feat/susfs-priority-20261030"
+}

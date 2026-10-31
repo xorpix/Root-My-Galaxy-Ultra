@@ -1,0 +1,35 @@
+name: Import verified RMGU 1.3.1
+
+on:
+  push:
+    branches: [release/import-1.3.1-20261031]
+    paths: ['.github/workflows/import-prepared-1.3.1.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: import-rmgu-1.3.1
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify the handoff, run host checks, and import exact Git objects
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .release-import/1.3.1/import-prepared.py
+      - name: Preserve the verified import receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: RMGU-1.3.1-import-receipt
+          path: import-result.json
+          if-no-files-found: error
+          retention-days: 30

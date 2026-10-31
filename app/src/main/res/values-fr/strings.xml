@@ -907,4 +907,6 @@
     <string name="susfs_grant_title">SusFS nécessite l’accès root</string>
     <string name="susfs_grant_body">SusFS ne peut démarrer que lorsque cette application dispose elle-même de l’accès root. Accordez-lui l’autorisation su dans le gestionnaire ; SusFS sera activé à la prochaine exécution.</string>
     <string name="action_got_it">Compris</string>
+    <string name="settings_susfs_apps_automatic">Les applications liées au root sont sélectionnées automatiquement.</string>
+    <string name="settings_susfs_apps_unavailable">La protection automatique des applications n’a pas pu démarrer. SusFS reste actif.</string>
 </resources>
