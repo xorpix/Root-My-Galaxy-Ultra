@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="df_logging_checking">正在检查系统日志</string>
+    <string name="df_logging_restored">已通过 Shizuku 重新启用系统日志。</string>
+    <string name="df_logging_disabled">系统日志已关闭。请在开发者选项 → 日志记录器缓冲区大小中选择 4M，然后重试。</string>
+    <string name="df_logging_unavailable">无法验证系统日志状态。请在开发者选项 → 日志记录器缓冲区大小中选择 4M，然后重试。</string>
+</resources>

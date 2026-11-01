@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="df_logging_checking">Systemprotokollierung wird geprüft</string>
+    <string name="df_logging_restored">Systemprotokollierung über Shizuku wieder aktiviert.</string>
+    <string name="df_logging_disabled">Die Systemprotokollierung ist aus. Stelle unter Entwickleroptionen → Logger-Puffergrößen den Wert 4M ein und versuche es erneut.</string>
+    <string name="df_logging_unavailable">Die Systemprotokollierung konnte nicht geprüft werden. Stelle unter Entwickleroptionen → Logger-Puffergrößen den Wert 4M ein und versuche es erneut.</string>
+</resources>

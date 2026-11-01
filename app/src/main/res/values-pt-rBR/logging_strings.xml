@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="df_logging_checking">Verificando os registros do sistema</string>
+    <string name="df_logging_restored">Registros do sistema reativados pelo Shizuku.</string>
+    <string name="df_logging_disabled">Os registros do sistema estão desativados. Em Opções do desenvolvedor → Tamanhos de buffer de logger, selecione 4M e tente novamente.</string>
+    <string name="df_logging_unavailable">Não foi possível verificar os registros do sistema. Em Opções do desenvolvedor → Tamanhos de buffer de logger, selecione 4M e tente novamente.</string>
+</resources>

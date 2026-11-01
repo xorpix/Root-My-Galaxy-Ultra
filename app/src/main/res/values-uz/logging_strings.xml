@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="df_logging_checking">Tizim jurnali tekshirilmoqda</string>
+    <string name="df_logging_restored">Tizim jurnali Shizuku orqali qayta yoqildi.</string>
+    <string name="df_logging_disabled">Tizim jurnali oʻchirilgan. Dasturchi parametrlari → Jurnal buferi hajmi sozlamasini 4M ga oʻzgartirib, qayta urinib koʻring.</string>
+    <string name="df_logging_unavailable">Tizim jurnalini tekshirib boʻlmadi. Dasturchi parametrlari → Jurnal buferi hajmi sozlamasini 4M ga oʻzgartirib, qayta urinib koʻring.</string>
+</resources>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="df_logging_checking">Đang kiểm tra nhật ký hệ thống</string>
+    <string name="df_logging_restored">Đã bật lại nhật ký hệ thống qua Shizuku.</string>
+    <string name="df_logging_disabled">Nhật ký hệ thống đang tắt. Vào Tùy chọn cho nhà phát triển → Kích thước bộ đệm nhật ký, chọn 4M rồi thử lại.</string>
+    <string name="df_logging_unavailable">Không thể xác minh nhật ký hệ thống. Vào Tùy chọn cho nhà phát triển → Kích thước bộ đệm nhật ký, chọn 4M rồi thử lại.</string>
+</resources>

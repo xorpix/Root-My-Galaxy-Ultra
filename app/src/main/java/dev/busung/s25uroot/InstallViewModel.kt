@@ -851,6 +851,18 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                 val loadKernelSu = AppPreferences.loadKernelSu(app)
                 // The profile, not a setting, decides the exploit family from here on.
                 val runUsesDirtyFrag = DfCatalog.isDfPayload(profile)
+                // Off silences init's DirtyFrag trigger. Check before staging or patching anything,
+                // so changing the Developer option is enough to retry in this boot.
+                if (runUsesDirtyFrag) {
+                    setPhase(InstallPhase.Checking, app.getString(R.string.df_logging_checking))
+                    when (DfLogging.check()) {
+                        DfLoggingStatus.Enabled -> Unit
+                        DfLoggingStatus.Restored -> appendLog(app.getString(R.string.df_logging_restored))
+                        DfLoggingStatus.Disabled -> error(app.getString(R.string.df_logging_disabled))
+                        DfLoggingStatus.Unavailable -> error(app.getString(R.string.df_logging_unavailable))
+                    }
+                    stopIfAskedFromOutside()
+                }
                 val shizukuRequested = !runUsesDirtyFrag
                 require(runUsesDirtyFrag || ShizukuController.isRunning()) { "Start Shizuku using wireless debugging first." }
                 require(runUsesDirtyFrag || (ShizukuController.isGranted() || (!unattended && ShizukuController.requestPermission()))) {

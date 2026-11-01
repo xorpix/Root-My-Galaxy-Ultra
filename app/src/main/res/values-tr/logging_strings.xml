@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="df_logging_checking">Sistem günlükleri kontrol ediliyor</string>
+    <string name="df_logging_restored">Sistem günlükleri Shizuku ile yeniden etkinleştirildi.</string>
+    <string name="df_logging_disabled">Sistem günlükleri kapalı. Geliştirici seçenekleri → Günlük arabellek boyutları ayarını 4M olarak değiştirip tekrar deneyin.</string>
+    <string name="df_logging_unavailable">Sistem günlükleri doğrulanamadı. Geliştirici seçenekleri → Günlük arabellek boyutları ayarını 4M olarak değiştirip tekrar deneyin.</string>
+</resources>

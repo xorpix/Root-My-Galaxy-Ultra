@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="df_logging_checking">Vérification des journaux système</string>
+    <string name="df_logging_restored">Journaux système réactivés via Shizuku.</string>
+    <string name="df_logging_disabled">Les journaux système sont désactivés. Dans Options pour les développeurs → Tailles des tampons de journalisation, choisis 4M, puis réessaie.</string>
+    <string name="df_logging_unavailable">Impossible de vérifier les journaux système. Dans Options pour les développeurs → Tailles des tampons de journalisation, choisis 4M, puis réessaie.</string>
+</resources>
