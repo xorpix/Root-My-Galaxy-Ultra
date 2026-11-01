@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="df_logging_checking">Проверка системного журнала</string>
+    <string name="df_logging_restored">Системный журнал снова включён через Shizuku.</string>
+    <string name="df_logging_disabled">Системный журнал отключён. В разделе «Для разработчиков» → «Размер буфера журнала» выберите 4M и повторите попытку.</string>
+    <string name="df_logging_unavailable">Не удалось проверить системный журнал. В разделе «Для разработчиков» → «Размер буфера журнала» выберите 4M и повторите попытку.</string>
+</resources>

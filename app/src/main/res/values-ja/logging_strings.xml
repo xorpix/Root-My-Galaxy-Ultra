@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="df_logging_checking">システムログを確認中</string>
+    <string name="df_logging_restored">Shizuku を使用してシステムログを再度有効にしました。</string>
+    <string name="df_logging_disabled">システムログがオフです。開発者向けオプション → ロガーバッファのサイズを 4M に設定してから、再試行してください。</string>
+    <string name="df_logging_unavailable">システムログを確認できませんでした。開発者向けオプション → ロガーバッファのサイズを 4M に設定してから、再試行してください。</string>
+</resources>

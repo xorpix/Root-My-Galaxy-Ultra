@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="df_logging_checking">시스템 로깅 확인 중</string>
+    <string name="df_logging_restored">Shizuku를 통해 시스템 로깅을 다시 활성화했습니다.</string>
+    <string name="df_logging_disabled">시스템 로깅이 꺼져 있습니다. 개발자 옵션 → 로거 버퍼 크기를 4M으로 설정한 후 다시 시도하세요.</string>
+    <string name="df_logging_unavailable">시스템 로깅을 확인할 수 없습니다. 개발자 옵션 → 로거 버퍼 크기를 4M으로 설정한 후 다시 시도하세요.</string>
+</resources>

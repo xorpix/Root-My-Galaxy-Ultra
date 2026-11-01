@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="df_logging_checking">Checking system logging</string>
+    <string name="df_logging_restored">System logging re-enabled using Shizuku.</string>
+    <string name="df_logging_disabled">System logging is Off. Set Developer options → Logger buffer sizes to 4M, then retry.</string>
+    <string name="df_logging_unavailable">Could not verify system logging. Set Developer options → Logger buffer sizes to 4M, then retry.</string>
+</resources>
