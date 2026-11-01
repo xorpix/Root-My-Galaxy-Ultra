@@ -1,6 +1,8 @@
 package dev.busung.s25uroot
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.runInterruptible
 
 internal enum class DfLoggingStatus { Enabled, Restored, Disabled, Unavailable }
@@ -46,6 +48,9 @@ internal object DfLogging {
             readTag = ::readTag,
             writeTag = if (allowShizuku && ShizukuController.isGranted()) ::writeTag else null,
         ).check()
+    }.also {
+        // BoundedProcess returns null on interruption; cancellation must still stop the run.
+        currentCoroutineContext().ensureActive()
     }
 
     private fun readTag(): String? {
