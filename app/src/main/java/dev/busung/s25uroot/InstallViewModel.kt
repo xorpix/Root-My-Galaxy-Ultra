@@ -855,7 +855,10 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                 // so changing the Developer option is enough to retry in this boot.
                 if (runUsesDirtyFrag) {
                     setPhase(InstallPhase.Checking, app.getString(R.string.df_logging_checking))
-                    when (DfLogging.check()) {
+                    val logging = DfLogging.check(
+                        allowShizuku = !withoutShizuku && AppPreferences.shizukuMode(app),
+                    )
+                    when (logging) {
                         DfLoggingStatus.Enabled -> Unit
                         DfLoggingStatus.Restored -> appendLog(app.getString(R.string.df_logging_restored))
                         DfLoggingStatus.Disabled -> error(app.getString(R.string.df_logging_disabled))

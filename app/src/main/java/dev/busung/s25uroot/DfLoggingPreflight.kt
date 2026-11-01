@@ -41,10 +41,10 @@ internal object DfLogging {
     private const val UNSET_TAG = "__RMGU_LOGGING_DEFAULT__"
     private const val COMMAND_TIMEOUT_MS = 3_000L
 
-    suspend fun check(): DfLoggingStatus = runInterruptible {
+    suspend fun check(allowShizuku: Boolean): DfLoggingStatus = runInterruptible {
         DfLoggingPreflight(
             readTag = ::readTag,
-            writeTag = if (ShizukuController.isGranted()) ::writeTag else null,
+            writeTag = if (allowShizuku && ShizukuController.isGranted()) ::writeTag else null,
         ).check()
     }
 
