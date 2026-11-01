@@ -38,6 +38,7 @@ internal class DfLoggingPreflight(
 /** No root request or Shizuku permission prompt is needed to check this prerequisite. */
 internal object DfLogging {
     private const val LOG_TAG_PROPERTY = "persist.log.tag"
+    private const val UNSET_TAG = "__RMGU_LOGGING_DEFAULT__"
     private const val COMMAND_TIMEOUT_MS = 3_000L
 
     suspend fun check(): DfLoggingStatus = runInterruptible {
@@ -47,10 +48,15 @@ internal object DfLogging {
         ).check()
     }
 
-    private fun readTag(): String? = command {
-        ProcessBuilder("/system/bin/getprop", LOG_TAG_PROPERTY)
-            .redirectErrorStream(true).start()
-    }?.takeIf { it.exitCode == 0 }?.output
+    private fun readTag(): String? {
+        val result = command {
+            ProcessBuilder("/system/bin/getprop", LOG_TAG_PROPERTY, UNSET_TAG)
+                .redirectErrorStream(true).start()
+        } ?: return null
+        // A missing property prints the explicit default. No output means the read failed.
+        if (result.exitCode != 0 || result.output.isEmpty()) return null
+        return if (result.output == UNSET_TAG) "" else result.output
+    }
 
     private fun writeTag(value: String): Boolean = command {
         // Arguments are passed directly: a stored property is never evaluated as shell code.
