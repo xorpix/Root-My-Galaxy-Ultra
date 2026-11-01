@@ -864,7 +864,6 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                         DfLoggingStatus.Disabled -> error(app.getString(R.string.df_logging_disabled))
                         DfLoggingStatus.Unavailable -> error(app.getString(R.string.df_logging_unavailable))
                     }
-                    stopIfAskedFromOutside()
                 }
                 val shizukuRequested = !runUsesDirtyFrag
                 require(runUsesDirtyFrag || ShizukuController.isRunning()) { "Start Shizuku using wireless debugging first." }
