@@ -22,40 +22,40 @@
     "size": 54634,
     "sha256": "8bea92389e8b9ddcf63de83b776e7baed25636d6c85d07490c9c7016a969fb29"
   },
-  "created_utc": "2026-10-31",
-  "app_base_commit": "8741b52713ef39b12bbc23aac65050f2afe4a34e",
+  "created_utc": "2026-11-02",
+  "app_base_commit": "84b2d4266351dd5a3f40c37a18e3c37be54e44e4",
   "upstream_repository": "https://github.com/tiann/KernelSU",
-  "upstream_commit": "bec9c1347472e26d3d7c46cccb7be801a9c9a6b9",
-  "upstream_commit_count": 2715,
-  "driver_version": 32715,
+  "upstream_commit": "28db74f6f4692e97006ce9ebd8b19b9cc614b5b7",
+  "upstream_commit_count": 2716,
+  "driver_version": 32716,
   "uapi_version": 6,
   "manager_required_uapi": 6,
-  "daemon_version": "3.3.1-35-gbec9c134",
+  "daemon_version": "3.3.1-36-g28db74f6",
   "validation": {
     "kernel_build": "passed",
     "daemon_build": "passed",
     "exact_driver_in_daemon": "passed",
-    "apk_build": "passed (local build-only key)",
+    "apk_build": "passed (GitHub Actions)",
     "device_test": "not run",
-    "android_unit_tests": "passed (local, 940 tests)"
+    "android_unit_tests": "passed (GitHub Actions)"
   },
   "source_provenance": "Existing Samsung compatibility changes rebased onto pinned upstream.",
   "outputs": {
     "ksud": {
-      "size": 5304376,
-      "sha256": "14b7c78b58d7b9058ca1928aef6098d9c9e29711aa583e577fa441fb64e04e64"
+      "size": 5302696,
+      "sha256": "5ed4ce18f06a3459fa6204a7dd483013c17d20a7409a3e3a49b159ba2b6064be"
     },
     "kernelsu.ko": {
       "size": 441504,
-      "sha256": "30d691d71cb9fafca4cd30fcd5c96a8e8893a8be592370788e53ce280d3d2763"
+      "sha256": "654c46e00c1b2e2201f52ef481617c68dadab231f3064da925f4b4195e9f0545"
     },
     "helper": {
       "size": 24232,
-      "sha256": "8c4e2a68622de443b4fe88678007f57bda169aacea7c51d710763f23fbbee000"
+      "sha256": "d2afcf79675f8f5b4a6cd30d668a535093f14643504a52dbc8d135e0db50f231"
     }
   },
   "rebased_patch": {
-    "path": "samsung-compat-32715.patch",
+    "path": "samsung-compat-32716.patch",
     "size": 68595,
     "sha256": "63dbc81b48338dbfc1527b71172fb869efe626d85817a79b2c6b61a718d7fb53"
   },
@@ -79,7 +79,7 @@
     "userspace/ksud/src/soft_reboot.rs": "3b4de8e7112f43240969ad16c0e4e6938713c814d77f832e7932d75e547af407",
     "userspace/ksud/src/utils.rs": "f1300cad6f81900e7cfb04dad768bc0125c8538c39634835c9f0f677479922bb"
   },
-  "app_version": "1.3.1",
-  "previous_upstream_commit": "bb5f9faaa846b7beb833d3f5303cff7ac2aaedcf",
+  "app_version": "1.3.3",
+  "previous_upstream_commit": "bec9c1347472e26d3d7c46cccb7be801a9c9a6b9",
   "local_app_base_commit": "df7c69670851a031ab81b95ee7557254d078440a"
 }

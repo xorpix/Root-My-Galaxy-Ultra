@@ -2,8 +2,8 @@
 
 | Backend | Driver / UAPI | Source | Daemon |
 |---|---|---|---|
-| KernelSU | 32715 / 6 | [bec9c134](https://github.com/tiann/KernelSU/commit/bec9c1347472e26d3d7c46cccb7be801a9c9a6b9) | 3.3.1-35-gbec9c134 |
-| KernelSU-Next | 33452 / 6 | [cefb048b](https://github.com/KernelSU-Next/KernelSU-Next/commit/cefb048b069b7439fb4020d043de2d338dbc00fa) | 3.4.2-97-gcefb048b |
+| KernelSU | 32716 / 6 | [28db74f6](https://github.com/tiann/KernelSU/commit/28db74f6f4692e97006ce9ebd8b19b9cc614b5b7) | 3.3.1-36-g28db74f6 |
+| KernelSU-Next | 33455 / 6 | [a6c81fa4](https://github.com/KernelSU-Next/KernelSU-Next/commit/a6c81fa4a8b7341d0bc5c3e4507531459df871ae) | 3.4.2-100-ga6c81fa4 |
 | BakaSU | 35257 / 6 | [516d3e87](https://github.com/Baka-SU/BakaSU/commit/516d3e87fbc986ccefdde2c2765f1700612441a9) | 4.2.0-rc3-86-g516d3e87 |
 | KowSU | 32740 / 6 | [6ecdd692](https://github.com/KOWX712/KernelSU/commit/6ecdd69224fe6769e6c8715a4ef2b91602b23362) | 3.3.0-139-g6ecdd692 |
 

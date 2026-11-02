@@ -35,9 +35,9 @@
     "kernel_build": "passed",
     "daemon_build": "passed",
     "exact_driver_in_daemon": "passed",
-    "apk_build": "passed (local build-only key)",
+    "apk_build": "passed (GitHub Actions)",
     "device_test": "not run",
-    "android_unit_tests": "passed (local, 940 tests)"
+    "android_unit_tests": "passed (GitHub Actions)"
   },
   "source_provenance": "RMGU KernelSU Samsung compatibility changes adapted to KowSU 6366f25b; upstream UAPI, version formula and manager signer retained.",
   "outputs": {
@@ -80,7 +80,7 @@
     "userspace/ksud/src/soft_reboot.rs": "3b4de8e7112f43240969ad16c0e4e6938713c814d77f832e7932d75e547af407",
     "userspace/ksud/src/utils.rs": "f1300cad6f81900e7cfb04dad768bc0125c8538c39634835c9f0f677479922bb"
   },
-  "app_version": "1.3.1",
+  "app_version": "1.3.3",
   "previous_upstream_commit": "6366f25b89f2bc5e287c1983715ebae60cd5540e",
   "local_app_base_commit": "df7c69670851a031ab81b95ee7557254d078440a"
 }
