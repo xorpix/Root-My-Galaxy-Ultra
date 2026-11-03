@@ -1,7 +1,5 @@
 # Root My Galaxy Ultra
 
-[Automatic SusFS app protection (1.3.1)](docs/susfs-priority-filter-20261030.md)
-
 Temporary root for **Samsung Galaxy S26 Ultra (m3q) regional and carrier variants**, with a choice
 of **KernelSU**, **KernelSU-Next**, **BakaSU (former ReSukiSU)** or **KowSU**. Root is lost after a full
 reboot; activate it again through the app or enable optional automatic restoration,
@@ -9,7 +7,7 @@ including [root before first unlock](docs/root-before-unlock.md) on supported Di
 
 [Download the latest release](https://github.com/xorpix/Root-My-Galaxy-Ultra/releases/latest)
 
-[Samsung SusFS audit repairs and source (1.2.27)](docs/susfs-audit-fixes-20261027.md)
+[Samsung SusFS repairs and validation](docs/susfs-repairs-20261103/README.md)
 · [Release notes](https://github.com/xorpix/Root-My-Galaxy-Ultra/releases)
 · [Report an issue](https://github.com/xorpix/Root-My-Galaxy-Ultra/issues)
 
@@ -121,6 +119,28 @@ table above for these development snapshots.
   fully reboot, then activate root again. Matching UAPI numbers alone do not
   guarantee every manager or module feature works.
 
+## SusFS and automatic app protection
+
+After activating root, grant Root My Galaxy Ultra superuser access in your manager,
+then enable SusFS in the app. SusFS uses its own exact firmware and kernel checks,
+independently of DirtyFrag root support. The bundled profiles cover **BZIG, BZID
+and BZJA**; a newer firmware needs a matching, validated profile.
+
+The firmware folders contain their own `profile.json`. All three profiles share
+one module, stored once at
+[`susfs/bzig/susfs_guard_lkm.ko`](app/src/main/assets/susfs/bzig/susfs_guard_lkm.ko).
+`bzig` is the historical storage name: a BZJA device uses the BZJA profile and
+loads that shared binary. The app verifies the module against the selected
+profile's checksum before loading it.
+
+[Automatic app protection](docs/susfs-priority-filter-20261030.md) manages its app
+selection from the root manager's grants. See the
+[1.3.4 repair report](docs/susfs-repairs-20261103/README.md) for the tested safety
+and lifecycle fixes, validation and remaining limits. The complete native
+[source archive](backends/susfs/source.tar.gz),
+[Git commit record](backends/susfs/source.commit) and
+[build manifest](backends/susfs/build-manifest.json) are kept together.
+
 ## Payloads, settings and recovery
 
 The supported root payloads and backend daemons are **included in the APK**.
@@ -153,6 +173,7 @@ that feature.
 | Failed attempt, freeze or reboot | Fully reboot before trying again. Keep the failed run log; repeated retries in one boot are not a recovery method. |
 | Root works, but a module does not | Check the module's requirements and its manager logs. Successful root does not confirm that every module or injection framework has initialized. |
 | Manager works, but this app's root actions fail | Grant this app superuser permission in the selected manager. |
+| Root works, but SusFS is unavailable | Check the exact firmware/kernel profile. Include the full kernel release in a report; root-method support and SusFS compatibility have separate checks. |
 | “Invalid auth token” from Shizuku | Delete the saved start token if unused, or replace it with the token supplied by your Shizuku build. |
 | Root disappears after reboot | This is temporary root. Run the app again or configure Root on boot. For automatic restoration at the first PIN screen, follow the [before-unlock setup guide](docs/root-before-unlock.md). |
 
@@ -261,6 +282,7 @@ AZHL screenshots from an earlier build; labels may differ in current releases.
   [helper variant metadata](app/src/main/assets/m3q/helper-variants.json).
 - [diabl0w / DFRoot](https://github.com/diabl0w/DFRoot) — DirtyFrag integration
   for eligible S26 Ultra variants. See [DirtyFrag provenance and licensing notes](app/src/main/cpp/dirtyfrag/DF_ORIGIN.md).
+- **SusFS contributors** — native module integration; [Samsung source and validation](docs/susfs-repairs-20261103/README.md) and [module licensing notices](app/src/main/assets/susfs/bzig/NOTICE.txt).
 - **KernelSU, KernelSU-Next, BakaSU and KowSU contributors** — root backends;
   [source revisions and Samsung patches](backends/README.md).
 

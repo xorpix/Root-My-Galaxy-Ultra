@@ -1,9 +1,14 @@
 # SusFS upstream review — 3 November 2026
 
-Keep the current Samsung module for this update. The relevant upstream lifetime
-repairs are already covered by our implementation, and the reported mount
-identity bug is already avoided in the shipping Samsung code. A tested patch
-for upstream issue #167 is included for contribution or independent review.
+> **Historical comparison.** This review examined the pre-1.3.4 Samsung bundle
+> at the revisions listed below. The subsequent audit repairs shipped in
+> [1.3.4](https://github.com/xorpix/Root-My-Galaxy-Ultra/releases/tag/1.3.4);
+> see the [current repair report](susfs-repairs-20261103/README.md).
+
+The pinned Samsung implementation already covered the specific upstream lifetime
+and mount-identity changes assessed here. The included patch for upstream issue
+#167 remains a separate contribution for the reviewed upstream revision; it is
+not an additional change to RMGU's bundled module.
 
 ## Exact comparison
 
