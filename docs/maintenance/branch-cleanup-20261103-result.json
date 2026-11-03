@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "repository": "xorpix/Root-My-Galaxy-Ultra",
+  "status": "complete",
+  "deleted": [
+    "build/rmgu-1.3.1-backends",
+    "build/susfs-priority-probe-20261031",
+    "codex/susfs-audit-20261103",
+    "codex/susfs-repairs-20261103",
+    "feat/kowsu-backend",
+    "feat/susfs-dispatcher-20261029",
+    "feat/susfs-priority-20261030",
+    "feat/susfs-readlink-enoent",
+    "fix/dirtyfrag-logging-preflight",
+    "fix/kowsu-rebase-20261031",
+    "fix/susfs-audit-20261027",
+    "release/import-1.3.1-20261031",
+    "review/susfs-upstream-20261103",
+    "test/bzja-20261030",
+    "test/susfs-app-probe-20261031"
+  ],
+  "alreadyAbsent": [],
+  "archived": {
+    "build/rmgu-1.3.1-backends": {
+      "ref": "refs/tags/archive/2026-11-03/build/rmgu-1.3.1-backends",
+      "sha": "3582ef1fd8fd3e7a92a5fcfaa17679c846f85765"
+    },
+    "build/susfs-priority-probe-20261031": {
+      "ref": "refs/tags/archive/2026-11-03/build/susfs-priority-probe-20261031",
+      "sha": "880fd96040114ea22aa0eda288dff38836935d61"
+    },
+    "codex/susfs-audit-20261103": {
+      "ref": "refs/tags/archive/2026-11-03/codex/susfs-audit-20261103",
+      "sha": "9ae48898122485bac91b742f1ce125244afef42d"
+    },
+    "feat/kowsu-backend": {
+      "ref": "refs/tags/archive/2026-11-03/feat/kowsu-backend",
+      "sha": "7bee13ee769df8dff101554d99d0f65256e72b87"
+    },
+    "feat/susfs-readlink-enoent": {
+      "ref": "refs/tags/archive/2026-11-03/feat/susfs-readlink-enoent",
+      "sha": "c0404452892f79663851d09d014c5f642ca2b3c7"
+    },
+    "fix/dirtyfrag-logging-preflight": {
+      "ref": "refs/tags/archive/2026-11-03/fix/dirtyfrag-logging-preflight",
+      "sha": "11d70d913d5c5a2687a4497ee40deb62450f0c9e"
+    },
+    "test/susfs-app-probe-20261031": {
+      "ref": "refs/tags/archive/2026-11-03/test/susfs-app-probe-20261031",
+      "sha": "8663cbc2019a17fbd22490c73bff28d23718a351"
+    }
+  },
+  "remainingBranches": [
+    "dev",
+    "main"
+  ],
+  "workflowRun": 41733084812,
+  "cleanupCommit": "8eaa6f84d87da1d03cc3e484af0914264e39fc4d"
+}
