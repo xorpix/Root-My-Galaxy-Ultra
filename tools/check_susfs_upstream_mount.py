@@ -3,7 +3,6 @@
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -15,6 +14,7 @@ EXPECTED_REGRESSIONS = {"bind-parent", "shared-source", "different-device", "lon
 
 
 def run_suite(runner, source, output, sanitizers=False, expected_failures=frozenset()):
+    output.unlink(missing_ok=True)
     command = ["python3", str(runner), "--source-dir", str(source), "--json", str(output)]
     if sanitizers:
         command.append("--sanitizers")
@@ -36,7 +36,7 @@ def main():
                         help="Checkout of upstream " + UPSTREAM_COMMIT)
     parser.add_argument("--patch", type=Path,
                         default=Path(__file__).resolve().parents[1] /
-                        "backends/susfs/upstream-fixes/167-mount-identity.patch")
+                        "docs/upstream-patches/susfs-167-mount-identity.patch")
     parser.add_argument("--evidence-dir", required=True, type=Path)
     args = parser.parse_args()
     original = (args.upstream / "kernel/sus_mount.c").read_bytes()

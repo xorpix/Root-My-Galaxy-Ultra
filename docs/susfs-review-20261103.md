@@ -41,7 +41,7 @@ and #167). Closed reports #141, #164 and #168 were also checked.
 
 ## Upstream patch and reproduction
 
-[167-mount-identity.patch](../backends/susfs/upstream-fixes/167-mount-identity.patch)
+[susfs-167-mount-identity.patch](upstream-patches/susfs-167-mount-identity.patch)
 applies to upstream `6c4ab84` and includes its own host tests.
 
 The matcher uses the coherent `(s_dev, mount-root inode)` key for recorded
@@ -54,7 +54,7 @@ The patch adds no allocation or retained dentry/inode reference to the matching 
 Apply in a checkout of that upstream revision:
 
 ```sh
-git apply /path/to/167-mount-identity.patch
+git apply /path/to/susfs-167-mount-identity.patch
 python3 tests/mount_identity/run.py
 python3 tests/mount_identity/run.py --sanitizers
 ```

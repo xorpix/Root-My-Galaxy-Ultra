@@ -3,7 +3,7 @@ name: SusFS upstream patch checks
 on:
   pull_request:
     paths:
-      - 'backends/susfs/upstream-fixes/**'
+      - 'docs/upstream-patches/**'
       - 'tools/check_susfs_upstream_mount.py'
       - '.github/workflows/susfs-upstream-patches.yml'
 
