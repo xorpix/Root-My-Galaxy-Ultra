@@ -1,0 +1,72 @@
+name: SusFS upstream patch checks
+
+on:
+  pull_request:
+    paths:
+      - 'docs/upstream-patches/**'
+      - 'tools/check_susfs_upstream_mount.py'
+      - '.github/workflows/susfs-upstream-patches.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: susfs-upstream-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regressions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
+      UBSAN_OPTIONS: halt_on_error=1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Checkout the reviewed upstream revision
+        uses: actions/checkout@v4
+        with:
+          repository: inforcqb/susfs4ksu-for-lkm
+          ref: 6c4ab849a0b6fd9b039552da8664cea77cd7743d
+          path: upstream-review
+
+      - name: Verify the shipping Samsung source and module
+        run: python3 tools/check_susfs_bundle.py
+
+      - name: Check the upstream reproducer, fix and negative control
+        run: |
+          python3 tools/check_susfs_upstream_mount.py \
+            --upstream upstream-review \
+            --evidence-dir "$RUNNER_TEMP/susfs-upstream-review"
+
+      - name: Check the relevant shipping Samsung regressions
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import subprocess
+          import tarfile
+
+          source = Path(os.environ["RUNNER_TEMP"]) / "susfs-shipping-review"
+          source.mkdir()
+          with tarfile.open("backends/susfs/source.tar.gz") as archive:
+              archive.extractall(source, filter="data")
+          source /= "susfs"
+          for suite in ("mount_hooks", "fp_hooks", "priority_filter", "lifecycle",
+                        "map_hooks", "mshow_filter"):
+              for sanitizers in (False, True):
+                  command = ["python3", str(source / "tests" / suite / "run.py")]
+                  if sanitizers:
+                      command.append("--sanitizers")
+                  subprocess.run(command, cwd=source, check=True, timeout=180)
+          PY
+
+      - name: Upload regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: susfs-upstream-mount-regressions
+          path: ${{ runner.temp }}/susfs-upstream-review/*.json
+          if-no-files-found: error
+          retention-days: 14
