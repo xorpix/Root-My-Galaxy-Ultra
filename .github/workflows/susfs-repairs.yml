@@ -1,0 +1,54 @@
+name: SusFS repair qualification
+on:
+  pull_request:
+    paths:
+      - 'docs/susfs-repairs-20261103/**'
+      - '.github/workflows/susfs-repairs.yml'
+      - 'tools/build_susfs_repairs.py'
+permissions:
+  contents: read
+concurrency:
+  group: susfs-repairs-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install native prerequisites
+        run: sudo apt-get update && sudo apt-get install -y build-essential libssl-dev pkg-config
+      - name: Provide the standard DDK path
+        run: |
+          mkdir -p "$RUNNER_TEMP/susfs-ddk/ddk-root/opt/ddk"
+          sudo ln -s "$RUNNER_TEMP/susfs-ddk/ddk-root/opt/ddk" /opt/ddk
+      - name: Provision pinned DDK
+        run: python3 tools/provision_ddk.py "$RUNNER_TEMP/susfs-ddk"
+      - name: Compile repaired source and loader
+        run: python3 tools/build_susfs_repairs.py --work "$RUNNER_TEMP/susfs-repairs"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: susfs-repairs-${{ github.sha }}
+          path: ${{ runner.temp }}/susfs-repairs/output/
+          if-no-files-found: error
+          retention-days: 14
+  host:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reconstruct repaired source
+        run: python3 tools/build_susfs_repairs.py --work "$RUNNER_TEMP/susfs-repairs" --prepare-only
+      - name: Run extracted production regressions and sanitizer controls
+        run: python3 "$RUNNER_TEMP/susfs-repairs/susfs/tools/run_host_suite.py" --output "$RUNNER_TEMP/susfs-repairs/output/host" --jobs 2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: susfs-repair-host-${{ github.sha }}
+          path: ${{ runner.temp }}/susfs-repairs/output/
+          retention-days: 14

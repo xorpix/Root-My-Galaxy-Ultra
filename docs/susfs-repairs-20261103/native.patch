@@ -1,0 +1,2010 @@
+diff --git a/kernel/Makefile b/kernel/Makefile
+index 5aa4092..3f4c304 100644
+--- a/kernel/Makefile
++++ b/kernel/Makefile
+@@ -8,7 +8,7 @@
+ 
+ obj-m += susfs_guard_lkm.o
+ 
+-susfs_guard_lkm-objs := susfs_main.o patch_memory.o symbol_resolver.o lsm_hook.o lsm_lifetime.o \
++susfs_guard_lkm-objs := susfs_main.o susfs_control.o patch_memory.o symbol_resolver.o lsm_hook.o lsm_lifetime.o \
+               susfs_fp_hook.o susfs_create_gate.o \
+               susfs_uname.o susfs_kstat.o sus_map.o sus_path.o sus_path_creds.o sus_mount.o \
+               spoof_cmdline.o susfs_open_redirect.o susfs_or_entry.o susfs_enable_log.o \
+diff --git a/kernel/lsm_hook.c b/kernel/lsm_hook.c
+index 3cce7de..8bc9b44 100644
+--- a/kernel/lsm_hook.c
++++ b/kernel/lsm_hook.c
+@@ -331,7 +331,7 @@ static int ksu_lsm_hook_update_scall(struct lsm_static_call *scall, void *value)
+     if (ksu_static_call_update_fn) {
+         ksu_lsm_call_scall_update(scall->key, scall->trampoline, value);
+         smp_wmb();
+-        return 0;
++        return READ_ONCE(scall->key->func) == value ? 0 : -EIO;
+     }
+ 
+     __static_call_update(scall->key, scall->trampoline, value);
+@@ -761,7 +761,14 @@ static int ksu_lsm_hook_insert_scall(struct ksu_lsm_hook *hook)
+     hook->entry = chosen_hl;
+     hook->original = chosen_orig;
+     smp_wmb();
+-    ksu_lsm_hook_update_scall(chosen, hook->replacement);
++    ret = ksu_lsm_hook_update_scall(chosen, hook->replacement);
++    if (ret) {
++        /* Keep the attempted publication tracked. Init rollback must restore
++         * and drain it even if verification failed after a callback entered. */
++        pr_err("lsm_hook: %s static-call installation failed verification (%d)\n",
++               hook->head_name, ret);
++        return ret;
++    }
+ 
+     SUSFS_LOGI("lsm_hook: insert via static call slot (selinux, element %lu, %s static call) %s: %px -> %px\n",
+             (unsigned long)(chosen - (struct lsm_static_call *)ksu_lsm_scalls_addr),
+@@ -1153,7 +1160,17 @@ void ksu_lsm_unhook(struct ksu_lsm_hook *hook)
+          * targets SUSFS.  A broken restore may make rmmod hang, but it cannot free live
+          * callback text. */
+         do {
+-            restore_ret = ksu_lsm_hook_update_scall(hook->scall, hook->original);
++            void *current_target = READ_ONCE(hook->scall->key->func);
++
++            if (current_target == hook->original) {
++                restore_ret = 0;
++            } else if (current_target != hook->replacement) {
++                /* A foreign hook may still chain through our callback. Do
++                 * not overwrite it or let init/exit free reachable text. */
++                restore_ret = -EBUSY;
++            } else {
++                restore_ret = ksu_lsm_hook_update_scall(hook->scall, hook->original);
++            }
+             if (!restore_ret)
+                 break;
+             pr_emerg("lsm_hook: restore verification failed for %s (%d); refusing to let teardown free live LSM text, retrying\n",
+diff --git a/kernel/spoof_cmdline.c b/kernel/spoof_cmdline.c
+index 76f2b9c..a6b22c1 100644
+--- a/kernel/spoof_cmdline.c
++++ b/kernel/spoof_cmdline.c
+@@ -23,7 +23,7 @@ extern char *saved_boot_config;
+  * sysfs attribute and a sysfs write is capped at one page, so the parameter tops out at 4095 bytes where the supercall
+  * accepts 8191. */
+ static char param_bootconfig[4096];
+-module_param_string(bootconfig, param_bootconfig, sizeof(param_bootconfig), 0644);
++module_param_string(bootconfig, param_bootconfig, sizeof(param_bootconfig), 0400);
+ 
+ static char *orig_boot_config;
+ static char *fake_boot_config;
+diff --git a/kernel/sus_map.c b/kernel/sus_map.c
+index 84cee7a..46ebc3e 100644
+--- a/kernel/sus_map.c
++++ b/kernel/sus_map.c
+@@ -65,7 +65,7 @@ static bool map_ready;
+ 
+ /* temporary interface: insmod susfs_guard_lkm.ko map_ino=<n> hides that inode */
+ static unsigned long param_map_ino;
+-module_param_named(map_ino, param_map_ino, ulong, 0644);
++module_param_named(map_ino, param_map_ino, ulong, 0400);
+ 
+ /* dev==0 means "any filesystem": only the map_ino parameter can pick that. */
+ static int sus_map_add_full(unsigned long ino, dev_t dev)
+@@ -352,7 +352,7 @@ static bool sus_map_walk_ops_ours(const void *ops)
+ }
+ 
+ static bool sus_map_walk_answer(struct kprobe *kp, struct pt_regs *regs,
+-                                struct vm_area_struct *vma)
++                                struct vm_area_struct *vma, long result)
+ {
+     struct inode *inode;
+ 
+@@ -380,7 +380,7 @@ static bool sus_map_walk_answer(struct kprobe *kp, struct pt_regs *regs,
+     /* Both primitives return int 0 for "walked, nothing wrong" and both callers expect
+      * that from a skipped walk (upstream's own skip leaves the same value).  Leaving
+      * x0 = mm would turn pagemap_read()'s `ret` into a kernel pointer handed to read(2). */
+-    regs_set_return_value(regs, 0);
++    regs_set_return_value(regs, result);
+     regs->pc = regs->regs[30];
+     return true;
+ }
+@@ -397,24 +397,7 @@ static bool sus_map_walk_answer(struct kprobe *kp, struct pt_regs *regs,
+  * mmap_lock is held for read by every caller, as the walk itself requires. */
+ static struct vm_area_struct *sus_map_find_vma(struct mm_struct *mm, unsigned long start)
+ {
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 1, 0)
+-	struct vm_area_struct *vma;
+-	VMA_ITERATOR(vmi, mm, 0);
+-
+-	for_each_vma(vmi, vma) {
+-		if (start < vma->vm_end)
+-			return vma;
+-	}
+-	return NULL;
+-#else
+-	struct vm_area_struct *vma;
+-
+-	for (vma = mm->mmap; vma; vma = vma->vm_next) {
+-		if (start < vma->vm_end)
+-			break;
+-	}
+-	return vma;
+-#endif
++	return find_vma(mm, start);
+ }
+ 
+ /* walk_dbg >= 2: dump the first few resolutions past the ops test, to tell "no vma for
+@@ -441,7 +424,10 @@ static int sus_map_skip_walk_pre(struct kprobe *kp, struct pt_regs *regs)
+     struct mm_struct *mm;
+     struct vm_area_struct *vma;
+     unsigned long start;
++    unsigned long end, cursor;
+ 
++    if (!smp_load_acquire(&nmap))
++        return 0;
+     atomic_inc(&n_walk_seen);
+     if (walk_dbg)
+         sus_map_note_ops(ops);
+@@ -454,18 +440,26 @@ static int sus_map_skip_walk_pre(struct kprobe *kp, struct pt_regs *regs)
+ 
+     mm = (struct mm_struct *)regs->regs[0];
+     start = (unsigned long)regs->regs[1];
+-    if (!mm)
++    end = (unsigned long)regs->regs[2];
++    if (!mm || start >= end)
+         return 0;
+ 
+-    vma = sus_map_find_vma(mm, start);
+-    if (!vma || start < vma->vm_start) {
+-        atomic_inc(&n_walk_scan_fail);
+-        sus_map_walk_dbg_log("walk_page_range: no vma", mm, start, NULL);
+-        return 0;
++    /* A pagemap chunk can span visible, anonymous and hidden VMAs. Never
++     * decide its policy from only the starting mapping. Pagemap cannot be
++     * skipped successfully without advancing its private output cursor;
++     * explicitly refuse such a chunk before native output is acquired.
++     * smaps callers provide one VMA and retain their zero-contribution skip. */
++    for (cursor = start; cursor < end; cursor = vma->vm_end) {
++        vma = sus_map_find_vma(mm, cursor);
++        if (!vma || vma->vm_start >= end)
++            break;
++        if (sus_map_walk_answer(kp, regs, vma,
++                ops == sus_map_ops_pagemap ? -EFAULT : 0))
++            return 1;
++        if (vma->vm_end <= cursor)
++            break;
+     }
+-    sus_map_walk_dbg_log("walk_page_range: vma", mm, start, vma);
+-
+-    return sus_map_walk_answer(kp, regs, vma) ? 1 : 0;
++    return 0;
+ }
+ 
+ /* walk_page_vma(vma, ops, private): same walk, vma handed over directly. */
+@@ -473,6 +467,8 @@ static int sus_map_skip_walk_vma_pre(struct kprobe *kp, struct pt_regs *regs)
+ {
+     const void *ops = (const void *)regs->regs[1];
+ 
++    if (!smp_load_acquire(&nmap))
++        return 0;
+     atomic_inc(&n_walk_seen_vma);
+     if (walk_dbg)
+         sus_map_note_ops(ops);
+@@ -484,7 +480,8 @@ static int sus_map_skip_walk_vma_pre(struct kprobe *kp, struct pt_regs *regs)
+         return 0;
+ 
+     return sus_map_walk_answer(kp, regs,
+-                               (struct vm_area_struct *)regs->regs[0]) ? 1 : 0;
++                               (struct vm_area_struct *)regs->regs[0],
++                               ops == sus_map_ops_pagemap ? -EFAULT : 0) ? 1 : 0;
+ }
+ 
+ static struct kprobe kp_map_walk = {
+@@ -549,6 +546,7 @@ static int sus_map_vm_access_pre(struct kprobe *kp, struct pt_regs *regs)
+     struct mm_struct *mm = (struct mm_struct *)regs->regs[0];
+     unsigned long addr = regs->regs[1];
+     unsigned long nr_pages = regs->regs[2];
++    unsigned long end, cursor;
+     struct vm_area_struct *vma;
+     struct inode *inode;
+ 
+@@ -561,17 +559,33 @@ static int sus_map_vm_access_pre(struct kprobe *kp, struct pt_regs *regs)
+ 
+     atomic_inc(kp == &kp_pin_remote ? &n_pin_calls : &n_gup_calls);
+ 
+-    /* both callers hold mmap_read_lock: the *_remote contract of this primitive */
+-    vma = find_vma(mm, addr);
+-    /* find_vma can return the next VMA when addr is in an unmapped gap. */
+-    if (!vma || addr < vma->vm_start || addr >= vma->vm_end || !vma->vm_file)
+-        return 0;
+-    inode = file_inode(vma->vm_file);
+-    if (!inode)
+-        return 0;
+-    if (!sus_map_lookup(inode->i_ino, inode->i_sb->s_dev))
+-        return 0;
++    /* Both callers hold mmap_read_lock. GUP covers whole pages and may cross
++     * VMA boundaries; admitting only its first VMA leaks later hidden pages.
++     * Reject the request before any output is acquired. */
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 6, 0)
++    addr = untagged_addr_remote(mm, addr);
++#else
++    addr = untagged_addr(addr);
++#endif
++    addr &= PAGE_MASK;
++    if (nr_pages > (ULONG_MAX - addr) / PAGE_SIZE)
++        goto reject;
++    end = addr + nr_pages * PAGE_SIZE;
++    for (cursor = addr; cursor < end; cursor = vma->vm_end) {
++        vma = find_vma(mm, cursor);
++        if (!vma || vma->vm_start >= end)
++            return 0;
++        if (vma->vm_file) {
++            inode = file_inode(vma->vm_file);
++            if (inode && sus_map_lookup(inode->i_ino, inode->i_sb->s_dev))
++                goto reject;
++        }
++        if (vma->vm_end <= cursor)
++            return 0;
++    }
++    return 0;
+ 
++reject:
+     atomic_inc(&n_vm_hides);
+     regs_set_return_value(regs, -EFAULT); /* no page output: return a failure */
+     regs->pc = regs->regs[30];          /* skip the call: nothing is pinned */
+@@ -679,8 +693,11 @@ static int sus_map_register_probes(void)
+             first_err = rc;
+     }
+ 
+-    map_registered = map_probe_armed[0] && map_files_installed;
+-    return map_registered ? 0 : first_err;
++    map_registered = map_files_installed && sus_map_ops_smaps &&
++                     sus_map_ops_smaps_shmem && sus_map_ops_pagemap;
++    for (i = 0; i < (int)N_MAP_PROBES; i++)
++        map_registered = map_registered && map_probe_armed[i];
++    return map_registered ? 0 : (first_err ? first_err : -EOPNOTSUPP);
+ }
+ 
+ 
+@@ -696,8 +713,7 @@ int susfs_sus_map_init(void)
+         goto out;
+     }
+ 
+-    /* Every probe is optional on its own: without show_smap the maps listing is still
+-     * filtered, so one missing symbol must not take the rest down. */
++    /* A configured rule requires every supported observation path. */
+     rc = sus_map_register_probes();
+ out:
+     map_ready = !rc;
+diff --git a/kernel/sus_mount.c b/kernel/sus_mount.c
+index 24ae61a..739a457 100644
+--- a/kernel/sus_mount.c
++++ b/kernel/sus_mount.c
+@@ -48,6 +48,7 @@
+ #include "symbol_resolver.h"
+ #include "susfs_abi.h"
+ #include "susfs_log.h"
++#include "susfs_control.h"
+ #include "susfs.h"	/* module-wide declarations */
+ 
+ /* ---- the "which mounts are ours" prefix list: state ----
+@@ -58,8 +59,10 @@
+ #define SUS_MOUNT_KEEP_LEN 128
+ #define SUS_MOUNT_KEEP_CMDLINE (SUS_MOUNT_KEEP_MAX * (SUS_MOUNT_KEEP_LEN + 2) + 32)
+ 
+-static char mount_keep[SUS_MOUNT_KEEP_MAX][SUS_MOUNT_KEEP_LEN];
+-static int n_mount_keep;
++static char mount_keep[SUS_MOUNT_KEEP_MAX][SUS_MOUNT_KEEP_LEN] = { "/data/adb/" };
++static int n_mount_keep = 1;
++static DEFINE_MUTEX(sus_mount_config_lock);
++static bool sus_mount_exiting;
+ static DEFINE_SPINLOCK(mount_keep_lock);
+ static const char *const mount_keep_default = "/data/adb/";
+ static atomic_t n_keep_rescans = ATOMIC_INIT(0);
+@@ -84,13 +87,13 @@ static int n_show_probes;
+ #define SUS_MOUNT_KSU_ID_MIN ((unsigned int)DEFAULT_KSU_MNT_ID)
+ 
+ static unsigned long param_min_mnt_id = DEFAULT_KSU_MNT_ID;
+-module_param_named(min_mnt_id, param_min_mnt_id, ulong, 0644);
++module_param_named(min_mnt_id, param_min_mnt_id, ulong, 0400);
+ 
+ /* P2-12: SELinux context of the su/ksu domain, resolved to a sid at init.  Keep in sync
+  * with susfs_avc_spoof.c's avc_su_ctx ("u:r:ksu:s0", the SukiSU variant; stock KernelSU
+  * is "u:r:su:s0", override with susfs_guard_lkm.su_ctx=u:r:su:s0). */
+ static char param_su_ctx[128] = "u:r:ksu:s0";
+-module_param_string(su_ctx, param_su_ctx, sizeof(param_su_ctx), 0644);
++module_param_string(su_ctx, param_su_ctx, sizeof(param_su_ctx), 0400);
+ 
+ static u32 su_sid;
+ 
+@@ -1681,7 +1684,7 @@ static void sus_mount_keep_rescan(void)
+  * error in the 6.6 GKI build.  They are kvmalloc'd instead: every caller here is a proc/sysfs
+  * write handler or module_param setter, i.e. process context that may sleep, so GFP_KERNEL is
+  * safe.  The command semantics are unchanged - the early returns now go through @out. */
+-static int sus_mount_keep_command(const char *val, bool bare_list)
++static int sus_mount_keep_command_impl(const char *val, bool bare_list)
+ {
+ 	char *cmd;
+ 	char (*staged)[SUS_MOUNT_KEEP_LEN];
+@@ -1798,6 +1801,20 @@ out:
+ 	return rc;
+ }
+ 
++static int sus_mount_keep_command(const char *val, bool bare_list)
++{
++    int rc = susfs_control_get();
++
++    if (rc)
++        return rc;
++    mutex_lock(&sus_mount_config_lock);
++    rc = sus_mount_exiting ? -ENODEV :
++        sus_mount_keep_command_impl(val, bare_list);
++    mutex_unlock(&sus_mount_config_lock);
++    susfs_control_put();
++    return rc;
++}
++
+ /* Take one coherent list snapshot before formatting. Proc can show all 64;
+  * the bounded sysfs view emits only whole prefixes and a whole cut notice. */
+ static int sus_mount_keep_format(char *buf, size_t size)
+@@ -2042,14 +2059,7 @@ int susfs_sus_mount_init(void)
+      * is KernelSU's module store.  The list is runtime configurable (hide_mounts /
+      * /proc/susfs_hide_mounts) - a container at /data/local/tmp/ubuntu2 needs its own
+      * prefix to be hidden at all. */
+-    {
+-        unsigned long flags;
+-        spin_lock_irqsave(&mount_keep_lock, flags);
+-        memset(mount_keep, 0, sizeof(mount_keep));
+-        strscpy(mount_keep[0], mount_keep_default, SUS_MOUNT_KEEP_LEN);
+-        n_mount_keep = 1;
+-        spin_unlock_irqrestore(&mount_keep_lock, flags);
+-    }
++
+ 
+     if (susfs_control_node_allowed()) {
+         sus_mount_keep_entry = proc_create("susfs_hide_mounts", 0777, NULL,
+@@ -2122,21 +2132,23 @@ static void sus_mount_unregister(void)
+ 
+ void susfs_sus_mount_exit(void)
+ {
+-
++    mutex_lock(&sus_mount_config_lock);
++    sus_mount_exiting = true;
++    mutex_unlock(&sus_mount_config_lock);
++    /* A proc handler may need the control mutex while proc_remove drains it. */
+     if (sus_mount_keep_entry) {
+         proc_remove(sus_mount_keep_entry);
+         sus_mount_keep_entry = NULL;
+     }
++    mutex_lock(&sus_mount_config_lock);
+     sus_mount_unregister();
+ #if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 12, 0)
+-    /* The probe is unregistered above, so nothing new can be recorded; wait the worker
+-     * out and release whatever is still recorded, or a queued namespace reference would
+-     * outlive the module. */
+     sus_mount_learn_stop();
+ #endif
+     memset(mount_ident, 0, sizeof(mount_ident));
+     WRITE_ONCE(n_ident, 0);
+     sus_mount_idmap_clear();
++    mutex_unlock(&sus_mount_config_lock);
+ }
+ 
+ /* register_*probe() resolves symbol_name into kp.addr.  Successful unregister
+@@ -2247,7 +2259,7 @@ static int sus_mount_register(void)
+ }
+ 
+ /* supercall: CMD_SUSFS_HIDE_SUS_MNTS_FOR_NON_SU_PROCS */
+-void susfs_sus_mount_supercall(void __user **arg)
++static void susfs_sus_mount_supercall_impl(void __user **arg)
+ {
+     struct st_susfs_hide_sus_mnts_for_non_su_procs info = {0};
+     int rc;
+@@ -2283,3 +2295,24 @@ out:
+                      &info.err, sizeof(info.err)))
+         pr_warn("sus_mount supercall copy_to_user failed\n");
+ }
++
++void susfs_sus_mount_supercall(void __user **arg)
++{
++    int rc = susfs_control_get();
++
++    if (!rc) {
++        mutex_lock(&sus_mount_config_lock);
++        if (!sus_mount_exiting) {
++            susfs_sus_mount_supercall_impl(arg);
++            mutex_unlock(&sus_mount_config_lock);
++            susfs_control_put();
++            return;
++        }
++        mutex_unlock(&sus_mount_config_lock);
++        rc = -ENODEV;
++        susfs_control_put();
++    }
++    if (copy_to_user(&((struct st_susfs_hide_sus_mnts_for_non_su_procs __user *)*arg)->err,
++                     &rc, sizeof(rc)))
++        pr_warn("sus_mount unavailable reply failed\n");
++}
+diff --git a/kernel/sus_path.c b/kernel/sus_path.c
+index ff079ee..4579229 100644
+--- a/kernel/sus_path.c
++++ b/kernel/sus_path.c
+@@ -54,6 +54,7 @@
+ #include <linux/version.h>	/* LINUX_VERSION_CODE: the setxattr hook's first argument */
+ #include "susfs_abi.h"
+ #include "susfs_log.h"
++#include "susfs_control.h"
+ #include "susfs.h"	/* susfs_abi_path_ok */
+ #include "symbol_resolver.h"	/* find_kernel_symbol_exact, for optional compat probes */
+ #include "ksu_umount_gate.h"	/* susfs_is_current_proc_umounted_app (issue #34) */
+@@ -109,6 +110,7 @@ struct sus_path_entry {
+     /* ihold'ed once resolved, NULL while PENDING (registered for a path that does
+      * not exist yet, upstream's _LOOP variant); a pending rule pins no inode. */
+     struct inode *inode;
++    struct super_block *release_sb; /* protects an unpublished reference until iput */
+     /* Prepared before publication; the pending rule owns this reference.
+      * Resolver borrowers retain the wrapper independently of rule deletion. */
+     struct sus_path_cred *caller;
+@@ -125,47 +127,36 @@ struct sus_path_entry {
+     /* One of the module's own control nodes (/proc/susfs_*): hidden from every
+      * non-root caller, not only apps - see sus_path_entry_gate_any(). */
+     bool self_protect;
+-    /* Pre-relax mode, 0 = this rule did not touch it (sus_path_relax_mode()). */
+-    umode_t orig_mode;
+ };
+ 
+-/* Let DAC through, so that the LSM layer is the only thing that can refuse: DAC runs before the
+- * LSM chain and answers EACCES for a denying mode before any hook could turn it into ENOENT.
+- * Relaxing once at registration - the one moment the inode is in hand - costs nothing afterwards,
+- * unlike the old per-check DAC probes.  It is not disguised back on the way out: only non-root
+- * callers are hidden at all, and root can see the file anyway.  The inode is ihold'ed for the
+- * rule's lifetime, so it cannot be evicted and re-read with the original mode. */
+-static void sus_path_relax_mode(struct sus_path_entry *e)
++/* Caller holds sus_path_lock, while the rule remains published. Pin the
++ * superblock across the later sleeping iput, so shutdown cannot overlook a
++ * reference detached from the table. Once s_active reaches zero, shutdown
++ * owns eviction: undo exactly our ihold without becoming its atomic disposer.
++ */
++static void sus_path_prepare_release(struct sus_path_entry *e)
+ {
+-    umode_t mode;
+-
+-    if (!e->inode)
+-        return;
+-
+-    mode = READ_ONCE(e->inode->i_mode);
+-    if ((mode & (S_IRWXU | S_IRWXG | S_IRWXO)) == 0777)
+-        return;                 /* already open, or another rule did it */
++    struct inode *inode = e->inode;
+ 
+-    e->orig_mode = mode;
+-    WRITE_ONCE(e->inode->i_mode, (mode & ~(umode_t)(S_IRWXU | S_IRWXG | S_IRWXO)) | 0777);
+-}
+-
+-static void sus_path_restore_mode(struct sus_path_entry *e)
+-{
+-    if (!e->inode || !e->orig_mode)
++    if (!inode || e->release_sb)
+         return;
+-
+-    WRITE_ONCE(e->inode->i_mode, e->orig_mode);
+-    e->orig_mode = 0;
++    if (atomic_inc_not_zero(&inode->i_sb->s_active)) {
++        e->release_sb = inode->i_sb;
++    } else {
++        atomic_dec(&inode->i_count);
++        e->inode = NULL;
++    }
+ }
+ 
+-/* Process context, outside sus_path_lock: native credential release and iput
+- * can sleep. Resolvers never retain an entry pointer across kern_path(). */
++/* Hiding never changes inode permissions. DAC may return EACCES before this
++ * layer can return ENOENT; retaining the original access policy is required.
++ * Process context, outside sus_path_lock: credential release/iput can sleep. */
+ static void sus_path_entry_free(struct sus_path_entry *e)
+ {
+-    sus_path_restore_mode(e);
+     if (e->inode)
+         iput(e->inode);
++    if (e->release_sb)
++        deactivate_super(e->release_sb);
+     sus_path_cred_put(e->caller);
+     kfree(e);
+ }
+@@ -185,6 +176,8 @@ static atomic_t sus_path_pending_tries = ATOMIC_INIT(0);
+ /* One resolution pass at a time: the supercall and the retry timer would race on the
+  * same entries and on the per-entry pass marker. */
+ static DEFINE_MUTEX(sus_path_pending_lock);
++static bool sus_path_ready;
++static bool sus_path_exiting;
+ 
+ static void sus_path_pending_work(struct work_struct *w);
+ static DECLARE_DELAYED_WORK(sus_path_pending_wq, sus_path_pending_work);
+@@ -197,7 +190,7 @@ static char *dirent_tmp;
+ /* Isolation test: with no_extra=1 the LSM replacement and the dirent filter are
+  * not registered at all. */
+ static int no_extra;
+-module_param(no_extra, int, 0644);
++module_param(no_extra, int, 0400);
+ 
+ /* Guards dirent_tmp, one global scratch buffer: the probes can fire concurrently, and without this
+  * two listings compact into the same buffer and one process can get another directory's entries.
+@@ -375,7 +368,7 @@ static int sus_path_resolve_pending(void)
+     int budget = SUS_PATH_PENDING_BUDGET;
+     int resolved = 0;
+ 
+-    if (!atomic_read(&sus_path_n_pending))
++    if (READ_ONCE(sus_path_exiting) || !atomic_read(&sus_path_n_pending))
+         return 0;
+     /* trylock: the supercall must never block behind a pass sleeping in kern_path(). */
+     if (!mutex_trylock(&sus_path_pending_lock))
+@@ -439,7 +432,6 @@ static int sus_path_resolve_pending(void)
+                 /* Hold it before path_put() can evict it; published only afterwards. */
+                 ihold(inode);
+             }
+-            path_put(&p);
+         } else if (rc != atomic_read(&sus_path_pend_logged_rc)) {
+             /* Report each distinct answer once: a rule that never resolves has to be
+              * distinguishable from a timer that never ran, and the rc (-ENOENT,
+@@ -473,13 +465,6 @@ static int sus_path_resolve_pending(void)
+             atomic_dec(&sus_path_n_pending);
+             resolved++;
+             published = true;
+-            /* Relax INSIDE the section that owns `slot`.  `slot` is a raw pointer into the
+-             * table, and sus_path_del_path()/sus_path_command("clear") list_del() an entry
+-             * under this lock but iput()+kfree() it OUTSIDE it without holding
+-             * sus_path_pending_lock, so touching `slot` after the unlock is a use-after-free
+-             * write into freed memory (and the freed entry's inode pointer with it).  The
+-             * inode is ihold'ed here, so relaxing it needs no further lifetime argument. */
+-            sus_path_relax_mode(slot);
+         }
+         spin_unlock(&sus_path_lock);
+         sus_path_cred_put(retired);
+@@ -489,6 +474,8 @@ static int sus_path_resolve_pending(void)
+         } else if (!published && !rc) {
+             atomic_inc(&sus_path_pend_lost);    /* walk ok, nothing to publish */
+         }
++        if (!rc)
++            path_put(&p);
+     }
+ 
+     if (resolved)
+@@ -505,11 +492,11 @@ static int sus_path_resolve_pending(void)
+  * context. */
+ static void sus_path_pending_arm(void)
+ {
+-    if (!atomic_read(&sus_path_n_pending))
++    if (READ_ONCE(sus_path_exiting) || !atomic_read(&sus_path_n_pending))
+         return;
+ 
+     sus_path_resolve_pending();
+-    if (!atomic_read(&sus_path_n_pending))
++    if (READ_ONCE(sus_path_exiting) || !atomic_read(&sus_path_n_pending))
+         return;
+ 
+     atomic_set(&sus_path_pending_tries, 0);
+@@ -529,7 +516,7 @@ static void sus_path_pending_work(struct work_struct *w)
+     atomic_inc(&sus_path_pend_ticks);
+     resolved = sus_path_resolve_pending();
+ 
+-    if (!atomic_read(&sus_path_n_pending))
++    if (READ_ONCE(sus_path_exiting) || !atomic_read(&sus_path_n_pending))
+         return;                 /* every rule has its inode now */
+ 
+     if (resolved > 0)
+@@ -1594,10 +1581,9 @@ static int sus_path_list_puts(char *buf, int n, bool *trunc, const char *fmt, ..
+ 
+ /* Remove every rule whose registered path is @path (normalised as sus_path_entry_set_path()
+  * stores it), undoing what those rules changed; returns how many were removed, so 0 is
+- * "nothing was registered under that path".  Process context: sus_path_restore_mode() writes
+- * inode->i_mode and iput() can sleep and evict - both outside the spinlock, and no matcher can
++ * "nothing was registered under that path".  Process context: iput() can sleep and evict outside the spinlock, and no matcher can
+  * still be holding an entry (matchers walk the list only while holding the lock). */
+-int sus_path_del_path(const char *path)
++static int sus_path_del_path_impl(const char *path)
+ {
+     struct sus_path_entry *e, *tmp;
+     LIST_HEAD(doomed);
+@@ -1616,6 +1602,9 @@ int sus_path_del_path(const char *path)
+     list_for_each_entry_safe(e, tmp, &sus_path_list, list) {
+         if (strcmp(e->path, want))
+             continue;
++        if (!e->inode)
++            atomic_dec(&sus_path_n_pending);
++        sus_path_prepare_release(e);
+         sus_path_index_del(e);
+         list_del(&e->list);
+         list_add(&e->list, &doomed);
+@@ -1626,8 +1615,6 @@ int sus_path_del_path(const char *path)
+ 
+     list_for_each_entry_safe(e, tmp, &doomed, list) {
+         list_del(&e->list);
+-        if (!e->inode)
+-            atomic_dec(&sus_path_n_pending);
+         sus_path_entry_free(e);
+     }
+     if (removed)
+@@ -1638,16 +1625,14 @@ int sus_path_del_path(const char *path)
+ 
+ /* View of the registered paths, for verification.  Writable so a rule can be taken back: before
+  * this, rules could only be removed by unloading the module, so one mistyped `add_sus_path /data`
+- * hid that path machine-wide - and left the target's mode relaxed (sus_path_relax_mode()) for just
+- * as long.  Deliberately NOT a new CMD_SUSFS_* command: this node is ours, while the supercall
++ * hid that path machine-wide.  Deliberately NOT a new CMD_SUSFS_* command: this node is ours, while the supercall
+  * command space has to stay compatible with KernelSU/ksud.
+  *
+  *   echo clear        > .../hide_list     all rules
+  *   echo "del /path"  > .../hide_list     one rule (exact path, trailing / ignored)
+  *
+  * One command layer for both front ends - /proc/susfs_path and the hide_list parameter - so the two
+- * cannot drift apart: add <path> (resolved now, the caller learns the errno), del <path> (restores
+- * whatever sus_path_relax_mode() relaxed), clear (every ORDINARY rule).  `clear` and `del` refuse to
++ * cannot drift apart: add <path> (resolved now, the caller learns the errno), del <path> (removes its rule), clear (every ORDINARY rule).  `clear` and `del` refuse to
+  * touch this module's own control nodes (the self_protect rules): those are what makes a non-root
+  * caller see ENOENT instead of the control surface at all, and the documented way to expose the
+  * nodes is expose_proc=0.  Returns 0 or a negative errno; @removed_out (optional) gets the number of
+@@ -1668,7 +1653,7 @@ static bool sus_path_path_is_ours(const char *path)
+     return ours;
+ }
+ 
+-static int sus_path_command(const char *val, int *removed_out)
++static int sus_path_command_impl(const char *val, int *removed_out)
+ {
+     struct sus_path_entry *e, *tmp;
+     LIST_HEAD(doomed);
+@@ -1686,6 +1671,9 @@ static int sus_path_command(const char *val, int *removed_out)
+         list_for_each_entry_safe(e, tmp, &sus_path_list, list) {
+             if (e->self_protect)
+                 continue;	/* ours: see the note above */
++            if (!e->inode)
++                atomic_dec(&sus_path_n_pending);
++            sus_path_prepare_release(e);
+             sus_path_index_del(e);
+             list_del(&e->list);
+             list_add(&e->list, &doomed);
+@@ -1718,6 +1706,8 @@ static int sus_path_command(const char *val, int *removed_out)
+                 return rc;
+         } else {
+             removed = sus_path_del_path(arg);
++            if (removed < 0)
++                return removed;
+         }
+         SUSFS_LOGI("sus_path: %s %s, %d rule(s) removed, %d left\n",
+                 adding ? "add" : "del", arg, removed, sus_path_count);
+@@ -1725,11 +1715,9 @@ static int sus_path_command(const char *val, int *removed_out)
+         return -EINVAL;
+     }
+ 
+-    /* Outside the lock: restore_mode() writes i_mode and iput() can sleep and evict. */
++    /* Outside the lock: iput() can sleep and evict. */
+     list_for_each_entry_safe(e, tmp, &doomed, list) {
+         list_del(&e->list);
+-        if (!e->inode)
+-            atomic_dec(&sus_path_n_pending);
+         sus_path_entry_free(e);
+     }
+     SUSFS_LOGI("sus_path: command written, %d rule(s) removed, %d left\n",
+@@ -1739,6 +1727,29 @@ static int sus_path_command(const char *val, int *removed_out)
+     return 0;
+ }
+ 
++int sus_path_del_path(const char *path)
++{
++    int rc = susfs_control_get();
++
++    if (rc)
++        return rc;
++    rc = READ_ONCE(sus_path_ready) ? sus_path_del_path_impl(path) : -ENODEV;
++    susfs_control_put();
++    return rc;
++}
++
++static int sus_path_command(const char *val, int *removed_out)
++{
++    int rc = susfs_control_get();
++
++    if (rc)
++        return rc;
++    rc = READ_ONCE(sus_path_ready) ?
++        sus_path_command_impl(val, removed_out) : -ENODEV;
++    susfs_control_put();
++    return rc;
++}
++
+ static int sus_path_store_list(const char *val, const struct kernel_param *kp)
+ {
+     return sus_path_command(val, NULL);
+@@ -2127,7 +2138,7 @@ module_param_cb(sus_path_probe, &sus_path_probe_ops, NULL, 0600);
+  * self-hide the /proc control nodes.  Same entry shape and ihold discipline as
+  * sus_path_supercall(): the inode pointer is what the LSM layer matches on and it must outlive
+  * path_put() below. */
+-static int sus_path_add_hidden_ex(const char *path, bool self_protect)
++static int sus_path_add_hidden_ex_impl(const char *path, bool self_protect)
+ {
+ 	struct path p;
+ 	struct inode *inode;
+@@ -2144,16 +2155,7 @@ static int sus_path_add_hidden_ex(const char *path, bool self_protect)
+ 		return -ENOENT;
+ 	}
+ 
+-	/* kzalloc, NOT kmalloc: the entry has two fields these add paths never set -
+-	 * `self_protect` (a gate: a garbage non-zero value turns an ordinary app-only rule
+-	 * into "hidden from every non-root caller") and `orig_mode` (written back into
+-	 * inode->i_mode by sus_path_restore_mode() at unload).  With kmalloc both held
+-	 * whatever the slab last contained, and the common case made it certain:
+-	 * sus_path_relax_mode() returns early - recording nothing - when the target is
+-	 * already 0777, so unloading wrote uninitialized heap bytes into a real inode mode.
+-	 * Zero is the right initial value for both: false is the ordinary gate, and
+-	 * orig_mode == 0 means "this rule did not touch the mode", which is exactly what
+-	 * restore_mode() tests for. */
++	/* Flags and pending ownership start empty. Inode modes are never changed. */
+ 	e = kzalloc(sizeof(*e), GFP_KERNEL);
+ 	if (!e) {
+ 		path_put(&p);
+@@ -2169,7 +2171,6 @@ static int sus_path_add_hidden_ex(const char *path, bool self_protect)
+ 	strscpy(e->name, p.dentry->d_name.name, sizeof(e->name));
+ 	sus_path_entry_set_path(e, path);
+ 	INIT_LIST_HEAD(&e->list);
+-	path_put(&p);
+ 
+ 	spin_lock(&sus_path_lock);
+ 	{
+@@ -2180,6 +2181,7 @@ static int sus_path_add_hidden_ex(const char *path, bool self_protect)
+ 				spin_unlock(&sus_path_lock);
+ 				iput(e->inode);
+ 				kfree(e);
++				path_put(&p);
+ 				return 0;	/* already hidden */
+ 			}
+ 		}
+@@ -2188,13 +2190,14 @@ static int sus_path_add_hidden_ex(const char *path, bool self_protect)
+ 		spin_unlock(&sus_path_lock);
+ 		iput(e->inode);
+ 		kfree(e);
++		path_put(&p);
+ 		return -ENOSPC;
+ 	}
+ 	sus_path_index_add(e);
+ 	list_add_tail(&e->list, &sus_path_list);
+ 	sus_path_count++;
+-	sus_path_relax_mode(e);
+ 	spin_unlock(&sus_path_lock);
++	path_put(&p);
+ 
+ 	SUSFS_LOGI("sus_path: hidden (built-in) '%s'%s\n", path,
+ 		self_protect ? " (self-protected: hidden from every non-root caller)" : "");
+@@ -2204,6 +2207,18 @@ static int sus_path_add_hidden_ex(const char *path, bool self_protect)
+ 
+ /* Register one of the module's own control nodes: same table, flagged so the gate hides it from
+  * every non-root caller rather than only from apps (sus_path_entry_gate_any()). */
++static int sus_path_add_hidden_ex(const char *path, bool self_protect)
++{
++    int rc = susfs_control_get();
++
++    if (rc)
++        return rc;
++    rc = READ_ONCE(sus_path_ready) ?
++        sus_path_add_hidden_ex_impl(path, self_protect) : -ENODEV;
++    susfs_control_put();
++    return rc;
++}
++
+ int sus_path_add_self_hidden(const char *path)
+ {
+ 	return sus_path_add_hidden_ex(path, true);
+@@ -2261,7 +2276,6 @@ static int sus_path_sb_down_pre(struct kprobe *kp, struct pt_regs *regs)
+         sus_path_index_del(e);
+         atomic_dec(&e->inode->i_count);   /* undo our ihold(); never the inode's last disposer */
+         e->inode = NULL;                  /* the rule is pending again */
+-        e->orig_mode = 0;                 /* the relaxed mode dies with the inode */
+         atomic_inc(&sus_path_n_pending);
+         dropped++;
+     }
+@@ -2303,7 +2317,7 @@ int sus_path_init(void)
+ 
+     if (no_extra) {
+         SUSFS_LOGI("sus_path: no_extra=1 - the LSM layer and the dirent filter are OFF (isolation test)\n");
+-        return 0;
++        return -EOPNOTSUPP;
+     }
+ 
+     /* LSM hooks: reject path-based access to registered inodes outright.  These two ARE the
+@@ -2382,17 +2396,17 @@ int sus_path_init(void)
+      * file on an unmounting fs does not leave a busy inode and BUG generic_shutdown_super() (the
+      * fuse volume at /storage/emulated/0 at shutdown is the case that bit this device).  Best
+      * effort: the same symbol sus_mount already probes, so a failure here does not fail the load. */
+-    if (register_kprobe(&sus_path_kp_sb_down) == 0) {
++    rc = register_kprobe(&sus_path_kp_sb_down);
++    if (!rc) {
+         sus_path_kp_sb_down_ok = true;
+         SUSFS_LOGI("sus_path: unmount inode-release probe armed on generic_shutdown_super\n");
+     } else {
+-        pr_warn("sus_path: register_kprobe(generic_shutdown_super) failed - inode refs are NOT released at unmount; a hidden file on an unmounting fs can still BUG the kernel\n");
++        pr_err("sus_path: unmount reference release unavailable (%d), refusing unsafe path rules\n", rc);
++        return rc;
+     }
+ 
+-    /* The DAC probes, the syscall-entry kprobes and the path-string probes are DELETED, not
+-     * merely disabled: the mode relax in sus_path_relax_mode() covers the case where DAC
+-     * answers EACCES before any LSM hook runs, and a hook that cannot fire reads as coverage.
+-     * Their history, including the FPAC panic one of them caused, is in TECHNICAL_NOTES.md. */
++    /* Ordinary inode permissions remain unchanged. A DAC refusal may precede
++     * the LSM denial; hiding must never grant access to an exempt caller. */
+ 
+     /* The control node goes up LAST, and only when the layer that hides it is really installed
+      * (susfs_control_node_allowed()): a 0777 world-writable node without the thing that answers
+@@ -2407,6 +2421,7 @@ int sus_path_init(void)
+         SUSFS_LOGI("sus_path: /proc/susfs_path not created (expose_proc=%d lsm=%d)\n",
+                 (int)susfs_expose_proc, (int)sus_path_lsm_active());
+     }
++    WRITE_ONCE(sus_path_ready, true);
+     return 0;
+ }
+ 
+@@ -2415,6 +2430,9 @@ void sus_path_exit(void)
+     struct sus_path_entry *e, *tmp;
+     LIST_HEAD(doomed);
+ 
++    WRITE_ONCE(sus_path_ready, false);
++    WRITE_ONCE(sus_path_exiting, true);
++
+     /* Our own node goes down first, while the LSM layer that hides it is still armed: the
+      * reverse order would expose a 0777 control surface for the duration of the unload. */
+     if (sus_path_node_entry) {
+@@ -2457,28 +2475,29 @@ void sus_path_exit(void)
+     if (sus_path_getattr_hook.entry)
+         ksu_unregister_lsm_hook(&sus_path_getattr_hook);
+ 
+-    if (sus_path_kp_sb_down_ok) {
+-        unregister_kprobe(&sus_path_kp_sb_down);
+-        sus_path_kp_sb_down_ok = false;
+-    }
+ 
+     kvfree(dirent_tmp);
+     dirent_tmp = NULL;
+ 
+     spin_lock(&sus_path_lock);
+     memset(sus_path_index, 0, sizeof(sus_path_index));
++    list_for_each_entry(e, &sus_path_list, list)
++        sus_path_prepare_release(e);
+     list_splice_init(&sus_path_list, &doomed);
+     sus_path_count = 0;
+     atomic_set(&sus_path_n_pending, 0);
+     spin_unlock(&sus_path_lock);
+ 
+-    /* iput outside the lock (it can sleep and evict), and the mode each rule relaxed is put
+-     * back first and before the inode is released: the relaxed value only lives in memory, so
+-     * once the last reference is gone there is no telling a relaxed mode from a real one. */
++    /* Releasing the pinned inode can sleep. Permissions belong to the filesystem. */
+     list_for_each_entry_safe(e, tmp, &doomed, list) {
+         list_del(&e->list);
+         sus_path_entry_free(e);
+     }
++    /* Keep the invalidator until every published/transient inode reference is gone. */
++    if (sus_path_kp_sb_down_ok) {
++        unregister_kprobe(&sus_path_kp_sb_down);
++        sus_path_kp_sb_down_ok = false;
++    }
+ }
+ 
+ /* supercall: CMD_SUSFS_ADD_SUS_PATH (0x55550) / CMD_SUSFS_ADD_SUS_PATH_LOOP (0x55553)
+@@ -2493,13 +2512,14 @@ void sus_path_exit(void)
+  * the moment the background walk resolves its inode; what the pending state delays is every
+  * layer - the LSM hooks (by inode) and the dirent filter ((ino, name)) - because none of them can
+  * match an inode that does not exist yet. */
+-void sus_path_supercall(unsigned int cmd, void __user **arg)
++static void sus_path_supercall_impl(unsigned int cmd, void __user **arg)
+ {
+     struct st_susfs_sus_path info = {0};
+     struct sus_path_entry *e;
+     struct sus_path_cred *retired = NULL;
+     struct path path = {0};
+     struct inode *inode = NULL;
++    bool path_held = false;
+     bool pending_ok = (cmd == CMD_SUSFS_ADD_SUS_PATH_LOOP);
+     u64 dev = 0;
+     u64 ino = 0;
+@@ -2527,6 +2547,8 @@ void sus_path_supercall(unsigned int cmd, void __user **arg)
+         if (!inode) {
+             path_put(&path);
+             rc = -ENOENT;
++        } else {
++            path_held = true;
+         }
+     }
+     if (rc && rc != -ENOENT) {
+@@ -2545,12 +2567,9 @@ void sus_path_supercall(unsigned int cmd, void __user **arg)
+         goto out;
+     }
+ 
+-    /* kzalloc, NOT kmalloc: `self_protect` and `orig_mode` must start at zero or unloading
+-     * writes uninitialized heap bytes into a real inode mode - see sus_path_add_hidden_ex(). */
++    /* Flags and credential ownership start empty. */
+     e = kzalloc(sizeof(*e), GFP_KERNEL);
+     if (!e) {
+-        if (inode)
+-            path_put(&path);
+         info.err = -ENOMEM;
+         goto out;
+     }
+@@ -2586,8 +2605,6 @@ void sus_path_supercall(unsigned int cmd, void __user **arg)
+         sus_path_basename(e->path, e->name, sizeof(e->name));
+     }
+     INIT_LIST_HEAD(&e->list);
+-    if (inode)
+-        path_put(&path);
+ 
+     spin_lock(&sus_path_lock);
+     if (sus_path_count >= SUS_PATH_MAX_ENTRIES) {
+@@ -2623,7 +2640,6 @@ void sus_path_supercall(unsigned int cmd, void __user **arg)
+                 retired = cur->caller;
+                 cur->caller = NULL;
+                 atomic_dec(&sus_path_n_pending);
+-                sus_path_relax_mode(cur);   /* it was pending, so it never ran */
+                 spin_unlock(&sus_path_lock);
+                 sus_path_cred_put(retired);
+                 sus_path_entry_free(e);
+@@ -2639,8 +2655,6 @@ void sus_path_supercall(unsigned int cmd, void __user **arg)
+     sus_path_count++;
+     if (!inode)
+         atomic_inc(&sus_path_n_pending);
+-    else
+-        sus_path_relax_mode(e);
+     spin_unlock(&sus_path_lock);
+ 
+     if (inode && !ino) {
+@@ -2680,8 +2694,28 @@ void sus_path_supercall(unsigned int cmd, void __user **arg)
+ 
+     info.err = 0;
+ out:
++    if (path_held)
++        path_put(&path);
+     /* upstream writes back only ->err for input-type commands */
+     if (copy_to_user(&((struct st_susfs_sus_path __user *)*arg)->err,
+                      &info.err, sizeof(info.err)))
+         pr_warn("sus_path supercall copy_to_user failed\n");
+ }
++
++void sus_path_supercall(unsigned int cmd, void __user **arg)
++{
++    int rc = susfs_control_get();
++
++    if (!rc) {
++        if (READ_ONCE(sus_path_ready)) {
++            sus_path_supercall_impl(cmd, arg);
++            susfs_control_put();
++            return;
++        }
++        rc = -ENODEV;
++        susfs_control_put();
++    }
++    if (copy_to_user(&((struct st_susfs_sus_path __user *)*arg)->err,
++                     &rc, sizeof(rc)))
++        pr_warn("sus_path unavailable reply failed\n");
++}
+diff --git a/kernel/susfs_control.c b/kernel/susfs_control.c
+new file mode 100644
+index 0000000..21ab3bf
+--- /dev/null
++++ b/kernel/susfs_control.c
+@@ -0,0 +1,47 @@
++// SPDX-License-Identifier: GPL-2.0-only
++#include <linux/errno.h>
++#include <linux/kernel.h>
++#include <linux/mutex.h>
++#include <linux/rcupdate.h>
++#include <linux/wait.h>
++#include "susfs_control.h"
++
++static DEFINE_MUTEX(control_lock);
++static DECLARE_WAIT_QUEUE_HEAD(control_waitq);
++static unsigned int control_active;
++static bool control_stopping;
++
++int susfs_control_get(void)
++{
++    int rc = 0;
++
++    mutex_lock(&control_lock);
++    if (control_stopping)
++        rc = -ENODEV;
++    else
++        control_active++;
++    mutex_unlock(&control_lock);
++    return rc;
++}
++
++void susfs_control_put(void)
++{
++    mutex_lock(&control_lock);
++    if (WARN_ON_ONCE(!control_active)) {
++        mutex_unlock(&control_lock);
++        return;
++    }
++    if (!--control_active)
++        wake_up_all(&control_waitq);
++    mutex_unlock(&control_lock);
++}
++
++void susfs_control_shutdown(void)
++{
++    mutex_lock(&control_lock);
++    control_stopping = true;
++    mutex_unlock(&control_lock);
++    wait_event(control_waitq, !READ_ONCE(control_active));
++    /* The final put may wake us before its caller has returned to the kernel. */
++    synchronize_rcu_tasks();
++}
+diff --git a/kernel/susfs_control.h b/kernel/susfs_control.h
+new file mode 100644
+index 0000000..68b7620
+--- /dev/null
++++ b/kernel/susfs_control.h
+@@ -0,0 +1,13 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++#ifndef SUSFS_CONTROL_H
++#define SUSFS_CONTROL_H
++
++/* Process-context configuration only. A successful get must be paired with a
++ * final put, followed by no further resource access or voluntary scheduling.
++ * Parameter parsing before init is allowed; layers still validate readiness.
++ * Shutdown closes admission permanently and drains accepted configurations. */
++int susfs_control_get(void);
++void susfs_control_put(void);
++void susfs_control_shutdown(void);
++
++#endif
+diff --git a/kernel/susfs_hide_syms.c b/kernel/susfs_hide_syms.c
+index 23c7763..ac8d586 100644
+--- a/kernel/susfs_hide_syms.c
++++ b/kernel/susfs_hide_syms.c
+@@ -22,6 +22,7 @@
+ #include "susfs_log.h"
+ #include "susfs.h"		/* sus_path_add_self_hidden / sus_path_del_path */
+ #include "symbol_resolver.h"	/* find_kernel_symbol_exact (kallsyms_op) */
++#include "susfs_control.h"
+ #include "susfs_kprobe.h"	/* susfs_kp_forget_addr: a probe struct must be usable twice */
+ 
+ /* ---- hide_modules: filter other kernel modules out of /proc/modules ----
+@@ -49,6 +50,7 @@ static DEFINE_SPINLOCK(hide_modules_lock);
+ /* Proc and module-parameter writers reconcile sleeping path operations as one
+  * transaction. Probe readers continue using only the short spinlock. */
+ static DEFINE_MUTEX(hide_modules_config_lock);
++static bool hide_modules_exiting;
+ 
+ static atomic_t n_modlines_skipped = ATOMIC_INIT(0);	/* /proc/modules lines removed */
+ static atomic_t n_kallsyms_mod_skipped = ATOMIC_INIT(0);	/* kallsyms lines of those modules */
+@@ -92,6 +94,9 @@ static void hide_modules_sync_sysfs(void)
+ 	char path[sizeof("/sys/module/") - 1 + MODULE_NAME_LEN];
+ 	int i;
+ 
++	if (!sus_path_lsm_active())
++		return;
++
+ 	/* sus_path_del_path() is a no-op for a name that was never registered. */
+ 	for (i = 0; i < n_hide_modules_applied; i++) {
+ 		snprintf(path, sizeof(path), "/sys/module/%.*s", (int)MODULE_NAME_LEN - 1, hide_modules_applied[i]);
+@@ -193,7 +198,7 @@ static void hide_modules_commit(char dst[][MODULE_NAME_LEN], int n)
+  * build - "ld.lld: warning: stack frame size (3024) exceeds limit (2048) in function 'hide_modules_command'", and
+  * 5.15/android14-5.15 as "susfs_hide_syms.c:197:0: stack frame size (3024) exceeds limit (2048)".  6.x turns that warning
+  * into an error.  Both callers are proc/module_param setters - process context - so GFP_KERNEL is fine. */
+-static int hide_modules_command(const char *val, bool bare_list)
++static int hide_modules_command_impl(const char *val, bool bare_list)
+ {
+ 	char *cmd;
+ 	char (*staged)[MODULE_NAME_LEN];
+@@ -214,6 +219,10 @@ static int hide_modules_command(const char *val, bool bare_list)
+ 		cmd[i] = '\0';
+ 
+ 	mutex_lock(&hide_modules_config_lock);
++	if (hide_modules_exiting) {
++		rc = -ENODEV;
++		goto out;
++	}
+ 	if (!strcmp(cmd, "rescan")) {
+ 		hide_modules_sync_sysfs();
+ 		atomic_inc(&n_sysfs_rescans);
+@@ -354,6 +363,17 @@ static int hide_modules_format(char *buf, size_t size)
+ 	return n;
+ }
+ 
++static int hide_modules_command(const char *val, bool bare_list)
++{
++    int rc = susfs_control_get();
++
++    if (rc)
++        return rc;
++    rc = hide_modules_command_impl(val, bare_list);
++    susfs_control_put();
++    return rc;
++}
++
+ /* ---- the two frontends ---- */
+ 
+ static int hide_modules_param_set(const char *val, const struct kernel_param *kp)
+@@ -509,7 +529,8 @@ static bool hide_syms_iter_plausible(const struct kallsym_iter_local *it)
+ static int hide_syms_s_show_pre(struct kprobe *kp, struct pt_regs *regs)
+ {
+ 	struct seq_file *m = (struct seq_file *)regs_get_kernel_argument(regs, 0);
+-	struct kallsym_iter_local *iter;
++	struct kallsym_iter_local snapshot;
++	const struct kallsym_iter_local *iter = &snapshot;
+ 
+ 	atomic_inc(&hide_enter_count);
+ 	/* The identity check applies only when the table was resolved: with kallsyms_op_target NULL
+@@ -517,8 +538,11 @@ static int hide_syms_s_show_pre(struct kprobe *kp, struct pt_regs *regs)
+ 	 * wrong s_show and the string walk - the pre-identity behaviour. */
+ 	if (!m || (kallsyms_op_target && m->op != kallsyms_op_target) || !m->private)
+ 		return 0;
+-	iter = (struct kallsym_iter_local *)m->private;
+-	if (!hide_syms_iter_plausible(iter)) {
++	/* A by-name fallback may reach a different s_show with a smaller private
++	 * object. Bounds on strings cannot make that object readable. Inspect a
++	 * nofault snapshot and use only that snapshot for all later matching. */
++	if (copy_from_kernel_nofault(&snapshot, m->private, sizeof(snapshot)) ||
++	    !hide_syms_iter_plausible(iter)) {
+ 		/* A rejected caller proves neither state: on the by-name path it may be a shared s_show
+ 		 * body (hiding still on) or another s_show (hiding off); with the identity resolved it is
+ 		 * a real mirror drift.  Only the unload counters can settle it. */
+@@ -755,6 +779,9 @@ bool susfs_hide_modules_node_ready(void)
+ 
+ void susfs_hide_syms_exit(void)
+ {
++	mutex_lock(&hide_modules_config_lock);
++	hide_modules_exiting = true;
++	mutex_unlock(&hide_modules_config_lock);
+ 	if (hide_modules_entry) {
+ 		proc_remove(hide_modules_entry);
+ 		hide_modules_entry = NULL;
+diff --git a/kernel/susfs_kstat.c b/kernel/susfs_kstat.c
+index e109e5d..0cc7f38 100644
+--- a/kernel/susfs_kstat.c
++++ b/kernel/susfs_kstat.c
+@@ -761,7 +761,7 @@ static bool susfs_kstat_spoof_statbuf(struct kstat_call_state *st, unsigned long
+ #define STAT64_ST_MTIME_NSEC_OFF 84
+ #define STAT64_ST_CTIME_OFF     88
+ #define STAT64_ST_CTIME_NSEC_OFF 92
+-#define STAT64_ST_INO_OFF       96	/* compat_u64 st_ino (also written; the KEY is read from +12) */
++#define STAT64_ST_INO_OFF       96	/* compat_u64 st_ino: full lookup key, also written */
+ #define STAT64_ST_SIZE          104
+ 
+ /* struct compat_stat (the AArch32 stat()/lstat()/fstat() layout, 106/107/108).  Unlike the struct
+@@ -872,7 +872,8 @@ static bool susfs_kstat_spoof_compat_statbuf(struct kstat_call_state *st, unsign
+ 	struct sus_kstat_snapshot snap;
+ 	const struct sus_kstat_snapshot *e = &snap;
+ 	unsigned long long v64;
+-	unsigned int ino = 0, dev = 0;
++	unsigned long long ino = 0;
++	unsigned int dev = 0;
+ 	unsigned int v32;
+ 	int v;
+ 	bool rewrote = false;
+@@ -886,13 +887,10 @@ static bool susfs_kstat_spoof_compat_statbuf(struct kstat_call_state *st, unsign
+ 		return false;
+ 	}
+ 
+-	/* Key lookup on what the kernel ACTUALLY filled: __st_ino at +12.  stat64 carries the
+-	 * STAT64_HAS_BROKEN_ST_INO marker (arch/arm64/include/asm/stat.h), so cp_new_stat64() writes
+-	 * __st_ino and leaves st_ino (+96) alone - reading the key from +96 would compare against
+-	 * whatever the caller's buffer held and never match.  Both fields are written when spoofing, so
+-	 * a libc that synthesises st_ino from __st_ino and one that reads st_ino directly both see the
+-	 * spoofed value. */
+-	if (copy_from_user(&ino, (void __user *)(statbuf + STAT64_ST_BROKEN_INO_OFF), sizeof(ino))) {
++	/* cp_new_stat64() fills the full st_ino and the truncated legacy __st_ino.
++	 * Only the full field can distinguish files whose low inode bits coincide.
++	 * Continue writing both representations when the rule spoofs an inode. */
++	if (copy_from_user(&ino, (void __user *)(statbuf + STAT64_ST_INO_OFF), sizeof(ino))) {
+ 		atomic_inc(&st->cnt->uaccess);
+ 		return false;
+ 	}
+diff --git a/kernel/susfs_main.c b/kernel/susfs_main.c
+index 77708b3..4712a95 100644
+--- a/kernel/susfs_main.c
++++ b/kernel/susfs_main.c
+@@ -12,6 +12,7 @@
+ #include "susfs_log.h"
+ #include "susfs_fp_hook.h"	/* susfs_fp_init: the sys_call_table cache the create_gate layer installs through */
+ #include "lsm_hook.h"
++#include "susfs_control.h"
+ #include "susfs.h"
+ #include "ksu_umount_gate.h"	/* issue #34: the hide gates ask KernelSU */
+ 
+@@ -38,7 +39,7 @@ int ksu_patch_memory_init(void);
+  * root-only access is enforced by the handlers' uid checks, not by the mode.  expose_proc=0
+  * removes the nodes entirely. */
+ bool susfs_expose_proc = true;
+-module_param_named(expose_proc, susfs_expose_proc, bool, 0600);
++module_param_named(expose_proc, susfs_expose_proc, bool, 0400);
+ 
+ static const char *const susfs_self_hide_paths[] = {
+     "/proc/susfs_kstat",
+@@ -132,7 +133,7 @@ static struct {
+     { "sus_map",	susfs_sus_map_init,		susfs_sus_map_exit,	false, true,  SUSFS_FEAT_SUS_MAP },
+     { "sus_mount",	susfs_sus_mount_init,		susfs_sus_mount_exit,	false, true,  SUSFS_FEAT_SUS_MOUNT },
+     { "cmdline",	susfs_spoof_cmdline_init,	susfs_spoof_cmdline_exit, false, true,	SUSFS_FEAT_SPOOF_CMDLINE },
+-    { "open_redirect",	susfs_open_redirect_init,	susfs_open_redirect_exit, false, true, SUSFS_FEAT_OPEN_REDIRECT },
++    { "open_redirect",	susfs_open_redirect_init,	susfs_open_redirect_exit, false, false, SUSFS_FEAT_OPEN_REDIRECT },
+     { "enable_log",	susfs_enable_log_init,		susfs_enable_log_exit,	false, true,  SUSFS_FEAT_ENABLE_LOG },
+     { "avc_spoof",	susfs_avc_spoof_init,		susfs_avc_spoof_exit,	false, true,  SUSFS_FEAT_AVC_SPOOF },
+     { "hide_syms",	susfs_hide_syms_init,		susfs_hide_syms_exit,	false, true,  SUSFS_FEAT_HIDE_SYMS },
+@@ -150,6 +151,9 @@ static void susfs_layers_down(int upto)
+ {
+     int i;
+ 
++    /* Parameter callbacks outlive module_exit. Close their mutating paths
++     * before any dependent layer is dismantled. */
++    susfs_control_shutdown();
+     for (i = upto; i >= 0; i--) {
+         if (!susfs_layers[i].armed)
+             continue;
+diff --git a/kernel/susfs_open_redirect.c b/kernel/susfs_open_redirect.c
+index 132514d..d9319bc 100644
+--- a/kernel/susfs_open_redirect.c
++++ b/kernel/susfs_open_redirect.c
+@@ -78,7 +78,7 @@
+  * "u:r:su:s0" - override with susfs_guard_lkm.or_su_ctx.  Kept separate from sus_mount's su_ctx and avc_spoof's
+  * avc_su_ctx: parameters are per name, and defaulting to the wrong domain must not change other features' gating. */
+ static char or_su_ctx[128] = "u:r:ksu:s0";
+-module_param_string(or_su_ctx, or_su_ctx, sizeof(or_su_ctx), 0644);
++module_param_string(or_su_ctx, or_su_ctx, sizeof(or_su_ctx), 0400);
+ 
+ static u32 or_su_sid;
+ 
+@@ -87,8 +87,7 @@ static u32 or_su_sid;
+  * validates the type hash at a call through a function pointer. */
+ static void (*or_cred_getsecid)(const struct cred *cred, u32 *secid);
+ 
+-/* The snapshot call is not exported to modules here, so it is resolved at init (warn when it is
+- * not: the snapshot stays zeroed and the reverse statfs face answers with the rule's zeros). */
++/* Resolve the unexported snapshot call at init; refuse rules without it. */
+ static int (*or_vfs_statfs_fn)(const struct path *path, struct kstatfs *buf);
+ 
+ static __nocfi noinline int or_statfs_snapshot(const struct path *path, struct kstatfs *buf)
+@@ -877,6 +876,8 @@ static int or_fdinfo_probes;
+ static int or_fdinfo_candidates;
+ static bool or_fdinfo_registered;
+ 
++static void or_fdinfo_disarm(void);
++
+ static int or_fdinfo_arm(void)
+ {
+ 	unsigned long addrs[OR_FDINFO_MAX];
+@@ -907,8 +908,10 @@ static int or_fdinfo_arm(void)
+ 		}
+ 		or_fdinfo_probes++;
+ 	}
+-	if (!or_fdinfo_probes)
+-		return -EINVAL;
++	if (or_fdinfo_probes != or_fdinfo_candidates) {
++		or_fdinfo_disarm();
++		return -EIO;
++	}
+ 	or_fdinfo_registered = true;
+ 	SUSFS_LOGI("susfs_open_redirect: fdinfo hooked on %d/%d seq_show symbol(s)\n",
+ 		   or_fdinfo_probes, or_fdinfo_candidates);
+@@ -955,16 +958,14 @@ static int or_register(void)
+ 	return 0;
+ }
+ 
+-/* Reverse-disguise hooks: best effort.  The forward redirect is already live and each of these only closes one report
+- * path, so a failure must not reject the rule - but never silent either: registering proves the symbol exists, not that
+- * the kernel's call sites reach it (GKI's full LTO inlines across translation units), hence the hit counters read back
+- * from /proc/susfs_open_redirect.  Called from the rule-management paths (process context, may sleep). */
+-static void or_register_reverse(void)
++/* Require every reverse hook before publishing a rule. Registration still does
++ * not prove LTO reachability; the diagnostic hit counters remain necessary. */
++static int or_register_reverse(void)
+ {
+ 	int rc;
+ 
+ 	if (or_exiting)
+-		return;
++		return -ENODEV;
+ 
+ 	if (!or_dpath_registered) {
+ 		kr_or_dpath.kp.addr = NULL;
+@@ -1002,6 +1003,8 @@ static void or_register_reverse(void)
+ 			pr_warn("open_redirect: register_kretprobe(seq_show) failed %d - fdinfo names the redirected inode\n",
+ 				rc);
+ 	}
++	return or_dpath_registered && or_statfs_registered &&
++	       or_maps_registered && or_fdinfo_registered ? 0 : -EOPNOTSUPP;
+ }
+ 
+ /* Caller holds or_lock; exit closes registration under this same lock. */
+@@ -1064,7 +1067,7 @@ int susfs_open_redirect_init(void)
+ 	 * call available). */
+ 	or_vfs_statfs_fn = (void *)find_kernel_symbol_exact("vfs_statfs");
+ 	if (!or_vfs_statfs_fn)
+-		pr_warn("open_redirect: vfs_statfs not found - the reverse statfs face will report a zeroed snapshot\n");
++		pr_warn("open_redirect: vfs_statfs not found - redirect rules will be refused\n");
+ 
+ 	/* Forward direction = the name layer's syscall-entry wrappers (susfs_or_entry.c).  Best effort,
+ 	 * on purpose: the layer is optional where the symbols are, refuses rules while it is unarmed,
+@@ -1088,7 +1091,7 @@ int susfs_open_redirect_init(void)
+ 		susfs_open_redirect_rules,
+ 		susfs_or_entry_armed() ? "armed" : "unavailable",
+ 		or_proc_entry != NULL);
+-	return 0;
++	return susfs_or_entry_armed() && or_vfs_statfs_fn ? 0 : -EOPNOTSUPP;
+ }
+ 
+ void susfs_open_redirect_exit(void)
+@@ -1219,7 +1222,11 @@ static int or_add(const char *target, const char *redirected, int scheme)
+ 	 * unreadable file) leaves the rule answering an empty filesystem rather than the redirected file's real
+ 	 * numbers, which is the direction least likely to leak. */
+ 	memset(&spoofed_kstatfs, 0, sizeof(spoofed_kstatfs));
+-	(void)or_statfs_snapshot(&tp, &spoofed_kstatfs);
++	rc = or_statfs_snapshot(&tp, &spoofed_kstatfs);
++	if (rc) {
++		path_put(&tp);
++		return rc;
++	}
+ 
+ 	ti = d_backing_inode(tp.dentry);
+ 	if (!ti) {
+@@ -1274,7 +1281,12 @@ static int or_add(const char *target, const char *redirected, int scheme)
+ 		pr_warn("open_redirect: hook registration failed %d\n", rc);
+ 		return rc;
+ 	}
+-	or_register_reverse();
++	rc = or_register_reverse();
++	if (rc) {
++		path_put(&rp);
++		path_put(&tp);
++		return rc;
++	}
+ 
+ 	/* upstream susfs.c:867-881: a name that another rule already uses as its redirected path belongs to that rule's
+ 	 * reverse entry and must not be taken over. */
+diff --git a/kernel/susfs_or_entry.c b/kernel/susfs_or_entry.c
+index 93d67b4..2cec045 100644
+--- a/kernel/susfs_or_entry.c
++++ b/kernel/susfs_or_entry.c
+@@ -158,7 +158,7 @@ static atomic_t or_entry_hits = ATOMIC_INIT(0);
+  * susfs_or_entry_init() - so a rule is refused rather than accepted and inert.  Read at load:
+  * flipping it in sysfs afterwards does not re-run init(). */
+ static bool or_entry_param = true;
+-module_param_named(or_entry, or_entry_param, bool, 0600);
++module_param_named(or_entry, or_entry_param, bool, 0400);
+ 
+ /* Where the five wrappers read the entry they replaced.  Published by susfs_fp_install() before
+  * it patches the table (see the fp-hook contract), then read-only. */
+@@ -258,7 +258,7 @@ static __nocfi noinline long or_entry_redirect(const struct pt_regs *regs, int k
+ 		 * "we cannot be bothered" is not an option for a size the kernel would have accepted:
+ 		 * those go through when the helper is resolvable, and only fall back to the kernel where
+ 		 * it is not. */
+-		if (usize < sizeof(how))
++		if (usize < sizeof(how) || usize > PAGE_SIZE)
+ 			return SUSFS_OR_ENTRY_PASS;
+ 		if (copy_from_user(&how, (const void __user *)regs->regs[2], sizeof(how)))
+ 			return SUSFS_OR_ENTRY_PASS;
+@@ -364,6 +364,12 @@ static __nocfi noinline long or_entry_redirect(const struct pt_regs *regs, int k
+ 		return SUSFS_OR_ENTRY_PASS;
+ 	}
+ 	path_put(&path);	/* no reference is kept anywhere: the rule owns none either */
++	/* filp_open() cannot retain openat2's dirfd/resolve context. Never turn a
++	 * scoped source lookup into an unscoped destination open, and never fall
++	 * through to expose a matched source. A future scoped-open implementation
++	 * can replace this explicit refusal without weakening the caller contract. */
++	if (resolve)
++		return -EOPNOTSUPP;
+ 	/* Defensive: an empty name is not a path, and filp_open("") resolves to the caller's own
+ 	 * working directory, i.e. it would hand out an unrelated fd. */
+ 	if (!target[0])
+@@ -387,7 +393,9 @@ static __nocfi noinline long or_entry_redirect(const struct pt_regs *regs, int k
+ 	/* The descriptor is taken BEFORE the file is opened, which is the order do_sys_openat2() uses:
+ 	 * an EMFILE/ENFILE open then touches nothing at all, where opening first would have created or
+ 	 * truncated the rule's target and then failed anyway. */
+-	fd = or_get_unused_fd_flags_fn((unsigned)(flags & O_CLOEXEC));
++	fd = or_get_unused_fd_flags_fn((unsigned)(
++		((kind == SUSFS_OR_ENTRY_OPENAT2 || kind == SUSFS_OR_ENTRY_COMPAT_OPENAT2)
++		 ? how.flags : flags) & O_CLOEXEC));
+ 	if (fd < 0)
+ 		return fd;
+ 
+@@ -539,6 +547,12 @@ bool susfs_or_entry_armed(void)
+ 	 * answer and the original syscall runs. */
+ 	if (!READ_ONCE(or_hooks[0].installed) || !READ_ONCE(or_hooks[1].installed))
+ 		return false;
++#ifdef CONFIG_COMPAT
++	if (!READ_ONCE(or_hooks[2].compat_installed) ||
++	    !READ_ONCE(or_hooks[3].compat_installed) ||
++	    !READ_ONCE(or_hooks[4].compat_installed))
++		return false;
++#endif
+ 	return READ_ONCE(or_entry_ready);
+ }
+ 
+diff --git a/tests/control_lifetime/control_test.c b/tests/control_lifetime/control_test.c
+new file mode 100644
+index 0000000..7932ee0
+--- /dev/null
++++ b/tests/control_lifetime/control_test.c
+@@ -0,0 +1,50 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++#include <assert.h>
++#include <errno.h>
++#include <pthread.h>
++#include <stdbool.h>
++#include <stdatomic.h>
++#include <stdio.h>
++#include <time.h>
++#define DEFINE_MUTEX(n) pthread_mutex_t n=PTHREAD_MUTEX_INITIALIZER
++#define mutex_lock(p) assert(!pthread_mutex_lock(p))
++#define mutex_unlock(p) assert(!pthread_mutex_unlock(p))
++#define WARN_ON_ONCE(v) (v)
++#define READ_ONCE(v) __atomic_load_n(&(v),__ATOMIC_ACQUIRE)
++struct host_waitq {pthread_mutex_t lock;pthread_cond_t changed;};
++#define DECLARE_WAIT_QUEUE_HEAD(n) struct host_waitq n={PTHREAD_MUTEX_INITIALIZER,PTHREAD_COND_INITIALIZER}
++static pthread_mutex_t schedule=PTHREAD_MUTEX_INITIALIZER;
++static pthread_cond_t changed=PTHREAD_COND_INITIALIZER;
++static bool waiting;
++static atomic_bool finished;
++static int grace_periods;
++static void synchronize_rcu_tasks(void) {grace_periods++;}
++static void wake_up_all(struct host_waitq *q) {
++    assert(!pthread_mutex_lock(&q->lock));pthread_cond_broadcast(&q->changed);assert(!pthread_mutex_unlock(&q->lock));
++}
++#define wait_event(q,condition) do { \
++    assert(!pthread_mutex_lock(&(q).lock)); \
++    assert(!pthread_mutex_lock(&schedule));waiting=true;pthread_cond_broadcast(&changed);assert(!pthread_mutex_unlock(&schedule)); \
++    while(!(condition))assert(!pthread_cond_wait(&(q).changed,&(q).lock)); \
++    assert(!pthread_mutex_unlock(&(q).lock)); \
++} while(0)
++#include PRODUCTION
++static void *shutdown_worker(void *unused) {
++    (void)unused;susfs_control_shutdown();atomic_store(&finished,true);return NULL;
++}
++int main(void) {
++    assert(!susfs_control_get());assert(!susfs_control_get());
++    pthread_t shutdown;assert(!pthread_create(&shutdown,NULL,shutdown_worker,NULL));
++    assert(!pthread_mutex_lock(&schedule));
++    struct timespec limit;assert(!clock_gettime(CLOCK_REALTIME,&limit));limit.tv_sec+=5;
++    while(!waiting)assert(!pthread_cond_timedwait(&changed,&schedule,&limit));
++    assert(!pthread_mutex_unlock(&schedule));
++    assert(!atomic_load(&finished) && susfs_control_get()==-ENODEV);
++    susfs_control_put();
++    assert(!atomic_load(&finished) && susfs_control_get()==-ENODEV);
++    susfs_control_put();assert(!pthread_join(shutdown,NULL));
++    assert(atomic_load(&finished) && grace_periods==1 && !control_active);
++    assert(susfs_control_get()==-ENODEV);
++    susfs_control_shutdown();assert(grace_periods==2);
++    puts("PASS control barrier: nested admission, shutdown drain, late rejection and idempotent closure");
++}
+diff --git a/tests/control_lifetime/run.py b/tests/control_lifetime/run.py
+new file mode 100644
+index 0000000..d5dde7b
+--- /dev/null
++++ b/tests/control_lifetime/run.py
+@@ -0,0 +1,24 @@
++#!/usr/bin/env python3
++"""Exercise the actual common configuration admission/shutdown barrier."""
++import argparse
++import os
++from pathlib import Path
++import subprocess
++import tempfile
++
++p=argparse.ArgumentParser(description=__doc__)
++p.add_argument('--sanitizers',action='store_true')
++a=p.parse_args()
++here=Path(__file__).resolve().parent
++with tempfile.TemporaryDirectory(prefix='susfs-control-') as d:
++    d=Path(d);(d/'linux').mkdir()
++    for name in ['errno','mutex','rcupdate','wait','kernel']:
++        (d/'linux'/f'{name}.h').write_text('/* Explicit host API model in control_test.c */\n')
++    (d/'linux/errno.h').write_text('#include_next <linux/errno.h>\n')
++    flags=['-O1','-g','-fsanitize=address,undefined','-fno-omit-frame-pointer','-no-pie'] if a.sanitizers else ['-O2']
++    exe=d/'control'
++    subprocess.run([os.environ.get('CC','cc'),'-std=gnu11','-Wall','-Wextra','-Werror',
++        '-pthread',*flags,'-I',str(d),'-DPRODUCTION="'+str(here.parents[1]/'kernel/susfs_control.c')+'"',
++        str(here/'control_test.c'),'-o',str(exe)],check=True)
++    subprocess.run([str(exe)],check=True,timeout=15,
++        env=dict(os.environ,ASAN_OPTIONS='detect_leaks=0:abort_on_error=1',UBSAN_OPTIONS='halt_on_error=1'))
+diff --git a/tests/lifecycle/lifecycle_test.c b/tests/lifecycle/lifecycle_test.c
+index f9988d0..c2286c2 100644
+--- a/tests/lifecycle/lifecycle_test.c
++++ b/tests/lifecycle/lifecycle_test.c
+@@ -3,6 +3,9 @@
+ #include "host_kernel.h"
+ #include PRODUCTION_DISPATCHER
+ #include PRODUCTION_MAIN
++/* The barrier itself is exercised in control_lifetime; this suite models the
++ * independent dispatcher/module reference lifecycle. */
++void susfs_control_shutdown(void) {}
+ 
+ /* The tests replace the umount-gate layer: its init is a no-op that leaves the gates on the
+  * pre-#34 answer, and the ask helper is a stub the flow only reaches if a layer violates it. */
+diff --git a/tests/map_hooks/host_kernel.h b/tests/map_hooks/host_kernel.h
+index 6d64056..46ea3bd 100644
+--- a/tests/map_hooks/host_kernel.h
++++ b/tests/map_hooks/host_kernel.h
+@@ -1,5 +1,6 @@
+ /* SPDX-License-Identifier: GPL-2.0 */
+ #include <assert.h>
++#include <limits.h>
+ #include <errno.h>
+ #include <pthread.h>
+ #include <stdatomic.h>
+@@ -14,6 +15,10 @@
+ 
+ #define __user
+ #define PAGE_SIZE 4096
++#define PAGE_MASK (~(PAGE_SIZE - 1UL))
++#define KERNEL_VERSION(a,b,c) (((a)<<16)|((b)<<8)|(c))
++#define LINUX_VERSION_CODE KERNEL_VERSION(6,12,0)
++#define untagged_addr_remote(mm,addr) ((void)(mm), (addr) & 0x00ffffffffffffffUL)
+ #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+ #define READ_ONCE(v) __atomic_load_n(&(v), __ATOMIC_RELAXED)
+ #define smp_load_acquire(p) __atomic_load_n(p, __ATOMIC_ACQUIRE)
+@@ -148,7 +153,11 @@ static atomic_t n_walk_seen, n_walk_seen_vma, n_walk_skip, n_walk_ops_hit;
+ static atomic_t n_walk_scan_fail, n_walk_nofile, n_walk_nomatch;
+ static atomic_t n_getlink_calls, n_getlink_skip, n_getlink_nomatch, n_map_files_hides;
+ static void *sus_map_ops_smaps, *sus_map_ops_smaps_shmem, *sus_map_ops_pagemap;
+-static void sus_map_resolve_walk_ops(void) { sus_map_ops_smaps = (void *)(uintptr_t)0x9000; }
++static void sus_map_resolve_walk_ops(void) {
++    sus_map_ops_smaps = (void *)(uintptr_t)0x9000;
++    sus_map_ops_smaps_shmem = (void *)(uintptr_t)0x9100;
++    sus_map_ops_pagemap = (void *)(uintptr_t)0x9200;
++}
+ static bool sus_map_walk_ops_any(void) { return sus_map_ops_smaps != NULL; }
+ static struct kprobe kp_map_walk = {.symbol_name = "walk_page_range"};
+ static struct kprobe kp_map_walk_vma = {.symbol_name = "walk_page_vma"};
+diff --git a/tests/map_hooks/map_test.c b/tests/map_hooks/map_test.c
+index f97f221..7ea3304 100644
+--- a/tests/map_hooks/map_test.c
++++ b/tests/map_hooks/map_test.c
+@@ -85,7 +85,10 @@ static bool test_remote(const char *name)
+     };
+     struct mm_struct mm={.vmas=vmas,.count=ARRAY_SIZE(vmas),.read_locked=true};
+     if (!strcmp(name,"pin-optional-retry")) fail_name=HOST_SECOND_REMOTE.symbol_name;
+-    assert(!command("add /file0"));
++    if (!strcmp(name,"pin-optional-retry"))
++        assert(command("add /file0")==-EINVAL && !nmap);
++    else
++        assert(!command("add /file0"));
+     if (!strcmp(name,"gup-return-contract")) {
+         assert(single_page_consumer(&kp_gup_remote,&mm,0x3000)==-EFAULT);
+     } else if (!strcmp(name,"pin-return-contract")) {
+@@ -251,7 +254,7 @@ int main(int argc, char **argv)
+                 struct file f={&host_ino[0]};struct vm_area_struct v={.vm_file=&f};assert(fire(&kp_map,&v)==1);
+             }
+         } else if (!strcmp(name,"optional-retry")) {
+-            fail_name="show_smap";assert(!command("add /file0"));assert(!map_probe_armed[1]);
++            fail_name="show_smap";assert(command("add /file0")==-EINVAL && !nmap);assert(!map_probe_armed[1]);
+             fail_name=NULL;assert(!command("add /file0"));assert(map_probe_armed[1] && nmap==1);
+         } else if (!strcmp(name,"repeat-lifecycle")) {
+             for(int i=0;i<16;i++){
+diff --git a/tests/module_control/host_kernel.h b/tests/module_control/host_kernel.h
+index ac61a06..186e5f9 100644
+--- a/tests/module_control/host_kernel.h
++++ b/tests/module_control/host_kernel.h
+@@ -47,3 +47,6 @@ static int scnprintf(char *out,size_t size,const char *format,...)
+ { if(!size) return 0; va_list ap; va_start(ap,format); int n=vsnprintf(out,size,format,ap); va_end(ap); return n<(int)size ? n : (int)size-1; }
+ static int sus_path_add_self_hidden(const char *path);
+ static int sus_path_del_path(const char *path);
++static int susfs_control_get(void) { return 0; }
++static void susfs_control_put(void) {}
++static bool sus_path_lsm_active(void) { return true; }
+diff --git a/tests/mshow_filter/host_kernel.h b/tests/mshow_filter/host_kernel.h
+index 25ce804..7bc7c97 100644
+--- a/tests/mshow_filter/host_kernel.h
++++ b/tests/mshow_filter/host_kernel.h
+@@ -6,6 +6,7 @@
+ #include <stdarg.h>
+ #include <stdatomic.h>
+ #include <stdbool.h>
++#include <stdint.h>
+ #include <stddef.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -62,3 +63,8 @@ struct module { char name[MODULE_NAME_LEN]; struct list_head list; };
+ 
+ static int sus_path_add_self_hidden(const char *path);
+ static int sus_path_del_path(const char *path);
++static bool sus_path_lsm_active(void) { return true; }
++static int susfs_control_get(void) { return 0; }
++static void susfs_control_put(void) {}
++static int copy_from_kernel_nofault(void *to,const void *from,size_t size)
++{ if (!from || (uintptr_t)from < PAGE_SIZE) return -EFAULT; memcpy(to,from,size);return 0; }
+diff --git a/tests/mshow_filter/run.py b/tests/mshow_filter/run.py
+index 9ea9850..28120c0 100644
+--- a/tests/mshow_filter/run.py
++++ b/tests/mshow_filter/run.py
+@@ -101,7 +101,9 @@ cases = [c for c, _ in EQ] + ['m-null-impossible-call'] + [c for c, _ in GATE]
+ results, ok = [], True
+ 
+ def run_case(exe, case):
+-    run = subprocess.run([str(exe), case], capture_output=True, text=True, timeout=30)
++    run = subprocess.run([str(exe), case], capture_output=True, text=True, timeout=30,
++                         env=dict(os.environ, ASAN_OPTIONS='detect_leaks=0:abort_on_error=1',
++                                  UBSAN_OPTIONS='halt_on_error=1'))
+     if run.returncode:
+         return None
+     line = next((l for l in run.stdout.splitlines() if l.startswith('OBS ')), None)
+diff --git a/tests/path_creds/host_kernel.h b/tests/path_creds/host_kernel.h
+index 77ecbb0..5884b21 100644
+--- a/tests/path_creds/host_kernel.h
++++ b/tests/path_creds/host_kernel.h
+@@ -60,6 +60,14 @@ static _Thread_local int spin_depth;
+ #define mutex_lock(n) pthread_mutex_lock(n)
+ #define mutex_unlock(n) pthread_mutex_unlock(n)
+ #define mutex_trylock(n) (pthread_mutex_trylock(n)==0)
++static bool control_stopping;
++static atomic_int control_active;
++static int susfs_control_get(void) {
++    if (control_stopping) return -ENODEV;
++    atomic_fetch_add(&control_active,1);return 0;
++}
++static void susfs_control_put(void) { assert(atomic_fetch_sub(&control_active,1)>0); }
++static int sus_path_del_path(const char *path);
+ 
+ struct cred {
+     atomic_int usage;
+@@ -70,7 +78,14 @@ struct cred {
+ struct task_struct { const struct cred *cred; };
+ static _Thread_local struct task_struct task;
+ #define current (&task)
+-struct super_block { u64 s_dev; };
++struct super_block { u64 s_dev; atomic_int s_active; };
++#define i_count refs
++static bool atomic_inc_not_zero(atomic_int *v) {
++    int n=atomic_load(v);
++    while(n && !atomic_compare_exchange_weak(v,&n,n+1)) {}
++    return n!=0;
++}
++static void deactivate_super(struct super_block *sb) { assert(atomic_fetch_sub(&sb->s_active,1)>1); }
+ struct inode { struct super_block *i_sb; u64 i_ino; umode_t i_mode; atomic_int refs; };
+ struct dentry { struct inode *inode; struct { char *name; } d_name; };
+ struct path { struct dentry *dentry; };
+diff --git a/tests/path_creds/path_creds_test.c b/tests/path_creds/path_creds_test.c
+index bcb7c6e..ac33a4d 100644
+--- a/tests/path_creds/path_creds_test.c
++++ b/tests/path_creds/path_creds_test.c
+@@ -9,8 +9,9 @@ static bool block_walk, entered, released;
+ static const char *block_name;
+ static atomic_int last_lookup_tag;
+ static struct cred worker={.usage=ATOMIC_INIT(2),.tag=999};
+-static struct super_block sb={.s_dev=65105};
++static struct super_block sb={.s_dev=65105,.s_active=ATOMIC_INIT(1)};
+ static struct { const char *path; unsigned tag; bool exists; struct inode inode; struct dentry dentry; } files[4];
++static umode_t expected_modes[4]={0600,0600,0600,0600};
+ 
+ static struct cred *prepare_creds(void)
+ {
+@@ -104,13 +105,49 @@ static void clean(void) {
+     assert(sus_path_command("clear",NULL)==0);verify_index();assert(sus_path_count==0 && atomic_read(&sus_path_n_pending)==0);
+     assert(!sus_path_cred_active() && atomic_load(&prepared)==atomic_load(&aborted));
+     assert(atomic_load(&overrides)==atomic_load(&reverted));
+-    for(unsigned i=0;i<4;++i)assert(atomic_load(&files[i].inode.refs)==1 && files[i].inode.i_mode==0600);
++    for(unsigned i=0;i<4;++i)assert(atomic_load(&files[i].inode.refs)==1 && files[i].inode.i_mode==expected_modes[i]);
+     kfree(dirent_tmp);dirent_tmp=NULL;assert(atomic_load(&allocations)==0);
+ }
+ int main(int argc,char **argv)
+ {
+     assert(argc==2);alarm(12);setup();const char *name=argv[1];
+     const struct cred *caller=protected_caller(10);current->cred=caller;
++    if (!strcmp(name,"mode-unchanged") || !strcmp(name,"chmod-preserved") ||
++        !strcmp(name,"setid-clear-preserved") || !strcmp(name,"detached-reference") ||
++        !strcmp(name,"shutdown-reference") || !strcmp(name,"late-control")) {
++        files[0].exists=true;
++        files[0].inode.i_mode=0100000|04700;
++        assert(!add(files[0].path,CMD_SUSFS_ADD_SUS_PATH));
++        assert(files[0].inode.i_mode==(0100000|04700));
++        if(!strcmp(name,"chmod-preserved"))files[0].inode.i_mode=0100000|0600;
++        if(!strcmp(name,"setid-clear-preserved"))files[0].inode.i_mode=0100000|0700;
++        umode_t wanted=files[0].inode.i_mode;
++        if(!strcmp(name,"late-control")) {
++            control_stopping=true;
++            assert(add(files[1].path,CMD_SUSFS_ADD_SUS_PATH_LOOP)==-ENODEV);
++            assert(sus_path_command("clear",NULL)==-ENODEV);
++            assert(sus_path_del_path(files[0].path)==-ENODEV);
++            assert(sus_path_count==1 && !atomic_load(&control_active));
++            control_stopping=false; /* independent fixture cleanup */
++        }
++        if(!strcmp(name,"detached-reference")) {
++            struct sus_path_entry *e=find(files[0].path);
++            spin_lock(&sus_path_lock);
++            sus_path_prepare_release(e);
++            assert(atomic_load(&sb.s_active)==2);
++            sus_path_index_del(e);list_del(&e->list);sus_path_count--;
++            spin_unlock(&sus_path_lock);
++            sus_path_entry_free(e);
++            assert(atomic_load(&sb.s_active)==1);
++        } else {
++            if(!strcmp(name,"shutdown-reference"))atomic_store(&sb.s_active,0);
++            assert(sus_path_del_path(files[0].path)==1);
++            if(!strcmp(name,"shutdown-reference"))atomic_store(&sb.s_active,1);
++        }
++        assert(files[0].inode.i_mode==wanted && atomic_load(&files[0].inode.refs)==1);
++        expected_modes[0]=wanted;
++        drop_caller(caller);clean();printf("PASS %s\n",name);return 0;
++    }
+     if(!strcmp(name,"allocation-failure") || !strcmp(name,"prepare-failure")) {
+         if(!strcmp(name,"prepare-failure"))fail_prepare=1;else fail_alloc_at=2;
+         assert(add(files[0].path,CMD_SUSFS_ADD_SUS_PATH_LOOP)==-ENOMEM);
+diff --git a/tests/path_creds/run.py b/tests/path_creds/run.py
+index 3981c41..1cdcb43 100644
+--- a/tests/path_creds/run.py
++++ b/tests/path_creds/run.py
+@@ -31,7 +31,7 @@ def fragments(source):
+     for name in ('SUS_PATH_MAX_ENTRIES', 'SUS_PATH_LEN', 'SUS_PATH_PENDING_RETRY_S',
+                  'SUS_PATH_PENDING_TRIES', 'SUS_PATH_PENDING_BUDGET', 'DIRENT_BUF_SIZE'):
+         parts.append(re.search(r'^#define ' + name + r' .*$', text, re.M)[0])
+-    parts.append(text[text.index('struct sus_path_entry {'):text.index('/* Let DAC through')])
++    parts.append(text[text.index('struct sus_path_entry {'):text.index('/* Caller holds sus_path_lock, while the rule remains published.')])
+     for line in text.splitlines():
+         if re.match(r'static (?:LIST_HEAD\(sus_path_list|DEFINE_SPINLOCK\(sus_path_lock|'
+                     r'DEFINE_MUTEX\(sus_path_pending_lock|atomic_t sus_path_(?:n_pending|pending_tries|'
+@@ -39,11 +39,11 @@ def fragments(source):
+                     r'struct task_struct \*sus_path_resolver)', line):
+             parts.append(line)
+     parts.append((source / 'kernel/sus_path_index.h').read_text())
+-    parts.append('static struct delayed_work sus_path_pending_wq;\nstatic char *dirent_tmp;')
+-    for name in ('sus_path_relax_mode', 'sus_path_restore_mode', 'sus_path_entry_free',
++    parts.append('static struct delayed_work sus_path_pending_wq;\nstatic char *dirent_tmp;\nstatic bool sus_path_ready=true, sus_path_exiting;')
++    for name in ('sus_path_prepare_release', 'sus_path_entry_free',
+                  'sus_path_entry_set_path', 'sus_path_basename', 'sus_path_resolve_pending',
+-                 'sus_path_pending_arm', 'sus_path_del_path', 'sus_path_path_is_ours',
+-                 'sus_path_command', 'sus_path_supercall'):
++                 'sus_path_pending_arm', 'sus_path_del_path_impl', 'sus_path_del_path', 'sus_path_path_is_ours',
++                 'sus_path_command_impl', 'sus_path_command', 'sus_path_supercall_impl', 'sus_path_supercall'):
+         parts.append(function(text, name))
+     return '\n\n'.join(parts)
+ 
+@@ -59,7 +59,9 @@ def main():
+     cases = ['protected-caller', 'caller-exit', 'allocation-failure', 'prepare-failure',
+              'duplicate', 'capacity', 'per-rule-callers', 'resolve-release',
+              'manual-complete', 'delete-during-lookup', 'clear-during-lookup',
+-             'replace-during-lookup', 'lookup-errors', 'cleanup']
++             'replace-during-lookup', 'lookup-errors', 'cleanup',
++             'mode-unchanged', 'chmod-preserved', 'setid-clear-preserved',
++             'detached-reference', 'shutdown-reference', 'late-control']
+     results = []
+     with tempfile.TemporaryDirectory(prefix='susfs-path-creds-') as temp:
+         root = Path(temp)
+diff --git a/tests/priority_filter/run.py b/tests/priority_filter/run.py
+index 4288f48..e36ec84 100644
+--- a/tests/priority_filter/run.py
++++ b/tests/priority_filter/run.py
+@@ -49,10 +49,8 @@ with tempfile.TemporaryDirectory(prefix='susfs-priority-') as d:
+   ('probe-no-bti-proof','if (instruction == 0xd503245fU || instruction == 0xd50324dfU)','if (false)','probe-admission'),
+   ('probe-no-unregister','unregister_kprobe(&prio_probes[i]);','(void)0;','probe-admission'),
+   ('probe-ioprio-validation','rc = prio_check_cap_fn((int)regs->regs[2]);','rc = 0;','probe-validation'),
+-  ('publication-uaf','if (next->count || next->automatic)\n        next = NULL;\n    mutex_unlock(&prio_config_lock);','mutex_unlock(&prio_config_lock);\n    sched_yield();\n    if (next->count || next->automatic)\n        next = NULL;','concurrency'),
+  ]
+  for label,before,after,case in negatives:
+-  if label=='publication-uaf' and not a.sanitizers:continue
+   assert before in sources['PRODUCTION'],label
+   exe=build(label,sources['PRODUCTION'].replace(before,after,1))
+   r=subprocess.run([str(exe),case],capture_output=True,text=True,env=env,timeout=40)
+diff --git a/tests/priority_publication/publication_test.c b/tests/priority_publication/publication_test.c
+new file mode 100644
+index 0000000..d0e0545
+--- /dev/null
++++ b/tests/priority_publication/publication_test.c
+@@ -0,0 +1,57 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++#include <assert.h>
++#include <pthread.h>
++#include <stdbool.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <time.h>
++#define WRITE_ONCE(p,v) ((p)=(v))
++#define rcu_assign_pointer(p,v) ((p)=(v))
++struct prio_uid_rules { unsigned int count; bool automatic; };
++static struct prio_uid_rules *prio_rules,*first_rules;
++static unsigned int prio_count;
++static unsigned long prio_generation;
++static bool prio_enabled;
++static pthread_mutex_t prio_config_lock=PTHREAD_MUTEX_INITIALIZER;
++static pthread_mutex_t schedule_lock=PTHREAD_MUTEX_INITIALIZER;
++static pthread_cond_t changed=PTHREAD_COND_INITIALIZER;
++static bool first_unlocked,first_freed;
++static _Thread_local unsigned int role;
++static void wait_flag(bool *flag) {
++    struct timespec limit;assert(!clock_gettime(CLOCK_REALTIME,&limit));limit.tv_sec+=5;
++    while(!*flag)assert(!pthread_cond_timedwait(&changed,&schedule_lock,&limit));
++}
++static void mutex_unlock(pthread_mutex_t *lock) {
++    assert(!pthread_mutex_unlock(lock));
++    if(role!=1)return;
++    assert(!pthread_mutex_lock(&schedule_lock));
++    first_unlocked=true;pthread_cond_broadcast(&changed);
++    wait_flag(&first_freed);
++    assert(!pthread_mutex_unlock(&schedule_lock));
++}
++static void synchronize_rcu(void) { /* No read-side critical sections in this schedule. */ }
++static void kfree(void *p) {
++    bool retired=p && p==first_rules;
++    free(p);
++    if(!retired)return;
++    assert(!pthread_mutex_lock(&schedule_lock));
++    first_freed=true;pthread_cond_broadcast(&changed);
++    assert(!pthread_mutex_unlock(&schedule_lock));
++}
++#include PRODUCTION
++static void *first_writer(void *unused) {
++    (void)unused;role=1;assert(!pthread_mutex_lock(&prio_config_lock));
++    prio_commit_locked(first_rules,NULL);return NULL;
++}
++int main(void) {
++    first_rules=calloc(1,sizeof(*first_rules));assert(first_rules);first_rules->count=1;
++    pthread_t first;assert(!pthread_create(&first,NULL,first_writer,NULL));
++    assert(!pthread_mutex_lock(&schedule_lock));wait_flag(&first_unlocked);
++    assert(!pthread_mutex_unlock(&schedule_lock));
++    role=2;
++    struct prio_uid_rules *second=calloc(1,sizeof(*second));assert(second);second->count=1;
++    assert(!pthread_mutex_lock(&prio_config_lock));
++    assert(prio_rules==first_rules);prio_commit_locked(second,first_rules);
++    assert(!pthread_join(first,NULL));assert(prio_rules==second&&prio_count==1&&prio_enabled);
++    free(second);puts("PASS two-writer publication lifetime");return 0;
++}
+diff --git a/tests/priority_publication/run.py b/tests/priority_publication/run.py
+new file mode 100644
+index 0000000..3cb1843
+--- /dev/null
++++ b/tests/priority_publication/run.py
+@@ -0,0 +1,35 @@
++#!/usr/bin/env python3
++"""Deterministic two-writer ownership test of the production priority publisher."""
++import argparse
++import os
++from pathlib import Path
++import re
++import resource
++import subprocess
++import tempfile
++
++p=argparse.ArgumentParser(description=__doc__)
++p.add_argument('--sanitizers',action='store_true')
++a=p.parse_args()
++resource.setrlimit(resource.RLIMIT_CORE,(0,0))
++here=Path(__file__).resolve().parent
++source=(here.parents[1]/'kernel/susfs_priority_filter.c').read_text()
++fragment=re.search(r'^static [^\n]*\bprio_commit_locked\([^;{]*\)\n\{\n.*?^\}\n',source,re.M|re.S)[0]
++env=dict(os.environ,ASAN_OPTIONS='detect_leaks=0:abort_on_error=1',UBSAN_OPTIONS='halt_on_error=1')
++with tempfile.TemporaryDirectory(prefix='susfs-publication-') as d:
++    d=Path(d)
++    def run(label,text,sanitizers):
++        header=d/(label+'.h');header.write_text(text);exe=d/label
++        flags=['-O1','-g','-fsanitize=address,undefined','-fno-omit-frame-pointer','-no-pie'] if sanitizers else ['-O2']
++        subprocess.run([os.environ.get('CC','cc'),'-std=gnu11','-Wall','-Wextra','-Werror',
++            '-pthread',*flags,'-DPRODUCTION="'+str(header)+'"',str(here/'publication_test.c'),'-o',str(exe)],check=True)
++        return subprocess.run([str(exe)],capture_output=True,text=True,env=env,timeout=15)
++    good=run('production',fragment,a.sanitizers)
++    assert good.returncode==0,good.stderr
++    print('PASS production publication survives a second writer retiring the first value',flush=True)
++    before='if (next->count || next->automatic)\n        next = NULL;\n    mutex_unlock(&prio_config_lock);'
++    assert before in fragment
++    mutant=fragment.replace(before,'mutex_unlock(&prio_config_lock);\n    if (next->count || next->automatic)\n        next = NULL;',1)
++    bad=run('unsafe-after-unlock',mutant,True)
++    assert bad.returncode!=0 and 'AddressSanitizer: heap-use-after-free' in bad.stderr,bad.stderr
++    print('PASS deterministic publication-UAF negative control detected')
+diff --git a/tests/r18_fixes/redirect_test.c b/tests/r18_fixes/redirect_test.c
+index d5cef85..3de5fa5 100644
+--- a/tests/r18_fixes/redirect_test.c
++++ b/tests/r18_fixes/redirect_test.c
+@@ -57,9 +57,10 @@ static void path_put(struct path *p) { assert(p->dentry && p->dentry->refs>0); p
+ static bool susfs_abi_path_ok(const char *s,size_t n) { return s[0] && strnlen(s,n)<n; }
+ static void or_resolve_su_sid(void) { }
+ static int or_register(void) { return 0; }
+-static void or_register_reverse(void) { }
++static int or_register_reverse(void) { return 0; }
+ static void synchronize_rcu(void) { sync_rcu_calls++; }
+ static void strscpy(char *to,const char *from,size_t n) { assert(strlen(from)<n); strcpy(to,from); }
++static int host_statfs(const struct path *p,struct kstatfs *s) { (void)p;s->f_blocks=123;return 0; }
+ #include PRODUCTION
+ static void publication_hook(void) {
+     struct sus_or_entry *e=or_find_by_inode(publishing_inode->i_ino,sb.s_dev,publishing_inode->i_generation);
+@@ -72,13 +73,14 @@ static void release_entries(void) {
+ }
+ int main(int argc,char **argv) {
+     assert(argc==2); const char *c=argv[1];
++    or_vfs_statfs_fn=host_statfs;
+     if(!strcmp(c,"publication")) {
+         check_publication=1; assert(!or_add("/target","/redirected",0)); check_publication=0;
+         struct sus_or_entry *e=or_find_by_inode(items[0].inode.i_ino,sb.s_dev,items[0].inode.i_generation);
+         assert(e && !e->dead && nor==1 && susfs_open_redirect_rules==1);
+         assert(e->target_mnt_id==100);
+         /* no vfs_statfs on the host: the snapshot stays zeroed, which is the refuse-safe direction */
+-        assert(e->spoofed_kstatfs.f_blocks==0);
++        assert(e->spoofed_kstatfs.f_blocks==123);
+     } else if(!strcmp(c,"replacement-capacity")) {
+         for(int i=0;i<64;i++) { char t[40],r[40]; snprintf(t,sizeof(t),"/t%d",i); snprintf(r,sizeof(r),"/r%d",i); assert(!or_add(t,r,0)); }
+         assert(or_add("/t99-new","/r99",0)==-ENOSPC);
+diff --git a/tests/redirect_entry/entry_test.c b/tests/redirect_entry/entry_test.c
+index 4d45d5b..f21def3 100644
+--- a/tests/redirect_entry/entry_test.c
++++ b/tests/redirect_entry/entry_test.c
+@@ -133,6 +133,13 @@ int main(int argc, char **argv)
+ 	else if (!strcmp(c, "copenat-redirect"))      { SET_COPENAT(O_RDONLY, 0); }                   /* redirect, no O_LARGEFILE */
+ 	else if (!strcmp(c, "copenat2-redirect"))     { SET_OPENAT2(K_COMPAT_OPENAT2, 0, O_RDONLY, 0, sizeof(g_how)); } /* redirect, O_LARGEFILE: the kernel serves it from the native impl */
+ 	else if (!strcmp(c, "openat2-redirect"))      { SET_OPENAT2(K_OPENAT2, 0, O_RDONLY, 0, sizeof(g_how)); } /* redirect, O_LARGEFILE */
++	else if (!strcmp(c, "openat2-cloexec"))       { SET_OPENAT2(K_OPENAT2, 0, O_RDONLY | O_CLOEXEC, 0, sizeof(g_how)); }
++	else if (!strcmp(c, "copenat2-cloexec"))      { SET_OPENAT2(K_COMPAT_OPENAT2, 0, O_RDONLY | O_CLOEXEC, 0, sizeof(g_how)); }
++	else if (!strcmp(c, "openat2-beneath"))       { SET_OPENAT2(K_OPENAT2, SUSFS_RESOLVE_BENEATH, O_RDONLY, 0, sizeof(g_how)); }
++	else if (!strcmp(c, "openat2-inroot"))        { SET_OPENAT2(K_OPENAT2, SUSFS_RESOLVE_IN_ROOT, O_RDONLY, 0, sizeof(g_how)); }
++	else if (!strcmp(c, "openat2-cached"))        { SET_OPENAT2(K_OPENAT2, SUSFS_RESOLVE_CACHED, O_RDONLY, 0, sizeof(g_how)); }
++	else if (!strcmp(c, "openat2-page-size"))     { SET_OPENAT2(K_OPENAT2, 0, O_RDONLY, 0, PAGE_SIZE); }
++	else if (!strcmp(c, "openat2-oversize"))      { SET_OPENAT2(K_OPENAT2, 0, O_RDONLY, 0, PAGE_SIZE + 1); }
+ 	else if (!strcmp(c, "openat2-short"))         { SET_OPENAT2(K_OPENAT2, 0, O_RDONLY, 0, sizeof(g_how) - 1); } /* PASS */
+ 	else if (!strcmp(c, "openat2-unknown-resolve")){ SET_OPENAT2(K_OPENAT2, 0x40, O_RDONLY, 0, sizeof(g_how)); }  /* PASS */
+ 	else if (!strcmp(c, "openat2-beneath-inroot")) { SET_OPENAT2(K_OPENAT2, SUSFS_RESOLVE_BENEATH | SUSFS_RESOLVE_IN_ROOT, O_RDONLY, 0, sizeof(g_how)); } /* PASS */
+@@ -160,6 +167,11 @@ int main(int argc, char **argv)
+ 	int cloexec_in_open = g_filp_called ? ((g_filp_flags & O_CLOEXEC) ? 1 : 0) : -1;
+ 	int order_ok = (g_getfd_called && g_filp_called) ? (g_getfd_seq < g_filp_seq) : -1;
+ 	int notify_order = (g_fsnotify_called && g_install_called) ? (g_fsnotify_seq < g_install_seq) : -1;
++	if (g_install_called) {
++		bool wanted_cloexec = !strcmp(c,"openat-cloexec") ||
++			!strcmp(c,"openat2-cloexec") || !strcmp(c,"copenat2-cloexec");
++		assert(!!(g_getfd_flags & O_CLOEXEC) == wanted_cloexec);
++	}
+ 
+ 	printf("OBS cls=%s ret=%ld filp=%d getfd=%d putfd=%d install=%d largefile=%d cloexec_in_open=%d order_ok=%d notify_order=%d fsnotify=%d\n",
+ 	       cls, r, g_filp_called, g_getfd_called, g_putfd_called, g_install_called,
+diff --git a/tests/redirect_entry/host_kernel.h b/tests/redirect_entry/host_kernel.h
+index db23a39..6d28a09 100644
+--- a/tests/redirect_entry/host_kernel.h
++++ b/tests/redirect_entry/host_kernel.h
+@@ -28,6 +28,8 @@ enum susfs_or_entry_kind {
+ 	SUSFS_OR_ENTRY_KIND_COUNT,
+ };
+ #define SUSFS_OR_ENTRY_PASS LONG_MIN
++#define PAGE_SIZE 4096
++#define EOPNOTSUPP 95
+ 
+ typedef uint16_t u16;
+ typedef uint32_t u32;
+diff --git a/tests/redirect_entry/run.py b/tests/redirect_entry/run.py
+index c605763..d828f22 100644
+--- a/tests/redirect_entry/run.py
++++ b/tests/redirect_entry/run.py
+@@ -29,6 +29,8 @@ parser.add_argument('--source-dir', type=Path, default=Path(__file__).resolve().
+ parser.add_argument('--json', type=Path)
+ parser.add_argument('--sanitizers', action='store_true')
+ args = parser.parse_args()
++env = dict(os.environ, ASAN_OPTIONS='detect_leaks=0:abort_on_error=1',
++           UBSAN_OPTIONS='halt_on_error=1')
+ 
+ here = Path(__file__).resolve().parent
+ source = (args.source_dir / 'kernel/susfs_or_entry.c').read_text()
+@@ -69,6 +71,13 @@ EXPECT = {
+     'copenat2-redirect':      ('FD', 7, 1, 1, 0, 1, 1, 0),   # compat openat2: served by the native impl -> O_LARGEFILE
+     'openat2-redirect':       ('FD', 7, 1, 1, 0, 1, 1, 0),
+     'openat2-largerzeroed':   ('FD', 7, 1, 1, 0, 1, 1, 0),   # larger struct, tail zeroed -> redirect
++    'openat2-cloexec':        ('FD', 7, 1, 1, 0, 1, 1, 0),
++    'copenat2-cloexec':       ('FD', 7, 1, 1, 0, 1, 1, 0),
++    'openat2-page-size':      ('FD', 7, 1, 1, 0, 1, 1, 0),
++    'openat2-beneath':        ('ERR', -95, 0, 0, 0, 0, -1, -1),
++    'openat2-inroot':         ('ERR', -95, 0, 0, 0, 0, -1, -1),
++    'openat2-cached':         ('ERR', -95, 0, 0, 0, 0, -1, -1),
++    'openat2-oversize':       ('PASS', None, 0, 0, 0, 0, -1, -1),
+     # handed back to the kernel (PASS): nothing opened
+     'openat-tmpfile':         ('PASS', None, 0, 0, 0, 0, -1, -1),
+     'openat-miss':            ('PASS', None, 0, 0, 0, 0, -1, -1),
+@@ -95,9 +104,9 @@ results, ok = [], True
+ 
+ 
+ def obs(exe, case):
+-    r = subprocess.run([str(exe), case], capture_output=True, text=True, timeout=30)
++    r = subprocess.run([str(exe), case], capture_output=True, text=True, timeout=30, env=env)
+     if r.returncode:
+-        return None
++        raise RuntimeError(f'{case} exited {r.returncode}:\n{r.stdout}\n{r.stderr}')
+     line = next((l for l in r.stdout.splitlines() if l.startswith('OBS ')), None)
+     if not line:
+         return None
+diff --git a/tools/susfs_insmod.c b/tools/susfs_insmod.c
+index 346712b..91ae20e 100644
+--- a/tools/susfs_insmod.c
++++ b/tools/susfs_insmod.c
+@@ -981,7 +981,9 @@ void insmod_main(long argc, char **argv)
+ 		name = shstr + s->sh_name;
+ 		if (s->sh_type == SHT_SYMTAB && !symtab)
+ 			symtab = s;
+-		if (s->sh_type == SHT_PROGBITS && !modinfo && s_eq_n(name, ".modinfo", 9))
++		if (s->sh_type == SHT_PROGBITS && !modinfo &&
++		    shstr_size - s->sh_name >= sizeof(".modinfo") &&
++		    s_eq_n(name, ".modinfo", sizeof(".modinfo")))
+ 			modinfo = s;
+ 	}
+ 	if (!symtab)

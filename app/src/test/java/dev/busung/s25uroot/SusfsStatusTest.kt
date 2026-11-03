@@ -64,11 +64,18 @@ class SusfsStatusTest {
         assertEquals(release, profile.getString("kernelRelease"))
         assertEquals(bzja.incremental, profile.getString("firmware"))
     }
+    @Test fun unknownBuildsRequireAnExactProfile() {
+        listOf("6.12.70-android16-6-xyz", "6.12.69-android16-6-custom",
+            device().kernelRelease.replace("-4k", "-16k"),
+            device().kernelRelease.replace("BZIG", "BZIK")).forEach { release ->
+            assertTrue(release, susfsTargetFor(device().copy(kernelRelease = release)) is SusfsTarget.Unsupported)
+        }
+    }
     @Test fun variantSelection() {
         assertEquals(SusfsTarget.Known("bzig", "BZIG"), susfsTargetFor(device()))
         assertEquals(SusfsTarget.Known("bzid", "BZID"), susfsTargetFor(bzid()))
         assertEquals(SusfsTarget.Known("bzig", "BZIG"), susfsTargetFor(device().copy(model = "SM-S948B/DS")))
-        assertTrue(susfsTargetFor(device().copy(kernelRelease = "6.12.70-android16-6-xyz")) is SusfsTarget.FamilyFallback)
+        assertTrue(susfsTargetFor(device().copy(kernelRelease = "6.12.70-android16-6-xyz")) is SusfsTarget.Unsupported)
         assertTrue(susfsTargetFor(device().copy(model = "SM-S918B", device = "dm1q")) is SusfsTarget.Unsupported)
         assertTrue(susfsTargetFor(device().copy(pageSize = 16384)) is SusfsTarget.Unsupported)
         assertTrue(susfsTargetFor(device().copy(abi = "x86_64")) is SusfsTarget.Unsupported)
@@ -76,3 +83,4 @@ class SusfsStatusTest {
         assertTrue(susfsTargetFor(device().copy(kernelRelease = "5.15.0-android13")) is SusfsTarget.Unsupported)
     }
 }
+

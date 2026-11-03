@@ -10,7 +10,6 @@ internal typealias SusfsShell = (String, Long) -> ShizukuController.ShellResult?
 
 /** Manual boot-local activation: verified bundled bytes, root loader, then live ABI status. */
 internal object SusfsRuntime {
-    private const val SHARED_MODULE_DIR = "bzig"
     private val lock = Any()
 
     private fun profile(context: Context, variantDir: String): JSONObject =
@@ -21,7 +20,7 @@ internal object SusfsRuntime {
         if (target is SusfsTarget.Unsupported) return target.reason
         if (target == null) return "This device could not be read."
         return try {
-            profile(context, (target as? SusfsTarget.Known)?.variantDir ?: SHARED_MODULE_DIR)
+            profile(context, (target as SusfsTarget.Known).variantDir)
             null
         } catch (e: Exception) {
             "The bundled SusFS profile could not be read."
@@ -86,7 +85,7 @@ internal object SusfsRuntime {
         shell: SusfsShell = KernelSuRuntime::rootShell): SusfsOutcome = runCatching {
         val target = susfsTargetFor(snapshot)
         if (target is SusfsTarget.Unsupported) return unavailable(target.reason)
-        readStatus(context, profile(context, (target as? SusfsTarget.Known)?.variantDir ?: SHARED_MODULE_DIR), shell)
+        readStatus(context, profile(context, (target as SusfsTarget.Known).variantDir), shell)
     }.getOrElse { unavailable(it.message ?: "SusFS status could not be read.") }
 
     fun activate(context: Context, snapshot: DeviceSnapshot = DeviceSnapshot.current(),
@@ -104,7 +103,7 @@ internal object SusfsRuntime {
     private fun activateLocked(context: Context, snapshot: DeviceSnapshot, shell: SusfsShell): SusfsOutcome {
         val target = susfsTargetFor(snapshot)
         if (target is SusfsTarget.Unsupported) return unavailable(target.reason)
-        val variantDir = (target as? SusfsTarget.Known)?.variantDir ?: SHARED_MODULE_DIR
+        val variantDir = (target as SusfsTarget.Known).variantDir
         val profile = profile(context, variantDir)
         val root = shell("id; id -Z; uname -r", 15)
         if (!isRootAnswer(root)) return unavailable("Grant this app root permission in your manager, then retry.", needsGrant = true)
@@ -113,7 +112,7 @@ internal object SusfsRuntime {
         if (before.status.state != SusfsState.Absent) return SusfsAutoApps.attach(context, before, shell)
         val runningRelease = root?.output?.lineSequence()?.map { it.trim() }
             ?.firstOrNull { it.contains("android") }.orEmpty()
-        // Family kernels use the shared bytes; the live feature check proves activation.
+        // Recheck the exact qualified release in the root shell before loading.
         if (target is SusfsTarget.Known) {
             val expected = profile.getString("kernelRelease")
             if (runningRelease != expected)
@@ -142,3 +141,4 @@ internal object SusfsRuntime {
         return SusfsAutoApps.attach(context, after.copy(status = status, report = report), shell)
     }
 }
+

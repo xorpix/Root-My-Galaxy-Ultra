@@ -65,12 +65,6 @@ internal fun parseSusfsStatus(output: String, exitCode: Int): SusfsStatus = runC
 internal sealed interface SusfsTarget {
     /** Exact profile match. */
     data class Known(val variantDir: String, val label: String) : SusfsTarget
-    /**
-     * S26-family 6.12 GKI kernel without a recorded profile: attempt with the
-     * shared module bytes, verified by feature presence afterwards and never
-     * assumed. A refused load is an ordinary failed run, not a brick.
-     */
-    data class FamilyFallback(val runningRelease: String) : SusfsTarget
     /** Not attempted. */
     data class Unsupported(val reason: String) : SusfsTarget
 }
@@ -82,7 +76,6 @@ private val knownSusfsReleases = mapOf(
 )
 private val susfsFamilyModel =
     Regex("SM-S948[A-Z0-9]{1,2}(?:/DS)?|SC-53G|SCG37", RegexOption.IGNORE_CASE)
-private val susfsFamilyKernel = Regex("6\\.12\\.\\d+-android16-\\d+(?:-\\S+)?")
 
 /** Firmware compatibility is independent of root backend selection. */
 internal fun susfsTargetFor(device: DeviceSnapshot): SusfsTarget {
@@ -98,8 +91,6 @@ internal fun susfsTargetFor(device: DeviceSnapshot): SusfsTarget {
     knownSusfsReleases[device.kernelRelease]?.let { (dir, label) ->
         return SusfsTarget.Known(dir, label)
     }
-    if (susfsFamilyKernel.matches(device.kernelRelease)) {
-        return SusfsTarget.FamilyFallback(device.kernelRelease)
-    }
-    return SusfsTarget.Unsupported("Kernel ${device.kernelRelease} has no SusFS profile yet.")
+    return SusfsTarget.Unsupported("Kernel ${device.kernelRelease} has no verified SusFS profile. Loading requires a profile for this exact kernel.")
 }
+
