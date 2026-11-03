@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "repository": "xorpix/Root-My-Galaxy-Ultra",
+  "requestedDate": "2026-11-03",
+  "keep": [
+    "dev",
+    "main"
+  ],
+  "archivePrefix": "archive/2026-11-03/",
+  "branches": [
+    {
+      "name": "build/rmgu-1.3.1-backends",
+      "sha": "3582ef1fd8fd3e7a92a5fcfaa17679c846f85765"
+    },
+    {
+      "name": "build/susfs-priority-probe-20261031",
+      "sha": "880fd96040114ea22aa0eda288dff38836935d61"
+    },
+    {
+      "name": "codex/susfs-audit-20261103",
+      "sha": "9ae48898122485bac91b742f1ce125244afef42d"
+    },
+    {
+      "name": "codex/susfs-repairs-20261103",
+      "sha": "103e38ddf1568cf3c3fe70e3003730c81e5dbdbf"
+    },
+    {
+      "name": "feat/kowsu-backend",
+      "sha": "7bee13ee769df8dff101554d99d0f65256e72b87"
+    },
+    {
+      "name": "feat/susfs-dispatcher-20261029",
+      "sha": "7ece538143cd6cc39407faa60956a8313bf9904d"
+    },
+    {
+      "name": "feat/susfs-priority-20261030",
+      "sha": "0879880188f3e754676aeabeff65c042da36162e"
+    },
+    {
+      "name": "feat/susfs-readlink-enoent",
+      "sha": "c0404452892f79663851d09d014c5f642ca2b3c7"
+    },
+    {
+      "name": "fix/dirtyfrag-logging-preflight",
+      "sha": "11d70d913d5c5a2687a4497ee40deb62450f0c9e"
+    },
+    {
+      "name": "fix/kowsu-rebase-20261031",
+      "sha": "a6a88fd18db5f2afb1bd737430d1ce5371225abe"
+    },
+    {
+      "name": "fix/susfs-audit-20261027",
+      "sha": "ad795b30cf3852e5e7764f3c2df03b2c0dcb408a"
+    },
+    {
+      "name": "release/import-1.3.1-20261031",
+      "sha": "f8563c294e6a2b6eebbdc5336611a6b17a4593e7"
+    },
+    {
+      "name": "review/susfs-upstream-20261103",
+      "sha": "d3807d0d1c0e4a4a11a70bed4e36de91ba9abba1"
+    },
+    {
+      "name": "test/bzja-20261030",
+      "sha": "56df4eb1bbadc4212bfe13fc2659f6216db268cd"
+    },
+    {
+      "name": "test/susfs-app-probe-20261031",
+      "sha": "8663cbc2019a17fbd22490c73bff28d23718a351"
+    }
+  ],
+  "context": "Completed and superseded feature, build, test, release and review branches. PR 41 was retained and merged; PR 42 is a historical audit whose fixes shipped in 1.3.4. Unique commits must receive immutable archive tags before branch removal."
+}
