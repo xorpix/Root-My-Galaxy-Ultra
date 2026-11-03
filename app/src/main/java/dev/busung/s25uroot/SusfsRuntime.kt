@@ -10,6 +10,8 @@ internal typealias SusfsShell = (String, Long) -> ShizukuController.ShellResult?
 
 /** Manual boot-local activation: verified bundled bytes, root loader, then live ABI status. */
 internal object SusfsRuntime {
+    // Exact firmware profiles share one verified module asset.
+    private const val SHARED_MODULE_DIR = "bzig"
     private val lock = Any()
 
     private fun profile(context: Context, variantDir: String): JSONObject =
