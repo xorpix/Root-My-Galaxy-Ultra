@@ -1803,6 +1803,24 @@ index 0000000..7161bdc
 +        str(here/'control_test.c'),'-o',str(exe)],check=True)
 +    subprocess.run([str(exe)],check=True,timeout=15,
 +        env=dict(os.environ,ASAN_OPTIONS='detect_leaks=0:abort_on_error=1',UBSAN_OPTIONS='halt_on_error=1'))
+diff --git a/tests/feature_hooks/fdinfo_test.c b/tests/feature_hooks/fdinfo_test.c
+index c09f8b1..f6620c0 100644
+--- a/tests/feature_hooks/fdinfo_test.c
++++ b/tests/feature_hooks/fdinfo_test.c
+@@ -79,11 +79,11 @@ int main(int argc, char **argv)
+         or_fdinfo_disarm(); assert(unregister_calls == 8);
+     } else if (!strcmp(name, "partial-failures")) {
+         fail_mask = (1U << 0) | (1U << 2);
+-        assert(!or_fdinfo_arm() && or_fdinfo_probes == 2 && or_fdinfo_candidates == 4);
++        assert(or_fdinfo_arm()==-EIO && !or_fdinfo_registered && !or_fdinfo_probes && !or_fdinfo_candidates);
+         assert(!kr_or_fdinfo[0].kp.addr && !kr_or_fdinfo[2].kp.addr);
+         or_fdinfo_disarm(); assert(unregister_calls == 2);
+         fail_mask = 15;
+-        assert(or_fdinfo_arm() == -EINVAL && !or_fdinfo_registered && !or_fdinfo_probes);
++        assert(or_fdinfo_arm() == -EIO && !or_fdinfo_registered && !or_fdinfo_probes);
+         or_fdinfo_disarm(); assert(unregister_calls == 2);
+         found_count = 0;
+         assert(or_fdinfo_arm() == -ENOENT && !or_fdinfo_candidates);
 diff --git a/tests/identity_controls/host_kernel.h b/tests/identity_controls/host_kernel.h
 index 3ac1331..e378649 100644
 --- a/tests/identity_controls/host_kernel.h
@@ -2572,6 +2590,31 @@ index c605763..d828f22 100644
      line = next((l for l in r.stdout.splitlines() if l.startswith('OBS ')), None)
      if not line:
          return None
+diff --git a/tools/check_priority_artifact.py b/tools/check_priority_artifact.py
+index d8f2dc1..3ba8cbb 100644
+--- a/tools/check_priority_artifact.py
++++ b/tools/check_priority_artifact.py
+@@ -6,6 +6,7 @@ from elftools.elf.elffile import ELFFile
+ from review_cp15_artifact import inspect
+ p=argparse.ArgumentParser(description=__doc__)
+ p.add_argument("--baseline-is-priority",action="store_true",help="Compare with the previous priority build rather than pre-priority stable")
++p.add_argument("--baseline-is-audit",action="store_true",help="Compare audit repairs with the audited 8b9d19b production module")
+ for n in ('candidate','baseline','kdir','clang-bin','output'):p.add_argument('--'+n,type=Path,required=True)
+ a=p.parse_args();root=Path(__file__).resolve().parents[1];a.output.mkdir(parents=True,exist_ok=True)
+ fixture=a.output/'fixture';fixture.mkdir(exist_ok=True)
+@@ -43,9 +44,9 @@ checks={
+  'all_incoming_kcfi_match_real_headers':all(v==word for v in words.values()),
+  'all_have_call_landing_instructions':len(landings)==22 and all(v in [0xd503245f,0xd50324df,0xd503233f,0xd503237f] for v in landings.values()),
+  'priority_probe_callbacks_match_real_headers':all(probe_words[n]==expected['types']['expected_post' if n=='prio_probe_post' else 'expected_pre'] for n in probe_names),
+- 'baseline_imports_preserved':not removed,
+- 'imports_match_expected_baseline':set(added)==(set() if a.baseline_is_priority else {'_ctype','strim','strsep','preempt_schedule'}),
+- 'module_metadata_matches_production_parameters':sorted(candidate['modinfo'])==sorted([v for v in before['modinfo'] if v != 'parmtype=fail_layer:int']+([] if a.baseline_is_priority else ['parmtype=priority_auto_root:bool','parmtype=priority_appid:int'])),
++ 'baseline_imports_preserved':set(removed)==({'mas_find'} if a.baseline_is_audit else set()),
++ 'imports_match_expected_baseline':set(added)==({'deactivate_super'} if a.baseline_is_audit else (set() if a.baseline_is_priority else {'_ctype','strim','strsep','preempt_schedule'})),
++ 'module_metadata_matches_production_parameters':sorted(candidate['modinfo'])==sorted([v for v in before['modinfo'] if v != 'parmtype=fail_layer:int']+([] if a.baseline_is_priority or a.baseline_is_audit else ['parmtype=priority_auto_root:bool','parmtype=priority_appid:int'])),
+  'version_table_shape_unchanged':candidate['version_section_sizes']==before['version_section_sizes'],
+  'baseline_callback_types_preserved':all(candidate['types'].get(n)==v for n,v in before['types'].items() if n in candidate['types']),
+ }
 diff --git a/tools/susfs_insmod.c b/tools/susfs_insmod.c
 index 346712b..91ae20e 100644
 --- a/tools/susfs_insmod.c

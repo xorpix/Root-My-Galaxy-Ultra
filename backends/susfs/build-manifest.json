@@ -1,41 +1,44 @@
 {
   "schema": 1,
-  "sourceCommit": "8b9d19b3b348439b519260706896247e25633ec9",
-  "sourceTree": "5eed14dedfcfe5b6cda92d53b29896c1f2784a56",
-  "sourceParent": "e67f3d9f73a03f66af02acad9e40f5382bf111e3",
+  "sourceCommit": "3a65e96f3694f19abd7feb1f905e4794f48d5aee",
+  "sourceTree": "db1648df75d104249d29fc4533912e4ba4722561",
+  "sourceParent": "98d2fe68f28647deec322311247fb12ab2601da5",
   "sourceArchive": "source.tar.gz",
-  "sourceArchiveSha256": "953216c328b35ab9bf5ebb7599d0f9a5627565276a0ea340d2be1372a1fddd46",
+  "sourceArchiveSha256": "19897fca914840014af5162fa2f12bc2c4fad38ad9851a10de0d5a6b7374a098",
   "module": {
     "path": "app/src/main/assets/susfs/bzig/susfs_guard_lkm.ko",
-    "sha256": "d8008ad50ae174ca321c2320ca66152b540f84a72fc92d845b751ac93bd783c7",
-    "bytes": 582552
+    "bytes": 600216,
+    "sha256": "31e5eb20572c137caf21abc29a08632c8485c3ccd003d298008330b0e7f58a0a"
   },
   "validation": {
-    "hostSuites": 29,
-    "hostRunnerExecutions": 56,
-    "identityHeaderCases": 13,
-    "pathEntryHeaderCases": 3,
+    "hostSuites": 33,
+    "hostRunnerExecutions": 64,
+    "hostPassed": 64,
     "kernelImports": 140,
-    "hardwareValidated": false,
     "syscallWrappers": 22,
-    "dispatcherCasesPerMode": 40,
-    "dispatcherNegativeControlsPerMode": 4,
-    "bzjaStaticPriorityCheck": true,
-    "automaticRootPolicy": true,
-    "backendPolicyPins": 4,
-    "priorityEntryProbes": true,
-    "probeCallbackTypes": 5,
-    "phonePriorityValidation": "test4 accepted by maintainer; HMA reports no failures",
-    "productionCleanup": true,
+    "hardwareValidated": false,
     "acceptedHardwareBaseline": {
       "sourceCommit": "98b5149536fdc564132ca82b08d3980114be298a",
       "moduleSha256": "5c7808bee0b376d91b993d2440f288319162c5a6861549bf10d9c937e5e58b77",
       "result": "Maintainer accepted test4 device testing and reported no HMA failures; production diagnostic cleanup checked by host/ABI/build validation."
-    }
+    },
+    "repairAudit": "docs/susfs-repairs-20261103/README.md",
+    "repairNativeBuildRun": 41719805923,
+    "deviceValidation": "Pending for this repair candidate"
   },
   "priorityControl": {
     "path": "app/src/main/jniLibs/arm64-v8a/librmgususfs_priority.so",
     "sha256": "531750059f934b2aaeaa6000a5d2775a978c9832fdbd33753cf4dd7a2892fb5d",
     "bytes": 7072
+  },
+  "loader": {
+    "path": "app/src/main/jniLibs/arm64-v8a/librmgususfs_loader.so",
+    "bytes": 31720,
+    "sha256": "6c7432cd50c1de0e0337d754871082687267c8f02f57bd05f7c445cb8a6a0b3c"
+  },
+  "status": {
+    "path": "app/src/main/jniLibs/arm64-v8a/librmgususfs_status.so",
+    "bytes": 5624,
+    "sha256": "61615ab342beb593d3132e46a72f0c4b2a4b5cc81843d9ff1e983dcfddda465d"
   }
 }

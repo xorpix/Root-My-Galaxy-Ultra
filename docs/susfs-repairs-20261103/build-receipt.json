@@ -1,0 +1,19 @@
+{
+  "base_native_commit": "8b9d19b3b348439b519260706896247e25633ec9",
+  "patch_sha256": "ce28786321dd8f65745690a1db1ae1f25ee4a9f558b4b8a7bee8fc7b4d388a52",
+  "hardware_validated": false,
+  "artifacts": {
+    "susfs_guard_lkm.ko": {
+      "bytes": 600216,
+      "sha256": "31e5eb20572c137caf21abc29a08632c8485c3ccd003d298008330b0e7f58a0a"
+    },
+    "libsusfs_loader.so": {
+      "bytes": 31720,
+      "sha256": "6c7432cd50c1de0e0337d754871082687267c8f02f57bd05f7c445cb8a6a0b3c"
+    }
+  },
+  "native_source_commit": "98d2fe68f28647deec322311247fb12ab2601da5",
+  "packaged_source_commit": "3a65e96f3694f19abd7feb1f905e4794f48d5aee",
+  "production_sources_unchanged": true,
+  "note": "The packaged commit adds host-test expectations and compiler verification only; final CI rebuilds and compares the module and loader byte for byte."
+}

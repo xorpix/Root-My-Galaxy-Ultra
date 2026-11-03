@@ -1,6 +1,6 @@
-tree 5eed14dedfcfe5b6cda92d53b29896c1f2784a56
-parent e67f3d9f73a03f66af02acad9e40f5382bf111e3
-author Codex <codex@openai.com> 1793458951 +0100
-committer Codex <codex@openai.com> 1793458951 +0100
+tree db1648df75d104249d29fc4533912e4ba4722561
+parent 98d2fe68f28647deec322311247fb12ab2601da5
+author Codex <codex@openai.com> 1793740662 +0100
+committer Codex <codex@openai.com> 1793740662 +0100
 
-Record production validation and retire device probe instructions
+Verify complete fdinfo rollback and audited compiler ABI delta
