@@ -1,0 +1,52 @@
+PASS compat=1 configuration
+PASS compat=1 abi-faults
+PASS compat=1 queries
+PASS compat=1 automatic
+PASS compat=1 boot-automatic
+PASS compat=1 validation
+PASS compat=1 initialization
+PASS compat=1 sleeping-teardown
+PASS compat=1 concurrency
+PASS compat=1 probe-queries
+PASS compat=1 probe-validation
+PASS compat=1 probe-automatic
+PASS compat=1 probe-concurrency
+PASS compat=1 probe-admission
+PASS compat=1 probe-teardown
+PASS compat=0 configuration
+PASS compat=0 abi-faults
+PASS compat=0 queries
+PASS compat=0 automatic
+PASS compat=0 boot-automatic
+PASS compat=0 validation
+PASS compat=0 initialization
+PASS compat=0 sleeping-teardown
+PASS compat=0 concurrency
+PASS compat=0 probe-queries
+PASS compat=0 probe-validation
+PASS compat=0 probe-automatic
+PASS compat=0 probe-concurrency
+PASS compat=0 probe-admission
+PASS compat=0 probe-teardown
+PASS priority filter case
+PASS probe CONFIG_ARM64_BTI_KERNEL refusal
+PASS negative/shared-compat-original
+PASS negative/omit-ioprio-validation
+PASS negative/skip-package-validation
+PASS negative/omit-callback-entry
+PASS negative/partial-compat-coverage
+PASS negative/narrow-app-caller-range
+PASS negative/omit-live-grants
+PASS negative/omit-own-app
+PASS negative/probe-compat-proof
+PASS negative/probe-no-post-handler
+PASS negative/probe-no-tail-drain
+PASS negative/probe-no-core-proof
+PASS negative/probe-no-bti-proof
+PASS negative/probe-no-unregister
+PASS negative/probe-ioprio-validation
+Traceback (most recent call last):
+  File "<audit-workspace>/source/susfs/tests/priority_filter/run.py", line 59, in <module>
+    if not r.returncode:raise RuntimeError('Negative control was not detected: '+label)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Negative control was not detected: publication-uaf

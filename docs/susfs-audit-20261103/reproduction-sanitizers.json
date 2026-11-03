@@ -1,0 +1,279 @@
+{
+  "schema": 1,
+  "scope": "extracted shipping C with modeled kernel APIs; known defects are EXPECTED assertions",
+  "sanitizers": true,
+  "hardware_validated": false,
+  "matched": true,
+  "results": [
+    {
+      "group": "mount-control",
+      "case": "enable-disable",
+      "expected": "known-defect-assertion",
+      "matched": true,
+      "exit_code": -6,
+      "stdout": "",
+      "stderr": "mount-control: <fixtures>/mount-control.c:96: main: Assertion `kp_sb_down.live&&kp_mnt_free.live&&kp_sb_down_ok&&kp_mnt_free_ok && \"mount hiding enabled without its lifetime invalidators\"' failed."
+    },
+    {
+      "group": "mode-ownership",
+      "case": "ordinary",
+      "expected": "ordinary-success",
+      "matched": true,
+      "exit_code": 0,
+      "stdout": "PASS permission ownership",
+      "stderr": ""
+    },
+    {
+      "group": "mode-ownership",
+      "case": "foreign-chmod",
+      "expected": "known-defect-assertion",
+      "matched": true,
+      "exit_code": -6,
+      "stdout": "",
+      "stderr": "mode-ownership: <fixtures>/mode-ownership.c:36: main: Assertion `inode.i_mode==wanted && \"cleanup overwrote a foreign chmod/setid-clear\"' failed."
+    },
+    {
+      "group": "mode-ownership",
+      "case": "foreign-setid-clear",
+      "expected": "known-defect-assertion",
+      "matched": true,
+      "exit_code": -6,
+      "stdout": "",
+      "stderr": "mode-ownership: <fixtures>/mode-ownership.c:36: main: Assertion `inode.i_mode==wanted && \"cleanup overwrote a foreign chmod/setid-clear\"' failed."
+    },
+    {
+      "group": "mode-ownership",
+      "case": "exempt-shell-dac",
+      "expected": "known-defect-assertion",
+      "matched": true,
+      "exit_code": -6,
+      "stdout": "",
+      "stderr": "mode-ownership: <fixtures>/mode-ownership.c:29: main: Assertion `!(inode.i_mode & S_IWOTH) && \"hiding granted DAC write access to an exempt shell caller\"' failed."
+    },
+    {
+      "group": "map-range",
+      "case": "gup-single",
+      "expected": "ordinary-success",
+      "matched": true,
+      "exit_code": 0,
+      "stdout": "PASS hidden remote-page range rejected",
+      "stderr": ""
+    },
+    {
+      "group": "map-range",
+      "case": "pin-single",
+      "expected": "ordinary-success",
+      "matched": true,
+      "exit_code": 0,
+      "stdout": "PASS hidden remote-page range rejected",
+      "stderr": ""
+    },
+    {
+      "group": "map-range",
+      "case": "gup-cross-vma",
+      "expected": "known-defect-assertion",
+      "matched": true,
+      "exit_code": -6,
+      "stdout": "",
+      "stderr": "map-range: <fixtures>/map-range.c:41: main: Assertion `sus_map_vm_access_pre(kp,&regs)==1 && \"multi-page request admitted a later hidden mapping\"' failed."
+    },
+    {
+      "group": "map-range",
+      "case": "pin-cross-vma",
+      "expected": "known-defect-assertion",
+      "matched": true,
+      "exit_code": -6,
+      "stdout": "",
+      "stderr": "map-range: <fixtures>/map-range.c:41: main: Assertion `sus_map_vm_access_pre(kp,&regs)==1 && \"multi-page request admitted a later hidden mapping\"' failed."
+    },
+    {
+      "group": "stat64-key",
+      "case": "low-inode",
+      "expected": "ordinary-success",
+      "matched": true,
+      "exit_code": 0,
+      "stdout": "PASS stat64 full inode key",
+      "stderr": ""
+    },
+    {
+      "group": "stat64-key",
+      "case": "high-inode",
+      "expected": "known-defect-assertion",
+      "matched": true,
+      "exit_code": -6,
+      "stdout": "",
+      "stderr": "stat64-key: <fixtures>/stat64-key.c:34: main: Assertion `susfs_kstat_spoof_compat_statbuf(&state,(unsigned long)buffer) && \"stat64 failed to match the full 64-bit inode key\"' failed."
+    },
+    {
+      "group": "late-control",
+      "case": "ordinary",
+      "expected": "ordinary-success",
+      "matched": true,
+      "exit_code": 0,
+      "stdout": "PASS live control command",
+      "stderr": ""
+    },
+    {
+      "group": "late-control",
+      "case": "after-teardown",
+      "expected": "known-defect-assertion",
+      "matched": true,
+      "exit_code": -6,
+      "stdout": "",
+      "stderr": "late-control: <fixtures>/late-control.c:15: sus_path_add_self_hidden: Assertion `!path_layer_down && \"late sysfs command added a rule after path-layer teardown\"' failed."
+    },
+    {
+      "group": "mount-parameter",
+      "case": "live-setter",
+      "expected": "ordinary-success",
+      "matched": true,
+      "exit_code": 0,
+      "stdout": "PASS mount-prefix setter",
+      "stderr": ""
+    },
+    {
+      "group": "mount-parameter",
+      "case": "load-init",
+      "expected": "known-defect-assertion",
+      "matched": true,
+      "exit_code": -6,
+      "stdout": "",
+      "stderr": "mount-parameter: <fixtures>/mount-parameter.c:15: main: Assertion `n_mount_keep==1 && !strcmp(mount_keep[0],\"/data/local/custom/\") && \"module initialization discarded the supplied hide_mounts parameter\"' failed."
+    },
+    {
+      "group": "openat2-contract",
+      "case": "openat-cloexec",
+      "expected": "ordinary-success",
+      "matched": true,
+      "exit_code": 0,
+      "stdout": "PASS openat2 descriptor/scope contract",
+      "stderr": ""
+    },
+    {
+      "group": "openat2-contract",
+      "case": "openat2-cloexec",
+      "expected": "known-defect-assertion",
+      "matched": true,
+      "exit_code": -6,
+      "stdout": "",
+      "stderr": "openat2-contract: <fixtures>/openat2-contract.c:42: main: Assertion `(g_getfd_flags&O_CLOEXEC) && \"openat2 lost close-on-exec on its descriptor\"' failed."
+    },
+    {
+      "group": "openat2-contract",
+      "case": "compat-openat2-cloexec",
+      "expected": "known-defect-assertion",
+      "matched": true,
+      "exit_code": -6,
+      "stdout": "",
+      "stderr": "openat2-contract: <fixtures>/openat2-contract.c:42: main: Assertion `(g_getfd_flags&O_CLOEXEC) && \"openat2 lost close-on-exec on its descriptor\"' failed."
+    },
+    {
+      "group": "openat2-contract",
+      "case": "resolve-beneath",
+      "expected": "known-defect-assertion",
+      "matched": true,
+      "exit_code": -6,
+      "stdout": "",
+      "stderr": "openat2-contract: <fixtures>/openat2-contract.c:38: main: Assertion `(result==SUSFS_OR_ENTRY_PASS || result<0) && !g_install_called && \"openat2 installed an unscoped absolute redirect descriptor\"' failed."
+    },
+    {
+      "group": "openat2-contract",
+      "case": "resolve-in-root",
+      "expected": "known-defect-assertion",
+      "matched": true,
+      "exit_code": -6,
+      "stdout": "",
+      "stderr": "openat2-contract: <fixtures>/openat2-contract.c:38: main: Assertion `(result==SUSFS_OR_ENTRY_PASS || result<0) && !g_install_called && \"openat2 installed an unscoped absolute redirect descriptor\"' failed."
+    },
+    {
+      "group": "openat2-contract",
+      "case": "oversize-how",
+      "expected": "known-defect-assertion",
+      "matched": true,
+      "exit_code": -6,
+      "stdout": "",
+      "stderr": "openat2-contract: <fixtures>/openat2-contract.c:31: main: Assertion `(result==SUSFS_OR_ENTRY_PASS || result==-E2BIG) && !g_install_called && \"openat2 accepted open_how larger than PAGE_SIZE\"' failed."
+    },
+    {
+      "group": "priority-publication",
+      "case": "publication-lifetime",
+      "expected": "ordinary-success",
+      "matched": true,
+      "exit_code": 0,
+      "stdout": "PASS two-writer publication lifetime",
+      "stderr": ""
+    },
+    {
+      "group": "control/serialized-mount",
+      "case": "enable-disable",
+      "expected": "ordinary-success",
+      "matched": true,
+      "exit_code": 0,
+      "stdout": "PASS serialized mount lifecycle",
+      "stderr": ""
+    },
+    {
+      "group": "control/full-stat64-key",
+      "case": "high-inode",
+      "expected": "ordinary-success",
+      "matched": true,
+      "exit_code": 0,
+      "stdout": "PASS stat64 full inode key",
+      "stderr": ""
+    },
+    {
+      "group": "control/retained-cloexec",
+      "case": "openat2-cloexec",
+      "expected": "ordinary-success",
+      "matched": true,
+      "exit_code": 0,
+      "stdout": "PASS openat2 descriptor/scope contract",
+      "stderr": ""
+    },
+    {
+      "group": "control/retained-cloexec",
+      "case": "compat-openat2-cloexec",
+      "expected": "ordinary-success",
+      "matched": true,
+      "exit_code": 0,
+      "stdout": "PASS openat2 descriptor/scope contract",
+      "stderr": ""
+    },
+    {
+      "group": "control/bounded-open-how",
+      "case": "oversize-how",
+      "expected": "ordinary-success",
+      "matched": true,
+      "exit_code": 0,
+      "stdout": "PASS openat2 descriptor/scope contract",
+      "stderr": ""
+    },
+    {
+      "group": "control/refused-unscoped-redirect",
+      "case": "resolve-beneath",
+      "expected": "ordinary-success",
+      "matched": true,
+      "exit_code": 0,
+      "stdout": "PASS openat2 descriptor/scope contract",
+      "stderr": ""
+    },
+    {
+      "group": "control/refused-unscoped-redirect",
+      "case": "resolve-in-root",
+      "expected": "ordinary-success",
+      "matched": true,
+      "exit_code": 0,
+      "stdout": "PASS openat2 descriptor/scope contract",
+      "stderr": ""
+    },
+    {
+      "group": "control/unsafe-publication",
+      "case": "publication-lifetime",
+      "expected": "ASan-heap-use-after-free",
+      "matched": true,
+      "exit_code": -6,
+      "stdout": "",
+      "stderr": "=================================================================\n==109==ERROR: AddressSanitizer: heap-use-after-free on address 0x502000000010 at pc 0x000000401a23 bp 0x7fdb767fed30 sp 0x7fdb767fed20\nREAD of size 4 at 0x502000000010 thread T1\n    #0 0x401a22 in prio_commit_locked <temporary>/unsafe-publication-control.h:10\n    #1 0x401a8c in first_writer <fixtures>/priority-publication.c:44\n    #2 0x7fdb79f33a41 in asan_thread_start ../../../../src/libsanitizer/asan/asan_interceptors.cpp:234\n    #3 0x7fdb79749aa3  (/lib/x86_64-linux-gnu/libc.so.6+0x9caa3) (BuildId: 274eec488d230825a136fa9c4d85370fed7a0a5e)\n    #4 0x7fdb797d6c6b  (/lib/x86_64-linux-gnu/libc.so.6+0x129c6b) (BuildId: 274eec488d230825a136fa9c4d85370fed7a0a5e)\n\n0x502000000010 is located 0 bytes inside of 8-byte region [0x502000000010,0x502000000018)\nfreed by thread T0 here:\n    #0 0x7fdb79fd14d8 in free ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:52\n    #1 0x401454 in kfree <fixtures>/priority-publication.c:35\n    #2 0x4018e1 in prio_commit_locked <temporary>/unsafe-publication-control.h:14\n    #3 0x401c4f in main <fixtures>/priority-publication.c:54\n    #4 0x7fdb796d71c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 274eec488d230825a136fa9c4d85370fed7a0a5e)\n    #5 0x7fdb796d728a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 274eec488d230825a136fa9c4d85370fed7a0a5e)\n    #6 0x401374 in _start (<temporary>/unsafe-publication-control+0x401374) (BuildId: 3ef0ab3a85bc0120902f44874007a5cf8b60c745)\n\npreviously allocated by thread T0 here:\n    #0 0x7fdb79fd2340 in calloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:77\n    #1 0x401b43 in main <fixtures>/priority-publication.c:47\n    #2 0x7fdb796d71c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 274eec488d230825a136fa9c4d85370fed7a0a5e)\n    #3 0x7fdb796d728a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 274eec488d230825a136fa9c4d85370fed7a0a5e)\n    #4 0x401374 in _start (<temporary>/unsafe-publication-control+0x401374) (BuildId: 3ef0ab3a85bc0120902f44874007a5cf8b60c745)\n\nThread T1 created by T0 here:\n    #0 0x7fdb79fca1f9 in pthread_create ../../../../src/libsanitizer/asan/asan_interceptors.cpp:245\n    #1 0x401b96 in main <fixtures>/priority-publication.c:48\n    #2 0x7fdb796d71c9  (/lib/x86_64-linux-gnu/libc.so.6+0x2a1c9) (BuildId: 274eec488d230825a136fa9c4d85370fed7a0a5e)\n    #3 0x7fdb796d728a in __libc_start_main (/lib/x86_64-linux-gnu/libc.so.6+0x2a28a) (BuildId: 274eec488d230825a136fa9c4d85370fed7a0a5e)\n    #4 0x401374 in _start (<temporary>/unsafe-publication-control+0x401374) (BuildId: 3ef0ab3a85bc0120902f44874007a5cf8b60c745)\n\nSUMMARY: AddressSanitizer: heap-use-after-free <temporary>/unsafe-publication-control.h:10 in prio_commit_locked\nShadow bytes around the buggy address:\n  0x501ffffffd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x501ffffffe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x501ffffffe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x501fffffff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n  0x501fffffff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00\n=>0x502000000000: fa fa[fd]fa fa fa 00 fa fa fa fa fa fa fa fa fa\n  0x502000000080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x502000000100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x502000000180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x502000000200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\n  0x502000000280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa\nShadow byte legend (one shadow byte represents 8 application bytes):\n  Addressable:           00\n  Partially addressable: 01 02 03 04 05 06 07 \n  Heap left redzone:       fa\n  Freed heap region:       fd\n  Stack left redzone:      f1\n  Stack mid redzone:       f2\n  Stack right redzone:     f3\n  Stack after return:      f5\n  Stack use after scope:   f8\n  Global redzone:          f9\n  Global init order:       f6\n  Poisoned by user:        f7\n  Container overflow:      fc\n  Array cookie:            ac\n  Intra object redzone:    bb\n  ASan internal:           fe\n  Left alloca redzone:     ca\n  Right alloca redzone:    cb\n==109==ABORTING"
+    }
+  ]
+}

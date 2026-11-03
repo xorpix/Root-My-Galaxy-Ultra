@@ -1,0 +1,17 @@
+{
+  "app_commit": "3c1394edcbc49e40cc46b0c31eb4d09f0be4c42b",
+  "native_commit": "8b9d19b3b348439b519260706896247e25633ec9",
+  "native_tree": "5eed14dedfcfe5b6cda92d53b29896c1f2784a56",
+  "archive_sha256": "953216c328b35ab9bf5ebb7599d0f9a5627565276a0ea340d2be1372a1fddd46",
+  "production_source_changed": false,
+  "hardware_validated": false,
+  "extracted_file_sha256": {
+    "kernel/sus_path.c": "04bdcb08898c0cdf2b8029f134ccba5fca0c06bf24924e5a0183b7540a17bcab",
+    "kernel/sus_mount.c": "5add82abd0a2dfff574a17fd64f02b5d35aea8f1f07911a0a3e1c0ffcc8da9d1",
+    "kernel/sus_map.c": "d61482ea6ba44834b4782809ccdb0e38a2c77918c2c1a7804fde54e01c8f30e0",
+    "kernel/susfs_kstat.c": "22351b389e2098f1f2d6550acedf71726c9c6384c4d92859fa9a634c0104ad6c",
+    "kernel/susfs_hide_syms.c": "f29d2f9271853fd438de51a8269c04fd2d09a2da14228c983def9f32b023cc13",
+    "kernel/susfs_or_entry.c": "397b1684e53a1d624022e3dfab03f5e7e5af4178ff8b5b0439a7bb8ebfd5ad84",
+    "kernel/susfs_priority_filter.c": "f4f341cb8f097f974cda96806deb7ce03f4a60f54fcdfc2e06bbe1e848a824ae"
+  }
+}

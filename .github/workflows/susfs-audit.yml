@@ -1,0 +1,44 @@
+name: Reproduce known SusFS audit findings
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/susfs-audit.yml
+      - docs/susfs-audit-20261103.md
+      - docs/susfs-audit-20261103/**
+      - tools/check_susfs_audit.py
+      - tools/susfs_audit_20261103/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reproduce:
+    name: Recorded findings (sanitizers=${{ matrix.sanitizers }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizers: [false, true]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reproduce the pinned findings and independent controls
+        shell: bash
+        env:
+          SANITIZERS: ${{ matrix.sanitizers }}
+        run: |
+          args=()
+          if [[ "$SANITIZERS" == true ]]; then args+=(--sanitizers); fi
+          python3 tools/check_susfs_audit.py --output audit-results "${args[@]}"
+      - name: Keep reproduction records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: susfs-audit-${{ matrix.sanitizers }}
+          path: audit-results/
+          if-no-files-found: warn
