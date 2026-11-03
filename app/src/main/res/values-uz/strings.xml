@@ -34,7 +34,7 @@
     <string name="appearance">Tashqi ko\'rinish</string>
     <string name="settings_section_payloads">Payload boshqaruvi</string>
     <string name="bundled_payloads_title">Ilovaga kiritilgan root payload’lari</string>
-    <string name="bundled_payloads_description">KernelSU, KernelSU-Next va BakaSU variantlari uchun Galaxy S26 Ultra o\'z ichiga oladi.</string>
+    <string name="bundled_payloads_description">Galaxy S26 Ultra modellari uchun KernelSU, KernelSU-Next, BakaSU va KowSU mavjud.</string>
     <string name="bundled_payloads_included">Kiritilgan</string>
     <string name="settings_section_run">Ishga tushirish boshqaruvi</string>
     <string name="settings_section_shizuku">Shizuku boshqaruvi</string>

@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "checkedDate": "2026-11-03",
+  "result": "All bundled upstream pins match their official branch heads; existing matched driver/daemon pairs retained.",
+  "backends": {
+    "kernelsu": {
+      "repository": "tiann/KernelSU",
+      "branch": "main",
+      "bundledCommit": "28db74f6f4692e97006ce9ebd8b19b9cc614b5b7",
+      "officialHead": "28db74f6f4692e97006ce9ebd8b19b9cc614b5b7",
+      "driverVersion": 32716,
+      "daemonVersion": "3.3.1-36-g28db74f6",
+      "uapi": 6
+    },
+    "kernelsu-next": {
+      "repository": "KernelSU-Next/KernelSU-Next",
+      "branch": "dev",
+      "bundledCommit": "a6c81fa4a8b7341d0bc5c3e4507531459df871ae",
+      "officialHead": "a6c81fa4a8b7341d0bc5c3e4507531459df871ae",
+      "driverVersion": 33455,
+      "daemonVersion": "3.4.2-100-ga6c81fa4",
+      "uapi": 6
+    },
+    "resukisu": {
+      "repository": "Baka-SU/BakaSU",
+      "branch": "main",
+      "bundledCommit": "516d3e87fbc986ccefdde2c2765f1700612441a9",
+      "officialHead": "516d3e87fbc986ccefdde2c2765f1700612441a9",
+      "driverVersion": 35257,
+      "daemonVersion": "4.2.0-rc3-86-g516d3e87",
+      "uapi": 6
+    },
+    "kowsu": {
+      "repository": "KOWX712/KernelSU",
+      "branch": "master",
+      "bundledCommit": "6ecdd69224fe6769e6c8715a4ef2b91602b23362",
+      "officialHead": "6ecdd69224fe6769e6c8715a4ef2b91602b23362",
+      "driverVersion": 32740,
+      "daemonVersion": "3.3.0-139-g6ecdd692",
+      "uapi": 6
+    }
+  }
+}

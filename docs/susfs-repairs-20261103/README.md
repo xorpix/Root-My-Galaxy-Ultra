@@ -32,10 +32,10 @@ Native source: `3a65e96f3694f19abd7feb1f905e4794f48d5aee`, tree `db1648df75d1042
 - CI rebuilds the packaged archive, verifies 22 syscall-wrapper CFI types against real headers, checks callback types and the explicit import delta, then compares rebuilt module/loader bytes with the bundled bytes.
 - Android CI runs unit tests, builds a debug APK and verifies its module, helpers, profiles and source provenance.
 
-`host-results.json`, `native-build.json` and `build-receipt.json` distinguish host/compiler evidence from device evidence. No phone result is claimed for this candidate. Older accepted device results in the manifest describe the previous hardware baseline only.
+`host-results.json`, `native-build.json` and `build-receipt.json` record host/compiler evidence. On 3 November 2026 the maintainer confirmed successful phone testing of the repair APK (app commit `3455db90dad18100bfd21a71eee3b2c644b1cd04`, module SHA-256 `31e5eb20572c137caf21abc29a08632c8485c3ccd003d298008330b0e7f58a0a`). This is a maintainer-reported result for the tested payload; it does not establish compatibility with every firmware.
 
 ## Remaining limits
 
 Return probes retain finite maxactive capacity. Registration and host tests cannot establish that every Samsung LTO call site reaches a probe; runtime hit/missed counters and device checks remain necessary. Scoped redirects and mixed pagemap chunks explicitly refuse operations as described above. A failed hook restoration or foreign hook chaining through module text can keep unload blocked to preserve live callback memory. Unknown firmware requires a new exact profile and validation.
 
-This PR does not publish a stable release or claim that every future compatibility problem is eliminated.
+The maintainer authorized publication after confirming successful phone testing. The runtime limits above remain applicable.

@@ -34,7 +34,7 @@
     <string name="appearance">Apparence</string>
     <string name="settings_section_payloads">Gestion des charges utiles</string>
     <string name="bundled_payloads_title">Charges utiles root intégrées</string>
-    <string name="bundled_payloads_description">Inclut KernelSU, KernelSU-Next et BakaSU pour les variantes Galaxy S26 Ultra.</string>
+    <string name="bundled_payloads_description">Inclut KernelSU, KernelSU-Next, BakaSU et KowSU pour les variantes Galaxy S26 Ultra.</string>
     <string name="bundled_payloads_included">Inclus</string>
     <string name="settings_section_run">Gestion des exécutions</string>
     <string name="settings_section_shizuku">Gestion de Shizuku</string>

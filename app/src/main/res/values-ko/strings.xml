@@ -34,7 +34,7 @@
     <string name="appearance">화면</string>
     <string name="settings_section_payloads">페이로드 관리</string>
     <string name="bundled_payloads_title">내장 root 페이로드</string>
-    <string name="bundled_payloads_description">KernelSU, KernelSU-Next 및 BakaSU는 Galaxy S26 Ultra 변종을 포함합니다.</string>
+    <string name="bundled_payloads_description">Galaxy S26 Ultra 모델용 KernelSU, KernelSU-Next, BakaSU 및 KowSU가 포함되어 있습니다.</string>
     <string name="bundled_payloads_included">포함됨</string>
     <string name="settings_section_run">실행 관리</string>
     <string name="settings_section_shizuku">Shizuku 관리</string>

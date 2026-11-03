@@ -34,7 +34,7 @@
     <string name="appearance">外观</string>
     <string name="settings_section_payloads">载荷管理</string>
     <string name="bundled_payloads_title">内置 root 载荷</string>
-    <string name="bundled_payloads_description">包含KernelSU,KernelSU-Next和BakaSU的Galaxy S26 Ultra变体.</string>
+    <string name="bundled_payloads_description">包含适用于 Galaxy S26 Ultra 各型号的 KernelSU、KernelSU-Next、BakaSU 和 KowSU。</string>
     <string name="bundled_payloads_included">已包含</string>
     <string name="settings_section_run">运行管理</string>
     <string name="settings_section_shizuku">Shizuku 管理</string>

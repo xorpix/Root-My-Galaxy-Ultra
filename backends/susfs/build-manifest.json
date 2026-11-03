@@ -16,15 +16,22 @@
     "hostPassed": 64,
     "kernelImports": 140,
     "syscallWrappers": 22,
-    "hardwareValidated": false,
+    "hardwareValidated": true,
     "acceptedHardwareBaseline": {
       "sourceCommit": "98b5149536fdc564132ca82b08d3980114be298a",
       "moduleSha256": "5c7808bee0b376d91b993d2440f288319162c5a6861549bf10d9c937e5e58b77",
       "result": "Maintainer accepted test4 device testing and reported no HMA failures; production diagnostic cleanup checked by host/ABI/build validation."
     },
     "repairAudit": "docs/susfs-repairs-20261103/README.md",
-    "repairNativeBuildRun": 41719805923,
-    "deviceValidation": "Pending for this repair candidate"
+    "repairNativeBuildRun": 41721581896,
+    "deviceValidation": "Maintainer confirmed successful phone testing of the repair APK on 2026-11-03.",
+    "repairPhoneTest": {
+      "date": "2026-11-03",
+      "evidence": "Maintainer report: everything works.",
+      "appCommit": "3455db90dad18100bfd21a71eee3b2c644b1cd04",
+      "sourceCommit": "3a65e96f3694f19abd7feb1f905e4794f48d5aee",
+      "moduleSha256": "31e5eb20572c137caf21abc29a08632c8485c3ccd003d298008330b0e7f58a0a"
+    }
   },
   "priorityControl": {
     "path": "app/src/main/jniLibs/arm64-v8a/librmgususfs_priority.so",

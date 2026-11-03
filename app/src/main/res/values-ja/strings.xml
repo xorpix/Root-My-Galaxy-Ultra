@@ -34,7 +34,7 @@
     <string name="appearance">外観</string>
     <string name="settings_section_payloads">ペイロード管理</string>
     <string name="bundled_payloads_title">内蔵の root ペイロード</string>
-    <string name="bundled_payloads_description">KernelSU,KernelSU-NextとBakaSUはGalaxy S26 Ultra変種を含む.</string>
+    <string name="bundled_payloads_description">Galaxy S26 Ultraの各モデル向けに、KernelSU、KernelSU-Next、BakaSU、KowSUを同梱しています。</string>
     <string name="bundled_payloads_included">内蔵</string>
     <string name="settings_section_run">実行管理</string>
     <string name="settings_section_shizuku">Shizuku管理</string>

@@ -34,7 +34,7 @@
     <string name="appearance">Appearance</string>
     <string name="settings_section_payloads">Payload Management</string>
     <string name="bundled_payloads_title">Built-in root payloads</string>
-    <string name="bundled_payloads_description">Includes KernelSU, KernelSU-Next and BakaSU for Galaxy S26 Ultra variants.</string>
+    <string name="bundled_payloads_description">Includes KernelSU, KernelSU-Next, BakaSU and KowSU for Galaxy S26 Ultra variants.</string>
     <string name="bundled_payloads_included">Included</string>
     <string name="settings_section_run">Run Management</string>
     <string name="settings_section_shizuku">Shizuku Management</string>

@@ -34,7 +34,7 @@
     <string name="appearance">Görünüm</string>
     <string name="settings_section_payloads">Yük yönetimi</string>
     <string name="bundled_payloads_title">Dahili root payload’ları</string>
-    <string name="bundled_payloads_description">KernelSU, KernelSU-Next ve BakaSU\'ları Galaxy S26 Ultra çeşitleri için içerir.</string>
+    <string name="bundled_payloads_description">Galaxy S26 Ultra modelleri için KernelSU, KernelSU-Next, BakaSU ve KowSU içerir.</string>
     <string name="bundled_payloads_included">Dahil</string>
     <string name="settings_section_run">Çalıştırma yönetimi</string>
     <string name="settings_section_shizuku">Shizuku yönetimi</string>

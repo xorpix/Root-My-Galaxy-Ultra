@@ -34,7 +34,7 @@
     <string name="appearance">Оформление</string>
     <string name="settings_section_payloads">Пейлоады</string>
     <string name="bundled_payloads_title">Встроенные пейлоады</string>
-    <string name="bundled_payloads_description">Включает KernelSU, KernelSU-Next и BakaSU для разных моделей Galaxy S26 Ultra.</string>
+    <string name="bundled_payloads_description">Включает KernelSU, KernelSU-Next, BakaSU и KowSU для разных моделей Galaxy S26 Ultra.</string>
     <string name="bundled_payloads_included">В составе приложения</string>
     <string name="settings_section_run">Запуск</string>
     <string name="settings_section_shizuku">Shizuku</string>

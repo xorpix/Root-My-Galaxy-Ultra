@@ -34,7 +34,7 @@
     <string name="appearance">Giao diện</string>
     <string name="settings_section_payloads">Quản lý payload</string>
     <string name="bundled_payloads_title">Payload root tích hợp</string>
-    <string name="bundled_payloads_description">Bao gồm KernelSU, KernelSU-Next và BakaSU cho các biến thể Galaxy S26 Ultra.</string>
+    <string name="bundled_payloads_description">Bao gồm KernelSU, KernelSU-Next, BakaSU và KowSU cho các biến thể Galaxy S26 Ultra.</string>
     <string name="bundled_payloads_included">Có sẵn</string>
     <string name="settings_section_run">Quản lý lần chạy</string>
     <string name="settings_section_shizuku">Quản lý Shizuku</string>
