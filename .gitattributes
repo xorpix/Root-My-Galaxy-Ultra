@@ -9,3 +9,6 @@
 /backends/susfs/audit-fixes.patch -text
 # Leading context spaces/tabs are part of the patch payload.
 /backends/susfs/dispatcher.patch -text -whitespace
+
+# The repair diff also contains original CRLF source context.
+/docs/susfs-repairs-20261103/native.patch -text -whitespace
