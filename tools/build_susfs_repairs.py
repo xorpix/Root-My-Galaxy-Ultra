@@ -34,9 +34,12 @@ receipt={'base_native_commit':'8b9d19b3b348439b519260706896247e25633ec9',
 if a.prepare_only: raise SystemExit(0)
 clang=Path('/opt/ddk/clang/clang-r536225/bin')
 kdir=Path('/opt/ddk/kdir/android16-6.12')
-subprocess.run(['python3',str(source/'tools/build_review.py'),'--kdir',str(kdir),
+build=subprocess.run(['python3',str(source/'tools/build_review.py'),'--kdir',str(kdir),
     '--clang-bin',str(clang),'--rust-bin','/opt/ddk/rust/rust-1.82.0/bin',
-    '--evidence-dir',str(out/'build'),'--omit-module-btf'],check=True)
+    '--evidence-dir',str(out/'build'),'--omit-module-btf'])
+if build.returncode:
+    print((out/'build/compile.log').read_text(),flush=True)
+    raise SystemExit(build.returncode)
 module=out/'susfs_guard_lkm.ko'; shutil.copy2(source/'kernel/susfs_guard_lkm.ko',module)
 subprocess.run([str(clang/'llvm-strip'),'-d',str(module)],check=True)
 loader=out/'libsusfs_loader.so'

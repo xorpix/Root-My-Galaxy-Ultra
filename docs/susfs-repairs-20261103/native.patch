@@ -980,15 +980,16 @@ index ff079ee..4579229 100644
 +}
 diff --git a/kernel/susfs_control.c b/kernel/susfs_control.c
 new file mode 100644
-index 0000000..21ab3bf
+index 0000000..27b7e62
 --- /dev/null
 +++ b/kernel/susfs_control.c
-@@ -0,0 +1,47 @@
+@@ -0,0 +1,48 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +#include <linux/errno.h>
 +#include <linux/kernel.h>
 +#include <linux/mutex.h>
 +#include <linux/rcupdate.h>
++#include <linux/sched.h>
 +#include <linux/wait.h>
 +#include "susfs_control.h"
 +
@@ -1412,6 +1413,310 @@ index 93d67b4..2cec045 100644
  	return READ_ONCE(or_entry_ready);
  }
  
+diff --git a/kernel/susfs_uname.c b/kernel/susfs_uname.c
+index e071cb3..05e672c 100644
+--- a/kernel/susfs_uname.c
++++ b/kernel/susfs_uname.c
+@@ -68,13 +68,17 @@ static int kr_newuname_ret(struct kretprobe_instance *ri, struct pt_regs *regs)
+     spin_unlock_irqrestore(&uname_state_lock, flags);
+     if (!enabled)
+         return 0;
+-    /* User copies may fault: never hold the state lock over either copy. */
++    /* Return probes cannot sleep. Make fault suppression explicit for the
++     * user copies, outside the state lock, including either early failure. */
++    pagefault_disable();
+     if (copy_to_user((char __user *)a->name + offsetof(struct new_utsname, release),
+                      release, SUSFS_UNAME_LEN))
+-        return 0;
++        goto out;
+     if (copy_to_user((char __user *)a->name + offsetof(struct new_utsname, version),
+                      version, SUSFS_UNAME_LEN))
+-        return 0;
++        goto out;
++out:
++    pagefault_enable();
+     return 0;
+ }
+ 
+diff --git a/tests/audit_repairs/late-control.c b/tests/audit_repairs/late-control.c
+new file mode 100644
+index 0000000..8955a24
+--- /dev/null
++++ b/tests/audit_repairs/late-control.c
+@@ -0,0 +1,32 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++#include "tests/module_control/host_kernel.h"
++#define pr_warn(...) ((void)0)
++static bool hide_registered,m_show_registered;
++static int kp_s_show,kp_m_show;
++static void *hide_modules_entry,*modules_op_target,*kallsyms_op_target;
++static atomic_t hide_enter_count,hide_hit_count,hide_layout_bad;
++static bool path_layer_down;
++static unsigned int added;
++static void proc_remove(void *p) { (void)p; }
++static void unregister_kprobe(int *p) { (void)p; }
++static void susfs_kp_forget_addr(int *p) { (void)p; }
++static int sus_path_add_self_hidden(const char *path) {
++    (void)path;
++    assert(!path_layer_down && "late sysfs command added a rule after path-layer teardown");
++    added++;return 0;
++}
++static int sus_path_del_path(const char *path) { (void)path;return 1; }
++#include PRODUCTION
++int main(int argc,char **argv) {
++    assert(argc==2);
++    assert(!hide_modules_command("set kernelsu",false));assert(added==1);
++    if (!strcmp(argv[1],"ordinary")) { puts("PASS live control command");return 0; }
++    susfs_hide_syms_exit();
++    /* Linux v6.12 removes module parameter attributes in free_module(),
++     * after the complete module exit/layer-down call. A store can reach
++     * this controller while lower layers have already been torn down. */
++    path_layer_down=true;
++    int rc=hide_modules_command("set kernelsu",false);
++    assert(rc==-ENODEV && "late control command was not rejected");
++    puts("PASS late control rejected");return 0;
++}
+diff --git a/tests/audit_repairs/mount-control.c b/tests/audit_repairs/mount-control.c
+new file mode 100644
+index 0000000..7962f7d
+--- /dev/null
++++ b/tests/audit_repairs/mount-control.c
+@@ -0,0 +1,107 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++#include <assert.h>
++#include <errno.h>
++#include <pthread.h>
++#include <stdbool.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <time.h>
++#define READ_ONCE(x) (x)
++#define WRITE_ONCE(x,v) ((x)=(v))
++#define __user
++#define pr_warn(...) ((void)0)
++#define SUSFS_LOGI(...) ((void)0)
++static int susfs_control_get(void) { return 0; }
++static void susfs_control_put(void) {}
++#define KERNEL_VERSION(a,b,c) (((a)<<16)|((b)<<8)|(c))
++#define LINUX_VERSION_CODE KERNEL_VERSION(6,12,0)
++#define DEFINE_MUTEX(n) pthread_mutex_t n=PTHREAD_MUTEX_INITIALIZER
++#define mutex_lock(p) assert(!pthread_mutex_lock(p))
++#define mutex_unlock(p) assert(!pthread_mutex_unlock(p))
++static DEFINE_MUTEX(sus_mount_config_lock);
++static bool sus_mount_exiting;
++struct kprobe { const char *symbol_name; void *addr; unsigned flags; bool live; };
++struct kretprobe { struct kprobe kp; };
++static struct kprobe kp_sb_down={.symbol_name="sb"},kp_mnt_free={.symbol_name="mnt"},
++    kp_vfsstat={.symbol_name="vfsstat"},kp_mountinfo={.symbol_name="mountinfo"},kp_vfsmnt={.symbol_name="vfsmnt"};
++static struct kretprobe kr_statx={.kp={.symbol_name="statx"}},kr_statx_do={.kp={.symbol_name="statxdo"}},
++    kr_statfs={.kp={.symbol_name="statfs"}},kr_clone_ns={.kp={.symbol_name="clone"}},kr_newmnt={.kp={.symbol_name="newmnt"}};
++static bool kp_sb_down_ok,kp_mnt_free_ok,kr_fdinfo_ok,kr_statx_ok,
++    kr_statx_do_ok,kr_statfs_ok,kr_clone_ns_ok,kr_newmnt_ok,mount_registered;
++#define SUS_MOUNT_SHOW_N 3
++static struct kprobe *const sus_mount_show_probes[]={&kp_vfsstat,&kp_mountinfo,&kp_vfsmnt};
++static const char *const sus_mount_show_names[]={"vfsstat","mountinfo","vfsmnt"};
++static bool sus_mount_show_armed[SUS_MOUNT_SHOW_N];
++static int n_show_probes,n_ident;
++static char mount_ident[16];
++static pthread_mutex_t model=PTHREAD_MUTEX_INITIALIZER;
++static pthread_cond_t changed=PTHREAD_COND_INITIALIZER;
++static bool enable_paused,disable_started,disable_done,resume_enable;
++static _Thread_local int role;
++static struct timespec deadline(int seconds) {
++    struct timespec t;assert(!clock_gettime(CLOCK_REALTIME,&t));t.tv_sec+=seconds;return t;
++}
++static void wait_for(bool *flag) {
++    struct timespec t=deadline(3);
++    while(!*flag)assert(!pthread_cond_timedwait(&changed,&model,&t));
++}
++static int register_kprobe(struct kprobe *probe) {
++    assert(!probe->live);probe->live=true;probe->addr=probe;
++    if(role==1 && probe==&kp_vfsstat) {
++        assert(!pthread_mutex_lock(&model));enable_paused=true;pthread_cond_broadcast(&changed);
++        while(!resume_enable)assert(!pthread_cond_wait(&changed,&model));
++        assert(!pthread_mutex_unlock(&model));
++    }
++    return 0;
++}
++static void unregister_kprobe(struct kprobe *probe) {assert(probe->live);probe->live=false;}
++static int register_kretprobe(struct kretprobe *probe) {return register_kprobe(&probe->kp);}
++static void unregister_kretprobe(struct kretprobe *probe) {unregister_kprobe(&probe->kp);}
++static int sus_mount_fdinfo_arm(void) {kr_fdinfo_ok=true;return 0;}
++static void sus_mount_fdinfo_disarm(void) {assert(kr_fdinfo_ok);kr_fdinfo_ok=false;}
++static void sus_mount_learn_stop(void) {assert(!kr_clone_ns.kp.live);}
++static void sus_mount_idmap_clear(void) {}
++static int sus_mount_refresh(void) {return 0;}
++static int copy_from_user(void *to,const void *from,size_t n) {memcpy(to,from,n);return 0;}
++static int copy_to_user(void *to,const void *from,size_t n) {memcpy(to,from,n);return 0;}
++struct st_susfs_hide_sus_mnts_for_non_su_procs {int enabled,err;};
++static void sus_mount_unregister(void);
++#include PRODUCTION
++static void *enable(void *unused) {
++    (void)unused;role=1;
++    struct st_susfs_hide_sus_mnts_for_non_su_procs info={.enabled=1};
++    void *arg=&info;susfs_sus_mount_supercall(&arg);assert(!info.err);return NULL;
++}
++static void *disable(void *unused) {
++    (void)unused;role=2;
++    assert(!pthread_mutex_lock(&model));disable_started=true;pthread_cond_broadcast(&changed);
++    assert(!pthread_mutex_unlock(&model));
++    struct st_susfs_hide_sus_mnts_for_non_su_procs info={.enabled=0};
++    void *arg=&info;susfs_sus_mount_supercall(&arg);assert(!info.err);
++    assert(!pthread_mutex_lock(&model));disable_done=true;pthread_cond_broadcast(&changed);
++    assert(!pthread_mutex_unlock(&model));return NULL;
++}
++int main(int argc,char **argv) {
++    (void)argv;assert(argc==2);
++    pthread_t first,second;assert(!pthread_create(&first,NULL,enable,NULL));
++    assert(!pthread_mutex_lock(&model));wait_for(&enable_paused);
++    assert(!pthread_mutex_unlock(&model));
++    assert(!pthread_create(&second,NULL,disable,NULL));
++    assert(!pthread_mutex_lock(&model));wait_for(&disable_started);
++    struct timespec t=deadline(1);
++    while(!disable_done) {int rc=pthread_cond_timedwait(&changed,&model,&t);if(rc==ETIMEDOUT)break;assert(!rc);}
++    resume_enable=true;pthread_cond_broadcast(&changed);assert(!pthread_mutex_unlock(&model));
++    assert(!pthread_join(first,NULL));assert(!pthread_join(second,NULL));
++    if(mount_registered) {
++        assert(kp_sb_down.live&&kp_mnt_free.live&&kp_sb_down_ok&&kp_mnt_free_ok &&
++               "mount hiding enabled without its lifetime invalidators");
++        assert(n_show_probes==3);
++        for(int i=0;i<3;i++)assert(sus_mount_show_probes[i]->live&&sus_mount_show_armed[i]);
++    } else {
++        assert(!kp_sb_down.live&&!kp_mnt_free.live&&!n_show_probes);
++        for(int i=0;i<3;i++)assert(!sus_mount_show_probes[i]->live&&!sus_mount_show_armed[i]);
++    }
++    puts("PASS serialized mount lifecycle");return 0;
++}
+diff --git a/tests/audit_repairs/mount-parameter.c b/tests/audit_repairs/mount-parameter.c
+new file mode 100644
+index 0000000..97f287b
+--- /dev/null
++++ b/tests/audit_repairs/mount-parameter.c
+@@ -0,0 +1,20 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++#include "tests/module_control/host_kernel.h"
++#undef SUSFS_LOGI
++#define SUSFS_LOGI(...) do { if (0) fprintf(stderr,__VA_ARGS__); } while (0)
++#define mount_keep_lock hide_modules_lock
++static bool mount_registered;
++static int sus_mount_refresh(void) { return 0; }
++#include PRODUCTION
++int main(int argc,char **argv)
++{
++    assert(argc==2);
++    assert(n_mount_keep==1 && !strcmp(mount_keep[0],"/data/adb/"));
++    if(!strcmp(argv[1],"default"))return 0;
++    assert(!sus_mount_keep_command("/data/local/custom/",true));
++    assert(n_mount_keep==1 && !strcmp(mount_keep[0],"/data/local/custom/"));
++    if(!strcmp(argv[1],"custom"))return 0;
++    assert(!strcmp(argv[1],"clear"));
++    assert(!sus_mount_keep_command("clear",true) && !n_mount_keep);
++    return 0;
++}
+diff --git a/tests/audit_repairs/run.py b/tests/audit_repairs/run.py
+new file mode 100644
+index 0000000..623c1c9
+--- /dev/null
++++ b/tests/audit_repairs/run.py
+@@ -0,0 +1,46 @@
++#!/usr/bin/env python3
++"""Repair regressions using the audit's controlled schedules and actual production C."""
++import argparse,json,os,re,subprocess,tempfile
++from pathlib import Path
++p=argparse.ArgumentParser(description=__doc__)
++p.add_argument('--sanitizers',action='store_true');p.add_argument('--json',type=Path)
++a=p.parse_args();here=Path(__file__).resolve().parent;root=here.parents[1]
++def fn(s,n):
++    m=re.search(r'^(?:static )?[^\n]*\b'+re.escape(n)+r'\([^;{]*\)\n\{\n.*?^\}\n',s,re.M|re.S)
++    if not m:raise RuntimeError('Missing production function '+n)
++    return m[0]
++mount=(root/'kernel/sus_mount.c').read_text()
++syms=(root/'kernel/susfs_hide_syms.c').read_text()
++stat=(root/'kernel/susfs_kstat.c').read_text()
++fragment='#define SUS_KSTAT_MAX 32\n#define KSTAT_PATH_MAX 256\n'
++fragment+=stat[stat.index('struct sus_kstat_entry {'):stat.index('/* arm64 asm-generic struct stat offsets')]
++fragment+=''.join(fn(stat,n) for n in ('susfs_kstat_gate_ok','susfs_kstat_table_empty','susfs_kstat_lookup'))
++start=stat.index('struct kstat_call_counters {');fragment+=stat[start:stat.index('#define KSTAT_COUNTERS',start)]
++start=stat.index('struct kstat_call_state {');fragment+=stat[start:stat.index('/* Rewrite the requested fields',start)]
++fragment+='\n'.join(re.findall(r'^#define STAT64_ST_.*$',stat,re.M))+'\n'+fn(stat,'susfs_kstat_spoof_compat_statbuf')
++groups={
++ 'mount-control':(''.join(fn(mount,n) for n in ('sus_mount_register_named_kprobe','sus_mount_register_named_kretprobe','sus_mount_register','sus_mount_unregister','susfs_sus_mount_supercall_impl','susfs_sus_mount_supercall')),['enable-disable']),
++ 'late-control':(syms[syms.index('#define HIDE_MODULES_MAX'):syms.index('/* ---- the two frontends ---- */')]+fn(syms,'susfs_hide_syms_exit'),['ordinary','after-teardown']),
++ 'stat64-key':(fragment,['low-inode','high-inode','same-low-bits']),
++}
++prefix=mount[mount.index('#define SUS_MOUNT_KEEP_MAX'):mount.index('/* All three mount-table hooks')]
++prefix+=''.join(fn(mount,n) for n in ('sus_mount_keep_parse','sus_mount_keep_commit','sus_mount_keep_rescan','sus_mount_keep_command_impl','sus_mount_keep_command'))
++groups['mount-parameter']=(prefix,['default','custom','clear'])
++# Module parameters are parsed before init. Protect that phase boundary as well
++# as exercising the actual initializer and setter above.
++init=fn(mount,'susfs_sus_mount_init')
++assert not re.search(r'\bn_mount_keep\s*=|strscpy\(mount_keep|memset\(mount_keep',init), 'init overwrites parsed mount prefixes'
++results=[];env=dict(os.environ,ASAN_OPTIONS='detect_leaks=0:abort_on_error=1',UBSAN_OPTIONS='halt_on_error=1')
++with tempfile.TemporaryDirectory(prefix='susfs-repairs-') as td:
++    td=Path(td)
++    for group,(text,cases) in groups.items():
++        h=td/(group+'.h');h.write_text(text);exe=td/group
++        flags=['-O1','-g','-fsanitize=address,undefined','-fno-omit-frame-pointer','-no-pie'] if a.sanitizers else ['-O2']
++        subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-Wno-unused-function','-Wno-unused-variable','-Wno-unused-parameter','-Wno-sign-compare',*flags,'-pthread','-I',str(root),'-DPRODUCTION="'+str(h)+'"',str(here/(group+'.c')),'-o',str(exe)],check=True)
++        for case in cases:
++            r=subprocess.run([str(exe),case],capture_output=True,text=True,env=env,timeout=15)
++            results.append(dict(group=group,case=case,exit_code=r.returncode,stderr=r.stderr))
++            print(('PASS ' if not r.returncode else 'FAIL ')+group+'/'+case,flush=True)
++            if r.returncode: print(r.stderr)
++if a.json:a.json.write_text(json.dumps(dict(hardware_validated=False,results=results),indent=2)+'\n')
++raise SystemExit(any(x['exit_code'] for x in results))
+diff --git a/tests/audit_repairs/stat64-key.c b/tests/audit_repairs/stat64-key.c
+new file mode 100644
+index 0000000..57b0d9a
+--- /dev/null
++++ b/tests/audit_repairs/stat64-key.c
+@@ -0,0 +1,44 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++#include "tests/feature_hooks/host_kernel.h"
++#include <stddef.h>
++#include <sys/types.h>
++#include "kernel/susfs_abi.h"
++#define __user
++#define DEFINE_MUTEX(n) int n
++#define DEFINE_SPINLOCK(n) int n
++#define spin_lock_irqsave(p,f) do { (void)(p); (f)=0; } while(0)
++#define spin_unlock_irqrestore(p,f) do { (void)(p); (void)(f); } while(0)
++static bool susfs_is_current_proc_umounted_app(void) { return true; }
++static unsigned char buffer[104];
++static void check_range(const void *p,size_t size) {
++    assert((uintptr_t)p>=(uintptr_t)buffer && size<=sizeof(buffer) &&
++        (uintptr_t)p-(uintptr_t)buffer<=sizeof(buffer)-size);
++}
++static int copy_from_user(void *to,const void *from,size_t size) {check_range(from,size);memcpy(to,from,size);return 0;}
++static int copy_to_user(void *to,const void *from,size_t size) {check_range(to,size);memcpy(to,from,size);return 0;}
++#include PRODUCTION
++int main(int argc,char **argv) {
++    assert(argc==2);
++    bool collision=!strcmp(argv[1],"same-low-bits");
++    unsigned long ino=strcmp(argv[1],"low-inode")?0x10000002aUL:42;
++    unsigned long long full=ino,device=65105;
++    unsigned int truncated=(unsigned int)ino;
++    /* Linux/ACK cp_new_stat64 fills BOTH fields, not only the legacy field. */
++    memcpy(buffer+STAT64_ST_DEV_OFF,&device,sizeof(device));
++    memcpy(buffer+STAT64_ST_BROKEN_INO_OFF,&truncated,sizeof(truncated));
++    memcpy(buffer+STAT64_ST_INO_OFF,&full,sizeof(full));
++    nkstat=1;
++    kstat_entries[0]=(struct sus_kstat_entry){.target_ino=ino,.target_dev=device,
++        .spoofed_ino=99,.flags=KSTAT_SPOOF_INO};
++    if (collision) {
++        /* The truncated legacy field matches this other rule. It must not win. */
++        nkstat=2;kstat_entries[1]=kstat_entries[0];
++        kstat_entries[0].target_ino=42;kstat_entries[0].spoofed_ino=77;
++    }
++    struct kstat_call_counters cnt={0};
++    struct kstat_call_state state={.cnt=&cnt,.compat=true};
++    assert(susfs_kstat_spoof_compat_statbuf(&state,(unsigned long)buffer) &&
++        "stat64 failed to match the full 64-bit inode key");
++    memcpy(&full,buffer+STAT64_ST_INO_OFF,sizeof(full));assert(full==99);
++    puts("PASS stat64 full inode key");return 0;
++}
 diff --git a/tests/control_lifetime/control_test.c b/tests/control_lifetime/control_test.c
 new file mode 100644
 index 0000000..7932ee0
@@ -1470,7 +1775,7 @@ index 0000000..7932ee0
 +}
 diff --git a/tests/control_lifetime/run.py b/tests/control_lifetime/run.py
 new file mode 100644
-index 0000000..d5dde7b
+index 0000000..7161bdc
 --- /dev/null
 +++ b/tests/control_lifetime/run.py
 @@ -0,0 +1,24 @@
@@ -1488,7 +1793,7 @@ index 0000000..d5dde7b
 +here=Path(__file__).resolve().parent
 +with tempfile.TemporaryDirectory(prefix='susfs-control-') as d:
 +    d=Path(d);(d/'linux').mkdir()
-+    for name in ['errno','mutex','rcupdate','wait','kernel']:
++    for name in ['errno','mutex','rcupdate','wait','kernel','sched']:
 +        (d/'linux'/f'{name}.h').write_text('/* Explicit host API model in control_test.c */\n')
 +    (d/'linux/errno.h').write_text('#include_next <linux/errno.h>\n')
 +    flags=['-O1','-g','-fsanitize=address,undefined','-fno-omit-frame-pointer','-no-pie'] if a.sanitizers else ['-O2']
@@ -1498,6 +1803,20 @@ index 0000000..d5dde7b
 +        str(here/'control_test.c'),'-o',str(exe)],check=True)
 +    subprocess.run([str(exe)],check=True,timeout=15,
 +        env=dict(os.environ,ASAN_OPTIONS='detect_leaks=0:abort_on_error=1',UBSAN_OPTIONS='halt_on_error=1'))
+diff --git a/tests/identity_controls/host_kernel.h b/tests/identity_controls/host_kernel.h
+index 3ac1331..e378649 100644
+--- a/tests/identity_controls/host_kernel.h
++++ b/tests/identity_controls/host_kernel.h
+@@ -70,6 +70,9 @@ static void *kzalloc(size_t n,int flags) { void *p=kmalloc(n,flags); if(p) memse
+ static void kfree(void *p) { if(p) { assert(atomic_fetch_sub(&live_allocations,1)>0); free(p); } }
+ static int copy_from_user(void *to,const void *from,size_t n) { if(copy_fail) return 1; memcpy(to,from,n); return 0; }
+ static void (*user_copy_hook)(void);
++static _Thread_local int host_fault_disabled;
++static void pagefault_disable(void) { assert(host_fault_disabled++==0); }
++static void pagefault_enable(void) { assert(--host_fault_disabled==0); }
+ static int copy_to_user(void *to,const void *from,size_t n) { memcpy(to,from,n); if(user_copy_hook) { void (*hook)(void)=user_copy_hook;user_copy_hook=NULL;hook(); } return 0; }
+ static bool susfs_abi_path_ok(const char *value,size_t n) { return memchr(value,0,n)!=NULL; }
+ struct kernel_param { int unused; };
 diff --git a/tests/lifecycle/lifecycle_test.c b/tests/lifecycle/lifecycle_test.c
 index f9988d0..c2286c2 100644
 --- a/tests/lifecycle/lifecycle_test.c
@@ -1512,8 +1831,101 @@ index f9988d0..c2286c2 100644
  
  /* The tests replace the umount-gate layer: its init is a no-op that leaves the gates on the
   * pre-#34 answer, and the ask helper is a stub the flow only reaches if a layer violates it. */
+diff --git a/tests/lsm_static_call/run.py b/tests/lsm_static_call/run.py
+new file mode 100644
+index 0000000..c2d811d
+--- /dev/null
++++ b/tests/lsm_static_call/run.py
+@@ -0,0 +1,16 @@
++#!/usr/bin/env python3
++"""Exercise actual LSM static-call verification and foreign-owner restoration."""
++import argparse,os,re,subprocess,tempfile
++from pathlib import Path
++p=argparse.ArgumentParser(description=__doc__);p.add_argument('--sanitizers',action='store_true');a=p.parse_args()
++here=Path(__file__).resolve().parent;s=(here.parents[1]/'kernel/lsm_hook.c').read_text()
++def fn(n):
++    m=re.search(r'^(?:static )?[^\n]*\b'+n+r'\([^;{]*\)\n\{\n.*?^\}\n',s,re.M|re.S)
++    assert m,n;return m[0]
++fragment=''.join(fn(n) for n in ('ksu_lsm_call_scall_update','ksu_lsm_hook_update_scall','ksu_lsm_unhook'))
++with tempfile.TemporaryDirectory(prefix='susfs-lsm-static-') as d:
++    d=Path(d);(d/'production.h').write_text(fragment)
++    flags=['-O1','-g','-fsanitize=address,undefined','-fno-omit-frame-pointer','-no-pie'] if a.sanitizers else ['-O2']
++    subprocess.run(['cc','-std=gnu11','-Wall','-Wextra','-Werror','-pthread',*flags,'-DPRODUCTION="'+str(d/'production.h')+'"',str(here/'static_test.c'),'-o',str(d/'test')],check=True)
++    for case in ('runtime-success','runtime-refused','fallback-success','fallback-refused','restore','already-restored','foreign-owner'):
++        subprocess.run([str(d/'test'),case],check=True,timeout=10,env=dict(os.environ,ASAN_OPTIONS='detect_leaks=0:abort_on_error=1',UBSAN_OPTIONS='halt_on_error=1'))
+diff --git a/tests/lsm_static_call/static_test.c b/tests/lsm_static_call/static_test.c
+new file mode 100644
+index 0000000..0106c11
+--- /dev/null
++++ b/tests/lsm_static_call/static_test.c
+@@ -0,0 +1,65 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++#include <assert.h>
++#include <errno.h>
++#include <pthread.h>
++#include <stdbool.h>
++#include <stdio.h>
++#include <string.h>
++#define __nocfi
++#define KERNEL_VERSION(a,b,c) (((a)<<16)|((b)<<8)|(c))
++#define LINUX_VERSION_CODE KERNEL_VERSION(6,12,0)
++#define READ_ONCE(v) __atomic_load_n(&(v),__ATOMIC_ACQUIRE)
++#define smp_wmb() __atomic_thread_fence(__ATOMIC_RELEASE)
++#define SUSFS_LOGI(...) ((void)0)
++#define pr_err(...) ((void)0)
++#define pr_emerg(...) ((void)0)
++#define mutex_lock(p) assert(!pthread_mutex_lock(p))
++#define mutex_unlock(p) assert(!pthread_mutex_unlock(p))
++static pthread_mutex_t ksu_lsm_hook_lock=PTHREAD_MUTEX_INITIALIZER;
++static pthread_mutex_t model=PTHREAD_MUTEX_INITIALIZER;
++static pthread_cond_t changed=PTHREAD_COND_INITIALIZER;
++struct static_call_key {void *func;};
++struct lsm_static_call {struct static_call_key *key;void *trampoline;};
++struct ksu_lsm_hook {void *entry,*original,*replacement;struct lsm_static_call *scall;bool insert;unsigned hook_offset;const char *head_name;};
++static bool ignore_update,paused,resume;
++static int updates,untracked,drained;
++static void update(struct static_call_key *key,void *tramp,void *func)
++{ (void)tramp;updates++;if(!ignore_update)__atomic_store_n(&key->func,func,__ATOMIC_RELEASE); }
++static void (*ksu_static_call_update_fn)(struct static_call_key *,void *,void *)=update;
++#define __static_call_update update
++static int ksu_lsm_hook_patch_slot(void **slot,void *value) { *slot=value;return 0; }
++static void ksu_lsm_hook_untrack(struct ksu_lsm_hook *h) { (void)h;untracked++; }
++static void ksu_lsm_hook_drain(struct ksu_lsm_hook *h) { (void)h;drained++; }
++static void msleep(unsigned n)
++{
++    (void)n;mutex_lock(&model);paused=true;pthread_cond_broadcast(&changed);
++    while(!resume)assert(!pthread_cond_wait(&changed,&model));
++    mutex_unlock(&model);
++}
++#include PRODUCTION
++static void *remove_hook(void *h) { ksu_lsm_unhook(h);return NULL; }
++int main(int argc,char **argv)
++{
++    assert(argc==2);const char *c=argv[1];int original,replacement,foreign,entry;
++    struct static_call_key key={.func=&original};
++    struct lsm_static_call call={.key=&key};
++    struct ksu_lsm_hook h={.entry=&entry,.original=&original,.replacement=&replacement,.scall=&call,.insert=true,.head_name="test"};
++    if(!strncmp(c,"runtime-",8)||!strncmp(c,"fallback-",9)) {
++        if(c[0]=='f')ksu_static_call_update_fn=NULL;
++        ignore_update=strstr(c,"refused")!=NULL;
++        assert(ksu_lsm_hook_update_scall(&call,&replacement)==(ignore_update?-EIO:0));
++        assert(key.func==(ignore_update?&original:&replacement));
++    } else {
++        if(!strcmp(c,"restore"))key.func=&replacement;
++        if(!strcmp(c,"foreign-owner")) {
++            key.func=&foreign;pthread_t t;assert(!pthread_create(&t,NULL,remove_hook,&h));
++            mutex_lock(&model);while(!paused)assert(!pthread_cond_wait(&changed,&model));
++            assert(key.func==&foreign && !updates && !untracked && !drained && h.entry);
++            __atomic_store_n(&key.func,&original,__ATOMIC_RELEASE);resume=true;
++            pthread_cond_broadcast(&changed);mutex_unlock(&model);assert(!pthread_join(t,NULL));
++        } else ksu_lsm_unhook(&h);
++        assert(key.func==&original && !h.entry && !h.scall && untracked==1 && drained==1);
++        assert(updates==(!strcmp(c,"restore")?1:0));
++    }
++    printf("PASS %s\n",c);return 0;
++}
 diff --git a/tests/map_hooks/host_kernel.h b/tests/map_hooks/host_kernel.h
-index 6d64056..46ea3bd 100644
+index 6d64056..3f9873c 100644
 --- a/tests/map_hooks/host_kernel.h
 +++ b/tests/map_hooks/host_kernel.h
 @@ -1,5 +1,6 @@
@@ -1534,24 +1946,29 @@ index 6d64056..46ea3bd 100644
  #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
  #define READ_ONCE(v) __atomic_load_n(&(v), __ATOMIC_RELAXED)
  #define smp_load_acquire(p) __atomic_load_n(p, __ATOMIC_ACQUIRE)
-@@ -148,7 +153,11 @@ static atomic_t n_walk_seen, n_walk_seen_vma, n_walk_skip, n_walk_ops_hit;
+@@ -148,7 +153,16 @@ static atomic_t n_walk_seen, n_walk_seen_vma, n_walk_skip, n_walk_ops_hit;
  static atomic_t n_walk_scan_fail, n_walk_nofile, n_walk_nomatch;
  static atomic_t n_getlink_calls, n_getlink_skip, n_getlink_nomatch, n_map_files_hides;
  static void *sus_map_ops_smaps, *sus_map_ops_smaps_shmem, *sus_map_ops_pagemap;
 -static void sus_map_resolve_walk_ops(void) { sus_map_ops_smaps = (void *)(uintptr_t)0x9000; }
++static bool fail_walk_ops;
++static int walk_dbg;
++static void sus_map_note_ops(const void *p) { (void)p; }
++static void sus_map_walk_dbg_log(const char *s,struct mm_struct *m,unsigned long a,struct vm_area_struct *v)
++{ (void)s;(void)m;(void)a;(void)v; }
 +static void sus_map_resolve_walk_ops(void) {
 +    sus_map_ops_smaps = (void *)(uintptr_t)0x9000;
 +    sus_map_ops_smaps_shmem = (void *)(uintptr_t)0x9100;
-+    sus_map_ops_pagemap = (void *)(uintptr_t)0x9200;
++    sus_map_ops_pagemap = fail_walk_ops ? NULL : (void *)(uintptr_t)0x9200;
 +}
  static bool sus_map_walk_ops_any(void) { return sus_map_ops_smaps != NULL; }
  static struct kprobe kp_map_walk = {.symbol_name = "walk_page_range"};
  static struct kprobe kp_map_walk_vma = {.symbol_name = "walk_page_vma"};
 diff --git a/tests/map_hooks/map_test.c b/tests/map_hooks/map_test.c
-index f97f221..7ea3304 100644
+index f97f221..0a775ae 100644
 --- a/tests/map_hooks/map_test.c
 +++ b/tests/map_hooks/map_test.c
-@@ -85,7 +85,10 @@ static bool test_remote(const char *name)
+@@ -85,11 +85,26 @@ static bool test_remote(const char *name)
      };
      struct mm_struct mm={.vmas=vmas,.count=ARRAY_SIZE(vmas),.read_locked=true};
      if (!strcmp(name,"pin-optional-retry")) fail_name=HOST_SECOND_REMOTE.symbol_name;
@@ -1563,7 +1980,72 @@ index f97f221..7ea3304 100644
      if (!strcmp(name,"gup-return-contract")) {
          assert(single_page_consumer(&kp_gup_remote,&mm,0x3000)==-EFAULT);
      } else if (!strcmp(name,"pin-return-contract")) {
-@@ -251,7 +254,7 @@ int main(int argc, char **argv)
+         assert(single_page_consumer(&HOST_SECOND_REMOTE,&mm,0x3000)==-EFAULT);
++    } else if (!strcmp(name,"gup-cross-vma") || !strcmp(name,"pin-cross-vma")) {
++        struct pt_regs r=remote_regs(&mm,0x1000,4,NULL,NULL);
++        struct kprobe *kp=name[0]=='p'?&HOST_SECOND_REMOTE:&kp_gup_remote;
++        assert(remote_fire(kp,&r) && (long)r.regs[0]==-EFAULT);
++    } else if (!strcmp(name,"gup-overflow")) {
++        struct pt_regs r=remote_regs(&mm,0x1000,ULONG_MAX,NULL,NULL);
++        assert(remote_fire(&kp_gup_remote,&r) && (long)r.regs[0]==-EFAULT);
++    } else if (!strcmp(name,"gup-tagged")) {
++        assert(single_page_consumer(&kp_gup_remote,&mm,0xab00000000003000UL)==-EFAULT);
++    } else if (!strcmp(name,"gup-visible-range")) {
++        struct pt_regs r=remote_regs(&mm,0x1000,2,NULL,NULL);
++        assert(!remote_fire(&kp_gup_remote,&r));
+     } else if (!strcmp(name,"gup-gap-boundaries")) {
+         unsigned long visible[]={0,0x2000,0x2fff,0x5000,0x6000,0x8000,0xffff};
+         for (size_t i=0;i<ARRAY_SIZE(visible);i++)
+@@ -137,6 +152,39 @@ static bool test_remote(const char *name)
+     } else assert(!"unknown remote case");
+     return true;
+ }
++static void test_walk(const char *name)
++{
++    struct file hidden={&host_ino[0]},visible={&host_ino[1]};
++    struct vm_area_struct vmas[]={
++        {.vm_file=&visible,.vm_start=0x1000,.vm_end=0x2000},
++        {.vm_start=0x3000,.vm_end=0x4000},
++        {.vm_file=&hidden,.vm_start=0x5000,.vm_end=0x6000}};
++    struct mm_struct mm={.vmas=vmas,.count=3,.read_locked=true};
++    if(strcmp(name,"walk-empty"))assert(!command("add /file0"));
++    unsigned long output[3]={13,17,19};
++    struct pt_regs r={.regs={[0]=(unsigned long)&mm,[1]=0x1000,[2]=0x6000,
++        [3]=(unsigned long)sus_map_ops_pagemap,[4]=(unsigned long)output,[30]=0x1234},.pc=0x4321};
++    if(!strcmp(name,"walk-visible"))r.regs[2]=0x5000;
++    if(!strcmp(name,"walk-other-ops"))r.regs[3]=0xdead;
++    if(!strcmp(name,"walk-root"))host_uid=0;
++    if(!strcmp(name,"walk-smaps"))r.regs[3]=(unsigned long)sus_map_ops_smaps;
++    if(!strcmp(name,"walk-vma")) {
++        r.regs[0]=(unsigned long)&vmas[2];r.regs[1]=(unsigned long)sus_map_ops_pagemap;
++        assert(sus_map_skip_walk_vma_pre(&kp_map_walk_vma,&r)==1);
++        assert((long)r.regs[0]==-EFAULT && r.pc==0x1234);
++        r.regs[0]=(unsigned long)&vmas[2];r.regs[1]=(unsigned long)sus_map_ops_smaps;
++        assert(sus_map_skip_walk_vma_pre(&kp_map_walk_vma,&r)==1 && r.regs[0]==0);
++    } else {
++        struct pt_regs before=r;
++        int rc=sus_map_skip_walk_pre(&kp_map_walk,&r);
++        bool skip=!strcmp(name,"walk-mixed") || !strcmp(name,"walk-smaps");
++        assert(rc==skip);
++        if(skip)assert(r.pc==0x1234 && (long)r.regs[0]==(!strcmp(name,"walk-smaps")?0:-EFAULT));
++        else assert(!memcmp(&r,&before,sizeof(r)));
++        for(int i=1;i<31;i++)assert(r.regs[i]==before.regs[i]);
++    }
++    assert(output[0]==13 && output[1]==17 && output[2]==19 && mm.read_locked);
++}
+ static void *writer(void *arg)
+ {
+     uintptr_t id = (uintptr_t)arg;
+@@ -183,6 +231,8 @@ int main(int argc, char **argv)
+             assert(command("add /file0")==0);assert(sus_map_lookup(100,11));
+             assert(command("clear")==0);before=atomic_load(&host_table_locks);
+             assert(!sus_map_lookup(100,11)&&atomic_load(&host_table_locks)==before);
++        } else if (!strncmp(name,"walk-",5)) {
++            test_walk(name);
+         } else if (test_remote(name)) {
+             /* Remote-page cases use the same rule lifecycle and teardown. */
+         } else if (!strcmp(name,"maps-inlined-formatter")) {
+@@ -251,7 +301,7 @@ int main(int argc, char **argv)
                  struct file f={&host_ino[0]};struct vm_area_struct v={.vm_file=&f};assert(fire(&kp_map,&v)==1);
              }
          } else if (!strcmp(name,"optional-retry")) {
@@ -1572,6 +2054,42 @@ index f97f221..7ea3304 100644
              fail_name=NULL;assert(!command("add /file0"));assert(map_probe_armed[1] && nmap==1);
          } else if (!strcmp(name,"repeat-lifecycle")) {
              for(int i=0;i<16;i++){
+@@ -259,6 +309,9 @@ int main(int argc, char **argv)
+                 assert(fire(&kp_map,&v)==1 && map_files_installed);
+                 susfs_sus_map_exit();assert(!live_probes && !nmap && !map_files_installed);ready();
+             }
++        } else if (!strcmp(name,"required-walk-ops")) {
++            fail_walk_ops=true;assert(command("add /file0")==-EOPNOTSUPP && !nmap);
++            fail_walk_ops=false;assert(!command("add /file0") && nmap==1);
+         } else if (!strcmp(name,"required-map-files")) {
+             fail_name="map_files";
+             assert(command("add /file0")==-EIO && !nmap);
+diff --git a/tests/map_hooks/run.py b/tests/map_hooks/run.py
+index 7f8680f..cfa87b5 100644
+--- a/tests/map_hooks/run.py
++++ b/tests/map_hooks/run.py
+@@ -27,6 +27,9 @@ start = source.index('#define SUS_MAP_MAX')
+ end = source.index('/* ---- the read gate', start)
+ fragment = source[start:end]
+ fragment += function('sus_map_gate_ok') + function('sus_map_skip_vma_pre')
++for name in ('sus_map_walk_ops_ours','sus_map_walk_answer','sus_map_find_vma',
++             'sus_map_skip_walk_pre','sus_map_skip_walk_vma_pre'):
++    fragment += function(name)
+ for name in ('kp_map', 'kp_map_smap'):
+     match = re.search(r'^static struct kprobe ' + name + r' = \{\n.*?^\};\n', source, re.M | re.S)
+     fragment += match.group()
+@@ -44,7 +47,10 @@ cases = ['empty-fast-path', 'add-delete', 'device-isolation', 'duplicates', 'cap
+          'pin-return-contract', 'gup-gap-boundaries', 'gup-zero-pages',
+          'gup-root-control', 'gup-output-lock-preservation',
+          'gup-null-anonymous', 'gup-restoration', 'pin-optional-retry',
+-         'maps-inlined-formatter', 'required-map-files']
++         'maps-inlined-formatter', 'required-map-files', 'required-walk-ops',
++         'gup-cross-vma','pin-cross-vma','gup-overflow','gup-tagged',
++         'gup-visible-range','walk-mixed','walk-visible','walk-smaps',
++         'walk-other-ops','walk-root','walk-empty','walk-vma']
+ results = []
+ with tempfile.TemporaryDirectory(prefix='susfs-map-host-') as temp:
+     temp = Path(temp)
 diff --git a/tests/module_control/host_kernel.h b/tests/module_control/host_kernel.h
 index ac61a06..186e5f9 100644
 --- a/tests/module_control/host_kernel.h
@@ -1584,7 +2102,7 @@ index ac61a06..186e5f9 100644
 +static void susfs_control_put(void) {}
 +static bool sus_path_lsm_active(void) { return true; }
 diff --git a/tests/mshow_filter/host_kernel.h b/tests/mshow_filter/host_kernel.h
-index 25ce804..7bc7c97 100644
+index 25ce804..80321f9 100644
 --- a/tests/mshow_filter/host_kernel.h
 +++ b/tests/mshow_filter/host_kernel.h
 @@ -6,6 +6,7 @@
@@ -1595,20 +2113,48 @@ index 25ce804..7bc7c97 100644
  #include <stddef.h>
  #include <stdio.h>
  #include <stdlib.h>
-@@ -62,3 +63,8 @@ struct module { char name[MODULE_NAME_LEN]; struct list_head list; };
+@@ -62,3 +63,9 @@ struct module { char name[MODULE_NAME_LEN]; struct list_head list; };
  
  static int sus_path_add_self_hidden(const char *path);
  static int sus_path_del_path(const char *path);
 +static bool sus_path_lsm_active(void) { return true; }
 +static int susfs_control_get(void) { return 0; }
 +static void susfs_control_put(void) {}
++static int host_nofault_calls;
 +static int copy_from_kernel_nofault(void *to,const void *from,size_t size)
-+{ if (!from || (uintptr_t)from < PAGE_SIZE) return -EFAULT; memcpy(to,from,size);return 0; }
++{ host_nofault_calls++;if (!from || (uintptr_t)from < PAGE_SIZE) return -EFAULT; memcpy(to,from,size);return 0; }
+diff --git a/tests/mshow_filter/mshow_filter_test.c b/tests/mshow_filter/mshow_filter_test.c
+index b0d5782..7c50611 100644
+--- a/tests/mshow_filter/mshow_filter_test.c
++++ b/tests/mshow_filter/mshow_filter_test.c
+@@ -65,6 +65,14 @@ int main(int argc,char **argv)
+     assert(argc==2);
+     const char *name=argv[1];
+     assert(!hide_modules_command("kernelsu,susfs_guard_lkm",true));
++    if(!strcmp(name,"unreadable-private")) {
++        struct seq_file m={.private=(void *)1};
++        struct pt_regs r={.regs={[0]=(unsigned long)&m,[30]=0x1234},.pc=0x4321};
++        assert(!hide_syms_s_show_pre(&kp_s_show,&r));
++        assert(r.pc==0x4321 && r.regs[0]==(unsigned long)&m);
++        assert(host_nofault_calls==1 && atomic_read(&hide_layout_bad)==1);
++        printf("OBS %s ret=0 pc=0 rv0=0 skipped=0\n",name);return 0;
++    }
+     if(!strcmp(name,"enlisted-susfs")) probe="susfs_guard_lkm";
+     else if(!strcmp(name,"enlisted-kernelsu")) probe="kernelsu";
+     else if(!strcmp(name,"not-enlisted-okmodule")) probe="okmodule";
 diff --git a/tests/mshow_filter/run.py b/tests/mshow_filter/run.py
-index 9ea9850..28120c0 100644
+index 9ea9850..d4067c8 100644
 --- a/tests/mshow_filter/run.py
 +++ b/tests/mshow_filter/run.py
-@@ -101,7 +101,9 @@ cases = [c for c, _ in EQ] + ['m-null-impossible-call'] + [c for c, _ in GATE]
+@@ -77,6 +77,7 @@ guard_ok = ('hide_syms_resolve_show(&kp_m_show' not in source
+ # case -> expectation tuple (ret, pc, rv0, skipped)
+ #   ret 1 with pc=1 rv0=1 skipped=1 means the /proc/modules line was filtered
+ EQ = [
++    ('unreadable-private',     (0, 0, 0, 0)),
+     ('enlisted-susfs',          (1, 1, 1, 1)),
+     ('enlisted-kernelsu',       (1, 1, 1, 1)),
+     ('not-enlisted-okmodule',   (0, 0, 0, 0)),
+@@ -101,7 +102,9 @@ cases = [c for c, _ in EQ] + ['m-null-impossible-call'] + [c for c, _ in GATE]
  results, ok = [], True
  
  def run_case(exe, case):
@@ -1879,6 +2425,25 @@ index 0000000..3cb1843
 +    bad=run('unsafe-after-unlock',mutant,True)
 +    assert bad.returncode!=0 and 'AddressSanitizer: heap-use-after-free' in bad.stderr,bad.stderr
 +    print('PASS deterministic publication-UAF negative control detected')
+diff --git a/tests/r18_fixes/elf_test.c b/tests/r18_fixes/elf_test.c
+index 4b1b6b9..aa9a1e5 100644
+--- a/tests/r18_fixes/elf_test.c
++++ b/tests/r18_fixes/elf_test.c
+@@ -49,6 +49,14 @@ int main(int argc,char **argv) {
+     else if(!strcmp(test,"strtab-wrap")) { s[3].sh_offset=~(u64)0-7; expect="symbol table outside"; }
+     else if(!strcmp(test,"modinfo-wrap")) { s[4].sh_offset=~(u64)0-7; expect=".modinfo outside"; }
+     else if(!strcmp(test,"size-wrap")) { s[3].sh_size=~(u64)0-500; expect="symbol table outside"; }
++    else if(!strcmp(test,"modinfo-name-tail")) {
++        s[1].sh_offset=sizeof(image)-1;s[1].sh_size=1;image[sizeof(image)-1]='.';
++        s[2].sh_name=0;s[4].sh_name=0;expect="kallsyms";
++    }
++    else if(!strcmp(test,"modinfo-name-prefix")) {
++        s[1].sh_size=s[4].sh_name+sizeof(".modinfo")-1;
++        s[4].sh_offset=~(u64)0-7;expect="kallsyms";
++    }
+     else if(!strcmp(test,"valid-ranges")) expect="kallsyms";
+     else abort();
+     char *args[]={"loader","fixture.ko",NULL};
 diff --git a/tests/r18_fixes/redirect_test.c b/tests/r18_fixes/redirect_test.c
 index d5cef85..3de5fa5 100644
 --- a/tests/r18_fixes/redirect_test.c
@@ -1911,6 +2476,20 @@ index d5cef85..3de5fa5 100644
      } else if(!strcmp(c,"replacement-capacity")) {
          for(int i=0;i<64;i++) { char t[40],r[40]; snprintf(t,sizeof(t),"/t%d",i); snprintf(r,sizeof(r),"/r%d",i); assert(!or_add(t,r,0)); }
          assert(or_add("/t99-new","/r99",0)==-ENOSPC);
+diff --git a/tests/r18_fixes/run.py b/tests/r18_fixes/run.py
+index f23dde1..64eabd8 100644
+--- a/tests/r18_fixes/run.py
++++ b/tests/r18_fixes/run.py
+@@ -78,7 +78,8 @@ cases = {
+     'probe-uname': ['exit-live', 'exit-unarmed', 'failed-retry', 'concurrent-arm', 'late-writer'],
+     'probe-redirect': ['exit-live', 'exit-unarmed', 'failed-retry', 'concurrent-arm', 'late-writer'],
+     'elf': ['table-wrap', 'table-past-end', 'table-truncated', 'shstr-wrap',
+-            'symtab-wrap', 'strtab-wrap', 'modinfo-wrap', 'size-wrap', 'valid-ranges'],
++            'symtab-wrap', 'strtab-wrap', 'modinfo-wrap', 'size-wrap', 'valid-ranges',
++            'modinfo-name-tail','modinfo-name-prefix'],
+ }
+ negative = {'dirent': ['native-mixed', 'compat-mixed', 'native-all-hidden', 'compat-all-hidden',
+                        'native-partial-fault', 'compat-partial-fault'],
 diff --git a/tests/redirect_entry/entry_test.c b/tests/redirect_entry/entry_test.c
 index 4d45d5b..f21def3 100644
 --- a/tests/redirect_entry/entry_test.c
