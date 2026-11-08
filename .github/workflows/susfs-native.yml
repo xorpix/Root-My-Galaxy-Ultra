@@ -8,6 +8,8 @@ on:
       - 'backends/susfs/**'
       - 'app/src/main/assets/susfs/**'
       - 'app/src/main/java/dev/busung/s25uroot/SusfsRuntime.kt'
+      - 'app/src/main/java/dev/busung/s25uroot/SusfsAutoModules.kt'
+      - 'app/src/test/java/dev/busung/s25uroot/SusfsAutoModulesTest.kt'
 permissions:
   contents: read
 concurrency:
@@ -109,7 +111,7 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Test Android code and build signed candidate
         run: |
-          ./gradlew testDebugUnitTest assembleRelease -PrmguVersionSuffix=module-policy-test1 --no-daemon
+          ./gradlew testDebugUnitTest assembleRelease -PrmguVersionSuffix=dynamic-modules-test1 --no-daemon
           python3 tools/check_susfs_bundle.py --apk app/build/outputs/apk/release/app-release.apk
           python3 tools/verify_d2_helper.py app/build/outputs/apk/release/app-release.apk
       - name: Verify signing certificate and stage candidate
@@ -121,14 +123,15 @@ jobs:
           EXPECTED_SHA256="$(keytool -list -v -keystore "$KEYSTORE_FILE" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" | awk '/SHA256:/ {print $2; exit}' | tr -d ':' | tr 'A-F' 'a-f')"
           test -n "$SIGNED_SHA256" && test "$SIGNED_SHA256" = "$EXPECTED_SHA256"
           mkdir -p candidate
-          cp "$APK" candidate/RootMyGalaxyUltra-module-policy-test1.apk
-          sha256sum candidate/RootMyGalaxyUltra-module-policy-test1.apk > candidate/SHA256SUMS.txt
+          cp "$APK" candidate/RootMyGalaxyUltra-dynamic-modules-test1.apk
+          sha256sum candidate/RootMyGalaxyUltra-dynamic-modules-test1.apk > candidate/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: RMGU-module-policy-test1-${{ github.event.pull_request.head.sha }}
+          name: RMGU-dynamic-modules-test1-${{ github.event.pull_request.head.sha }}
           path: candidate/
           if-no-files-found: error
           retention-days: 14
       - name: Remove temporary signing key
         if: always()
         run: rm -f "$RUNNER_TEMP/module-policy-release.jks"
+

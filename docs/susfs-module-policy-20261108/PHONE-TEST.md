@@ -1,47 +1,60 @@
-# Phone check for the module-policy candidate
+# Phone check: dynamic kernel-module candidate
 
-The candidate needs its own phone result. The 1.3.5 receipt applies only to the
-previous binary. Host tests cannot establish real-device load/reload behavior.
+Install `RootMyGalaxyUltra-dynamic-modules-test1.apk`, fully reboot, activate
+root and enable SusFS. The previous module-policy-test1 binary's phone receipt
+does not validate this new binary.
 
-1. Install the repository-signed `module-policy-test1` APK. Reboot so the old
-   boot-local SusFS module is no longer loaded, then enable SusFS in RMGU.
-2. Confirm RMGU reports SusFS active. Start or use NoMount through your usual
-   workflow and confirm its normal functionality still works.
-3. Run the following in ordinary Termux, outside `su`:
+1. Confirm NoMount still works through the normal workflow.
+2. In ordinary Termux, run:
 
    ```sh
-   id
-   uname -r
    ls -d /sys/module/nomount /sys/module/zram
-   grep -E '^(nomount|kernelsu|susfs_guard_lkm) ' /proc/modules
    ```
 
-   NoMount's path should be absent and zram's path should remain visible if
-   zram is loaded. If Android denies `/proc/modules`, record that as inconclusive
-   for this particular non-root check; it is not proof of filtering.
-
-4. Run:
+   NoMount should be absent. Zram should remain visible if present on this phone.
+3. As root, read the policy and verify NoMount is still accessible:
 
    ```sh
    su -c '
-   id
    cat /sys/module/susfs_guard_lkm/parameters/hide_modules
-   ls -d /sys/module/nomount
+   ls -d /sys/module/nomount /sys/module/zram
    grep -E "^(nomount|kernelsu|susfs_guard_lkm) " /proc/modules
    '
    ```
 
-   The status should include `root-visible: nomount` and
-   `automatic refresh: on`. Root should see NoMount's path and module row;
-   KernelSU/SusFS rows should remain absent. NoMount must actually be loaded
-   for its path/row checks to be meaningful.
+   Expect `automatic discovery: on`, a nonzero stock count, `overflow=0` and
+   `errors=0`. The `names:` line remains the explicit baseline list. The dynamic
+   registry is reported separately. Root should still see NoMount's module row.
+   If discovery remains off/incomplete, retain the SusFS report; do not call
+   the feature validated merely because the explicit NoMount rule still works.
+4. Check that automatic selection can replace the explicit NoMount entry. This
+   uses the already-loaded NoMount module and does not require loading an
+   arbitrary test driver or forcing an unload:
 
-To exercise late loading, enable SusFS before starting NoMount if your normal
-NoMount workflow permits that order, then repeat the path/row checks after
-NoMount starts. Record whether this sequence was tested. The APK change takes
-effect in the kernel only after the old module is gone and the new one loads.
+   ```sh
+   su -c 'printf "%s\\n" "del nomount" > /sys/module/susfs_guard_lkm/parameters/hide_modules'
+   ls -d /sys/module/nomount /sys/module/zram
+   su -c '
+   cat /sys/module/susfs_guard_lkm/parameters/hide_modules
+   ls -d /sys/module/nomount
+   grep "^nomount " /proc/modules
+   '
+   ```
 
-Retain the RMGU SusFS report, outputs, firmware/kernel release, APK SHA256 and
-qualified module SHA256 with the result. A basic passing check does not by
-itself validate module unload stress, long uptime, every detector, or every
-supported firmware profile.
+   The explicit names line should no longer contain NoMount, while non-root
+   still cannot access its path and root still can. Confirm NoMount continues
+   working normally. Restore the baseline explicit selection afterwards:
+
+   ```sh
+   su -c 'printf "%s\\n" "add nomount" > /sys/module/susfs_guard_lkm/parameters/hide_modules'
+   ```
+
+If your normal NoMount workflow permits enabling SusFS before loading NoMount,
+test that sequence and report it separately. A successful existing-module test
+does not establish late-load, unload stress or long-uptime stability. Android
+may deny a non-root /proc/modules read independently; that is inconclusive for
+that particular view.
+
+Retain firmware/kernel release, the SusFS report, command outputs, candidate
+APK SHA256 and qualified module SHA256 with the result. Keep 1.3.5 stable until
+the new candidate's scoped phone checks are complete.

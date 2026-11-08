@@ -1,6 +1,6 @@
-tree d4ad85e0ab3589d3184ff79ebb1aa5a1962d7098
+tree a6bae8452b26d0c301b8870f3d134f0685844a32
 parent 08cff8220c7db9e37fa378a5757d950e6bdb0d1a
-author Codex <codex@openai.com> 1794173997 +0100
-committer Codex <codex@openai.com> 1794174206 +0100
+author Codex <codex@openai.com> 1794176943 +0000
+committer Codex <codex@openai.com> 1794176943 +0000
 
-Generalize selected-module visibility and reconcile lifecycle-owned sysfs rules
+Discover non-stock modules through firmware inventory and module events

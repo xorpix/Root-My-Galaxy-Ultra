@@ -1,66 +1,98 @@
-# Selected-module visibility and lifecycle
+# Automatic kernel-module selection and lifecycle
 
-This change builds on the phone-tested NoMount module-list repair. It retains
-the verified Samsung `m_show` entry and bounded fault-safe module-name read.
-KernelSU/SusFS symbol-prefix filtering is independent of the selected-name
-policy and remains enabled for root readers too.
+The candidate builds on the phone-tested selected-module policy. The maintainer
+reported NoMount hidden from ordinary Termux, visible and functional to root,
+with zram visible. That report applies to native commit
+`42fb802901c3b13289f921f8f6bebadfdfaba848` and its signed module-policy-test1 APK.
+The automatic-discovery candidate changes the binary and requires a new phone
+result; previous phone evidence is not transferred to it.
 
-## Configuration
+## Selection
 
-```
-hide_modules=kernelsu,susfs_guard_lkm,nomount hide_modules_root_visible=nomount
-```
+RMGU retains the explicit list `kernelsu,susfs_guard_lkm,nomount` and the explicit
+root-visible exception `nomount`. It also attempts one complete metadata scan
+of kernel-module files in these firmware locations:
 
-`hide_modules` selects up to 16 exact module names. The separate
-`hide_modules_root_visible` list permits effective global UID 0 to see those
-selected names in `/proc/modules` and module-qualified `/proc/kallsyms` rows.
-The policy alone never selects a module. Bare selected names keep their
-all-reader proc filtering. Policy can precede the selected-name parameter.
+- `/lib/modules`
+- `/system/lib/modules`, `/system_dlkm/lib/modules`
+- `/vendor/lib/modules`, `/vendor_dlkm/lib/modules`
+- `/odm/lib/modules`, `/odm_dlkm/lib/modules`
 
-The root control node accepts `root-visible set NAME [NAME...]` and
-`root-visible clear` as well as the existing set/add/del/clear/rescan commands.
-NoMount is configured by RMGU, not hard-coded in the native matcher. Other
-installer modules can opt into the same behavior without changing the matcher.
-The app does not automatically hide arbitrary vendor modules.
+Canonical directory and file paths must remain within these locations. Actual
+`name=` metadata is read with Android Toybox modinfo; filenames, module taint,
+signature status, install time and a preexisting loaded-module list are not
+used to decide which names are stock. No module code is executed. Aliases and
+names are deduplicated. A missing tool, unreadable file, missing/invalid name,
+unsupported compressed module, empty inventory or an exceeded bound rejects
+the scan. On a fresh boot, the explicit policy remains active if discovery
+cannot be initialized; no empty inventory is published as "hide everything".
 
-Selected sysfs module paths remain hidden from non-root readers and available
-to effective global UID 0. This does not grant access through independent user
-rules, DAC or SELinux. Private SusFS control-node authorization retains its
-existing real-UID checks. Names must fit `MODULE_NAME_LEN`, use ASCII letters,
-digits, `_`, `-` or `.`, and cannot be `.` or `..`; slash/path traversal and
-silent truncation are rejected before changing configuration.
+The inventory represents the mounted firmware-file view. It is not a
+cryptographic attestation and cannot prove that a same-name replacement or a
+root overlay is original firmware. Unusual stock locations are not inferred.
+This is classification by firmware inventory, not a claim to identify every
+root package or malicious module. Root ZIP modules without a kernel LKM are
+outside this mechanism.
 
-## Reliability and cost
+The kernel publishes a completed sorted stock table in one pointer swap.
+Non-root module/proc views then hide loaded module names outside that table;
+root keeps access to automatically selected names. Explicit stricter module
+rules and independent KernelSU/SusFS symbol-prefix filtering remain in effect.
+Stock module names remain visible unless explicitly hidden. Built-in sysfs
+entries are not enumerated as loaded modules or hidden automatically.
 
-Status formatting takes the sleeping configuration mutex before the reader
-spinlock, matching writers. The previous order could acquire a mutex while
-holding a spinlock and deadlock a concurrent configuration update.
+After commit, RMGU reads the root /proc/modules snapshot and seeds existing
+extra modules. The notifier captures subsequent COMING/LIVE/GOING events,
+including events concurrent with the snapshot. It copies names/presence only,
+retains no module pointer, and never vetoes a load. Deferred work reconciles
+sysfs rules and inode changes. No periodic scan, always-running userspace
+watcher or per-read logging is introduced. Sysfs work is deferred, so a new
+module can have a visibility window before its path rule is installed.
 
-Module COMING/LIVE/GOING notifications record only a selected-name bit and
-presence state, then queue work. A worker performs sleeping filesystem lookups.
-No module pointer survives the callback, no module load is vetoed, and unrelated
-modules queue no work. Events coalesce; a new event during work can queue another
-pass. There is no periodic polling or per-read logging. Sysfs updates are
-deferred and therefore do not eliminate every possible observation window.
+## Ownership and limits
 
-Ordinary configuration changes retain unchanged sysfs rules. Lifecycle work
-refreshes dirty names; `rescan` explicitly checks all selected names. Reloads
-replace a stale inode rule under the path-table lock. Allocation and lookup
-errors other than a confirmed absent path preserve the previous owned rule.
+Explicit and automatic selection are independent. Removing one selection
+source preserves a module rule still needed by the other. Independent user
+path rules retain their existing ownership. Automatically selected modules
+stay discoverable to effective global UID 0. This does not bypass independent
+DAC, SELinux or user hiding rules; private control authorization is unchanged.
 
-Module rules have their own ownership bit. User/control rules may overlap the
-same path or inode; module cleanup removes only module-owned entries, and user
-deletion cannot remove module-owned entries. Unload first closes admission,
-unregisters the notifier and cancels work outside the configuration mutex, then
-releases rules while the path layer is still alive. Internal owner cleanup also
-works after the public control gate closes.
+The stock table holds up to 1024 unique names, and the metadata scan accepts at
+most 4096 firmware file paths. The automatic sysfs registry holds up to 128
+unique extra names per boot. Unloaded names are retained for safe lifecycle
+tracking; absent paths have no active sysfs rule. Overflow and lookup errors
+are reported explicitly; overflow means sysfs coverage is incomplete for
+additional names, even though the proc predicate continues to exclude extra
+names. Explicit names retain their existing 16-entry limit. Reader stock
+lookups use binary search under the existing short lock.
 
-## Validation limits
+Read `/sys/module/susfs_guard_lkm/parameters/hide_modules` as root. The existing
+`names:` line lists explicit names; `automatic discovery:` reports the dynamic
+policy, stock/registry sizes and errors. `automatic refresh:` reports notifier
+registration. These status flags alone do not establish real-device coverage
+or performance. `automatic off` disables the automatic policy and releases
+its module-owned rules while retaining explicit and independent user rules.
+All discovery state is boot-local; firmware updates require fresh inventory.
 
-Host tests compile the production functions and exercise both normal and
-ASan/UBSan runs, with deliberate regressions required to fail. The native build
-checks the new notifier/work callback KCFI against real pinned DDK headers and
-checks the two new imports against DDK exports. A new binary needs a new phone
-check before stable publication; the previous NoMount receipt is baseline
-evidence only. No claim is made about device performance gains, all detector
-behavior, non-root `/proc/modules` availability, or long-uptime stability.
+The root controller supports `automatic begin`, batched `automatic stock
+NAME[,NAME...]`, `automatic commit`, `automatic abort`, `automatic observe
+NAME[,NAME...]`, and `automatic off`. Inventory construction never edits the
+active table in place. App activation is serialized across processes using
+the existing activation lock. Manual control writes remain individually
+serialized by the native configuration mutex.
+
+## Qualification
+
+The production controller, callbacks and cleanup are compiled by the host
+suite with sanitizer runs and deliberate regressions required to fail. New
+cases cover unknown-module discovery, stock exclusion, root visibility,
+bootstrap, unload/reload, an event during lookup, ownership overlap, rejected
+inventory and overflow. Android tests cover complete/failed metadata scans,
+name/path rejection, limits and bootstrap command order. Native qualification
+retains the pinned Samsung DDK, callback KCFI and import checks. The signed
+candidate still needs device checks for actual metadata availability, zram
+visibility, NoMount functionality and an additional loaded module.
+
+The mechanism covers the implemented module-list, module-symbol and sysfs
+views. It does not promise universal root invisibility or long-uptime
+stability. Hiding every stock driver is deliberately not the default.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reconstruct, qualify and stage the selected-module visibility candidate."""
+"""Reconstruct, qualify and stage the dynamic module-selection candidate."""
 import argparse
 import gzip
 import hashlib
@@ -120,6 +120,7 @@ def main():
         'acceptedHardwareBaseline': {'sourceCommit': BASE_NATIVE, 'moduleSha256': BASE_MODULE_SHA,
                                      'result': 'Maintainer NoMount functionality and root/non-root sysfs checks passed on 2026-11-08; see docs/susfs-nomount-hiding-20261108/phone-validation.json.'},
         'moduleVisibilityPolicy': DOC + '/README.md',
+        'automaticModuleSelection': 'Firmware-file metadata inventory, existing-module seed and native load/unload events; root discovery retained.',
         'nativeQualificationRun': os.environ.get('GITHUB_RUN_ID'),
         'kernelImports': 142, 'syscallWrappers': 22,
         'deviceValidation': 'Pending: candidate must be phone-tested before stable publication.'}
@@ -145,7 +146,7 @@ def main():
     notice = [('Current Samsung source ' + candidate + '.')
               if line.startswith('Current Samsung source ') else line
               for line in notice if not line.startswith(('NoMount reader compatibility policy: ', 'Selected-module visibility policy: '))]
-    notice.append('Selected-module visibility policy: explicit root discovery, owned rules and automatic module refresh; see ' + DOC + '/README.md.')
+    notice.append('Selected-module visibility policy: explicit and firmware-inventory module selection, root discovery and automatic load/reload handling; see ' + DOC + '/README.md.')
     write(notice_path, ('\n'.join(notice) + '\n').encode())
     write(DOC + '/build-receipt.json', (json.dumps(receipt, indent=2) + '\n').encode())
     write(DOC + '/native-build.json', (out / 'build/build.json').read_bytes())
@@ -158,3 +159,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

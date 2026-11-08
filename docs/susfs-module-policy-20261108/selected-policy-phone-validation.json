@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "result": "passed",
+  "scope": "Maintainer basic visibility and NoMount functionality; late-load, reload stress and long uptime not reported",
+  "sourceCommit": "42fb802901c3b13289f921f8f6bebadfdfaba848",
+  "moduleSha256": "2f4b000016cf438658e83d0dd0aac42d5d75bcbce6ce7cd16cbc91bb1b1133a9",
+  "apkSha256": "bc89be62691606f560a6cf22ee8b88102ca6a7e7f8870a8879de3664dd998a6e",
+  "date": "2026-11-08",
+  "reportedChecks": {
+    "nonRootNomount": "ENOENT",
+    "nonRootZram": "visible",
+    "rootNomountSysfs": "visible",
+    "rootProcModules": "nomount 57344 0 - Live 0x0000000000000000 (O)",
+    "rootVisible": "nomount",
+    "automaticRefresh": "on",
+    "sysfsRules": 2,
+    "sysfsFailed": 1,
+    "sysfsAbsent": 1,
+    "sysfsErrors": 0,
+    "NoMountFunctionality": "User confirmed: Yeah, it does."
+  },
+  "appliesToAutomaticDiscoveryCandidate": false
+}
