@@ -4,8 +4,8 @@
 #include <string.h>
 struct azhl_backend { const char *id, *version_text, *manager; uint32_t version; };
 static const struct azhl_backend azhl_backends[] = {
-  {"kernelsu", "32716", "me.weishu.kernelsu", 32716},
-  {"kernelsu-next", "33455", "com.rifsxd.ksunext", 33455},
+  {"kernelsu", "32718", "me.weishu.kernelsu", 32718},
+  {"kernelsu-next", "33487", "com.rifsxd.ksunext", 33487},
   {"resukisu", "35257", "org.bakasu.bakasu", 35257},
   {"kowsu", "32740", "com.kowx712.supermanager", 32740},
 };
