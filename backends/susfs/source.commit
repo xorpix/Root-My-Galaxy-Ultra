@@ -1,6 +1,6 @@
-tree db1648df75d104249d29fc4533912e4ba4722561
-parent 98d2fe68f28647deec322311247fb12ab2601da5
-author Codex <codex@openai.com> 1793740662 +0100
-committer Codex <codex@openai.com> 1793740662 +0100
+tree 09807b281df45f768865cd4637c67050429c41f0
+parent 3a65e96f3694f19abd7feb1f905e4794f48d5aee
+author xorpix <xorpix@users.noreply.github.com> 1794155364 +0100
+committer xorpix <xorpix@users.noreply.github.com> 1794155364 +0100
 
-Verify complete fdinfo rollback and audited compiler ABI delta
+Verify Samsung modules callback before enabling row filtering

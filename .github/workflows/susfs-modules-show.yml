@@ -1,0 +1,133 @@
+name: SusFS modules callback qualification
+on:
+  pull_request:
+    paths:
+      - 'docs/susfs-modules-show-20261108/**'
+      - 'tools/build_susfs_modules_show.py'
+      - '.github/workflows/susfs-modules-show.yml'
+      - 'backends/susfs/**'
+      - 'app/src/main/assets/susfs/**'
+permissions:
+  contents: read
+concurrency:
+  group: susfs-modules-show-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  host:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Reconstruct reviewed source
+        run: python3 tools/build_susfs_modules_show.py --work "$RUNNER_TEMP/modules-show" --prepare-only
+      - name: Run all production regressions and sanitizer controls
+        run: python3 "$RUNNER_TEMP/modules-show/susfs/tools/run_host_suite.py" --output "$RUNNER_TEMP/modules-show/output/host" --jobs 2
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: modules-show-host-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/modules-show/output/
+          if-no-files-found: error
+          retention-days: 14
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install native prerequisites
+        run: sudo apt-get update && sudo apt-get install -y build-essential libssl-dev pkg-config python3-pyelftools
+      - name: Provide the standard DDK path
+        run: |
+          mkdir -p "$RUNNER_TEMP/modules-show-ddk/ddk-root/opt/ddk"
+          sudo ln -s "$RUNNER_TEMP/modules-show-ddk/ddk-root/opt/ddk" /opt/ddk
+      - name: Provision pinned DDK
+        run: python3 tools/provision_ddk.py "$RUNNER_TEMP/modules-show-ddk"
+      - name: Compile module, check ABI and stage bundle
+        run: python3 tools/build_susfs_modules_show.py --work "$RUNNER_TEMP/modules-show"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: modules-show-native-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/modules-show/output/
+          if-no-files-found: error
+          retention-days: 14
+  android:
+    needs: [host, native]
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: modules-show-native-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/modules-show-native
+      - name: Overlay the exact qualified native bundle
+        run: |
+          cp -a "$RUNNER_TEMP/modules-show-native/bundle/." .
+          python3 tools/check_susfs_bundle.py
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-37.0 build-tools;36.0.0 cmake;3.22.1'
+          accept-android-sdk-licenses: true
+      - name: Install required NDK
+        run: sdkmanager 'ndk;28.2.13676358'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Prepare repository release signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          : "${KEYSTORE_BASE64:?Missing repository signing key}"
+          : "${KEYSTORE_PASSWORD:?Missing keystore password}"
+          : "${KEY_ALIAS:?Missing signing alias}"
+          : "${KEY_PASSWORD:?Missing key password}"
+          KEYSTORE_PATH="$RUNNER_TEMP/modules-show-release.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH"
+          {
+            echo "KEYSTORE_FILE=$KEYSTORE_PATH"
+            echo "KEYSTORE_TYPE=PKCS12"
+            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "KEY_ALIAS=$KEY_ALIAS"
+            echo "KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+      - name: Test Android code and build signed candidate
+        run: |
+          ./gradlew testDebugUnitTest assembleRelease -PrmguVersionSuffix=modules-show-test1 --no-daemon
+          python3 tools/check_susfs_bundle.py --apk app/build/outputs/apk/release/app-release.apk
+          python3 tools/verify_d2_helper.py app/build/outputs/apk/release/app-release.apk
+      - name: Verify signing certificate and stage candidate
+        run: |
+          set -euo pipefail
+          BUILD_TOOLS="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)"
+          APK="app/build/outputs/apk/release/app-release.apk"
+          SIGNED_SHA256="$("$BUILD_TOOLS/apksigner" verify --print-certs "$APK" | awk '/SHA-256 digest/ {print $NF; exit}' | tr 'A-F' 'a-f')"
+          EXPECTED_SHA256="$(keytool -list -v -keystore "$KEYSTORE_FILE" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" | awk '/SHA256:/ {print $2; exit}' | tr -d ':' | tr 'A-F' 'a-f')"
+          test -n "$SIGNED_SHA256" && test "$SIGNED_SHA256" = "$EXPECTED_SHA256"
+          mkdir -p candidate
+          cp "$APK" candidate/RootMyGalaxyUltra-modules-show-test1.apk
+          sha256sum candidate/RootMyGalaxyUltra-modules-show-test1.apk > candidate/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RMGU-modules-show-test1-${{ github.event.pull_request.head.sha }}
+          path: candidate/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Remove temporary signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/modules-show-release.jks"
