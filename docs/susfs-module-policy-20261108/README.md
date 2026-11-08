@@ -100,3 +100,22 @@ visibility, NoMount functionality and an additional loaded module.
 The mechanism covers the implemented module-list, module-symbol and sysfs
 views. It does not promise universal root invisibility or long-uptime
 stability. Hiding every stock driver is deliberately not the default.
+
+## Independent feature readiness (test2)
+
+A BZJA early-boot report showed a loaded 629504-byte module with all 142
+imports resolved but no OPEN_REDIRECT feature advertised. Module selection
+previously returned early for every Partial core state. The app now retains
+separate verified-ABI and feature-readiness information: selection may start
+with a verified Partial status only when SUS_PATH and HIDE_KSU_SUSFS_SYMBOLS
+are available. The native controller still enforces its own module-list,
+notifier and sysfs readiness. Unrelated missing features remain reported as
+Partial and are not claimed fixed. A malformed, unanswered or failed ABI query
+never grants readiness. One read-only retry can recover a transient incomplete
+reply, but cannot turn a failed first observation into permission to reload.
+
+Every activation, including the already-loaded branch, atomically replaces the
+report in device-protected files. The report includes app version, boot token,
+core state and detail; a failed inventory also retains bounded error output.
+This changes the Android coordinator only; the qualified native module remains
+37bc7023141afa7041a6e6452a6f22b0bad24c848272236c7cfb1deb60bd8594.

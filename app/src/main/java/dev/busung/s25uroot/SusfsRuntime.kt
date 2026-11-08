@@ -8,6 +8,32 @@ import org.json.JSONObject
 internal data class SusfsOutcome(val status: SusfsStatus, val report: String, val needsGrant: Boolean = false)
 internal typealias SusfsShell = (String, Long) -> ShizukuController.ShellResult?
 
+/** Retry an incomplete read once; never convert an unanswered/partial first
+ * observation into permission to load another module. Only a verified reply
+ * replaces it. There is no load or configuration in this helper. */
+internal fun readSusfsStatus(command: String, shell: SusfsShell): SusfsOutcome {
+    val first = shell(command, 15)
+    val initial = first?.let { SusfsOutcome(parseSusfsStatus(it.output, it.exitCode), it.output) }
+        ?: SusfsOutcome(SusfsStatus(SusfsState.Unavailable,
+            detail = "The status check did not answer; retry activation before rebooting."),
+            "The status helper did not answer.")
+    if (initial.status.state == SusfsState.Absent || initial.status.abiVerified) return initial
+    val retry = shell(command, 15) ?: return initial
+    val parsed = parseSusfsStatus(retry.output, retry.exitCode)
+    return if (parsed.abiVerified) SusfsOutcome(parsed, retry.output) else initial
+}
+
+/** One canonical, atomic report for foreground, early boot and already-loaded
+ * activation. Readers must never observe a file truncated during replacement. */
+internal fun writeSusfsActivationReport(directory: File, header: String, outcome: SusfsOutcome) {
+    check(directory.isDirectory || directory.mkdirs())
+    val temporary = File.createTempFile("susfs-report-", ".tmp", directory)
+    try {
+        temporary.writeText(header + "State: ${outcome.status.state}\nDetails: ${outcome.status.detail}\n" + outcome.report + "\n")
+        check(temporary.renameTo(File(directory, "susfs-last-report.txt"))) { "Could not replace the SusFS report." }
+    } finally { temporary.delete() }
+}
+
 /** Manual boot-local activation: verified bundled bytes, root loader, then live ABI status. */
 internal object SusfsRuntime {
     // Exact firmware profiles share one verified module asset.
@@ -61,13 +87,7 @@ internal object SusfsRuntime {
 
     private fun readStatus(context: Context, profile: JSONObject, shell: SusfsShell): SusfsOutcome {
         val tool = nativeTool(context, profile, "status")
-        val result = shell(shellQuote(tool.path), 15)
-            // No grant claim here: inside activation the daemon was just proven
-            // up, so a null is transient — only the entry check below, made
-            // with a live daemon behind it, means "this UID is refused".
-            ?: return unavailable("The status check did not answer; retry once before rebooting.")
-        val status = parseSusfsStatus(result.output, result.exitCode)
-        return SusfsOutcome(status, result.output)
+        return readSusfsStatus(shellQuote(tool.path), shell)
     }
 
     /** Last activation result, recorded for the status row. Never throws. */
@@ -97,7 +117,15 @@ internal object SusfsRuntime {
             val directory = context.createDeviceProtectedStorageContext().filesDir
             check(directory.isDirectory || directory.mkdirs())
             RandomAccessFile(File(directory, "susfs-activation.lock"), "rw").use { file ->
-                file.channel.lock().use { activateLocked(context, snapshot, shell) }
+                file.channel.lock().use {
+                    val outcome = runCatching { activateLocked(context, snapshot, shell) }
+                        .getOrElse { unavailable(it.message ?: "SusFS activation failed.") }
+                    runCatching {
+                        writeSusfsActivationReport(directory,
+                            "App: ${BuildConfig.VERSION_NAME}\nBoot: ${AutoRootSupport.currentBootToken() ?: "unknown"}\n", outcome)
+                    }
+                    outcome
+                }
             }
         }.getOrElse { unavailable(it.message ?: "SusFS activation failed.") }
     }
@@ -148,7 +176,6 @@ internal object SusfsRuntime {
             SusfsAutoApps.attach(context, after.copy(status = status, report = report), shell), shell,
             context.createDeviceProtectedStorageContext().cacheDir.absolutePath,
         )
-        File(context.filesDir, "susfs-last-report.txt").writeText(configured.report)
         return configured
     }
 }

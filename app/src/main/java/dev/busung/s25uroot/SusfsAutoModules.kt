@@ -89,7 +89,10 @@ internal object SusfsAutoModules {
     """.trimIndent()
 
     fun attach(core: SusfsOutcome, shell: SusfsShell, workRoot: String): SusfsOutcome {
-        if (core.status.state != SusfsState.Active) return core
+        if (!susfsCanSelectModules(core.status)) {
+            if (core.status.state !in setOf(SusfsState.Active, SusfsState.Partial)) return core
+            return detail(core, false, "Module selection requires a verified ABI plus path and symbol hiding. " + core.status.detail)
+        }
         val current = shell("cat ${shellQuote(CONTROL)}", 8)
         if (current == null || current.exitCode != 0) return detail(core, false, "The current kernel-module policy could not be read.")
         val found = status.find(current.output)
@@ -102,7 +105,8 @@ internal object SusfsAutoModules {
         }
         val inventory = shell(inventoryScript(workRoot), 45)
         val names = inventory?.let { susfsStockModuleInventory(it.output, it.exitCode) }
-            ?: return detail(core, false, "Firmware module metadata could not be read completely; configured rules remain active.")
+            ?: return detail(core, false, "Firmware metadata inventory was not accepted. Exit: ${inventory?.exitCode?.toString() ?: "no response"}. " +
+                inventory?.output?.lineSequence()?.filter { it.isNotBlank() }?.toList()?.takeLast(4)?.joinToString("\n").orEmpty().takeLast(1024))
         val applied = shell(configureScript(names), 30)
         val after = applied?.takeIf { it.exitCode == 0 }?.let { status.find(it.output) }
         return detail(core, after != null && healthy(after), applied?.output.orEmpty())
@@ -114,7 +118,7 @@ internal object SusfsAutoModules {
 
     private fun detail(core: SusfsOutcome, ready: Boolean, report: String): SusfsOutcome {
         val message = if (ready) "Extra kernel modules are selected automatically."
-            else "Automatic kernel-module selection is incomplete. Configured rules remain active."
+            else "Automatic kernel-module selection is incomplete."
         return core.copy(status = core.status.copy(detail = core.status.detail + ". " + message),
             report = core.report + "\nKernel module selection: " + message + "\n" + report)
     }

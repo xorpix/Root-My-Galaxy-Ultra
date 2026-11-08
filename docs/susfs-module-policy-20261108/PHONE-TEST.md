@@ -1,7 +1,9 @@
 # Phone check: dynamic kernel-module candidate
 
-Install `RootMyGalaxyUltra-dynamic-modules-test1.apk`, fully reboot, activate
-root and enable SusFS. The previous module-policy-test1 binary's phone receipt
+Install `RootMyGalaxyUltra-dynamic-modules-test2.apk`. If the previous dynamic
+candidate is already loaded in this boot, keep the current boot and toggle the
+SusFS switch off and on to re-run app initialization against that live module.
+Otherwise fully reboot, activate root and enable SusFS. The previous module-policy-test1 binary's phone receipt
 does not validate this new binary.
 
 1. Confirm NoMount still works through the normal workflow.
@@ -59,3 +61,12 @@ that particular view.
 Retain firmware/kernel release, the SusFS report, command outputs, candidate
 APK SHA256 and qualified module SHA256 with the result. Keep 1.3.5 stable until
 the new candidate's scoped phone checks are complete.
+
+For the early-boot failure case, retain this canonical report as well:
+
+```sh
+su -c 'cat /data/user_de/0/dev.experimental.azhlroot/files/susfs-last-report.txt'
+```
+
+A missing OPEN_REDIRECT feature remains a separate reported degradation. An
+automatic-selection pass does not establish that OPEN_REDIRECT is working.
