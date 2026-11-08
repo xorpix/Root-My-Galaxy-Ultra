@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "baseAppCommit": "c68fab0cdd3597f5552481cf610fa36b546969e4",
+  "sourceParent": "2be2a77433418e0c3688a649dca160dc414d325b",
+  "sourceCommit": "08cff8220c7db9e37fa378a5757d950e6bdb0d1a",
+  "sourceTree": "9a8961abf991432fbe14730e205037d479ac8c34",
+  "patchSha256": "966df5341afdcea8d4dfab70dd945f6c7078e7ac9a7caa6f87081349cb8ca76c",
+  "hardwareValidated": false,
+  "module": {
+    "path": "app/src/main/assets/susfs/bzig/susfs_guard_lkm.ko",
+    "bytes": 600744,
+    "sha256": "da363afd8dbf793526701193b2d89aef01b8efc40b245c840f9ce8a56dafb602"
+  },
+  "workflowRun": "42506570674",
+  "sourceArchiveSha256": "209e6f7867637e4bcbb5c0e238d58de3e3a5738d52eb7b8df88b707945c7c789"
+}
