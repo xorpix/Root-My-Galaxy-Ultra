@@ -1,0 +1,53 @@
+{
+  "kind": "host cross-compilation only; no kernel module execution",
+  "module": {
+    "bytes": 3538352,
+    "sha256": "f78516b567ecbb150e740d361cdf6ee9703f5ef8aa3ec97f02a30257e6ae389f"
+  },
+  "commands": [
+    {
+      "argv": [
+        "make",
+        "-C",
+        "/home/runner/work/_temp/nomount-hiding-ddk/ddk-root/opt/ddk/kdir/android16-6.12",
+        "M=/home/runner/work/_temp/nomount-hiding/susfs/kernel",
+        "ARCH=arm64",
+        "CC=clang",
+        "LLVM=1",
+        "LLVM_IAS=1",
+        "CONFIG_DEBUG_INFO_BTF_MODULES=",
+        "clean"
+      ],
+      "exit_code": 0
+    },
+    {
+      "argv": [
+        "make",
+        "-C",
+        "/home/runner/work/_temp/nomount-hiding-ddk/ddk-root/opt/ddk/kdir/android16-6.12",
+        "M=/home/runner/work/_temp/nomount-hiding/susfs/kernel",
+        "ARCH=arm64",
+        "CC=clang",
+        "LLVM=1",
+        "LLVM_IAS=1",
+        "CONFIG_DEBUG_INFO_BTF_MODULES=",
+        "modules",
+        "-j2"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "compiler": "Android (14043575, +pgo, +bolt, +lto, +mlgo, based on r536225) clang version 19.0.1 (https://android.googlesource.com/toolchain/llvm-project b3a530ec6537146650e42be89f1089e9a3588460)\nTarget: x86_64-unknown-linux-gnu\nThread model: posix\nInstalledDir: /home/runner/work/_temp/nomount-hiding-ddk/ddk-root/opt/ddk/clang/clang-r536225/bin",
+  "kernel_release_header": "#define UTS_RELEASE \"6.12.76-4k\"",
+  "autoconf_sha256": "1fbc9de7fd352a6a44f0a67296bad10464b956bf59144382f404ac17d7e2fde2",
+  "module_symvers_sha256": "7d6930b74c649e4e2ceda3ef24e74774458844c34a41d29e042ccf916b509f96",
+  "module_btf_generation_omitted": true,
+  "config": {
+    "CONFIG_CFI_CLANG": true,
+    "CONFIG_CFI_ICALL_NORMALIZE_INTEGERS": true,
+    "CONFIG_TASKS_RCU": true,
+    "CONFIG_MODVERSIONS": true,
+    "CONFIG_ARM64_4K_PAGES": true
+  },
+  "hardware_validated": false
+}
