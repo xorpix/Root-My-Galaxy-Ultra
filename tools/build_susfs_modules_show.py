@@ -123,6 +123,16 @@ def main():
         'nativeQualificationRun': os.environ.get('GITHUB_RUN_ID'),
         'kernelImports': 140, 'syscallWrappers': 22,
         'deviceValidation': 'Pending: candidate must be phone-tested before stable publication.'}
+    current_validation = json.loads((root / 'backends/susfs/build-manifest.json').read_text())
+    if (current_validation['sourceCommit'] == candidate and
+            current_validation['module'] == module_info and
+            current_validation.get('validation', {}).get('hardwareValidated')):
+        assert current_validation['sourceArchiveSha256'] == archive_sha, 'validated archive changed'
+        phone = json.loads((root / DOC / 'phone-validation.json').read_text())
+        assert phone['result'] == 'passed' and phone['sourceCommit'] == candidate
+        assert phone['moduleSha256'] == module_info['sha256'], 'phone-tested module changed'
+        manifest['validation'] = dict(current_validation['validation'])
+        manifest['validation']['nativeQualificationRun'] = os.environ.get('GITHUB_RUN_ID')
     write('backends/susfs/build-manifest.json', (json.dumps(manifest, indent=2) + '\n').encode())
     for path in sorted((root / 'app/src/main/assets/susfs').glob('*/profile.json')):
         profile = json.loads(path.read_text())

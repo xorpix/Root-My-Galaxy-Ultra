@@ -11,7 +11,7 @@
     "sha256": "482efab75ab8b682bfdf22332c2f7cf7c70af05ceee2ad41ca3aa1bdcfb048b7"
   },
   "validation": {
-    "hardwareValidated": false,
+    "hardwareValidated": true,
     "acceptedHardwareBaseline": {
       "sourceCommit": "3a65e96f3694f19abd7feb1f905e4794f48d5aee",
       "moduleSha256": "31e5eb20572c137caf21abc29a08632c8485c3ccd003d298008330b0e7f58a0a",
@@ -21,7 +21,8 @@
     "nativeQualificationRun": "42500535701",
     "kernelImports": 140,
     "syscallWrappers": 22,
-    "deviceValidation": "Pending: candidate must be phone-tested before stable publication."
+    "deviceValidation": "Maintainer root module-listing check passed on 2026-11-08: the configured hidden names are absent and ordinary driver rows remain. Scope and limitations are recorded in phone-validation.json.",
+    "phoneValidation": "docs/susfs-modules-show-20261108/phone-validation.json"
   },
   "priorityControl": {
     "path": "app/src/main/jniLibs/arm64-v8a/librmgususfs_priority.so",

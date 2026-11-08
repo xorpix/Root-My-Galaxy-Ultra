@@ -1,8 +1,8 @@
-# Samsung modules callback safety candidate
+# Samsung modules callback safety fix
 
 This change adapts upstream SusFS PR #200 to the existing Samsung source at
-`3a65e96f3694f19abd7feb1f905e4794f48d5aee`. It is a candidate for phone testing;
-the currently published 1.3.4 module remains the accepted hardware baseline.
+`3a65e96f3694f19abd7feb1f905e4794f48d5aee`. The maintainer's root module-listing check passed on 2026-11-08;
+release 1.3.4 remains the previous hardware baseline.
 
 The name-based `m_show` registration path is preserved, but filtering stays
 inactive until its actual resolved entry matches the independently verified
@@ -37,18 +37,19 @@ and a release-key-signed APK with the suffix `modules-show-test1`. The APK job
 overlays the exact native artifact and verifies its packaged bytes. This
 workflow uploads review artifacts; it does not publish a stable release.
 
-## Phone validation pending
+## Phone validation
 
-Install the signed candidate over RMGU, perform a full reboot, then activate
-root and SusFS normally. A soft reboot does not replace the loaded module.
+The maintainer supplied the requested root `/proc/modules` name listing on
+2026-11-08. It is readable, `kernelsu` and `susfs_guard_lkm` are absent, and
+ordinary driver rows remain. `phone-validation.json` pins the tested APK,
+module and source, and records the scope of this result.
 
-Check as root that `/proc/modules` is readable, the configured hidden modules
-are absent, and ordinary module rows remain present. App-side emptiness alone
-is insufficient: Samsung SELinux may deny the app access regardless of the
-hook. Check that normal mount listings and kallsyms behavior remain intact.
-If the module is unloaded in a controlled test, verify restoration and the
-absence of a kernel warning or reboot. Candidate receipts deliberately set
-`hardwareValidated` to false until there is device evidence for these bytes.
+This confirms the module-listing path through a root reader, rather than an
+app view which Samsung SELinux may deny independently. No separate device
+unload/restoration, kallsyms or long-uptime test was reported. Host build
+receipts remain historical host-only evidence; the current bundle manifest
+records this scoped hardware result. Reproduction carries it forward only
+when the source archive and compiled module match the accepted bytes.
 
 The upstream mount refactor, Kallrecon replacement, version-only 2.4.0 change
 and optional mkdir behavior change are outside this fix.
