@@ -1,37 +1,27 @@
 {
   "schema": 1,
-  "sourceCommit": "3a65e96f3694f19abd7feb1f905e4794f48d5aee",
-  "sourceTree": "db1648df75d104249d29fc4533912e4ba4722561",
-  "sourceParent": "98d2fe68f28647deec322311247fb12ab2601da5",
+  "sourceCommit": "2be2a77433418e0c3688a649dca160dc414d325b",
+  "sourceTree": "09807b281df45f768865cd4637c67050429c41f0",
+  "sourceParent": "3a65e96f3694f19abd7feb1f905e4794f48d5aee",
   "sourceArchive": "source.tar.gz",
-  "sourceArchiveSha256": "19897fca914840014af5162fa2f12bc2c4fad38ad9851a10de0d5a6b7374a098",
+  "sourceArchiveSha256": "6660ed1111f03c94c4d9c296f0a9ed46fe7ad5d4ec43a00fa1622b6e31a03eff",
   "module": {
     "path": "app/src/main/assets/susfs/bzig/susfs_guard_lkm.ko",
-    "bytes": 600216,
-    "sha256": "31e5eb20572c137caf21abc29a08632c8485c3ccd003d298008330b0e7f58a0a"
+    "bytes": 601008,
+    "sha256": "482efab75ab8b682bfdf22332c2f7cf7c70af05ceee2ad41ca3aa1bdcfb048b7"
   },
   "validation": {
-    "hostSuites": 33,
-    "hostRunnerExecutions": 64,
-    "hostPassed": 64,
+    "hardwareValidated": false,
+    "acceptedHardwareBaseline": {
+      "sourceCommit": "3a65e96f3694f19abd7feb1f905e4794f48d5aee",
+      "moduleSha256": "31e5eb20572c137caf21abc29a08632c8485c3ccd003d298008330b0e7f58a0a",
+      "result": "Maintainer confirmed release 1.3.4 on the phone on 2026-11-03."
+    },
+    "modulesShowHardening": "docs/susfs-modules-show-20261108/README.md",
+    "nativeQualificationRun": "42500535701",
     "kernelImports": 140,
     "syscallWrappers": 22,
-    "hardwareValidated": true,
-    "acceptedHardwareBaseline": {
-      "sourceCommit": "98b5149536fdc564132ca82b08d3980114be298a",
-      "moduleSha256": "5c7808bee0b376d91b993d2440f288319162c5a6861549bf10d9c937e5e58b77",
-      "result": "Maintainer accepted test4 device testing and reported no HMA failures; production diagnostic cleanup checked by host/ABI/build validation."
-    },
-    "repairAudit": "docs/susfs-repairs-20261103/README.md",
-    "repairNativeBuildRun": 41721581896,
-    "deviceValidation": "Maintainer confirmed successful phone testing of the repair APK on 2026-11-03.",
-    "repairPhoneTest": {
-      "date": "2026-11-03",
-      "evidence": "Maintainer report: everything works.",
-      "appCommit": "3455db90dad18100bfd21a71eee3b2c644b1cd04",
-      "sourceCommit": "3a65e96f3694f19abd7feb1f905e4794f48d5aee",
-      "moduleSha256": "31e5eb20572c137caf21abc29a08632c8485c3ccd003d298008330b0e7f58a0a"
-    }
+    "deviceValidation": "Pending: candidate must be phone-tested before stable publication."
   },
   "priorityControl": {
     "path": "app/src/main/jniLibs/arm64-v8a/librmgususfs_priority.so",
