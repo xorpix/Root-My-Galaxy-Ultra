@@ -25,9 +25,9 @@ internal object SusfsAutoModules {
     // One bounded scan at activation. Canonical firmware roots only; failed or
     // compressed/missing metadata rejects the inventory instead of trusting a
     // partial list. Newly loaded modules are subsequently handled in-kernel.
-    internal val inventoryScript = """
+    internal fun inventoryScript(workRoot: String) = """
         set -eu
-        work=${'$'}(/system/bin/toybox mktemp -d /data/local/tmp/rmgu-stock.XXXXXXXX)
+        work=${'$'}(/system/bin/toybox mktemp -d ${shellQuote(workRoot + "/rmgnext-stock.XXXXXXXX")})
         trap 'rm -rf "${'$'}work"' EXIT HUP INT TERM
         : > "${'$'}work/files"
         for root in /lib/modules /system/lib/modules /system_dlkm/lib/modules /vendor/lib/modules /vendor_dlkm/lib/modules /odm/lib/modules /odm_dlkm/lib/modules; do
@@ -88,7 +88,7 @@ internal object SusfsAutoModules {
         cat $CONTROL
     """.trimIndent()
 
-    fun attach(core: SusfsOutcome, shell: SusfsShell): SusfsOutcome {
+    fun attach(core: SusfsOutcome, shell: SusfsShell, workRoot: String): SusfsOutcome {
         if (core.status.state != SusfsState.Active) return core
         val current = shell("cat ${shellQuote(CONTROL)}", 8)
         if (current == null || current.exitCode != 0) return detail(core, false, "The current kernel-module policy could not be read.")
@@ -100,7 +100,7 @@ internal object SusfsAutoModules {
             val complete = seeded?.takeIf { it.exitCode == 0 }?.let { status.find(it.output) }
             return detail(core, complete != null && healthy(complete), seeded?.output.orEmpty())
         }
-        val inventory = shell(inventoryScript, 45)
+        val inventory = shell(inventoryScript(workRoot), 45)
         val names = inventory?.let { susfsStockModuleInventory(it.output, it.exitCode) }
             ?: return detail(core, false, "Firmware module metadata could not be read completely; configured rules remain active.")
         val applied = shell(configureScript(names), 30)

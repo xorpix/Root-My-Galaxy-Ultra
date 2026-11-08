@@ -32,11 +32,12 @@ class SusfsAutoModulesTest {
     }
 
     @Test fun firmwareInventoryDoesNotTreatDataDirectoriesAsStock() {
-        val script = SusfsAutoModules.inventoryScript
+        val script = SusfsAutoModules.inventoryScript("/private/cache")
         assertTrue(script.contains("modinfo -F name"))
         assertTrue(script.contains("*.ko.zst"))
         assertTrue(script.contains("*) exit 65"))
         assertFalse(script.contains("/data/adb/modules"))
+        assertFalse(script.contains("/data/local/tmp"))
         assertFalse(script.contains("sleep "))
     }
 
@@ -48,7 +49,7 @@ class SusfsAutoModulesTest {
             calls.add(command)
             ShizukuController.ShellResult(0, prefix + if (calls.size == 1) "0\n" else "1\n")
         }
-        val result = SusfsAutoModules.attach(core, shell)
+        val result = SusfsAutoModules.attach(core, shell, "/private/cache")
         assertEquals(2, calls.size)
         assertEquals(SusfsAutoModules.seedScript, calls[1])
         assertTrue(result.status.detail.contains("Extra kernel modules are selected automatically."))
@@ -61,11 +62,11 @@ class SusfsAutoModulesTest {
         val interrupted: SusfsShell = { _, _ ->
             if (++calls == 1) ShizukuController.ShellResult(0, incomplete) else null
         }
-        val result = SusfsAutoModules.attach(core, interrupted)
+        val result = SusfsAutoModules.attach(core, interrupted, "/private/cache")
         assertEquals(SusfsState.Active, result.status.state)
         assertTrue(result.status.detail.contains("incomplete"))
         val overflow: SusfsShell = { _, _ -> ShizukuController.ShellResult(0,
             incomplete.replace("overflow=0", "overflow=1").replace("seeded=0", "seeded=1")) }
-        assertTrue(SusfsAutoModules.attach(core, overflow).status.detail.contains("incomplete"))
+        assertTrue(SusfsAutoModules.attach(core, overflow, "/private/cache").status.detail.contains("incomplete"))
     }
 }

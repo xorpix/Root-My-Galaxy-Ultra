@@ -111,7 +111,10 @@ internal object SusfsRuntime {
         if (!isRootAnswer(root)) return unavailable("Grant this app root permission in your manager, then retry.", needsGrant = true)
         // A module may now spoof uname. A live or partial ABI must prevent another load first.
         val before = readStatus(context, profile, shell)
-        if (before.status.state != SusfsState.Absent) return SusfsAutoModules.attach(SusfsAutoApps.attach(context, before, shell), shell)
+        if (before.status.state != SusfsState.Absent) return SusfsAutoModules.attach(
+            SusfsAutoApps.attach(context, before, shell), shell,
+            context.createDeviceProtectedStorageContext().cacheDir.absolutePath,
+        )
         val runningRelease = root?.output?.lineSequence()?.map { it.trim() }
             ?.firstOrNull { it.contains("android") }.orEmpty()
         // Recheck the exact qualified release in the root shell before loading.
@@ -141,7 +144,10 @@ internal object SusfsRuntime {
         val status = if (after.status.state == SusfsState.Absent) after.status.copy(
             detail = "SusFS is not active after the load attempt (loader exit ${loaded.exitCode}). See the report.",
         ) else after.status
-        val configured = SusfsAutoModules.attach(SusfsAutoApps.attach(context, after.copy(status = status, report = report), shell), shell)
+        val configured = SusfsAutoModules.attach(
+            SusfsAutoApps.attach(context, after.copy(status = status, report = report), shell), shell,
+            context.createDeviceProtectedStorageContext().cacheDir.absolutePath,
+        )
         File(context.filesDir, "susfs-last-report.txt").writeText(configured.report)
         return configured
     }
