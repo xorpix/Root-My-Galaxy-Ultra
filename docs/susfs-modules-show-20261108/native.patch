@@ -1,0 +1,684 @@
+diff --git a/docs/modules-show-20261108.md b/docs/modules-show-20261108.md
+new file mode 100644
+index 0000000..438c231
+--- /dev/null
++++ b/docs/modules-show-20261108.md
+@@ -0,0 +1,34 @@
++# Samsung modules callback hardening
++
++Base native source: `3a65e96f3694f19abd7feb1f905e4794f48d5aee`.
++Motivation: upstream `inforcqb/susfs4ksu-for-lkm` PR #200.
++
++The previous Samsung module always registered `m_show` by name. A duplicate
++name could select another callback, whose second argument was then read as a
++module list entry. Upstream removes the unvalidated fallback; this adaptation
++also preserves the entry-registration behavior which passed the Samsung phone
++tests. It does not restore the live `m->op == modules_op` gate that regressed
++root module hiding on S948B/BZIG.
++
++The loader resolves and validates `modules_op.show` using the existing
++core-symbol/body and CFI-stub checks. The by-name probe remains inert while the
++kernel registers it. Its actual resolved address must equal the verified
++callback entry, or follow just its BTI landing instruction; an adjustment past
++PAC or any other instruction is refused. A failed check unregisters the probe
++and leaves module-row filtering inactive with a warning. No unverified
++name-only filtering is enabled. Teardown closes callback admission before
++unregistering the probe.
++
++After admission, the module name is copied into a fixed-size local buffer
++through `copy_from_kernel_nofault`. Pointer underflow/overflow, unreadable data
++and names without a terminator are rejected before the name matcher runs.
++
++The full host deck passes 66 runner executions across 34 suites. New production
++extraction tests cover registration races, duplicate names, failure cleanup,
++CFI/BTI entry handling and the Samsung regression; three deliberately broken
++implementations are rejected. These results are not device validation.
++
++The existing symbol resolver, mount implementation, syscall wrappers, loader,
++root backends and SusFS ABI/version remain unchanged. A candidate APK must be
++phone-tested before this source is treated as a qualified replacement for the
++currently shipped module.
+diff --git a/kernel/susfs_hide_syms.c b/kernel/susfs_hide_syms.c
+index ac8d586..605e6f3 100644
+--- a/kernel/susfs_hide_syms.c
++++ b/kernel/susfs_hide_syms.c
+@@ -19,6 +19,7 @@
+ #include <linux/mm.h>		/* kvmalloc()/kvfree() on 5.10-5.15 */
+ #include <linux/uaccess.h>	/* copy_from_kernel_nofault, for the show-body validator */
+ #include <linux/mutex.h>
++#include <linux/limits.h>
+ #include "susfs_log.h"
+ #include "susfs.h"		/* sus_path_add_self_hidden / sus_path_del_path */
+ #include "symbol_resolver.h"	/* find_kernel_symbol_exact (kallsyms_op) */
+@@ -503,6 +504,8 @@ static atomic_t hide_enter_count = ATOMIC_INIT(0);
+ static atomic_t hide_layout_bad = ATOMIC_INIT(0);
+ static const struct seq_operations *kallsyms_op_target;
+ static const struct seq_operations *modules_op_target;
++/* Published only after the actual by-name probe address is proven below. */
++static bool modules_show_ready;
+ 
+ /* Is this really a kernel struct kallsym_iter?  Two facts are always true of one: kallsyms
+  * fills `type` from its own alphabet, and `name` is NUL-terminated within the field.  The
+@@ -592,18 +595,29 @@ static struct kprobe kp_s_show = {
+ static int hide_syms_m_show_pre(struct kprobe *kp, struct pt_regs *regs)
+ {
+ 	struct seq_file *m = (struct seq_file *)regs_get_kernel_argument(regs, 0);
+-	struct module *mod;
++	char name[MODULE_NAME_LEN];
++	unsigned long base;
+ 	void *p = (void *)regs_get_kernel_argument(regs, 1);
+ 
+-	/* m_show is armed BY NAME unconditionally (see init), so modules_op_target stays NULL and this
+-	 * identity check is permanently off for this probe - only the name decides which m_show this
+-	 * is, and the bounded-read plausibility gate below is the only test on this path. */
+-	if (!m || (modules_op_target && m->op != modules_op_target) || !p)
++	/* Registration can deliver a callback before its resolved address is checked.
++	 * Do not interpret any argument until that address is proven to be the
++	 * modules callback. No m->op check: that gate regressed Samsung root reads. */
++	if (!smp_load_acquire(&modules_show_ready) || !m || !p)
+ 		return 0;
+ 
+-	/* Same recovery the kernel's own m_show() does: the iterator hands over &module->list, so the module is one offset away. */
+-	mod = (struct module *)((char *)p - offsetof(struct module, list));
+-	if (!hide_module_name_match(mod->name))
++	/* Recover the name from &module->list without dereferencing an untrusted
++	 * object. Keep the phone-tested module layout, but bound and fault-protect
++	 * the complete read before strcmp() can see it. */
++	base = (unsigned long)p;
++	if (base < offsetof(struct module, list))
++		return 0;
++	base -= offsetof(struct module, list);
++	if (base > ULONG_MAX - offsetof(struct module, name))
++		return 0;
++	if (copy_from_kernel_nofault(name,
++			(void *)(base + offsetof(struct module, name)), sizeof(name)) ||
++	    strnlen(name, sizeof(name)) == sizeof(name) ||
++	    !hide_module_name_match(name))
+ 		return 0;
+ 
+ 	atomic_inc(&n_modlines_skipped);
+@@ -683,6 +697,73 @@ static int __nocfi noinline hide_syms_resolve_show(struct kprobe *kp,
+ 
+ static bool hide_registered;
+ 
++/* A vendor may move an entry probe past BTI. That instruction changes neither
++ * LR nor SP; no other adjustment, especially one past PAC, is safe to accept
++ * for a handler which returns directly through the original LR. */
++static bool hide_syms_modules_probe_matches(unsigned long expected)
++{
++	unsigned long actual = (unsigned long)kp_m_show.addr;
++	u32 insn;
++
++	if (!expected || !actual)
++		return false;
++	if (actual == expected)
++		return true;
++	if (actual < expected || actual - expected != sizeof(insn) ||
++	    copy_from_kernel_nofault(&insn, (void *)expected, sizeof(insn)))
++		return false;
++	return insn == 0xd503245f || insn == 0xd50324df; /* bti c / bti jc */
++}
++
++static void hide_syms_modules_show_stop(void)
++{
++	smp_store_release(&modules_show_ready, false);
++	if (m_show_registered) {
++		unregister_kprobe(&kp_m_show);
++		susfs_kp_forget_addr(&kp_m_show);
++		m_show_registered = false;
++	}
++	modules_op_target = NULL;
++}
++
++static int __nocfi noinline hide_syms_modules_show_start(void)
++{
++	struct kprobe resolved = { };
++	unsigned long expected;
++	int rc;
++
++	smp_store_release(&modules_show_ready, false);
++	rc = hide_syms_resolve_show(&resolved, "modules_op", "m_show",
++			&modules_op_target);
++	if (rc)
++		goto fail;
++	expected = (unsigned long)resolved.addr;
++
++	/* Preserve Samsung's phone-tested registration path, but validate the
++	 * address the kernel actually chose. Until then the handler is inert. */
++	susfs_kp_forget_addr(&kp_m_show);
++	kp_m_show.symbol_name = "m_show";
++	rc = register_kprobe(&kp_m_show);
++	if (rc) {
++		susfs_kp_forget_addr(&kp_m_show);
++		goto fail;
++	}
++	m_show_registered = true;
++	if (!hide_syms_modules_probe_matches(expected)) {
++		pr_warn("susfs_hide_syms: name-selected m_show %px differs from verified modules callback %px - removing probe\n",
++			(void *)kp_m_show.addr, (void *)expected);
++		rc = -EINVAL;
++		goto fail;
++	}
++	smp_store_release(&modules_show_ready, true);
++	SUSFS_LOGI("susfs_hide_syms: m_show armed at %px (by name, verified against modules_op.show)\n",
++			(void *)kp_m_show.addr);
++	return 0;
++fail:
++	hide_syms_modules_show_stop();
++	return rc;
++}
++
+ int susfs_hide_syms_init(void)
+ {
+ 	int rc;
+@@ -719,24 +800,13 @@ int susfs_hide_syms_init(void)
+ 			kallsyms_op_target ? "by table identity" :
+ 			"BY NAME - the table value could not be validated, so the m->op check is off");
+ 
+-	/* m_show is armed BY NAME, unconditionally - NOT by table identity.  Resolving modules_op.show
+-	 * and gating the handler on (m->op == modules_op_target) regressed this on S948B/BZIG 6.12.69:
+-	 * the module stayed visible in /proc/modules to root.  (The app view only looked clean because
+-	 * SELinux denies untrusted_app access to /proc/modules at all, so it reads empty regardless.)
+-	 * By-name is what 1.2.16 shipped and what hid the line from EVERY reader, root included.  Leaving
+-	 * modules_op_target NULL turns the m->op identity check in hide_syms_m_show_pre() OFF - it
+-	 * short-circuits on NULL.  s_show keeps the table-identity path above, which works. */
+-	kp_m_show.addr = NULL;
+-	kp_m_show.symbol_name = "m_show";
+-	rc = register_kprobe(&kp_m_show);
++	/* Do not restore the live m->op identity gate which regressed BZIG. Prove
++	 * callback ownership once at registration instead; there is no unverified
++	 * name-only fallback if the table or selected body cannot be established. */
++	rc = hide_syms_modules_show_start();
+ 	if (rc) {
+-		susfs_kp_forget_addr(&kp_m_show);
+-		pr_warn("susfs_hide_syms: cannot arm modules m_show (%d) - /proc/modules keeps listing the modules in hide_modules\n",
++		pr_warn("susfs_hide_syms: modules m_show not verified/armed (%d) - /proc/modules keeps listing the modules in hide_modules\n",
+ 			rc);
+-	} else {
+-		m_show_registered = true;
+-		SUSFS_LOGI("susfs_hide_syms: m_show armed at %px (BY NAME - table identity is disabled for this probe, see init)\n",
+-				(void *)kp_m_show.addr);
+ 	}
+ 
+ 	/* hide_modules starts with just this module in its list: a built-in SUSFS has no module entry, so leaving ours visible
+@@ -786,11 +856,7 @@ void susfs_hide_syms_exit(void)
+ 		proc_remove(hide_modules_entry);
+ 		hide_modules_entry = NULL;
+ 	}
+-	if (m_show_registered) {
+-		unregister_kprobe(&kp_m_show);
+-		susfs_kp_forget_addr(&kp_m_show);	/* after the call, never before: susfs_kprobe.h */
+-		m_show_registered = false;
+-	}
++	hide_syms_modules_show_stop();
+ 	if (hide_registered) {
+ 		unregister_kprobe(&kp_s_show);
+ 		susfs_kp_forget_addr(&kp_s_show);
+diff --git a/tests/audit_repairs/late-control.c b/tests/audit_repairs/late-control.c
+index 8955a24..ac1ef83 100644
+--- a/tests/audit_repairs/late-control.c
++++ b/tests/audit_repairs/late-control.c
+@@ -10,6 +10,12 @@ static unsigned int added;
+ static void proc_remove(void *p) { (void)p; }
+ static void unregister_kprobe(int *p) { (void)p; }
+ static void susfs_kp_forget_addr(int *p) { (void)p; }
++static void hide_syms_modules_show_stop(void) {
++    if (m_show_registered) {
++        unregister_kprobe(&kp_m_show);susfs_kp_forget_addr(&kp_m_show);m_show_registered=false;
++    }
++    modules_op_target=NULL;
++}
+ static int sus_path_add_self_hidden(const char *path) {
+     (void)path;
+     assert(!path_layer_down && "late sysfs command added a rule after path-layer teardown");
+diff --git a/tests/mshow_filter/host_kernel.h b/tests/mshow_filter/host_kernel.h
+index 80321f9..894aa01 100644
+--- a/tests/mshow_filter/host_kernel.h
++++ b/tests/mshow_filter/host_kernel.h
+@@ -13,11 +13,20 @@
+ #include <string.h>
+ #include <pthread.h>
+ #include <unistd.h>
++#include <limits.h>
+ 
+ #define MODULE_NAME_LEN 56
+ #define GFP_KERNEL 0
+ #define PAGE_SIZE 4096
+ #define READ_ONCE(v) __atomic_load_n(&(v),__ATOMIC_ACQUIRE)
++#define smp_load_acquire(p) __atomic_load_n((p),__ATOMIC_ACQUIRE)
++#define smp_store_release(p,v) __atomic_store_n((p),(v),__ATOMIC_RELEASE)
++#define __nocfi
++#define noinline
++typedef uint32_t u32;
++typedef int32_t s32;
++typedef u32 kprobe_opcode_t;
++#define KPROBE_FLAG_DISABLED 1
+ #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
+ #define KERNEL_VERSION(a,b,c) (((a)<<16)+((b)<<8)+(c))
+ #define LINUX_VERSION_CODE KERNEL_VERSION(6,12,0)
+@@ -57,7 +66,7 @@ static unsigned long regs_get_kernel_argument(struct pt_regs *r, int n) { return
+ static void regs_set_return_value(struct pt_regs *r, unsigned long v) { r->regs[0] = v; }
+ struct seq_file { const void *op; void *private; };
+ struct seq_operations { void *start; void *stop; void *next; int (*show)(struct seq_file *, void *); };
+-struct kprobe { int (*pre_handler)(struct kprobe *, struct pt_regs *); };
++struct kprobe { int (*pre_handler)(struct kprobe *, struct pt_regs *); kprobe_opcode_t *addr; const char *symbol_name; unsigned int flags; u32 opcode; };
+ struct list_head { struct list_head *next; struct list_head *prev; };
+ struct module { char name[MODULE_NAME_LEN]; struct list_head list; };
+ 
+@@ -67,5 +76,9 @@ static bool sus_path_lsm_active(void) { return true; }
+ static int susfs_control_get(void) { return 0; }
+ static void susfs_control_put(void) {}
+ static int host_nofault_calls;
++#ifdef MSHOW_IDENTITY_TEST
++static int copy_from_kernel_nofault(void *to,const void *from,size_t size);
++#else
+ static int copy_from_kernel_nofault(void *to,const void *from,size_t size)
+ { host_nofault_calls++;if (!from || (uintptr_t)from < PAGE_SIZE) return -EFAULT; memcpy(to,from,size);return 0; }
++#endif
+diff --git a/tests/mshow_filter/mshow_filter_test.c b/tests/mshow_filter/mshow_filter_test.c
+index 7c50611..6287f7f 100644
+--- a/tests/mshow_filter/mshow_filter_test.c
++++ b/tests/mshow_filter/mshow_filter_test.c
+@@ -1,15 +1,8 @@
+ /* SPDX-License-Identifier: GPL-2.0 */
+-/* Drives the hide_syms show-probe fragment: the /proc/modules m_show filter.
+- * One case per process; prints one OBS line per case for run.py to compare
+- * against the frozen 1.2.16 reference build.
+- *
+- * Cases are stable across the two builds:
+- *   - "eq" cases: modules_op_target stays NULL (the shipped arming) - the
+- *     current and the 1.2.16-shipped handler must behave IDENTICALLY;
+- *   - "gate" cases: modules_op_target armed like the 1.2.17 table-identity
+- *     mode - they document what the identity check can do when it is active.
+- * regs.regs[0] starts at a non-zero sentinel so the rv0 observable reports a
+- * real regs_set_return_value() write, never the zero the fixture left there. */
++/* Compare valid module-list callbacks with the frozen phone-qualified handler.
++ * Readiness represents a registration whose actual entry address was verified.
++ * A different seq_file.op must not suppress that path on Samsung; only the
++ * intentionally mutated negative control restores the old live pointer gate. */
+ #include "host_kernel.h"
+ #include PRODUCTION
+ 
+@@ -44,6 +37,7 @@ static void invoke(int gate_armed, const struct seq_operations *op,
+     fixture_m.op = (const void *)op;
+ 
+     modules_op_target = gate_armed ? &ops_identity : NULL;
++    smp_store_release(&modules_show_ready, true);
+ 
+     before = atomic_read(&n_modlines_skipped);
+     regs.regs[30] = 0xfeedf00dULL;             /* x30: "return here" marker     */
+@@ -80,7 +74,7 @@ int main(int argc,char **argv)
+     else if(!strcmp(name,"m-null-impossible-call")) { m_is_null=1; probe="susfs_guard_lkm"; }
+     else if(!strcmp(name,"m-op-irrelevant")) { op=&ops_other; probe="susfs_guard_lkm"; }
+     else if(!strcmp(name,"op-match-still-hides")) { gate_armed=1; op=&ops_identity; probe="susfs_guard_lkm"; }
+-    else if(!strcmp(name,"op-mismatch-suppresses")) { gate_armed=1; op=&ops_other; probe="susfs_guard_lkm"; }
++    else if(!strcmp(name,"op-mismatch-still-hides")) { gate_armed=1; op=&ops_other; probe="susfs_guard_lkm"; }
+     else assert(!"unknown case");
+ 
+     invoke(gate_armed,op,m_is_null,p_is_null,probe);
+diff --git a/tests/mshow_filter/run.py b/tests/mshow_filter/run.py
+index d4067c8..882d0a1 100644
+--- a/tests/mshow_filter/run.py
++++ b/tests/mshow_filter/run.py
+@@ -1,25 +1,11 @@
+ #!/usr/bin/env python3
+-"""Is the /proc/modules m_show filter the phone-qualified 1.2.16 behaviour?
+-
+-The live fragment is extracted from kernel/susfs_hide_syms.c (hide_modules
+-state + name matcher + both show-probe handlers) and compiled twice:
+-
+-  current    - as the tree ships it: m_show armed BY NAME, modules_op_target
+-               NULL forever, so the handler's m->op identity check short-
+-               circuits off (that is the 1.2.18 hotfix);
+-  reference  - the live fragment with the m_show handler body replaced by the
+-               EXACT 1.2.16-shipped body (frozen below, from the a8e803f9
+-               baseline every published release validated on-device).
+-
+-The same invocation matrix runs against both builds; each observable must
+-match the recorded expectation.  One documented divergence (an impossible
+-m==NULL call that only the 1.2.16 code acted on) is asserted exactly as the
+-divergence it is.  A negative control re-arms the identity gate lastingly
+-with a mismatching m->op and must lose the hiding - the morphology of the
+-failure the BZIG on-device pass reported against 1.2.17.
+-
+-Guard on the production source itself: the init must arm m_show by name and
+-must not resolve modules_op.show at all.
++"""Preserve phone-qualified module-list filtering after callback validation.
++
++Compare the live handler with the frozen 1.2.16 handler for readable module
++arguments. The live fixture admits callbacks only after address validation;
++registration, malformed arguments and failure cleanup are tested separately
++by mshow_identity. A mismatching live seq_file.op must not suppress the
++Samsung path. The negative control deliberately restores that old gate.
+ """
+ import argparse, json, os, subprocess, tempfile
+ from pathlib import Path
+@@ -66,12 +52,13 @@ a = fragment.index('static int hide_syms_m_show_pre(struct kprobe *kp, struct pt
+ b = fragment.index('static struct kprobe kp_m_show = {')
+ reference = fragment[:a] + frozen + fragment[b:]
+ 
+-negative = fragment.replace('(modules_op_target && m->op != modules_op_target)',
+-                            '((void)modules_op_target, 1)')
++negative = fragment.replace('|| !m || !p)',
++                            '|| !m || (modules_op_target && m->op != modules_op_target) || !p)')
+ assert negative != fragment
+ 
+-# the arming-mode guard on the production source itself
+-guard_ok = ('hide_syms_resolve_show(&kp_m_show' not in source
++# Registration must use the validating helper, preserving the tested name-based entry.
++guard_ok = ('rc = hide_syms_modules_show_start();' in source
++            and 'hide_syms_resolve_show(&resolved, "modules_op", "m_show"' in source
+             and source.count('kp_m_show.symbol_name = "m_show";') == 1)
+ 
+ # case -> expectation tuple (ret, pc, rv0, skipped)
+@@ -86,7 +73,7 @@ EQ = [
+ ]
+ GATE = [
+     ('op-match-still-hides',    (1, 1, 1, 1)),   # identity passes a genuine match
+-    ('op-mismatch-suppresses',  (0, 0, 0, 0)),   # the 1.2.17 failure morphology
++    ('op-mismatch-still-hides',  (1, 1, 1, 1)),   # must preserve Samsung hiding after address validation
+ ]
+ expected = {
+     # shipped arming, including the one impossible call where only the old
+@@ -133,7 +120,7 @@ with tempfile.TemporaryDirectory(prefix='susfs-mshow-filter-host-') as temporary
+             raise RuntimeError(build + ' fragment did not compile: ' + done.stderr)
+         built[build] = str(Path(temporary) / build)
+ 
+-    print(('PASS ' if guard_ok else 'FAIL ') + 'm_show armed by name: no table resolve, explicit .symbol_name')
++    print(('PASS ' if guard_ok else 'FAIL ') + 'm_show keeps by-name entry with modules callback validation')
+     ok = ok and guard_ok
+ 
+     for build in ('current', 'reference'):
+@@ -146,11 +133,11 @@ with tempfile.TemporaryDirectory(prefix='susfs-mshow-filter-host-') as temporary
+                             'expected': expected[build][case], 'observed': got})
+             ok = ok and passed
+ 
+-    # negative control: the identity check alone must be able to lose the hiding
++    # Negative control: reinstating the live table-pointer gate must lose Samsung hiding.
+     done = compile_program(negative, 'negative')
+     if done.returncode:
+         raise RuntimeError('negative control did not compile: ' + done.stderr)
+-    neg_obs = run_case(str(Path(temporary) / 'negative'), 'enlisted-susfs')
++    neg_obs = run_case(str(Path(temporary) / 'negative'), 'op-mismatch-still-hides')
+     suppressed = neg_obs is None or neg_obs[0] != 1
+     print(('PASS ' if suppressed else 'FAIL ') + 'missing-identity-detach negative control (gate can suppress hiding)')
+     ok = ok and suppressed
+diff --git a/tests/mshow_identity/README.md b/tests/mshow_identity/README.md
+new file mode 100644
+index 0000000..e1d877f
+--- /dev/null
++++ b/tests/mshow_identity/README.md
+@@ -0,0 +1,26 @@
++# Verified modules callback regressions
++
++Run `python3 tests/mshow_identity/run.py`, optionally with `--sanitizers`.
++The harness compiles the production name matcher, modules callback, show-body
++resolver, probe-address validator, registration and teardown helpers. The
++kprobe model preserves the resolved address after registration failures and
++the disabled flag after unregister, and delivers callbacks during registration
++and teardown to verify that admission is closed at both boundaries.
++
++Twenty-three cases cover correct/duplicate targets, unavailable or malformed
++callback tables, CFI entry stubs and signed branch displacements, an invalid
++call stub, permitted BTI adjustments, rejected PAC/other adjustments, failed
++registration, unreadable and unterminated module names, pointer underflow,
++exact name matching, and stop/restart. A different live `seq_file.op` must
++still hide a selected module once the callback entry was verified; this
++preserves the Samsung BZIG behavior without accepting an unverified target.
++
++Three mutations must fail: bypass target validation, admit callbacks before
++registration validation, and restore the live table-pointer gate that caused
++the Samsung regression. The adjacent `mshow_filter` suite separately compares
++readable module-list invocations with the frozen phone-qualified handler.
++
++These are host models. They do not execute ARM64 code or establish that the
++callback table and entry can be resolved on the device. Phone validation must
++check root `/proc/modules` visibility, ordinary module rows, kallsyms behavior,
++and unload/restoration before a stable release.
+diff --git a/tests/mshow_identity/identity_test.c b/tests/mshow_identity/identity_test.c
+new file mode 100644
+index 0000000..f594cf3
+--- /dev/null
++++ b/tests/mshow_identity/identity_test.c
+@@ -0,0 +1,162 @@
++/* SPDX-License-Identifier: GPL-2.0-only */
++#include "../mshow_filter/host_kernel.h"
++
++static unsigned long find_kernel_symbol_exact(const char *name);
++static int ksu_symbol_is_start(unsigned long addr, const char *name);
++static int register_kprobe(struct kprobe *p);
++static void unregister_kprobe(struct kprobe *p);
++#include PRODUCTION
++
++static struct seq_operations ops, other_ops;
++static struct module subject;
++static struct seq_file reader;
++static u32 code[64] __attribute__((aligned(4)));
++static unsigned long named_addr, valid_addr;
++static bool missing_table, unreadable_table;
++static int registration_error, registered, unregistered;
++static int registered_live;
++struct readable { const void *p; size_t n; };
++static struct readable memory[8];
++static unsigned int n_memory;
++
++static void readable(const void *p, size_t n)
++{
++    assert(n_memory < ARRAY_SIZE(memory));
++    memory[n_memory++] = (struct readable){p,n};
++}
++static int copy_from_kernel_nofault(void *to, const void *from, size_t n)
++{
++    uintptr_t p=(uintptr_t)from;
++    host_nofault_calls++;
++    for (unsigned int i=0;i<n_memory;i++) {
++        uintptr_t base=(uintptr_t)memory[i].p;
++        if (p>=base && p-base<=memory[i].n && n<=memory[i].n-(p-base)) {
++            memcpy(to,from,n);return 0;
++        }
++    }
++    return -EFAULT;
++}
++static unsigned long find_kernel_symbol_exact(const char *name)
++{
++    assert(!strcmp(name,"modules_op"));
++    return missing_table ? 0 : (unsigned long)&ops;
++}
++static int ksu_symbol_is_start(unsigned long addr, const char *name)
++{
++    assert(!strcmp(name,"m_show"));
++    return addr==valid_addr;
++}
++static void callback_must_be_inert(struct kprobe *p)
++{
++    struct pt_regs r={.regs={[0]=1,[1]=(unsigned long)&subject.list,[30]=0x1000},.pc=0x2000};
++    int reads=host_nofault_calls;
++    assert(!p->pre_handler(p,&r));
++    assert(r.pc==0x2000 && r.regs[0]==1);
++    assert(reads==host_nofault_calls);
++}
++static int register_kprobe(struct kprobe *p)
++{
++    assert(!registered_live && !p->addr && !strcmp(p->symbol_name,"m_show"));
++    assert(!(p->flags & KPROBE_FLAG_DISABLED));
++    assert(!modules_show_ready);
++    registered++;
++    p->addr=(void *)named_addr; /* kernel retains this even on failure */
++    if (registration_error) return registration_error;
++    registered_live=1;
++    p->opcode=*p->addr;
++    *p->addr=0xd4200000; /* real entry instruction is patched during registration */
++    callback_must_be_inert(p);
++    return 0;
++}
++static void unregister_kprobe(struct kprobe *p)
++{
++    assert(registered_live && !modules_show_ready);
++    callback_must_be_inert(p);
++    *p->addr=p->opcode;
++    p->flags |= KPROBE_FLAG_DISABLED;
++    registered_live=0;unregistered++;
++}
++static int sus_path_add_self_hidden(const char *path) { (void)path;return 0; }
++static int sus_path_del_path(const char *path) { (void)path;return 0; }
++
++static int invoke(unsigned long arg)
++{
++    struct pt_regs r={.regs={[0]=(unsigned long)&reader,[1]=arg,[30]=0x1000},.pc=0x2000};
++    int before=atomic_read(&n_modlines_skipped);
++    int rc=hide_syms_m_show_pre(&kp_m_show,&r);
++    assert(rc==0 || rc==1);
++    if (rc) {
++        assert(r.pc==0x1000 && !r.regs[0]);
++        assert(atomic_read(&n_modlines_skipped)==before+1);
++    } else {
++        assert(r.pc==0x2000 && r.regs[0]==(unsigned long)&reader);
++        assert(atomic_read(&n_modlines_skipped)==before);
++    }
++    return rc;
++}
++static void branch(u32 *from, u32 *to, bool call)
++{
++    intptr_t displacement=(char *)to-(char *)from;
++    assert(!(displacement & 3));
++    *from=(call ? 0x94000000 : 0x14000000) | ((displacement/4)&0x03ffffff);
++}
++int main(int argc, char **argv)
++{
++    assert(argc==2);
++    const char *c=argv[1];
++    for (unsigned int i=0;i<ARRAY_SIZE(code);i++) code[i]=0xd503201f;
++    valid_addr=(unsigned long)&code[16];named_addr=valid_addr;
++    ops.show=(void *)valid_addr;
++    strscpy(subject.name,"susfs_guard_lkm",sizeof(subject.name));
++    strscpy(hide_modules[0],subject.name,MODULE_NAME_LEN);n_hide_modules=1;
++    reader.op=&other_ops; /* deliberately different from modules_op: BZIG regression */
++    readable(&subject,sizeof(subject));readable(code,sizeof(code));
++    int expected=0;
++    if (!strcmp(c,"wrong-body")) { named_addr=(unsigned long)&code[40];expected=-EINVAL; }
++    else if (!strcmp(c,"missing-table")) { missing_table=true;expected=-ENOENT; }
++    else if (!strcmp(c,"unreadable-table")) { unreadable_table=true;expected=-EFAULT; }
++    else if (!strcmp(c,"null-show")) { ops.show=NULL;expected=-EINVAL; }
++    else if (!strcmp(c,"unaligned-show")) { ops.show=(void *)(valid_addr+1);expected=-EINVAL; }
++    else if (!strcmp(c,"unproven-body")) { ops.show=(void *)&code[40];expected=-EINVAL; }
++    else if (!strcmp(c,"cfi-stub") || !strcmp(c,"call-stub") || !strcmp(c,"wrong-stub")) {
++        code[0]=0xd503245f;branch(&code[1],!strcmp(c,"wrong-stub")?&code[40]:&code[16],!strcmp(c,"call-stub"));
++        ops.show=(void *)&code[0];
++        if (strcmp(c,"cfi-stub")) expected=-EINVAL;
++    } else if (!strcmp(c,"cfi-negative-branch")) {
++        branch(&code[40],&code[16],false);ops.show=(void *)&code[40];
++    } else if (!strcmp(c,"register-failure")) { registration_error=-EIO;expected=-EIO; }
++    else if (!strcmp(c,"bti-adjustment") || !strcmp(c,"bti-jc-adjustment")) {
++        code[16]=!strcmp(c,"bti-adjustment")?0xd503245f:0xd50324df;named_addr+=4;
++    } else if (!strcmp(c,"pac-adjustment")) { code[16]=0xd503233f;named_addr+=4;expected=-EINVAL; }
++    else if (!strcmp(c,"offset-adjustment")) { named_addr+=8;expected=-EINVAL; }
++    if (!unreadable_table) readable(&ops,sizeof(ops));
++    if (!strcmp(c,"not-ready")) {
++        assert(!invoke((unsigned long)&subject.list));assert(!host_nofault_calls);
++        puts("PASS not-ready");return 0;
++    }
++    assert(hide_syms_modules_show_start()==expected);
++    if (expected) {
++        assert(!modules_show_ready && !m_show_registered && !registered_live && !modules_op_target);
++        assert(!kp_m_show.addr && !(kp_m_show.flags & KPROBE_FLAG_DISABLED));
++        assert(!invoke((unsigned long)&subject.list));
++        if (!strcmp(c,"wrong-body") || !strcmp(c,"pac-adjustment") || !strcmp(c,"offset-adjustment"))
++            assert(registered==1 && unregistered==1);
++        else if (!strcmp(c,"register-failure")) assert(registered==1 && !unregistered);
++        else assert(!registered);
++    } else {
++        assert(modules_show_ready && m_show_registered && registered_live);
++        if (!strcmp(c,"unreadable-module")) assert(!invoke((unsigned long)0x12345678));
++        else if (!strcmp(c,"underflow")) assert(!invoke(1));
++        else if (!strcmp(c,"unterminated-name")) { memset(subject.name,'x',sizeof(subject.name));assert(!invoke((unsigned long)&subject.list)); }
++        else if (!strcmp(c,"prefix-lookalike")) { strscpy(subject.name,"susfs_guard_lkm_extra",sizeof(subject.name));assert(!invoke((unsigned long)&subject.list)); }
++        else assert(invoke((unsigned long)&subject.list));
++        hide_syms_modules_show_stop();
++        assert(!modules_show_ready && !m_show_registered && !registered_live && !kp_m_show.addr);
++        assert(!invoke((unsigned long)&subject.list));
++        if (!strcmp(c,"stop-and-restart")) {
++            assert(!hide_syms_modules_show_start());assert(invoke((unsigned long)&subject.list));
++            hide_syms_modules_show_stop();assert(registered==2 && unregistered==2);
++        }
++    }
++    printf("PASS %s\n",c);return 0;
++}
+diff --git a/tests/mshow_identity/run.py b/tests/mshow_identity/run.py
+new file mode 100644
+index 0000000..97b4b64
+--- /dev/null
++++ b/tests/mshow_identity/run.py
+@@ -0,0 +1,73 @@
++#!/usr/bin/env python3
++"""Verify real modules-hook registration, callback admission and fault boundaries."""
++import argparse
++import importlib.util
++import os
++from pathlib import Path
++import re
++import resource
++import subprocess
++import tempfile
++
++p = argparse.ArgumentParser(description=__doc__)
++p.add_argument('--source-dir', type=Path, default=Path(__file__).resolve().parents[2])
++p.add_argument('--sanitizers', action='store_true')
++a = p.parse_args()
++resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
++here = Path(__file__).resolve().parent
++spec = importlib.util.spec_from_file_location('extract', here.parent / 'path_creds/run.py')
++extract = importlib.util.module_from_spec(spec)
++spec.loader.exec_module(extract)
++s = (a.source_dir / 'kernel/susfs_hide_syms.c').read_text()
++kh = (a.source_dir / 'kernel/susfs_kprobe.h').read_text()
++globals_ = '''#define HIDE_MODULES_MAX 16
++static char hide_modules[HIDE_MODULES_MAX][MODULE_NAME_LEN];
++static int n_hide_modules;
++static DEFINE_SPINLOCK(hide_modules_lock);
++static atomic_t n_modlines_skipped;
++static const struct seq_operations *modules_op_target;
++static bool modules_show_ready, m_show_registered;
++'''
++names = ['hide_module_name_match', 'hide_syms_m_show_pre']
++fragment = globals_ + '\n'.join(extract.function(s, n) for n in names)
++fragment += '\n' + re.search(r'^static struct kprobe kp_m_show = \{.*?^\};', s, re.M | re.S)[0]
++fragment += '\n' + extract.function(kh, 'susfs_kp_forget_addr')
++for n in ['hide_syms_resolve_show', 'hide_syms_modules_probe_matches',
++          'hide_syms_modules_show_stop', 'hide_syms_modules_show_start']:
++    fragment += '\n' + extract.function(s, n)
++cases = ['ordinary', 'foreign-seq-ops', 'wrong-body', 'missing-table',
++         'unreadable-table', 'null-show', 'unaligned-show', 'unproven-body',
++         'cfi-stub', 'cfi-negative-branch', 'call-stub', 'wrong-stub',
++         'register-failure', 'bti-adjustment', 'bti-jc-adjustment',
++         'pac-adjustment', 'offset-adjustment', 'not-ready', 'unreadable-module',
++         'underflow', 'unterminated-name', 'prefix-lookalike', 'stop-and-restart']
++flags = ['-O1', '-g', '-fsanitize=address,undefined', '-fno-omit-frame-pointer', '-no-pie'] if a.sanitizers else ['-O2']
++env = dict(os.environ, ASAN_OPTIONS='detect_leaks=0:abort_on_error=1', UBSAN_OPTIONS='halt_on_error=1')
++with tempfile.TemporaryDirectory(prefix='susfs-mshow-identity-') as t:
++    t = Path(t)
++    def build(text, label):
++        header = t / (label + '.h')
++        header.write_text(text)
++        exe = t / label
++        subprocess.run(['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror',
++                        '-Wno-unused-function', '-Wno-unused-variable', '-Wno-unused-parameter',
++                        '-pthread', *flags, '-DMSHOW_IDENTITY_TEST', '-I', str(here),
++                        '-DPRODUCTION="' + str(header) + '"', str(here / 'identity_test.c'), '-o', str(exe)], check=True)
++        return exe
++    exe = build(fragment, 'production')
++    for case in cases:
++        subprocess.run([str(exe), case], check=True, timeout=10, env=env)
++    # Each mutation removes a distinct safety property; the corresponding
++    # real-world failure case must reject the mutated implementation.
++    mutations = [
++        ('unverified-target', '!hide_syms_modules_probe_matches(expected)', '(false && hide_syms_modules_probe_matches(expected))', 'wrong-body'),
++        ('early-callback', '!smp_load_acquire(&modules_show_ready) || ', '', 'ordinary'),
++        ('samsung-gate', '|| !m || !p)', '|| !m || (modules_op_target && m->op != modules_op_target) || !p)', 'foreign-seq-ops'),
++    ]
++    for label, old, new, case in mutations:
++        assert old in fragment
++        mutant = build(fragment.replace(old, new), label)
++        run = subprocess.run([str(mutant), case], capture_output=True, timeout=10, env=env)
++        assert run.returncode != 0, label + ' escaped the regression test'
++        print('PASS negative control: ' + label)
++print('PASS verified modules callback, Samsung compatibility and failure cleanup')
