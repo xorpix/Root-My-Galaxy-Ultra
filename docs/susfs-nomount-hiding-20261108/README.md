@@ -53,10 +53,22 @@ certificate before producing the test APK.
 
 ## Phone validation
 
-This new binary is pending phone validation; baseline phone results are not
-carried forward as candidate qualification. Install the signed test APK,
-perform a full reboot, activate root, and enable SusFS. A framework restart
-does not replace the loaded kernel module.
+The maintainer's phone check passed on 2026-11-08. At app UID 10362,
+`/sys/module/nomount` was absent while `/sys/module/zram` stayed visible. At
+root UID 0, the NoMount directory and module row were visible, and KernelSU/
+SusFS rows were absent. The maintainer also confirmed NoMount still works.
+The non-root `/proc/modules` read returned `Permission denied`, so that
+specific proc-filter check is inconclusive. [The scoped receipt](phone-validation.json)
+records the results and limitations; kallsyms, actual installer upgrades and
+long-uptime behavior were not separately tested on the phone.
+
+The receipt identifies the supplied signed test APK and its bundled native
+hash; installed APK/module hashes and firmware were not independently read
+from the phone. No implementation or native binary changed after the test.
+
+To repeat the check, install the signed test APK, perform a full reboot,
+activate root, and enable SusFS. A framework restart does not replace the
+loaded kernel module.
 
 Confirm NoMount still works and that its root installer can detect the LKM:
 
