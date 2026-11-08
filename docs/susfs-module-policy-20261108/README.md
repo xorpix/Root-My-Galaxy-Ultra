@@ -34,7 +34,9 @@ This is classification by firmware inventory, not a claim to identify every
 root package or malicious module. Root ZIP modules without a kernel LKM are
 outside this mechanism.
 
-The kernel publishes a completed sorted stock table in one pointer swap.
+Automatic policy publication also requires the module-list hook, module notifier
+and sysfs path layer to be ready. The kernel publishes a completed sorted stock
+table in one pointer swap.
 Non-root module/proc views then hide loaded module names outside that table;
 root keeps access to automatically selected names. Explicit stricter module
 rules and independent KernelSU/SusFS symbol-prefix filtering remain in effect.

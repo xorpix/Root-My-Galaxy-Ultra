@@ -27,7 +27,8 @@ does not validate this new binary.
    registry is reported separately. Root should still see NoMount's module row.
    If discovery remains off/incomplete, retain the SusFS report; do not call
    the feature validated merely because the explicit NoMount rule still works.
-4. Check that automatic selection can replace the explicit NoMount entry. This
+4. Continue only after the automatic policy reports on, seeded=1 and zero
+   overflow/errors. Check that automatic selection can replace the explicit NoMount entry. This
    uses the already-loaded NoMount module and does not require loading an
    arbitrary test driver or forcing an unload:
 
