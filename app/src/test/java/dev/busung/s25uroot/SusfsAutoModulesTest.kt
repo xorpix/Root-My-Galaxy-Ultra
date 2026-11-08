@@ -39,4 +39,33 @@ class SusfsAutoModulesTest {
         assertFalse(script.contains("/data/adb/modules"))
         assertFalse(script.contains("sleep "))
     }
+
+    @Test fun interruptedBootstrapResumesWithoutRescanningFirmware() {
+        val core = SusfsOutcome(SusfsStatus(SusfsState.Active, detail = "active"), "report")
+        val calls = mutableListOf<String>()
+        val prefix = "automatic discovery: on stock=200 tracked=1/128 overflow=0 errors=0 seeded="
+        val shell: SusfsShell = { command, _ ->
+            calls.add(command)
+            ShizukuController.ShellResult(0, prefix + if (calls.size == 1) "0\n" else "1\n")
+        }
+        val result = SusfsAutoModules.attach(core, shell)
+        assertEquals(2, calls.size)
+        assertEquals(SusfsAutoModules.seedScript, calls[1])
+        assertTrue(result.status.detail.contains("Extra kernel modules are selected automatically."))
+    }
+
+    @Test fun failedBootstrapAndRegistryOverflowAreReportedAsIncomplete() {
+        val core = SusfsOutcome(SusfsStatus(SusfsState.Active, detail = "active"), "report")
+        val incomplete = "automatic discovery: on stock=200 tracked=1/128 overflow=0 errors=0 seeded=0\n"
+        var calls = 0
+        val interrupted: SusfsShell = { _, _ ->
+            if (++calls == 1) ShizukuController.ShellResult(0, incomplete) else null
+        }
+        val result = SusfsAutoModules.attach(core, interrupted)
+        assertEquals(SusfsState.Active, result.status.state)
+        assertTrue(result.status.detail.contains("incomplete"))
+        val overflow: SusfsShell = { _, _ -> ShizukuController.ShellResult(0,
+            incomplete.replace("overflow=0", "overflow=1").replace("seeded=0", "seeded=1")) }
+        assertTrue(SusfsAutoModules.attach(core, overflow).status.detail.contains("incomplete"))
+    }
 }

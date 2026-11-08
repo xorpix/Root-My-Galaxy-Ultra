@@ -23,7 +23,7 @@ does not validate this new binary.
    ```
 
    Expect `automatic discovery: on`, a nonzero stock count, `overflow=0` and
-   `errors=0`. The `names:` line remains the explicit baseline list. The dynamic
+   `errors=0` and `seeded=1`. The `names:` line remains the explicit baseline list. The dynamic
    registry is reported separately. Root should still see NoMount's module row.
    If discovery remains off/incomplete, retain the SusFS report; do not call
    the feature validated merely because the explicit NoMount rule still works.

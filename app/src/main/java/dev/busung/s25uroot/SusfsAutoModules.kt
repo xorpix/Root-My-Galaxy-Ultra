@@ -20,7 +20,7 @@ internal fun susfsStockModuleInventory(output: String, exitCode: Int): List<Stri
 
 internal object SusfsAutoModules {
     private const val CONTROL = "/sys/module/susfs_guard_lkm/parameters/hide_modules"
-    private val status = Regex("automatic discovery: (on|off) stock=(\\d+) tracked=(\\d+)/(\\d+) overflow=(\\d+) errors=(\\d+)")
+    private val status = Regex("automatic discovery: (on|off) stock=(\\d+) tracked=(\\d+)/(\\d+) overflow=(\\d+) errors=(\\d+) seeded=([01])")
 
     // One bounded scan at activation. Canonical firmware roots only; failed or
     // compressed/missing metadata rejects the inventory instead of trusting a
@@ -71,22 +71,35 @@ internal object SusfsAutoModules {
         return buildString {
             appendLine("set -eu")
             commands.forEach { appendLine("printf '%s\\n' ${shellQuote(it)} > ${shellQuote(CONTROL)}") }
-            // Commit before reading the snapshot. Notifications capture loads
-            // concurrent with the snapshot, closing the bootstrap load race.
-            appendLine("while read -r name rest; do")
-            appendLine("  case \"${'$'}name\" in ''|.|..|*[!a-zA-Z0-9_.-]*) exit 70 ;; esac")
-            appendLine("  printf 'automatic observe %s\\n' \"${'$'}name\" > ${shellQuote(CONTROL)}")
-            appendLine("done < /proc/modules")
-            appendLine("cat ${shellQuote(CONTROL)}")
+            append(seedScript)
         }
     }
+
+    // Commit before the snapshot: notifications cover concurrent loads. A
+    // separate acknowledgement prevents an interrupted snapshot from being
+    // reported as complete on the next activation. Retrying it is idempotent.
+    internal val seedScript = """
+        set -eu
+        while read -r name rest; do
+          case "${'$'}name" in ''|.|..|*[!a-zA-Z0-9_.-]*) exit 70 ;; esac
+          printf 'automatic observe %s\n' "${'$'}name" > $CONTROL
+        done < /proc/modules
+        printf '%s\n' 'automatic ready' > $CONTROL
+        cat $CONTROL
+    """.trimIndent()
 
     fun attach(core: SusfsOutcome, shell: SusfsShell): SusfsOutcome {
         if (core.status.state != SusfsState.Active) return core
         val current = shell("cat ${shellQuote(CONTROL)}", 8)
-        val found = current?.takeIf { it.exitCode == 0 }?.let { status.find(it.output) }
+        if (current == null || current.exitCode != 0) return detail(core, false, "The current kernel-module policy could not be read.")
+        val found = status.find(current.output)
         if (found == null) return detail(core, false, "The loaded module needs a full reboot before automatic kernel-module selection is available.")
-        if (found.groupValues[1] == "on") return detail(core, healthy(found), current?.output.orEmpty())
+        if (found.groupValues[1] == "on") {
+            if (found.groupValues[7] == "1") return detail(core, healthy(found), current.output)
+            val seeded = shell(seedScript, 30)
+            val complete = seeded?.takeIf { it.exitCode == 0 }?.let { status.find(it.output) }
+            return detail(core, complete != null && healthy(complete), seeded?.output.orEmpty())
+        }
         val inventory = shell(inventoryScript, 45)
         val names = inventory?.let { susfsStockModuleInventory(it.output, it.exitCode) }
             ?: return detail(core, false, "Firmware module metadata could not be read completely; configured rules remain active.")
@@ -97,7 +110,7 @@ internal object SusfsAutoModules {
 
     private fun healthy(found: MatchResult) = found.groupValues[1] == "on" &&
         found.groupValues[2].toIntOrNull()?.let { it > 0 } == true &&
-        found.groupValues[5] == "0" && found.groupValues[6] == "0"
+        found.groupValues[5] == "0" && found.groupValues[6] == "0" && found.groupValues[7] == "1"
 
     private fun detail(core: SusfsOutcome, ready: Boolean, report: String): SusfsOutcome {
         val message = if (ready) "Extra kernel modules are selected automatically."

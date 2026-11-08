@@ -42,7 +42,9 @@ Stock module names remain visible unless explicitly hidden. Built-in sysfs
 entries are not enumerated as loaded modules or hidden automatically.
 
 After commit, RMGU reads the root /proc/modules snapshot and seeds existing
-extra modules. The notifier captures subsequent COMING/LIVE/GOING events,
+extra modules. Only an acknowledged complete snapshot sets `seeded=1`; an interrupted snapshot
+is reported as incomplete and is retried at the next activation. The notifier
+captures subsequent COMING/LIVE/GOING events,
 including events concurrent with the snapshot. It copies names/presence only,
 retains no module pointer, and never vetoes a load. Deferred work reconciles
 sysfs rules and inode changes. No periodic scan, always-running userspace
@@ -76,7 +78,7 @@ All discovery state is boot-local; firmware updates require fresh inventory.
 
 The root controller supports `automatic begin`, batched `automatic stock
 NAME[,NAME...]`, `automatic commit`, `automatic abort`, `automatic observe
-NAME[,NAME...]`, and `automatic off`. Inventory construction never edits the
+NAME[,NAME...]`, `automatic ready`, and `automatic off`. Inventory construction never edits the
 active table in place. App activation is serialized across processes using
 the existing activation lock. Manual control writes remain individually
 serialized by the native configuration mutex.

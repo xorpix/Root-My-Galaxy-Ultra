@@ -1,9 +1,9 @@
 diff --git a/docs/module-policy-20261108.md b/docs/module-policy-20261108.md
 new file mode 100644
-index 0000000000000000000000000000000000000000..85f997c5856eb8d266fc609c70fc18da08ae2859
+index 0000000000000000000000000000000000000000..cd9c67701cc1c472a39a6d2a32d38c81477c5280
 --- /dev/null
 +++ b/docs/module-policy-20261108.md
-@@ -0,0 +1,98 @@
+@@ -0,0 +1,100 @@
 +# Automatic kernel-module selection and lifecycle
 +
 +The candidate builds on the phone-tested selected-module policy. The maintainer
@@ -48,7 +48,9 @@ index 0000000000000000000000000000000000000000..85f997c5856eb8d266fc609c70fc18da
 +entries are not enumerated as loaded modules or hidden automatically.
 +
 +After commit, RMGU reads the root /proc/modules snapshot and seeds existing
-+extra modules. The notifier captures subsequent COMING/LIVE/GOING events,
++extra modules. Only an acknowledged complete snapshot sets `seeded=1`; an interrupted snapshot
++is reported as incomplete and is retried at the next activation. The notifier
++captures subsequent COMING/LIVE/GOING events,
 +including events concurrent with the snapshot. It copies names/presence only,
 +retains no module pointer, and never vetoes a load. Deferred work reconciles
 +sysfs rules and inode changes. No periodic scan, always-running userspace
@@ -82,7 +84,7 @@ index 0000000000000000000000000000000000000000..85f997c5856eb8d266fc609c70fc18da
 +
 +The root controller supports `automatic begin`, batched `automatic stock
 +NAME[,NAME...]`, `automatic commit`, `automatic abort`, `automatic observe
-+NAME[,NAME...]`, and `automatic off`. Inventory construction never edits the
++NAME[,NAME...]`, `automatic ready`, and `automatic off`. Inventory construction never edits the
 +active table in place. App activation is serialized across processes using
 +the existing activation lock. Manual control writes remain individually
 +serialized by the native configuration mutex.
@@ -341,7 +343,7 @@ index cfc961ddab2f4e1b6290207b9cd97805985258d1..236aab5b0216994c1e9fefcffc0c2662
   *
   * There is exactly ONE sys_exit tracepoint in this module and it lives in susfs_kstat.c (it is what
 diff --git a/kernel/susfs_hide_syms.c b/kernel/susfs_hide_syms.c
-index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4dca5c0460 100644
+index 516ded52f45bf1afabdc25eb58dd3e9199644cef..7cfbe2649f0ff9494ad0f0f5e9ba53523e52a677 100644
 --- a/kernel/susfs_hide_syms.c
 +++ b/kernel/susfs_hide_syms.c
 @@ -20,6 +20,9 @@
@@ -402,7 +404,7 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
 +static char (*auto_stock)[MODULE_NAME_LEN] = auto_stock_a;
 +static char (*auto_stock_staged)[MODULE_NAME_LEN] = auto_stock_b;
 +static int n_auto_stock, n_auto_stock_staged;
-+static bool auto_stock_building, auto_modules_enabled;
++static bool auto_stock_building, auto_modules_enabled, auto_modules_seeded;
 +static struct {
 +	char name[MODULE_NAME_LEN];
 +	enum hide_module_presence presence;
@@ -706,7 +708,7 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
  		if (n >= max) {
  			rc = -ENOSPC;
  			goto out;
-@@ -183,15 +402,138 @@ out:
+@@ -183,15 +402,150 @@ out:
  
  static void hide_modules_commit(char dst[][MODULE_NAME_LEN], int n)
  {
@@ -813,6 +815,7 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
 +		auto_stock_staged = old;
 +		n_auto_stock = n_auto_stock_staged;
 +		auto_modules_enabled = true;
++		auto_modules_seeded = false;
 +		for (i = 0; i < n_auto_modules; i++)
 +			auto_modules[i].dirty = true;
 +		spin_unlock_irqrestore(&hide_modules_lock, flags);
@@ -822,8 +825,19 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
 +	if (!strcmp(cmd, "off")) {
 +		spin_lock_irqsave(&hide_modules_lock, flags);
 +		auto_modules_enabled = false;
++		auto_modules_seeded = false;
 +		spin_unlock_irqrestore(&hide_modules_lock, flags);
 +		auto_stock_building = false;
++		return 0;
++	}
++	if (!strcmp(cmd, "ready")) {
++		spin_lock_irqsave(&hide_modules_lock, flags);
++		if (!auto_modules_enabled) {
++			spin_unlock_irqrestore(&hide_modules_lock, flags);
++			return -EINVAL;
++		}
++		auto_modules_seeded = true;
++		spin_unlock_irqrestore(&hide_modules_lock, flags);
 +		return 0;
 +	}
 +	if (!strncmp(cmd, "observe ", 8)) {
@@ -846,7 +860,7 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
  /* One implementation for both frontends. Commands include `rescan`, which keeps
   * the exact name list and retries sysfs paths after late module loading.
   *
-@@ -213,6 +555,8 @@ static int hide_modules_command_impl(const char *val, bool bare_list)
+@@ -213,6 +567,8 @@ static int hide_modules_command_impl(const char *val, bool bare_list)
  	int i, n;
  	int rc = 0;
  
@@ -855,7 +869,7 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
  	cmd = kvmalloc(HIDE_MODULES_CMDLINE, GFP_KERNEL);
  	staged = kvmalloc_array(HIDE_MODULES_MAX, MODULE_NAME_LEN, GFP_KERNEL);
  	if (!cmd || !staged) {
-@@ -230,15 +574,33 @@ static int hide_modules_command_impl(const char *val, bool bare_list)
+@@ -230,15 +586,33 @@ static int hide_modules_command_impl(const char *val, bool bare_list)
  		rc = -ENODEV;
  		goto out;
  	}
@@ -891,7 +905,7 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
  		SUSFS_LOGI("hide_modules: list cleared (no module is filtered)\n");
  		goto out;
  	}
-@@ -250,7 +612,7 @@ static int hide_modules_command_impl(const char *val, bool bare_list)
+@@ -250,7 +624,7 @@ static int hide_modules_command_impl(const char *val, bool bare_list)
  			goto out;
  		}
  		hide_modules_commit(staged, n);
@@ -900,7 +914,7 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
  		SUSFS_LOGI("hide_modules: list set to %d name(s)\n", n);
  		goto out;
  	}
-@@ -261,17 +623,17 @@ static int hide_modules_command_impl(const char *val, bool bare_list)
+@@ -261,17 +635,17 @@ static int hide_modules_command_impl(const char *val, bool bare_list)
  		arg = cmd + 4;
  		while (*arg == ' ')
  			arg++;
@@ -921,7 +935,7 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
  
  		/* `found` is kept separate from `i` on purpose: after a del the index and the new count coincide whenever the
  		 * removed entry was the last one, and reusing `i` for both questions answered -ENOENT for a name that was right
-@@ -285,8 +647,9 @@ static int hide_modules_command_impl(const char *val, bool bare_list)
+@@ -285,8 +659,9 @@ static int hide_modules_command_impl(const char *val, bool bare_list)
  				found = true;
  				if (adding)
  					goto out;	/* already listed */
@@ -933,7 +947,7 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
  				n--;
  				break;
  			}
-@@ -305,7 +668,7 @@ static int hide_modules_command_impl(const char *val, bool bare_list)
+@@ -305,7 +680,7 @@ static int hide_modules_command_impl(const char *val, bool bare_list)
  			}
  		}
  		hide_modules_commit(staged, n);
@@ -942,7 +956,7 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
  		SUSFS_LOGI("hide_modules: %s %s -> %d name(s) filtered\n",
  			adding ? "add" : "del", arg, n);
  		goto out;
-@@ -322,10 +685,12 @@ static int hide_modules_command_impl(const char *val, bool bare_list)
+@@ -322,10 +697,12 @@ static int hide_modules_command_impl(const char *val, bool bare_list)
  		goto out;
  	}
  	hide_modules_commit(staged, n);
@@ -956,7 +970,7 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
  	mutex_unlock(&hide_modules_config_lock);
  	kvfree(staged);
  	kvfree(cmd);
-@@ -336,8 +701,6 @@ static int hide_modules_format_unlocked(char *buf, size_t size)
+@@ -336,8 +713,6 @@ static int hide_modules_format_unlocked(char *buf, size_t size)
  {
  	int n = 0;
  	int i;
@@ -965,7 +979,7 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
  	n += scnprintf(buf + n, size - n,
  		"hide_modules: %d/%d name(s), /sys/module rules=%d (failed=%d), "
  		"/proc/modules lines removed=%d, kallsyms lines removed=%d\n",
-@@ -351,8 +714,18 @@ static int hide_modules_format_unlocked(char *buf, size_t size)
+@@ -351,8 +726,18 @@ static int hide_modules_format_unlocked(char *buf, size_t size)
  	n += scnprintf(buf + n, size - n, "sysfs: absent=%d errors=%d rescans=%d\n",
  		atomic_read(&n_sysfs_rules_absent), atomic_read(&n_sysfs_rules_errors),
  		atomic_read(&n_sysfs_rescans));
@@ -976,16 +990,16 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
 +	n += scnprintf(buf + n, size - n, "\nautomatic refresh: %s\n",
 +		READ_ONCE(hide_modules_notifier_registered) ? "on" : "off");
 +	n += scnprintf(buf + n, size - n,
-+		"automatic discovery: %s stock=%d tracked=%d/%d overflow=%d errors=%d\n",
++		"automatic discovery: %s stock=%d tracked=%d/%d overflow=%d errors=%d seeded=%d\n",
 +		auto_modules_enabled ? "on" : "off", n_auto_stock,
 +		n_auto_modules, HIDE_MODULES_AUTO_MAX,
-+		atomic_read(&n_auto_overflow), atomic_read(&n_auto_errors));
++		atomic_read(&n_auto_overflow), atomic_read(&n_auto_errors), auto_modules_seeded);
  	return n;
 +
  }
  
  /* The writer publishes under hide_modules_lock (hide_modules_commit() memsets the whole table
-@@ -364,9 +737,13 @@ static int hide_modules_format(char *buf, size_t size)
+@@ -364,9 +749,13 @@ static int hide_modules_format(char *buf, size_t size)
  	unsigned long flags;
  	int n;
  
@@ -999,7 +1013,7 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
  	return n;
  }
  
-@@ -401,6 +778,26 @@ static const struct kernel_param_ops hide_modules_ops = {
+@@ -401,6 +790,26 @@ static const struct kernel_param_ops hide_modules_ops = {
  /* 0600: root reads and writes it, and the whole directory is inside the one the hide_modules feature hides from everyone. */
  module_param_cb(hide_modules, &hide_modules_ops, NULL, 0600);
  
@@ -1026,7 +1040,7 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
  static int hide_modules_proc_show(struct seq_file *m, void *v)
  {
  	char buf[512];
-@@ -770,6 +1167,97 @@ fail:
+@@ -770,6 +1179,97 @@ fail:
  	return rc;
  }
  
@@ -1124,7 +1138,7 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
  int susfs_hide_syms_init(void)
  {
  	int rc;
-@@ -815,6 +1303,10 @@ int susfs_hide_syms_init(void)
+@@ -815,6 +1315,10 @@ int susfs_hide_syms_init(void)
  			rc);
  	}
  
@@ -1135,7 +1149,7 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
  	/* hide_modules starts with just this module in its list: a built-in SUSFS has no module entry, so leaving ours visible
  	 * would be a trace upstream does not have.  The sysfs rule can only be registered now, because sus_path is up (this
  	 * layer is last in the init table) - hence the default list is seeded here and not from the parameter's value. */
-@@ -825,7 +1317,7 @@ int susfs_hide_syms_init(void)
+@@ -825,7 +1329,7 @@ int susfs_hide_syms_init(void)
  		strscpy(staged[0], SUSFS_LKM_MODULE_NAME, MODULE_NAME_LEN);
  		hide_modules_commit(staged, 1);
  	}
@@ -1144,7 +1158,7 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
  	mutex_unlock(&hide_modules_config_lock);
  
  	/* The runtime control node: created only when the LSM layer that hides it is installed, so an unprotected
-@@ -855,9 +1347,14 @@ bool susfs_hide_modules_node_ready(void)
+@@ -855,9 +1359,14 @@ bool susfs_hide_modules_node_ready(void)
  
  void susfs_hide_syms_exit(void)
  {
@@ -1159,7 +1173,7 @@ index 516ded52f45bf1afabdc25eb58dd3e9199644cef..27abf90e12be7bd11911dcd3e572db4d
  	if (hide_modules_entry) {
  		proc_remove(hide_modules_entry);
  		hide_modules_entry = NULL;
-@@ -872,8 +1369,12 @@ void susfs_hide_syms_exit(void)
+@@ -872,8 +1381,12 @@ void susfs_hide_syms_exit(void)
  	kallsyms_op_target = NULL;
  	/* The /sys/module rules are ours: drop them here, not in sus_path's teardown - this layer cleans up what it registered. */
  	mutex_lock(&hide_modules_config_lock);
@@ -1486,10 +1500,10 @@ index 0000000000000000000000000000000000000000..c26e43c9e3d2cde8c6402ccaffef0c7d
 +unload test and does not measure the deferred sysfs visibility window.
 diff --git a/tests/module_lifecycle/lifecycle_test.c b/tests/module_lifecycle/lifecycle_test.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..4e434764b0f25d45d93e744a31bdad85cf8203a5
+index 0000000000000000000000000000000000000000..f449faf60f33e715d34b63e449d7a4cee1677ed9
 --- /dev/null
 +++ b/tests/module_lifecycle/lifecycle_test.c
-@@ -0,0 +1,188 @@
+@@ -0,0 +1,192 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +#define susfs_control_get host_default_control_get
 +#define susfs_control_put host_default_control_put
@@ -1603,7 +1617,11 @@ index 0000000000000000000000000000000000000000..4e434764b0f25d45d93e744a31bdad85
 +            assert(slots[0].applied && auto_modules[0].applied && path_deletes==deleted);
 +        } else {
 +            slots[0].loaded=true;
-+            if(!strcmp(c,"automatic-bootstrap"))assert(!hide_modules_command("automatic observe alpha,beta",false));
++            if(!strcmp(c,"automatic-bootstrap")) {
++                assert(!auto_modules_seeded);
++                assert(!hide_modules_command("automatic observe alpha,beta",false) && !auto_modules_seeded);
++                assert(!hide_modules_command("automatic ready",false) && auto_modules_seeded);
++            }
 +            else { emit("alpha",MODULE_STATE_LIVE); if(!strcmp(c,"automatic-event-during-work"))reenter=true;drain(); }
 +            if(!strcmp(c,"automatic-event-during-work"))assert(!slots[0].applied && work_calls==2);
 +            else {
