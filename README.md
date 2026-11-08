@@ -133,6 +133,11 @@ one module, stored once at
 loads that shared binary. The app verifies the module against the selected
 profile's checksum before loading it.
 
+The module filter also covers NoMount for non-root readers. Its root view stays
+visible so NoMount's installer can distinguish its driver from built-in support.
+See the [NoMount compatibility notes](docs/susfs-nomount-hiding-20261108/README.md)
+for the exact scope and validation status.
+
 [Automatic app protection](docs/susfs-priority-filter-20261030.md) manages its app
 selection from the root manager's grants. See the
 [1.3.4 repair report](docs/susfs-repairs-20261103/README.md) for the tested safety

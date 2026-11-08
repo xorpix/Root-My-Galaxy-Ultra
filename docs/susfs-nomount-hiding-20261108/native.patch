@@ -1,0 +1,197 @@
+diff --git a/kernel/susfs_hide_syms.c b/kernel/susfs_hide_syms.c
+index 605e6f3..516ded5 100644
+--- a/kernel/susfs_hide_syms.c
++++ b/kernel/susfs_hide_syms.c
+@@ -14,7 +14,7 @@
+ #include <linux/kallsyms.h>
+ #include <linux/string.h>
+ #include <linux/proc_fs.h>	/* the runtime control node */
+-#include <linux/cred.h>		/* current_uid() */
++#include <linux/cred.h>		/* current_uid(), current_euid() */
+ #include <linux/slab.h>		/* kvmalloc()/kvfree() on 6.1+ */
+ #include <linux/mm.h>		/* kvmalloc()/kvfree() on 5.10-5.15 */
+ #include <linux/uaccess.h>	/* copy_from_kernel_nofault, for the show-body validator */
+@@ -29,10 +29,12 @@
+ /* ---- hide_modules: filter other kernel modules out of /proc/modules ----
+  * /proc/modules is world-readable (0444) and lists every loaded module, so a checker that greps it sees the whole set
+  * including the module doing the hiding.  The feature keeps a list of module NAMES and removes them from: (1)
+- * /proc/modules - the m_show() line, for EVERY reader, root included, since a checker may well run as root and this
+- * listing is what it compares against; (2) /sys/module/<name> - registered in sus_path with self_protect, so
++ * /proc/modules - the m_show() line; (2) /sys/module/<name> - registered in sus_path with self_protect, so
+  * stat/open/readdir answer ENOENT for non-root callers while root keeps access (that is where a module's parameters
+- * live) - the one asymmetry to know; (3) /proc/kallsyms lines whose module_name matches, also for every reader.
++ * live); (3) /proc/kallsyms lines whose module_name matches. The proc filters apply to all readers except that
++ * effective uid 0 keeps the exact nomount module visible: classic NoMount's installer uses /proc/modules to
++ * distinguish an LKM from built-in support and would otherwise delete its staged driver directory on update.
++ * This compatibility exception does not change KernelSU/SusFS hiding or register nomount unless it is configured.
+  * Two frontends over one list: /proc/susfs_hide_modules (`add <name> | del <name> | clear | <name> [<name> ...]`, root
+  * only, ENOENT for everyone else) and .../parameters/hide_modules (same commands, settable at insmod).  Both follow the
+  * house pattern of the control nodes: 0777 so DAC passes and sus_path's hidden set is the only answer (ENOENT,
+@@ -70,6 +72,10 @@ static bool hide_module_name_match(const char *name)
+ 
+ 	if (!name || !name[0])
+ 		return false;
++	/* NoMount v2.2.0's root installer treats a missing LKM row as built-in
++	 * support and removes its .ko files. Keep privileged detection working. */
++	if (!strcmp(name, "nomount") && uid_eq(current_euid(), GLOBAL_ROOT_UID))
++		return false;
+ 
+ 	spin_lock_irqsave(&hide_modules_lock, flags);
+ 	for (i = 0; i < n_hide_modules; i++) {
+diff --git a/tests/module_control/host_kernel.h b/tests/module_control/host_kernel.h
+index 186e5f9..10bde67 100644
+--- a/tests/module_control/host_kernel.h
++++ b/tests/module_control/host_kernel.h
+@@ -11,6 +11,12 @@
+ #include <unistd.h>
+ 
+ #define MODULE_NAME_LEN 56
++typedef struct { unsigned int val; } kuid_t;
++static _Thread_local kuid_t host_uid, host_euid;
++#define GLOBAL_ROOT_UID ((kuid_t){0})
++static kuid_t current_uid(void) { return host_uid; }
++static kuid_t current_euid(void) { return host_euid; }
++static bool uid_eq(kuid_t a, kuid_t b) { return a.val == b.val; }
+ #define GFP_KERNEL 0
+ #define PAGE_SIZE 4096
+ #define READ_ONCE(v) __atomic_load_n(&(v),__ATOMIC_ACQUIRE)
+diff --git a/tests/mshow_filter/host_kernel.h b/tests/mshow_filter/host_kernel.h
+index 894aa01..db21df0 100644
+--- a/tests/mshow_filter/host_kernel.h
++++ b/tests/mshow_filter/host_kernel.h
+@@ -16,6 +16,12 @@
+ #include <limits.h>
+ 
+ #define MODULE_NAME_LEN 56
++typedef struct { unsigned int val; } kuid_t;
++static _Thread_local kuid_t host_uid, host_euid;
++#define GLOBAL_ROOT_UID ((kuid_t){0})
++static kuid_t current_uid(void) { return host_uid; }
++static kuid_t current_euid(void) { return host_euid; }
++static bool uid_eq(kuid_t a, kuid_t b) { return a.val == b.val; }
+ #define GFP_KERNEL 0
+ #define PAGE_SIZE 4096
+ #define READ_ONCE(v) __atomic_load_n(&(v),__ATOMIC_ACQUIRE)
+diff --git a/tests/mshow_filter/mshow_filter_test.c b/tests/mshow_filter/mshow_filter_test.c
+index 6287f7f..0d4a1d0 100644
+--- a/tests/mshow_filter/mshow_filter_test.c
++++ b/tests/mshow_filter/mshow_filter_test.c
+@@ -24,6 +24,40 @@ static int sus_path_del_path(const char *path)
+ /* one observed invocation of the m_show pre-handler */
+ static struct { int ret, pc_skipped, rval_zero, skipped_delta; } obs;
+ 
++static void verify_kallsyms_reader_policy(void)
++{
++    const struct { unsigned int uid,euid;const char *owner,*symbol;int hidden; } cases[] = {
++        {0,0,"nomount","nm_dispatch",0}, {10000,10000,"nomount","nm_dispatch",1},
++        {10000,0,"nomount","nm_dispatch",0}, {0,10000,"nomount","nm_dispatch",1},
++        {0,0,"kernelsu","driver_entry",1}, {10000,10000,"kernelsu","driver_entry",1},
++        {0,0,"susfs_guard_lkm","driver_entry",1}, {10000,10000,"susfs_guard_lkm","driver_entry",1},
++        {10000,10000,"nomount_extra","nm_dispatch",0},
++        {10000,10000,"qca_cld3_peach_v2","driver_entry",0},
++        {0,0,"nomount","ksu_private_symbol",1} /* prefix policy remains independent */
++    };
++    assert(!hide_modules_command("add nomount",false));
++    for (unsigned int i=0;i<ARRAY_SIZE(cases);i++) {
++        struct kallsym_iter_local it={.type='t'};
++        strscpy(it.module_name,cases[i].owner,sizeof(it.module_name));
++        strscpy(it.name,cases[i].symbol,sizeof(it.name));
++        struct seq_file m={.private=&it};
++        struct pt_regs r={.regs={[0]=(unsigned long)&m,[30]=0x1234},.pc=0x4321};
++        host_uid.val=cases[i].uid;host_euid.val=cases[i].euid;
++        assert(hide_syms_s_show_pre(&kp_s_show,&r)==cases[i].hidden);
++        assert(r.pc==(cases[i].hidden?0x1234:0x4321));
++        assert(r.regs[0]==(cases[i].hidden?0:(unsigned long)&m));
++    }
++    assert(!hide_modules_command("del nomount",false));
++    struct kallsym_iter_local it={.type='t'};
++    strscpy(it.module_name,"nomount",sizeof(it.module_name));
++    strscpy(it.name,"nm_dispatch",sizeof(it.name));
++    struct seq_file m={.private=&it};
++    struct pt_regs r={.regs={[0]=(unsigned long)&m,[30]=0x1234},.pc=0x4321};
++    host_uid.val=host_euid.val=10000;
++    assert(!hide_syms_s_show_pre(&kp_s_show,&r));
++    assert(r.pc==0x4321 && r.regs[0]==(unsigned long)&m);
++}
++
+ static void invoke(int gate_armed, const struct seq_operations *op,
+                    int m_is_null, int p_is_null, const char *probe_name)
+ {
+@@ -59,6 +93,10 @@ int main(int argc,char **argv)
+     assert(argc==2);
+     const char *name=argv[1];
+     assert(!hide_modules_command("kernelsu,susfs_guard_lkm",true));
++    if(!strcmp(name,"kallsyms-reader-policy")) {
++        verify_kallsyms_reader_policy();
++        printf("OBS %s ret=0 pc=0 rv0=0 skipped=0\n",name);return 0;
++    }
+     if(!strcmp(name,"unreadable-private")) {
+         struct seq_file m={.private=(void *)1};
+         struct pt_regs r={.regs={[0]=(unsigned long)&m,[30]=0x1234},.pc=0x4321};
+diff --git a/tests/mshow_filter/run.py b/tests/mshow_filter/run.py
+index 882d0a1..c39a26a 100644
+--- a/tests/mshow_filter/run.py
++++ b/tests/mshow_filter/run.py
+@@ -64,6 +64,7 @@ guard_ok = ('rc = hide_syms_modules_show_start();' in source
+ # case -> expectation tuple (ret, pc, rv0, skipped)
+ #   ret 1 with pc=1 rv0=1 skipped=1 means the /proc/modules line was filtered
+ EQ = [
++    ('kallsyms-reader-policy',  (0, 0, 0, 0)),
+     ('unreadable-private',     (0, 0, 0, 0)),
+     ('enlisted-susfs',          (1, 1, 1, 1)),
+     ('enlisted-kernelsu',       (1, 1, 1, 1)),
+diff --git a/tests/mshow_identity/identity_test.c b/tests/mshow_identity/identity_test.c
+index f594cf3..96e1e51 100644
+--- a/tests/mshow_identity/identity_test.c
++++ b/tests/mshow_identity/identity_test.c
+@@ -145,7 +145,26 @@ int main(int argc, char **argv)
+         else assert(!registered);
+     } else {
+         assert(modules_show_ready && m_show_registered && registered_live);
+-        if (!strcmp(c,"unreadable-module")) assert(!invoke((unsigned long)0x12345678));
++        if (!strcmp(c,"nomount-reader-policy")) {
++            strscpy(hide_modules[1],"kernelsu",MODULE_NAME_LEN);
++            strscpy(hide_modules[2],"nomount",MODULE_NAME_LEN);n_hide_modules=3;
++            const struct { unsigned int uid,euid;const char *name;int hidden; } cases[] = {
++                {0,0,"nomount",0}, {10000,10000,"nomount",1},
++                {10000,0,"nomount",0}, {0,10000,"nomount",1},
++                {0,0,"kernelsu",1}, {10000,10000,"kernelsu",1},
++                {0,0,"susfs_guard_lkm",1}, {10000,10000,"susfs_guard_lkm",1},
++                {0,0,"qca_cld3_peach_v2",0}, {10000,10000,"qca_cld3_peach_v2",0},
++                {10000,10000,"nomount_extra",0}
++            };
++            for (unsigned int i=0;i<ARRAY_SIZE(cases);i++) {
++                host_uid.val=cases[i].uid;host_euid.val=cases[i].euid;
++                strscpy(subject.name,cases[i].name,sizeof(subject.name));
++                assert(invoke((unsigned long)&subject.list)==cases[i].hidden);
++            }
++            n_hide_modules=2;strscpy(subject.name,"nomount",sizeof(subject.name));
++            assert(!invoke((unsigned long)&subject.list)); /* not implicitly enlisted */
++        }
++        else if (!strcmp(c,"unreadable-module")) assert(!invoke((unsigned long)0x12345678));
+         else if (!strcmp(c,"underflow")) assert(!invoke(1));
+         else if (!strcmp(c,"unterminated-name")) { memset(subject.name,'x',sizeof(subject.name));assert(!invoke((unsigned long)&subject.list)); }
+         else if (!strcmp(c,"prefix-lookalike")) { strscpy(subject.name,"susfs_guard_lkm_extra",sizeof(subject.name));assert(!invoke((unsigned long)&subject.list)); }
+diff --git a/tests/mshow_identity/run.py b/tests/mshow_identity/run.py
+index 97b4b64..b488fed 100644
+--- a/tests/mshow_identity/run.py
++++ b/tests/mshow_identity/run.py
+@@ -40,7 +40,8 @@ cases = ['ordinary', 'foreign-seq-ops', 'wrong-body', 'missing-table',
+          'cfi-stub', 'cfi-negative-branch', 'call-stub', 'wrong-stub',
+          'register-failure', 'bti-adjustment', 'bti-jc-adjustment',
+          'pac-adjustment', 'offset-adjustment', 'not-ready', 'unreadable-module',
+-         'underflow', 'unterminated-name', 'prefix-lookalike', 'stop-and-restart']
++         'underflow', 'unterminated-name', 'prefix-lookalike', 'stop-and-restart',
++         'nomount-reader-policy']
+ flags = ['-O1', '-g', '-fsanitize=address,undefined', '-fno-omit-frame-pointer', '-no-pie'] if a.sanitizers else ['-O2']
+ env = dict(os.environ, ASAN_OPTIONS='detect_leaks=0:abort_on_error=1', UBSAN_OPTIONS='halt_on_error=1')
+ with tempfile.TemporaryDirectory(prefix='susfs-mshow-identity-') as t:
+@@ -63,6 +64,8 @@ with tempfile.TemporaryDirectory(prefix='susfs-mshow-identity-') as t:
+         ('unverified-target', '!hide_syms_modules_probe_matches(expected)', '(false && hide_syms_modules_probe_matches(expected))', 'wrong-body'),
+         ('early-callback', '!smp_load_acquire(&modules_show_ready) || ', '', 'ordinary'),
+         ('samsung-gate', '|| !m || !p)', '|| !m || (modules_op_target && m->op != modules_op_target) || !p)', 'foreign-seq-ops'),
++        ('root-installer-hidden', 'uid_eq(current_euid(), GLOBAL_ROOT_UID)', 'false', 'nomount-reader-policy'),
++        ('real-uid-confused', 'uid_eq(current_euid(), GLOBAL_ROOT_UID)', 'uid_eq(current_uid(), GLOBAL_ROOT_UID)', 'nomount-reader-policy'),
+     ]
+     for label, old, new, case in mutations:
+         assert old in fragment
