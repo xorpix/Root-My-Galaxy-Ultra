@@ -1,6 +1,6 @@
-tree a508a8ef7c09b0a6da5e1e4025fb9e927d7b63fd
+tree d4ad85e0ab3589d3184ff79ebb1aa5a1962d7098
 parent 08cff8220c7db9e37fa378a5757d950e6bdb0d1a
 author Codex <codex@openai.com> 1794173997 +0100
-committer Codex <codex@openai.com> 1794173997 +0100
+committer Codex <codex@openai.com> 1794174206 +0100
 
 Generalize selected-module visibility and reconcile lifecycle-owned sysfs rules

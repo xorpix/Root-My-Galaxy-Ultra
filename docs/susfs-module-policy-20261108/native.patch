@@ -1680,7 +1680,7 @@ index 718068e829d726794953a78840c4863c6e45172a..52cc27ca4ee8f8846b12a92d2f5878b1
  
  if __name__ == '__main__':
 diff --git a/tools/check_priority_artifact.py b/tools/check_priority_artifact.py
-index 3ba8cbb88117ecc93d5a972635205d24a104e556..296c5fb4a9eaf3cb6d9b1046fba5721349fe3662 100644
+index 3ba8cbb88117ecc93d5a972635205d24a104e556..35e6f521005a7ecc3735d0bea5b61925abac95f5 100644
 --- a/tools/check_priority_artifact.py
 +++ b/tools/check_priority_artifact.py
 @@ -7,6 +7,7 @@ from review_cp15_artifact import inspect
@@ -1691,7 +1691,7 @@ index 3ba8cbb88117ecc93d5a972635205d24a104e556..296c5fb4a9eaf3cb6d9b1046fba57213
  for n in ('candidate','baseline','kdir','clang-bin','output'):p.add_argument('--'+n,type=Path,required=True)
  a=p.parse_args();root=Path(__file__).resolve().parents[1];a.output.mkdir(parents=True,exist_ok=True)
  fixture=a.output/'fixture';fixture.mkdir(exist_ok=True)
-@@ -26,6 +27,13 @@ lines=['#include <linux/kprobes.h>','#include <linux/module.h>','#include <linux
+@@ -26,6 +27,15 @@ lines=['#include <linux/kprobes.h>','#include <linux/module.h>','#include <linux
  for file in ['susfs_create_gate.c','susfs_priority_filter.c']:
   for name,num in re.findall(r'^#define COMPAT_(\w+)_NR\s+(\d+)',(root/'kernel'/file).read_text(),re.M):lines.append(f'static_assert({num} == __NR_compat32_{name.lower()});')
  lines.append('MODULE_LICENSE("GPL");');(fixture/'fixture.c').write_text('\n'.join(lines)+'\n');(fixture/'Makefile').write_text('obj-m := fixture.o\n')
@@ -1699,13 +1699,15 @@ index 3ba8cbb88117ecc93d5a972635205d24a104e556..296c5fb4a9eaf3cb6d9b1046fba57213
 + lines.extend(['#include <linux/notifier.h>','#include <linux/workqueue.h>',
 +  'static __used int expected_module_notifier(struct notifier_block *nb, unsigned long event, void *data) { return NOTIFY_DONE; }',
 +  'static __used void expected_module_work(struct work_struct *work) {}',
++  'static struct notifier_block expected_module_notifier_pointer __used = { .notifier_call=expected_module_notifier };',
++  'static work_func_t expected_module_work_pointer __used = expected_module_work;',
 +  'static_assert(__same_type(typeof(&expected_module_notifier), typeof(((struct notifier_block *)0)->notifier_call)));',
 +  'static_assert(__same_type(typeof(&expected_module_work), work_func_t));'])
 + (fixture/'fixture.c').write_text('\n'.join(lines)+'\n')
  env=dict(os.environ);env['PATH']=str(a.clang_bin)+os.pathsep+env['PATH']
  with (a.output/'fixture-build.log').open('w') as log:subprocess.run(['make','-C',str(a.kdir.resolve()),'M='+str(fixture.resolve()),'ARCH=arm64','CC=clang','LLVM=1','LLVM_IAS=1','CONFIG_DEBUG_INFO_BTF_MODULES=','modules','-j2'],stdout=log,stderr=subprocess.STDOUT,env=env,check=True)
  before=inspect(a.baseline);candidate=inspect(a.candidate);expected=inspect(fixture/'fixture.ko');word=expected['types']['expected_syscall']
-@@ -45,11 +53,15 @@ checks={
+@@ -45,11 +55,15 @@ checks={
   'all_have_call_landing_instructions':len(landings)==22 and all(v in [0xd503245f,0xd50324df,0xd503233f,0xd503237f] for v in landings.values()),
   'priority_probe_callbacks_match_real_headers':all(probe_words[n]==expected['types']['expected_post' if n=='prio_probe_post' else 'expected_pre'] for n in probe_names),
   'baseline_imports_preserved':set(removed)==({'mas_find'} if a.baseline_is_audit else set()),
