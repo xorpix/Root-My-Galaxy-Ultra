@@ -126,9 +126,10 @@ internal object SusfsRuntime {
         val loader = nativeTool(context, profile, "loader")
         val module = module(context, profile)
         // Uname remains genuine until a user explicitly configures a spoof through the ABI.
-        // The native NoMount policy preserves its root installer's module-list view.
+        // Installer modules can stay discoverable to root through the native policy.
         val command = "${shellQuote(loader.path)} ${shellQuote(module.path)} " +
             "uname_spoof_enabled=0 hide_modules=kernelsu,susfs_guard_lkm,nomount " +
+            "hide_modules_root_visible=nomount " +
             "priority_auto_root=1 priority_appid=${context.applicationInfo.uid % 100000} " +
             "su_ctx=${shellQuote(rootContext)} or_su_ctx=${shellQuote(rootContext)} avc_su_ctx=${shellQuote(rootContext)}"
         val loaded = shell(command, 60)
