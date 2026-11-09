@@ -2,8 +2,8 @@ name: SusFS native qualification
 on:
   pull_request:
     paths:
-      - 'docs/susfs-nomount-hiding-20261108/**'
-      - 'tools/build_susfs_nomount_hiding.py'
+      - 'docs/susfs-lock-fix-20261109/**'
+      - 'tools/build_susfs_lock_fix.py'
       - '.github/workflows/susfs-native.yml'
       - 'backends/susfs/**'
       - 'app/src/main/assets/susfs/**'
@@ -11,7 +11,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: susfs-nomount-hiding-${{ github.event.pull_request.number }}
+  group: susfs-status-lock-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 jobs:
   host:
@@ -23,14 +23,14 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Reconstruct reviewed source
-        run: python3 tools/build_susfs_nomount_hiding.py --work "$RUNNER_TEMP/nomount-hiding" --prepare-only
+        run: python3 tools/build_susfs_lock_fix.py --work "$RUNNER_TEMP/lock-fix" --prepare-only
       - name: Run all production regressions and sanitizer controls
-        run: python3 "$RUNNER_TEMP/nomount-hiding/susfs/tools/run_host_suite.py" --output "$RUNNER_TEMP/nomount-hiding/output/host" --jobs 2
+        run: python3 "$RUNNER_TEMP/lock-fix/susfs/tools/run_host_suite.py" --output "$RUNNER_TEMP/lock-fix/output/host" --jobs 2
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: nomount-hiding-host-${{ github.event.pull_request.head.sha }}
-          path: ${{ runner.temp }}/nomount-hiding/output/
+          name: lock-fix-host-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/lock-fix/output/
           if-no-files-found: error
           retention-days: 14
   native:
@@ -45,17 +45,17 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y build-essential libssl-dev pkg-config python3-pyelftools
       - name: Provide the standard DDK path
         run: |
-          mkdir -p "$RUNNER_TEMP/nomount-hiding-ddk/ddk-root/opt/ddk"
-          sudo ln -s "$RUNNER_TEMP/nomount-hiding-ddk/ddk-root/opt/ddk" /opt/ddk
+          mkdir -p "$RUNNER_TEMP/lock-fix-ddk/ddk-root/opt/ddk"
+          sudo ln -s "$RUNNER_TEMP/lock-fix-ddk/ddk-root/opt/ddk" /opt/ddk
       - name: Provision pinned DDK
-        run: python3 tools/provision_ddk.py "$RUNNER_TEMP/nomount-hiding-ddk"
+        run: python3 tools/provision_ddk.py "$RUNNER_TEMP/lock-fix-ddk"
       - name: Compile module, check ABI and stage bundle
-        run: python3 tools/build_susfs_nomount_hiding.py --work "$RUNNER_TEMP/nomount-hiding"
+        run: python3 tools/build_susfs_lock_fix.py --work "$RUNNER_TEMP/lock-fix"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: nomount-hiding-native-${{ github.event.pull_request.head.sha }}
-          path: ${{ runner.temp }}/nomount-hiding/output/
+          name: lock-fix-native-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/lock-fix/output/
           if-no-files-found: error
           retention-days: 14
   android:
@@ -69,11 +69,11 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          name: nomount-hiding-native-${{ github.event.pull_request.head.sha }}
-          path: ${{ runner.temp }}/nomount-hiding-native
+          name: lock-fix-native-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/lock-fix-native
       - name: Overlay the exact qualified native bundle
         run: |
-          cp -a "$RUNNER_TEMP/nomount-hiding-native/bundle/." .
+          cp -a "$RUNNER_TEMP/lock-fix-native/bundle/." .
           python3 tools/check_susfs_bundle.py
       - uses: actions/setup-java@v4
         with:
@@ -98,7 +98,7 @@ jobs:
           : "${KEYSTORE_PASSWORD:?Missing keystore password}"
           : "${KEY_ALIAS:?Missing signing alias}"
           : "${KEY_PASSWORD:?Missing key password}"
-          KEYSTORE_PATH="$RUNNER_TEMP/nomount-hiding-release.jks"
+          KEYSTORE_PATH="$RUNNER_TEMP/lock-fix-release.jks"
           printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_PATH"
           {
             echo "KEYSTORE_FILE=$KEYSTORE_PATH"
@@ -109,7 +109,7 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Test Android code and build signed candidate
         run: |
-          ./gradlew testDebugUnitTest assembleRelease -PrmguVersionSuffix=nomount-hiding-test1 --no-daemon
+          ./gradlew testDebugUnitTest assembleRelease -PrmguVersionSuffix=lock-fix-test1 --no-daemon
           python3 tools/check_susfs_bundle.py --apk app/build/outputs/apk/release/app-release.apk
           python3 tools/verify_d2_helper.py app/build/outputs/apk/release/app-release.apk
       - name: Verify signing certificate and stage candidate
@@ -121,14 +121,14 @@ jobs:
           EXPECTED_SHA256="$(keytool -list -v -keystore "$KEYSTORE_FILE" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" | awk '/SHA256:/ {print $2; exit}' | tr -d ':' | tr 'A-F' 'a-f')"
           test -n "$SIGNED_SHA256" && test "$SIGNED_SHA256" = "$EXPECTED_SHA256"
           mkdir -p candidate
-          cp "$APK" candidate/RootMyGalaxyUltra-nomount-hiding-test1.apk
-          sha256sum candidate/RootMyGalaxyUltra-nomount-hiding-test1.apk > candidate/SHA256SUMS.txt
+          cp "$APK" candidate/RootMyGalaxyUltra-lock-fix-test1.apk
+          sha256sum candidate/RootMyGalaxyUltra-lock-fix-test1.apk > candidate/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: RMGU-nomount-hiding-test1-${{ github.event.pull_request.head.sha }}
+          name: RMGU-lock-fix-test1-${{ github.event.pull_request.head.sha }}
           path: candidate/
           if-no-files-found: error
           retention-days: 14
       - name: Remove temporary signing key
         if: always()
-        run: rm -f "$RUNNER_TEMP/nomount-hiding-release.jks"
+        run: rm -f "$RUNNER_TEMP/lock-fix-release.jks"

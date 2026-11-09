@@ -1,6 +1,6 @@
-tree 9a8961abf991432fbe14730e205037d479ac8c34
-parent 2be2a77433418e0c3688a649dca160dc414d325b
-author Codex <codex@openai.com> 1794159815 +0100
-committer Codex <codex@openai.com> 1794159815 +0100
+tree 27d20887b795e84449aa7de2da4a19be533910e2
+parent 08cff8220c7db9e37fa378a5757d950e6bdb0d1a
+author Codex <codex@openai.com> 1794190631 +0000
+committer Codex <codex@openai.com> 1794190631 +0000
 
-Preserve NoMount root installer visibility while hiding app traces
+Fix module status lock ordering

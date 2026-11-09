@@ -1,0 +1,6 @@
+tree 27d20887b795e84449aa7de2da4a19be533910e2
+parent 08cff8220c7db9e37fa378a5757d950e6bdb0d1a
+author Codex <codex@openai.com> 1794190631 +0000
+committer Codex <codex@openai.com> 1794190631 +0000
+
+Fix module status lock ordering
