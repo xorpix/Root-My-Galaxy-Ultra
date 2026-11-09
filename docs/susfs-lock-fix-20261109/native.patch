@@ -1,0 +1,122 @@
+diff --git a/kernel/susfs_hide_syms.c b/kernel/susfs_hide_syms.c
+index 516ded52f45bf1afabdc25eb58dd3e9199644cef..16c5359d42170b820fa2d13811b4fd840637b5d8 100644
+--- a/kernel/susfs_hide_syms.c
++++ b/kernel/susfs_hide_syms.c
+@@ -337,7 +337,6 @@ static int hide_modules_format_unlocked(char *buf, size_t size)
+ 	int n = 0;
+ 	int i;
+ 
+-	mutex_lock(&hide_modules_config_lock);
+ 	n += scnprintf(buf + n, size - n,
+ 		"hide_modules: %d/%d name(s), /sys/module rules=%d (failed=%d), "
+ 		"/proc/modules lines removed=%d, kallsyms lines removed=%d\n",
+@@ -351,7 +350,6 @@ static int hide_modules_format_unlocked(char *buf, size_t size)
+ 	n += scnprintf(buf + n, size - n, "sysfs: absent=%d errors=%d rescans=%d\n",
+ 		atomic_read(&n_sysfs_rules_absent), atomic_read(&n_sysfs_rules_errors),
+ 		atomic_read(&n_sysfs_rescans));
+-	mutex_unlock(&hide_modules_config_lock);
+ 	return n;
+ }
+ 
+@@ -364,9 +362,11 @@ static int hide_modules_format(char *buf, size_t size)
+ 	unsigned long flags;
+ 	int n;
+ 
++	mutex_lock(&hide_modules_config_lock);
+ 	spin_lock_irqsave(&hide_modules_lock, flags);
+ 	n = hide_modules_format_unlocked(buf, size);
+ 	spin_unlock_irqrestore(&hide_modules_lock, flags);
++	mutex_unlock(&hide_modules_config_lock);
+ 	return n;
+ }
+ 
+diff --git a/tests/module_control/host_kernel.h b/tests/module_control/host_kernel.h
+index 10bde6734466fe32844c3a0cec8956d0fc96a29d..997c35a05e6d2fae3ab66169aa2d0d2d025d024d 100644
+--- a/tests/module_control/host_kernel.h
++++ b/tests/module_control/host_kernel.h
+@@ -32,6 +32,7 @@ static atomic_t host_waiting,host_allocations;
+ #define DEFINE_SPINLOCK(n) pthread_mutex_t n=PTHREAD_MUTEX_INITIALIZER
+ static void mutex_lock(pthread_mutex_t *p)
+ {
++    assert(!host_spin_depth && "sleeping mutex acquired while holding module spinlock");
+     int rc=pthread_mutex_trylock(p);
+     if(rc==EBUSY) { atomic_inc(&host_waiting); assert(!pthread_mutex_lock(p)); atomic_fetch_sub(&host_waiting,1); }
+     else assert(!rc);
+diff --git a/tests/module_control/module_control_test.c b/tests/module_control/module_control_test.c
+index 7e6cccf5c3f5149da66fe08659b367f2a48cb65a..f6de17c546b4c2b6c1404a73b85f8e7d4b0d0828 100644
+--- a/tests/module_control/module_control_test.c
++++ b/tests/module_control/module_control_test.c
+@@ -34,6 +34,14 @@ static int sus_path_del_path(const char *path)
+ static atomic_t writer_finished;
+ static void *writer(void *arg)
+ { assert(!hide_modules_command(arg,false)); atomic_inc(&writer_finished); return NULL; }
++static atomic_t reader_finished;
++static void *status_reader(void *arg)
++{
++    char buf[PAGE_SIZE]; (void)arg;
++    assert(hide_modules_format(buf,sizeof(buf))>0);
++    assert(strstr(buf,"names: alpha\n") && strstr(buf,"/sys/module rules=1 (failed=0)"));
++    atomic_inc(&reader_finished); return NULL;
++}
+ static void clean(void)
+ { assert(!hide_modules_command("clear",false)); assert(!napplied && !n_hide_modules && !n_hide_modules_applied && !atomic_read(&host_allocations)); }
+ 
+@@ -70,6 +78,17 @@ int main(int argc,char **argv)
+     } else if(!strcmp(name,"capacity")) {
+         for(int i=0;i<HIDE_MODULES_MAX;i++) { char cmd[50]; snprintf(cmd,sizeof(cmd),"add module%d",i); assert(!hide_modules_command(cmd,false)); }
+         assert(hide_modules_command("add overflow",false)==-ENOSPC && napplied==16);
++    } else if(!strcmp(name,"concurrent-status")) {
++        pthread_t first,reader; host_block_next=true;
++        assert(!pthread_create(&first,NULL,writer,"add alpha"));
++        pthread_mutex_lock(&block_lock); while(!host_inside) pthread_cond_wait(&block_cv,&block_lock); pthread_mutex_unlock(&block_lock);
++        assert(!pthread_create(&reader,NULL,status_reader,NULL));
++        for(int i=0;i<2000 && !atomic_read(&host_waiting);i++) usleep(1000);
++        assert(atomic_read(&host_waiting)==1 && !atomic_read(&reader_finished));
++        assert(hide_module_name_match("alpha"));
++        pthread_mutex_lock(&block_lock); host_release=true; pthread_cond_broadcast(&block_cv); pthread_mutex_unlock(&block_lock);
++        assert(!pthread_join(first,NULL) && !pthread_join(reader,NULL));
++        assert(atomic_read(&writer_finished)==1 && atomic_read(&reader_finished)==1);
+     } else if(!strcmp(name,"concurrent-writers")) {
+         pthread_t first,second; host_block_next=true;
+         assert(!pthread_create(&first,NULL,writer,"add alpha"));
+diff --git a/tests/module_control/run.py b/tests/module_control/run.py
+index 204198f8d6d173d37112c99265a1204d5dfa06e5..f71d44d6ad1871fcf5258e8bd980fc3c9a266c38 100644
+--- a/tests/module_control/run.py
++++ b/tests/module_control/run.py
+@@ -15,7 +15,7 @@ args=parser.parse_args()
+ here=Path(__file__).resolve().parent
+ source=(args.source_dir/'kernel/susfs_hide_syms.c').read_text()
+ fragment=source[source.index('#define HIDE_MODULES_MAX'):source.index('/* ---- the two frontends ---- */')]
+-cases=['exact-list','parse-failure-preserves-list','rescan-late-module','distinct-sysfs-errors','long-module-path','capacity','concurrent-writers']
++cases=['exact-list','parse-failure-preserves-list','rescan-late-module','distinct-sysfs-errors','long-module-path','capacity','concurrent-writers','concurrent-status']
+ results=[]
+ resource.setrlimit(resource.RLIMIT_CORE,(0,0))
+ with tempfile.TemporaryDirectory(prefix='susfs-module-control-host-') as temporary:
+@@ -47,8 +47,25 @@ with tempfile.TemporaryDirectory(prefix='susfs-module-control-host-') as tempora
+     negative={'case':'missing-writer-serialization','passed':run.returncode!=0 and 'Assertion' in run.stderr,
+               'exit_code':run.returncode,'stderr':run.stderr.replace(temporary,'<temporary>').strip()}
+     print(('PASS ' if negative['passed'] else 'FAIL ')+'missing-writer-serialization negative control')
++    wrapper='\tmutex_lock(&hide_modules_config_lock);\n\tspin_lock_irqsave(&hide_modules_lock, flags);\n\tn = hide_modules_format_unlocked(buf, size);\n\tspin_unlock_irqrestore(&hide_modules_lock, flags);\n\tmutex_unlock(&hide_modules_config_lock);'
++    assert fragment.count(wrapper)==1, 'status locking fixture no longer matches production'
++    inverted=fragment.replace(wrapper,wrapper.replace('\tmutex_lock(&hide_modules_config_lock);\n','').replace('\n\tmutex_unlock(&hide_modules_config_lock);',''))
++    start=inverted.index('static int hide_modules_format_unlocked(')
++    end=inverted.index('\n}\n',start)
++    status=inverted[start:end]
++    status=status.replace('\tint i;\n','\tint i;\n\n\tmutex_lock(&hide_modules_config_lock);',1)
++    status=status.replace('\treturn n;','\tmutex_unlock(&hide_modules_config_lock);\n\treturn n;',1)
++    inverted=inverted[:start]+status+inverted[end:]
++    changed.write_text(inverted)
++    built=compile_program(changed,bad)
++    if built.returncode: raise RuntimeError('Lock-order negative control did not compile: '+built.stderr)
++    run=subprocess.run([str(bad),'concurrent-status'],capture_output=True,text=True,timeout=15)
++    lock_negative={'case':'original-status-lock-inversion','passed':run.returncode!=0 and 'sleeping mutex acquired while holding module spinlock' in run.stderr,
++                   'exit_code':run.returncode,'stderr':run.stderr.replace(temporary,'<temporary>').strip()}
++    print(('PASS ' if lock_negative['passed'] else 'FAIL ')+'original-status-lock-inversion negative control')
+ if args.json:
+     args.json.parent.mkdir(parents=True,exist_ok=True)
+     args.json.write_text(json.dumps({'kind':'actual production module controller with instrumented kernel stubs',
+-                                    'hardware_validated':False,'results':results,'negative_control':negative},indent=2)+'\n')
+-raise SystemExit(any(r['exit_code'] for r in results) or not negative['passed'])
++                                    'hardware_validated':False,'results':results,'negative_control':negative,
++                                    'lock_order_negative_control':lock_negative},indent=2)+'\n')
++raise SystemExit(any(r['exit_code'] for r in results) or not negative['passed'] or not lock_negative['passed'])

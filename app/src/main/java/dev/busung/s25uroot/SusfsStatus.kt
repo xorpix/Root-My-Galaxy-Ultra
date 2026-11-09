@@ -23,17 +23,7 @@ internal data class SusfsStatus(
     val features: Set<String> = emptySet(),
     val detail: String,
     val report: String = "",
-    val abiVerified: Boolean = false,
 )
-
-/** Module selection is independent of unrelated optional layers. A partial
- * feature set is usable only after every ABI reply has been verified. The
- * native controller separately checks its actual hooks before accepting it. */
-internal fun susfsCanSelectModules(status: SusfsStatus): Boolean =
-    status.state in setOf(SusfsState.Active, SusfsState.Partial) && status.abiVerified &&
-        status.features.containsAll(setOf(
-            "CONFIG_KSU_SUSFS_SUS_PATH", "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS",
-        ))
 
 /** All three native replies must succeed; a partial reply prevents a second load. */
 internal fun parseSusfsStatus(output: String, exitCode: Int): SusfsStatus = runCatching {
@@ -48,9 +38,8 @@ internal fun parseSusfsStatus(output: String, exitCode: Int): SusfsStatus = runC
     val array = json.getJSONArray("features")
     val features = (0 until array.length()).map { array.getString(it) }.toSet()
     val missing = requiredSusfsFeatures - features
-    val abiVerified = exitCode == 0 && json.getBoolean("available") && success &&
-        version.matches(Regex("v?2\\.\\d+\\.\\d+")) && variant.isNotBlank()
-    val active = abiVerified && missing.isEmpty()
+    val active = exitCode == 0 && json.getBoolean("available") && success &&
+        version.matches(Regex("v?2\\.\\d+\\.\\d+")) && variant.isNotBlank() && missing.isEmpty()
     val state = when {
         active -> SusfsState.Active
         answered -> SusfsState.Partial
@@ -67,7 +56,6 @@ internal fun parseSusfsStatus(output: String, exitCode: Int): SusfsStatus = runC
             SusfsState.Unavailable -> "The kernel status check could not complete. See the report."
         },
         output,
-        abiVerified,
     )
 }.getOrElse {
     SusfsStatus(SusfsState.Unavailable, detail = "The status helper did not return a valid report (exit $exitCode).", report = output)

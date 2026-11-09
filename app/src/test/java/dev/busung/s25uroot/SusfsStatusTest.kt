@@ -18,28 +18,6 @@ class SusfsStatusTest {
         val partial = live().put("features", JSONArray(requiredSusfsFeatures.toList().dropLast(1)))
         assertEquals(SusfsState.Partial, parseSusfsStatus(partial.toString(), 0).state)
     }
-    @Test fun verifiedPartialStatusKeepsIndependentModuleCapabilities() {
-        val json = live().put("features", JSONArray((requiredSusfsFeatures - "CONFIG_KSU_SUSFS_OPEN_REDIRECT").toList()))
-        val status = parseSusfsStatus(json.toString(), 0)
-        assertEquals(SusfsState.Partial, status.state)
-        assertTrue(status.abiVerified)
-        assertTrue(susfsCanSelectModules(status))
-        for (layer in listOf("CONFIG_KSU_SUSFS_SUS_PATH", "CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS")) {
-            assertFalse(susfsCanSelectModules(parseSusfsStatus(live().put("features", JSONArray((requiredSusfsFeatures - layer).toList())).toString(), 0)))
-        }
-    }
-    @Test fun failedOrUnterminatedQueriesNeverGrantModuleSelectionCapability() {
-        for (query in listOf("version", "variant", "features")) {
-            val json = live()
-            json.getJSONObject("queries").put(query, reply(error = 126))
-            assertFalse(parseSusfsStatus(json.toString(), 0).abiVerified)
-            assertFalse(susfsCanSelectModules(parseSusfsStatus(json.toString(), 0)))
-            json.getJSONObject("queries").put(query, reply(terminated = false))
-            assertFalse(susfsCanSelectModules(parseSusfsStatus(json.toString(), 0)))
-        }
-        assertFalse(susfsCanSelectModules(parseSusfsStatus(live().toString(), 1)))
-        assertFalse(susfsCanSelectModules(parseSusfsStatus("truncated", 0)))
-    }
     @Test fun missingReplyIsNeverActiveEvenIfAvailableClaimsTrue() {
         val json = live()
         json.getJSONObject("queries").put("features", reply(error = 126))

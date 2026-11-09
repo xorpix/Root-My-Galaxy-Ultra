@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reconstruct, qualify and stage the dynamic module-selection candidate."""
+"""Reconstruct, qualify and stage the module-status lock-order fix."""
 import argparse
 import gzip
 import hashlib
@@ -15,7 +15,7 @@ BASE_NATIVE = '08cff8220c7db9e37fa378a5757d950e6bdb0d1a'
 BASE_ARCHIVE_SHA = '209e6f7867637e4bcbb5c0e238d58de3e3a5738d52eb7b8df88b707945c7c789'
 BASE_MODULE_SHA = 'da363afd8dbf793526701193b2d89aef01b8efc40b245c840f9ce8a56dafb602'
 MODULE_PATH = 'app/src/main/assets/susfs/bzig/susfs_guard_lkm.ko'
-DOC = 'docs/susfs-module-policy-20261108'
+DOC = 'docs/susfs-lock-fix-20261109'
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
@@ -89,7 +89,7 @@ def main():
     original = out / 'baseline.ko'
     original.write_bytes(module_data)
     subprocess.run(['python3', str(source / 'tools/check_priority_artifact.py'),
-                    '--baseline-is-priority', '--baseline-is-module-policy', '--candidate', str(module), '--baseline', str(original),
+                    '--baseline-is-priority', '--candidate', str(module), '--baseline', str(original),
                     '--kdir', str(kdir), '--clang-bin', str(clang), '--output', str(out / 'abi')], check=True)
     original.unlink()
     module_info = {'path': MODULE_PATH, 'bytes': module.stat().st_size, 'sha256': digest(module.read_bytes())}
@@ -119,10 +119,9 @@ def main():
         'hardwareValidated': False,
         'acceptedHardwareBaseline': {'sourceCommit': BASE_NATIVE, 'moduleSha256': BASE_MODULE_SHA,
                                      'result': 'Maintainer NoMount functionality and root/non-root sysfs checks passed on 2026-11-08; see docs/susfs-nomount-hiding-20261108/phone-validation.json.'},
-        'moduleVisibilityPolicy': DOC + '/README.md',
-        'automaticModuleSelection': 'Firmware-file metadata inventory, existing-module seed and native load/unload events; root discovery retained.',
+        'moduleStatusLockOrderFix': DOC + '/README.md',
         'nativeQualificationRun': os.environ.get('GITHUB_RUN_ID'),
-        'kernelImports': 142, 'syscallWrappers': 22,
+        'kernelImports': 140, 'syscallWrappers': 22,
         'deviceValidation': 'Pending: candidate must be phone-tested before stable publication.'}
     current_validation = json.loads((root / 'backends/susfs/build-manifest.json').read_text())
     if (current_validation['sourceCommit'] == candidate and
@@ -145,12 +144,9 @@ def main():
     notice = (root / notice_path).read_text().splitlines()
     notice = [('Current Samsung source ' + candidate + '.')
               if line.startswith('Current Samsung source ') else line
-              for line in notice if not line.startswith(('NoMount reader compatibility policy: ', 'Selected-module visibility policy: '))]
-    notice.append('Selected-module visibility policy: explicit and firmware-inventory module selection, root discovery and automatic load/reload handling; see ' + DOC + '/README.md.')
+              for line in notice]
     write(notice_path, ('\n'.join(notice) + '\n').encode())
     write(DOC + '/build-receipt.json', (json.dumps(receipt, indent=2) + '\n').encode())
-    write(DOC + '/native-build.json', (out / 'build/build.json').read_bytes())
-    write(DOC + '/abi.json', (out / 'abi/artifact.json').read_bytes())
     current = json.loads((root / 'backends/susfs/build-manifest.json').read_text())
     if current['sourceCommit'] == candidate:
         assert current['sourceArchiveSha256'] == archive_sha, 'rebuilt archive differs from bundle'
@@ -159,4 +155,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
