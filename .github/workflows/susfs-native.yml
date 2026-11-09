@@ -11,7 +11,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: susfs-module-policy-${{ github.event.pull_request.number }}
+  group: susfs-status-lock-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 jobs:
   host:

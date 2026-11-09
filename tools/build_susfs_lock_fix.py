@@ -146,7 +146,6 @@ def main():
               if line.startswith('Current Samsung source ') else line
               for line in notice]
     write(notice_path, ('\n'.join(notice) + '\n').encode())
-    write(DOC + '/build-receipt.json', (json.dumps(receipt, indent=2) + '\n').encode())
     current = json.loads((root / 'backends/susfs/build-manifest.json').read_text())
     if current['sourceCommit'] == candidate:
         assert current['sourceArchiveSha256'] == archive_sha, 'rebuilt archive differs from bundle'
