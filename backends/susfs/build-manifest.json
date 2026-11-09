@@ -11,17 +11,18 @@
     "sha256": "8221c8a85d7301276684679f8b383d9f13181f83700e9370d0ab38434407b0d9"
   },
   "validation": {
-    "hardwareValidated": false,
+    "hardwareValidated": true,
     "acceptedHardwareBaseline": {
       "sourceCommit": "08cff8220c7db9e37fa378a5757d950e6bdb0d1a",
       "moduleSha256": "da363afd8dbf793526701193b2d89aef01b8efc40b245c840f9ce8a56dafb602",
       "result": "Maintainer NoMount functionality and root/non-root sysfs checks passed on 2026-11-08; see docs/susfs-nomount-hiding-20261108/phone-validation.json."
     },
     "moduleStatusLockOrderFix": "docs/susfs-lock-fix-20261109/README.md",
-    "nativeQualificationRun": "42550238058",
+    "nativeQualificationRun": "42550624273",
     "kernelImports": 140,
     "syscallWrappers": 22,
-    "deviceValidation": "Pending: candidate must be phone-tested before stable publication."
+    "deviceValidation": "Maintainer reported the signed lock-fix-test1 candidate works on 2026-11-09; see docs/susfs-lock-fix-20261109/phone-validation.json.",
+    "phoneValidation": "docs/susfs-lock-fix-20261109/phone-validation.json"
   },
   "priorityControl": {
     "path": "app/src/main/jniLibs/arm64-v8a/librmgususfs_priority.so",

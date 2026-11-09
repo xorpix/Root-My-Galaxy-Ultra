@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "date": "2026-11-09",
+  "result": "passed",
+  "evidenceType": "Maintainer confirmation in conversation",
+  "sourceCommit": "05c9e5cecdf7453ae80179ea42c372ffb1835203",
+  "moduleSha256": "8221c8a85d7301276684679f8b383d9f13181f83700e9370d0ab38434407b0d9",
+  "testedApkSha256": "d6cf9e7e9e416d5c866f443808fb62dc7e074098e2661be0253faf89db26cc26",
+  "testedAppCommit": "ef5a368f8bef44115d8996bf2e9adf14420c7022",
+  "testContext": "Signed RootMyGalaxyUltra-lock-fix-test1.apk supplied with full-reboot and root/SusFS reactivation instructions.",
+  "confirmation": "It works. You can publish a quick hotfix with stripped diagnostics and logging if still left",
+  "scope": "Maintainer-reported successful operation of the supplied lock-fix candidate; release retains its exact SusFS module bytes.",
+  "limitations": [
+    "No separate terminal output, installed-APK or loaded-module hash was supplied with this confirmation.",
+    "No individual Duck Detector result, unload/restoration result or long-uptime measurements were reported."
+  ]
+}
