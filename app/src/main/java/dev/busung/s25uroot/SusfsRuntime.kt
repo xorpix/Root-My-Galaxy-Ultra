@@ -67,6 +67,19 @@ internal object SusfsRuntime {
             // with a live daemon behind it, means "this UID is refused".
             ?: return unavailable("The status check did not answer; retry once before rebooting.")
         val status = parseSusfsStatus(result.output, result.exitCode)
+        if (status.state == SusfsState.Partial &&
+            "CONFIG_KSU_SUSFS_OPEN_REDIRECT" !in status.features) {
+            // Test-only: read the boot-time receipt; no new probes or retries.
+            val startup = shell("cat /sys/module/susfs_guard_lkm/parameters/or_entry_stat", 10)
+            if (startup?.exitCode == 0 && startup.output.isNotBlank()) {
+                val receipt = startup.output.trim().take(2000)
+                return SusfsOutcome(
+                    status.copy(detail = status.detail + " Redirect startup: " +
+                        receipt.lineSequence().joinToString(" | ")),
+                    result.output + "\nRedirect startup:\n" + receipt,
+                )
+            }
+        }
         return SusfsOutcome(status, result.output)
     }
 

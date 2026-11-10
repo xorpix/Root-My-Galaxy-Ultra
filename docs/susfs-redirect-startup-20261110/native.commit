@@ -1,0 +1,6 @@
+tree b5e1a243b1a8cb6bc235ddfdf4e03dec99cd1784
+parent 177aa8907a8ee7d7c156c1330cbab1d55515c5e4
+author Codex <codex@openai.com> 1794346660 +0100
+committer Codex <codex@openai.com> 1794346730 +0100
+
+Capture redirect startup prerequisites and hook results for isolated phone diagnosis
