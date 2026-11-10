@@ -1,0 +1,495 @@
+{
+  "hardware_validated": false,
+  "results": [
+    {
+      "suite": "audit_repairs",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 1.87,
+      "log": "audit_repairs.log"
+    },
+    {
+      "suite": "audit_repairs",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 2.42,
+      "log": "audit_repairs-sanitizers.log"
+    },
+    {
+      "suite": "avc_spoof",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.27,
+      "log": "avc_spoof.log"
+    },
+    {
+      "suite": "avc_spoof",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.52,
+      "log": "avc_spoof-sanitizers.log"
+    },
+    {
+      "suite": "control_lifetime",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.17,
+      "log": "control_lifetime.log"
+    },
+    {
+      "suite": "control_lifetime",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.16,
+      "log": "control_lifetime-sanitizers.log"
+    },
+    {
+      "suite": "feature_hooks",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.42,
+      "log": "feature_hooks.log"
+    },
+    {
+      "suite": "feature_hooks",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.67,
+      "log": "feature_hooks-sanitizers.log"
+    },
+    {
+      "suite": "fp_hooks",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.47,
+      "log": "fp_hooks.log"
+    },
+    {
+      "suite": "fp_hooks",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.87,
+      "log": "fp_hooks-sanitizers.log"
+    },
+    {
+      "suite": "identity_controls",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 6.21,
+      "log": "identity_controls.log"
+    },
+    {
+      "suite": "identity_controls",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 11.51,
+      "log": "identity_controls-sanitizers.log"
+    },
+    {
+      "suite": "kprobe_reuse",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 1.28,
+      "log": "kprobe_reuse.log"
+    },
+    {
+      "suite": "kprobe_reuse",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 2.68,
+      "log": "kprobe_reuse-sanitizers.log"
+    },
+    {
+      "suite": "kstat_compat",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.52,
+      "log": "kstat_compat.log"
+    },
+    {
+      "suite": "kstat_statx",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.57,
+      "log": "kstat_statx.log"
+    },
+    {
+      "suite": "kstat_statx",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.67,
+      "log": "kstat_statx-sanitizers.log"
+    },
+    {
+      "suite": "ksu_policy",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 2.09,
+      "log": "ksu_policy.log"
+    },
+    {
+      "suite": "ksu_policy",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 2.98,
+      "log": "ksu_policy-sanitizers.log"
+    },
+    {
+      "suite": "lifecycle",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 6.03,
+      "log": "lifecycle.log"
+    },
+    {
+      "suite": "lifecycle",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 9.32,
+      "log": "lifecycle-sanitizers.log"
+    },
+    {
+      "suite": "lsm_lifetime",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.53,
+      "log": "lsm_lifetime.log"
+    },
+    {
+      "suite": "lsm_lifetime",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.42,
+      "log": "lsm_lifetime-sanitizers.log"
+    },
+    {
+      "suite": "lsm_static_call",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.27,
+      "log": "lsm_static_call.log"
+    },
+    {
+      "suite": "lsm_static_call",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.43,
+      "log": "lsm_static_call-sanitizers.log"
+    },
+    {
+      "suite": "map_files",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 11.23,
+      "log": "map_files.log"
+    },
+    {
+      "suite": "map_files",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 12.39,
+      "log": "map_files-sanitizers.log"
+    },
+    {
+      "suite": "map_hooks",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.87,
+      "log": "map_hooks.log"
+    },
+    {
+      "suite": "map_hooks",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 1.58,
+      "log": "map_hooks-sanitizers.log"
+    },
+    {
+      "suite": "module_control",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 2.19,
+      "log": "module_control.log"
+    },
+    {
+      "suite": "mount_hooks",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 1.12,
+      "log": "mount_hooks.log"
+    },
+    {
+      "suite": "mount_hooks",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 2.43,
+      "log": "mount_hooks-sanitizers.log"
+    },
+    {
+      "suite": "mount_prefix",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.48,
+      "log": "mount_prefix.log"
+    },
+    {
+      "suite": "mount_prefix",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.74,
+      "log": "mount_prefix-sanitizers.log"
+    },
+    {
+      "suite": "mshow_filter",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 1.23,
+      "log": "mshow_filter.log"
+    },
+    {
+      "suite": "mshow_filter",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 2.09,
+      "log": "mshow_filter-sanitizers.log"
+    },
+    {
+      "suite": "mshow_identity",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 4.24,
+      "log": "mshow_identity.log"
+    },
+    {
+      "suite": "mshow_identity",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 6.58,
+      "log": "mshow_identity-sanitizers.log"
+    },
+    {
+      "suite": "patch_memory_flush",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.32,
+      "log": "patch_memory_flush.log"
+    },
+    {
+      "suite": "patch_memory_flush",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.27,
+      "log": "patch_memory_flush-sanitizers.log"
+    },
+    {
+      "suite": "path_creds",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 1.43,
+      "log": "path_creds.log"
+    },
+    {
+      "suite": "path_creds",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 2.73,
+      "log": "path_creds-sanitizers.log"
+    },
+    {
+      "suite": "path_entry",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.72,
+      "log": "path_entry.log"
+    },
+    {
+      "suite": "path_entry",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 1.17,
+      "log": "path_entry-sanitizers.log"
+    },
+    {
+      "suite": "path_index",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.42,
+      "log": "path_index.log"
+    },
+    {
+      "suite": "path_index",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.72,
+      "log": "path_index-sanitizers.log"
+    },
+    {
+      "suite": "path_listing",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 1.22,
+      "log": "path_listing.log"
+    },
+    {
+      "suite": "path_listing",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 16.88,
+      "log": "path_listing-sanitizers.log"
+    },
+    {
+      "suite": "path_readlink_lsm",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 1.67,
+      "log": "path_readlink_lsm.log"
+    },
+    {
+      "suite": "path_readlink_lsm",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 3.21,
+      "log": "path_readlink_lsm-sanitizers.log"
+    },
+    {
+      "suite": "priority_filter",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 18.97,
+      "log": "priority_filter.log"
+    },
+    {
+      "suite": "priority_filter",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 30.33,
+      "log": "priority_filter-sanitizers.log"
+    },
+    {
+      "suite": "priority_publication",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 1.17,
+      "log": "priority_publication.log"
+    },
+    {
+      "suite": "priority_publication",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 1.34,
+      "log": "priority_publication-sanitizers.log"
+    },
+    {
+      "suite": "priority_tool",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.97,
+      "log": "priority_tool.log"
+    },
+    {
+      "suite": "priority_tool",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 1.09,
+      "log": "priority_tool-sanitizers.log"
+    },
+    {
+      "suite": "r18_fixes",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 1.52,
+      "log": "r18_fixes.log"
+    },
+    {
+      "suite": "r18_fixes",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 2.83,
+      "log": "r18_fixes-sanitizers.log"
+    },
+    {
+      "suite": "redirect_entry",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.47,
+      "log": "redirect_entry.log"
+    },
+    {
+      "suite": "redirect_entry",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.77,
+      "log": "redirect_entry-sanitizers.log"
+    },
+    {
+      "suite": "redirect_maps",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.47,
+      "log": "redirect_maps.log"
+    },
+    {
+      "suite": "redirect_maps",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.72,
+      "log": "redirect_maps-sanitizers.log"
+    },
+    {
+      "suite": "redirect_probe",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 3.29,
+      "log": "redirect_probe.log"
+    },
+    {
+      "suite": "redirect_probe",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 5.1,
+      "log": "redirect_probe-sanitizers.log"
+    },
+    {
+      "suite": "redirect_startup",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 2.18,
+      "log": "redirect_startup.log"
+    },
+    {
+      "suite": "redirect_startup",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 3.5,
+      "log": "redirect_startup-sanitizers.log"
+    },
+    {
+      "suite": "redirect_statfs",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.47,
+      "log": "redirect_statfs.log"
+    },
+    {
+      "suite": "redirect_statfs",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.57,
+      "log": "redirect_statfs-sanitizers.log"
+    },
+    {
+      "suite": "userspace",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.67,
+      "log": "userspace.log"
+    },
+    {
+      "suite": "userspace",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 1.27,
+      "log": "userspace-sanitizers.log"
+    }
+  ]
+}
