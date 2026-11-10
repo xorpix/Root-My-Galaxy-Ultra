@@ -123,22 +123,14 @@ jobs:
           python3 - <<'PYTHON'
           import hashlib, json, zipfile
           from pathlib import Path
-          root = Path('app/src/main/assets/susfs/bzig')
-          profile = json.loads((root / 'profile.json').read_text())
-          expected = profile['module']['sha256']
-          assert profile['module']['sha256'] == expected
-          for path in Path('app/src/main/assets/susfs').glob('*/profile.json'):
-              variant = json.loads(path.read_text())
-              assert variant['module'] == profile['module'], str(path)
-              assert variant['sourceCommit'] == profile['sourceCommit'], str(path)
+          root = Path('app/src/main/assets/susfs')
+          metadata = json.loads((root / 'bundle.json').read_text())
+          expected = metadata['module']['sha256']
           assert hashlib.sha256((root / 'susfs_guard_lkm.ko').read_bytes()).hexdigest() == expected
           apk = Path('app/build/outputs/apk/release/app-release.apk')
           with zipfile.ZipFile(apk) as z:
-              assert hashlib.sha256(z.read('assets/susfs/bzig/susfs_guard_lkm.ko')).hexdigest() == expected
-              assert json.loads(z.read('assets/susfs/bzig/profile.json')) == profile
-              for path in Path('app/src/main/assets/susfs').glob('*/profile.json'):
-                  name = str(path.relative_to('app/src/main/assets'))
-                  assert json.loads(z.read('assets/' + name)) == json.loads(path.read_text())
+              assert hashlib.sha256(z.read('assets/susfs/susfs_guard_lkm.ko')).hexdigest() == expected
+              assert json.loads(z.read('assets/susfs/bundle.json')) == metadata
               for backend in ('kernelsu', 'kernelsu-next', 'resukisu'):
                   manifest = json.loads(Path(f'backends/{backend}/build-manifest.json').read_text())
                   daemon = z.read(f'assets/azhl/{backend}/ksud')

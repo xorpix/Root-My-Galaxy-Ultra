@@ -6,7 +6,7 @@
   "sourceArchive": "source.tar.gz",
   "sourceArchiveSha256": "9e6b1088cec1423c5968f53b5f4788f00951f4102f98ad962b32166aee9c1f2b",
   "module": {
-    "path": "app/src/main/assets/susfs/bzig/susfs_guard_lkm.ko",
+    "path": "app/src/main/assets/susfs/susfs_guard_lkm.ko",
     "bytes": 609672,
     "sha256": "421283dcb5376dd8fb594479fa0b876f4f7b419b35bb0a722108da05081c5e5e"
   },

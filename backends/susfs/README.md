@@ -12,7 +12,7 @@ delta from Samsung source `961fb6a`; dispatcher/audit patches retain earlier del
 The corresponding kernel source retains its GPL license.
 
 Run `python3 tools/check_susfs_bundle.py` from the app repository to verify the
-module, control client, firmware profiles and reconstructed Git tree/commit.
+module, control client, shared bundle metadata and reconstructed Git tree/commit.
 `--apk path/to/app.apk` also verifies packaged bytes.
 
 The maintainer accepted test4 phone validation with HMA reporting no failures.

@@ -122,16 +122,16 @@ table above for these development snapshots.
 ## SusFS and automatic app protection
 
 After activating root, grant Root My Galaxy Ultra superuser access in your manager,
-then enable SusFS in the app. SusFS uses its own exact firmware and kernel checks,
-independently of DirtyFrag root support. The bundled profiles cover **BZIG, BZID
-and BZJA**; a newer firmware needs a matching, validated profile.
+then enable SusFS in the app. One shared module serves the S26 Ultra family,
+including regional models such as SM-S948N. No per-firmware profile is required.
+The basic target is an ARM64 Android 16 / Linux 6.12 kernel with 4 KB pages.
 
-The firmware folders contain their own `profile.json`. All three profiles share
-one module, stored once at
-[`susfs/bzig/susfs_guard_lkm.ko`](app/src/main/assets/susfs/bzig/susfs_guard_lkm.ko).
-`bzig` is the historical storage name: a BZJA device uses the BZJA profile and
-loads that shared binary. The app verifies the module against the selected
-profile's checksum before loading it.
+The app verifies the shared bundle's module and helper checksums. The loader
+resolves symbols from the running kernel, and activation is confirmed through the
+live SusFS API. A partial or already active module is never loaded again.
+Removing the firmware allowlist permits an attempt on other matching builds;
+it does not mean each regional kernel has been tested or that its ABI is identical.
+DirtyFrag root compatibility is checked independently.
 
 The module filter also covers NoMount for non-root readers. Its root view stays
 visible so NoMount's installer can distinguish its driver from built-in support.
@@ -178,7 +178,7 @@ that feature.
 | Failed attempt, freeze or reboot | Fully reboot before trying again. Keep the failed run log; repeated retries in one boot are not a recovery method. |
 | Root works, but a module does not | Check the module's requirements and its manager logs. Successful root does not confirm that every module or injection framework has initialized. |
 | Manager works, but this app's root actions fail | Grant this app superuser permission in the selected manager. |
-| Root works, but SusFS is unavailable | Check the exact firmware/kernel profile. Include the full kernel release in a report; root-method support and SusFS compatibility have separate checks. |
+| Root works, but SusFS is unavailable | Include the model, full kernel release and activation report. The shared bundle checks the kernel family; root-method support and live SusFS compatibility remain separate. |
 | “Invalid auth token” from Shizuku | Delete the saved start token if unused, or replace it with the token supplied by your Shizuku build. |
 | Root disappears after reboot | This is temporary root. Run the app again or configure Root on boot. For automatic restoration at the first PIN screen, follow the [before-unlock setup guide](docs/root-before-unlock.md). |
 
@@ -287,7 +287,7 @@ AZHL screenshots from an earlier build; labels may differ in current releases.
   [helper variant metadata](app/src/main/assets/m3q/helper-variants.json).
 - [diabl0w / DFRoot](https://github.com/diabl0w/DFRoot) — DirtyFrag integration
   for eligible S26 Ultra variants. See [DirtyFrag provenance and licensing notes](app/src/main/cpp/dirtyfrag/DF_ORIGIN.md).
-- **SusFS contributors** — native module integration; [Samsung source and validation](docs/susfs-repairs-20261103/README.md) and [module licensing notices](app/src/main/assets/susfs/bzig/NOTICE.txt).
+- **SusFS contributors** — native module integration; [Samsung source and validation](docs/susfs-repairs-20261103/README.md) and [module licensing notices](app/src/main/assets/susfs/NOTICE.txt).
 - **KernelSU, KernelSU-Next, BakaSU and KowSU contributors** — root backends;
   [source revisions and Samsung patches](backends/README.md).
 

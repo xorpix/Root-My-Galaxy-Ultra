@@ -10,27 +10,26 @@ internal typealias SusfsShell = (String, Long) -> ShizukuController.ShellResult?
 
 /** Manual boot-local activation: verified bundled bytes, root loader, then live ABI status. */
 internal object SusfsRuntime {
-    // Exact firmware profiles share one verified module asset.
-    private const val SHARED_MODULE_DIR = "bzig"
+    private const val BUNDLE_PATH = "susfs/bundle.json"
     private val lock = Any()
 
-    private fun profile(context: Context, variantDir: String): JSONObject =
-        context.assets.open("susfs/$variantDir/profile.json").bufferedReader().use { JSONObject(it.readText()) }
+    private fun bundle(context: Context): JSONObject =
+        context.assets.open(BUNDLE_PATH).bufferedReader().use { JSONObject(it.readText()) }
 
     fun compatibilityIssue(context: Context): String? {
         val target = runCatching { susfsTargetFor(DeviceSnapshot.current()) }.getOrNull()
         if (target is SusfsTarget.Unsupported) return target.reason
         if (target == null) return "This device could not be read."
         return try {
-            profile(context, (target as SusfsTarget.Known).variantDir)
+            bundle(context)
             null
         } catch (e: Exception) {
-            "The bundled SusFS profile could not be read."
+            "The bundled SusFS metadata could not be read."
         }
     }
 
-    private fun nativeTool(context: Context, profile: JSONObject, key: String): File {
-        val entry = profile.getJSONObject(key)
+    private fun nativeTool(context: Context, metadata: JSONObject, key: String): File {
+        val entry = metadata.getJSONObject(key)
         val file = File(context.applicationInfo.nativeLibraryDir, entry.getString("file"))
         check(file.isFile && file.canExecute()) { "The $key helper is missing or cannot execute." }
         check(sha256Hex(file.readBytes()) == entry.getString("sha256")) { "The $key helper failed its integrity check." }
@@ -38,13 +37,13 @@ internal object SusfsRuntime {
     }
 
     internal fun priorityTool(context: Context): File =
-        nativeTool(context, profile(context, SHARED_MODULE_DIR), "priorityControl")
+        nativeTool(context, bundle(context), "priorityControl")
 
-    private fun module(context: Context, profile: JSONObject): File {
-        val entry = profile.getJSONObject("module")
+    private fun module(context: Context, metadata: JSONObject): File {
+        val entry = metadata.getJSONObject("module")
         // Single shared binary: it carries a generic vermagic and the loader
-        // rewrites it to the running kernel's required value (see SHARED_MODULE_DIR).
-        val bytes = context.assets.open("susfs/$SHARED_MODULE_DIR/" + entry.getString("file")).use { it.readBytes() }
+        // adapts it only to the complete value requested by the running kernel.
+        val bytes = context.assets.open("susfs/" + entry.getString("file")).use { it.readBytes() }
         check(sha256Hex(bytes) == entry.getString("sha256")) { "The SusFS module failed its integrity check." }
         val directory = File(context.filesDir, "susfs").apply { check(mkdirs() || isDirectory) }
         val file = File(directory, entry.getString("file"))
@@ -59,8 +58,8 @@ internal object SusfsRuntime {
         SusfsStatus(SusfsState.Unavailable, detail = detail), detail, needsGrant,
     )
 
-    private fun readStatus(context: Context, profile: JSONObject, shell: SusfsShell): SusfsOutcome {
-        val tool = nativeTool(context, profile, "status")
+    private fun readStatus(context: Context, metadata: JSONObject, shell: SusfsShell): SusfsOutcome {
+        val tool = nativeTool(context, metadata, "status")
         val result = shell(shellQuote(tool.path), 15)
             // No grant claim here: inside activation the daemon was just proven
             // up, so a null is transient — only the entry check below, made
@@ -87,7 +86,7 @@ internal object SusfsRuntime {
         shell: SusfsShell = KernelSuRuntime::rootShell): SusfsOutcome = runCatching {
         val target = susfsTargetFor(snapshot)
         if (target is SusfsTarget.Unsupported) return unavailable(target.reason)
-        readStatus(context, profile(context, (target as SusfsTarget.Known).variantDir), shell)
+        readStatus(context, bundle(context), shell)
     }.getOrElse { unavailable(it.message ?: "SusFS status could not be read.") }
 
     fun activate(context: Context, snapshot: DeviceSnapshot = DeviceSnapshot.current(),
@@ -105,26 +104,21 @@ internal object SusfsRuntime {
     private fun activateLocked(context: Context, snapshot: DeviceSnapshot, shell: SusfsShell): SusfsOutcome {
         val target = susfsTargetFor(snapshot)
         if (target is SusfsTarget.Unsupported) return unavailable(target.reason)
-        val variantDir = (target as SusfsTarget.Known).variantDir
-        val profile = profile(context, variantDir)
+        val metadata = bundle(context)
         val root = shell("id; id -Z; uname -r", 15)
         if (!isRootAnswer(root)) return unavailable("Grant this app root permission in your manager, then retry.", needsGrant = true)
         // A module may now spoof uname. A live or partial ABI must prevent another load first.
-        val before = readStatus(context, profile, shell)
+        val before = readStatus(context, metadata, shell)
         if (before.status.state != SusfsState.Absent) return SusfsAutoApps.attach(context, before, shell)
         val runningRelease = root?.output?.lineSequence()?.map { it.trim() }
             ?.firstOrNull { it.contains("android") }.orEmpty()
-        // Recheck the exact qualified release in the root shell before loading.
-        if (target is SusfsTarget.Known) {
-            val expected = profile.getString("kernelRelease")
-            if (runningRelease != expected)
-                return unavailable("The kernel reported by the root shell does not match ${target.label} ($expected). ${root?.output.orEmpty()}")
-        }
+        // A live or partial ABI was checked first; only an absent module reaches this guard.
+        susfsKernelIssue(runningRelease)?.let { return unavailable(it) }
         val rootContext = root?.output?.lineSequence()?.map { it.trim() }
             ?.firstOrNull { it.matches(Regex("u:r:[a-zA-Z0-9_]+:s0")) }
             ?: return unavailable("The root shell's SELinux context could not be read. ${root?.output.orEmpty()}")
-        val loader = nativeTool(context, profile, "loader")
-        val module = module(context, profile)
+        val loader = nativeTool(context, metadata, "loader")
+        val module = module(context, metadata)
         // Uname remains genuine until a user explicitly configures a spoof through the ABI.
         // The native NoMount policy preserves its root installer's module-list view.
         val command = "${shellQuote(loader.path)} ${shellQuote(module.path)} " +
@@ -134,7 +128,7 @@ internal object SusfsRuntime {
         val loaded = shell(command, 60)
             ?: return unavailable("The loader did not finish. Refresh status before retrying.")
         // Query even on a nonzero load exit; never retry a live/partial module blindly.
-        val after = readStatus(context, profile, shell)
+        val after = readStatus(context, metadata, shell)
         val report = "Device: ${snapshot.kernelVersionFull}\n" +
             "Loader exit: ${loaded.exitCode}\n${loaded.output}\nStatus:\n${after.report}"
         File(context.filesDir, "susfs-last-report.txt").writeText(report)
