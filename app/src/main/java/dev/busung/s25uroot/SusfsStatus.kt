@@ -61,23 +61,17 @@ internal fun parseSusfsStatus(output: String, exitCode: Int): SusfsStatus = runC
     SusfsStatus(SusfsState.Unavailable, detail = "The status helper did not return a valid report (exit $exitCode).", report = output)
 }
 
-/** Which SusFS bundle, if any, serves this device. */
+/** Whether this hardware can use the shared Samsung Android 16 / 6.12 bundle. */
 internal sealed interface SusfsTarget {
-    /** Exact profile match. */
-    data class Known(val variantDir: String, val label: String) : SusfsTarget
-    /** Not attempted. */
+    data object Supported : SusfsTarget
     data class Unsupported(val reason: String) : SusfsTarget
 }
 
-private val knownSusfsReleases = mapOf(
-    "6.12.69-android16-6-pb4d3caf-abogkiS948BXXS4BZIG-4k" to ("bzig" to "BZIG"),
-    "6.12.69-android16-6-pee899be-abogkiS948USQU4BZID-4k" to ("bzid" to "BZID"),
-    "6.12.69-android16-6-pa4ef354-abogkiS948BXXU5BZJA-4k" to ("bzja" to "BZJA"),
-)
 private val susfsFamilyModel =
     Regex("SM-S948[A-Z0-9]{1,2}(?:/DS)?|SC-53G|SCG37", RegexOption.IGNORE_CASE)
+private val susfsKernelSeries = Regex("6\\.12\\.[0-9]+-android16-[0-9]+(?:[-+].*)?")
 
-/** Firmware compatibility is independent of root backend selection. */
+/** No firmware/model-specific profile is needed; the native loader resolves runtime symbols. */
 internal fun susfsTargetFor(device: DeviceSnapshot): SusfsTarget {
     if (!device.manufacturer.equals("samsung", ignoreCase = true)) {
         return SusfsTarget.Unsupported("SusFS is built for Samsung devices.")
@@ -88,9 +82,10 @@ internal fun susfsTargetFor(device: DeviceSnapshot): SusfsTarget {
     if (device.machine != "aarch64" || device.abi != "arm64-v8a" || device.pageSize != 4096L) {
         return SusfsTarget.Unsupported("SusFS requires an ARM64 kernel with 4 KB pages.")
     }
-    knownSusfsReleases[device.kernelRelease]?.let { (dir, label) ->
-        return SusfsTarget.Known(dir, label)
-    }
-    return SusfsTarget.Unsupported("Kernel ${device.kernelRelease} has no verified SusFS profile. Loading requires a profile for this exact kernel.")
+    return susfsKernelIssue(device.kernelRelease)?.let { SusfsTarget.Unsupported(it) }
+        ?: SusfsTarget.Supported
 }
 
+internal fun susfsKernelIssue(release: String): String? =
+    if (susfsKernelSeries.matches(release)) null
+    else "SusFS requires an Android 16 / Linux 6.12 kernel. Reported kernel: $release."

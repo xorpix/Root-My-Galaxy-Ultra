@@ -14,7 +14,8 @@ BASE_APP = 'c6bb0d48ab4665f2cc61387fcfdb3069a85cf6ea'
 BASE_NATIVE = '177aa8907a8ee7d7c156c1330cbab1d55515c5e4'
 BASE_ARCHIVE_SHA = '86bcacc3dfa0e6095b362307332b0d6b202d6d97575b5a49f545442f1186fb61'
 BASE_MODULE_SHA = '876042df9c6b2450f87a67b7f25323957a82c5acd89427aa53c0821545aa7c36'
-MODULE_PATH = 'app/src/main/assets/susfs/bzig/susfs_guard_lkm.ko'
+BASE_MODULE_PATH = 'app/src/main/assets/susfs/bzig/susfs_guard_lkm.ko'
+MODULE_PATH = 'app/src/main/assets/susfs/susfs_guard_lkm.ko'
 DOC = 'docs/susfs-redirect-fix-20261110'
 
 def digest(data):
@@ -46,7 +47,7 @@ def main():
         return subprocess.check_output(['git', 'show', BASE_APP + ':' + path], cwd=root)
 
     archive_data = baseline('backends/susfs/source.tar.gz')
-    module_data = baseline(MODULE_PATH)
+    module_data = baseline(BASE_MODULE_PATH)
     assert digest(archive_data) == BASE_ARCHIVE_SHA, 'baseline archive digest'
     assert digest(module_data) == BASE_MODULE_SHA, 'baseline module digest'
     base_archive = out / 'baseline-source.tar.gz'
@@ -134,13 +135,13 @@ def main():
         manifest['validation'] = dict(current_validation['validation'])
         manifest['validation']['nativeQualificationRun'] = os.environ.get('GITHUB_RUN_ID')
     write('backends/susfs/build-manifest.json', (json.dumps(manifest, indent=2) + '\n').encode())
-    for path in sorted((root / 'app/src/main/assets/susfs').glob('*/profile.json')):
-        profile = json.loads(path.read_text())
-        profile['sourceCommit'] = candidate
-        profile['module']['sha256'] = module_info['sha256']
-        profile['module']['bytes'] = module_info['bytes']
-        write(path.relative_to(root), (json.dumps(profile, indent=2) + '\n').encode())
-    notice_path = 'app/src/main/assets/susfs/bzig/NOTICE.txt'
+    bundle_path = 'app/src/main/assets/susfs/bundle.json'
+    metadata = json.loads((root / bundle_path).read_text())
+    metadata['sourceCommit'] = candidate
+    metadata['module']['sha256'] = module_info['sha256']
+    metadata['module']['bytes'] = module_info['bytes']
+    write(bundle_path, (json.dumps(metadata, indent=2) + '\n').encode())
+    notice_path = 'app/src/main/assets/susfs/NOTICE.txt'
     notice = (root / notice_path).read_text().splitlines()
     notice = [('Current Samsung source ' + candidate + '.')
               if line.startswith('Current Samsung source ') else line

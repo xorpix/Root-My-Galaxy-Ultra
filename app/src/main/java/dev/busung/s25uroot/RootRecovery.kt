@@ -294,6 +294,7 @@ internal object RootRecovery {
         val iterations = (HANDOFF_CONSUMED_WAIT_SECONDS / HANDOFF_CONSUMED_POLL_SECONDS).toInt()
         return """
         rmg_handoff_consumed() {
+            rmg_handoff_checked=1
             rmg_handoff_waited=0
             while [ "${'$'}rmg_handoff_waited" -lt $iterations ]; do
                 [ -e "${'$'}ACCEPTED" ] || return 0
@@ -302,6 +303,25 @@ internal object RootRecovery {
             done
             return 1
         }
+        """.trimIndent()
+    }
+
+    /** The child owns these files even if a userspace restart has killed its caller. */
+    internal fun cleanupFilesSnippet(logPath: String, extraPaths: List<String> = emptyList()): String {
+        val paths = (listOf(logPath) + extraPaths).joinToString(" ") { shellQuote(it) }
+        return """
+        rmg_cleanup_files() {
+            [ "${'$'}{rmg_cleanup_done:-0}" = "1" ] && return 0
+            rmg_cleanup_done=1
+            # Keep a refusal readable until its launcher consumes it or the bounded wait ends.
+            if [ "${'$'}{rmg_handoff_checked:-0}" != "1" ]; then
+                rmg_handoff_consumed || true
+            fi
+            rm -f -- "${'$'}0" "${'$'}ACCEPTED" $paths 2>/dev/null || true
+        }
+        trap rmg_cleanup_files EXIT
+        trap 'exit 130' INT
+        trap 'exit 143' TERM
         """.trimIndent()
     }
 
@@ -540,6 +560,7 @@ internal object RootRecovery {
             exit 0
         }
         ${handoffConsumedSnippet()}
+        ${cleanupFilesSnippet("/data/local/tmp/rmgnext-restart-zygote.log")}
 
         [ "${'$'}(id -u 2>/dev/null)" = "0" ] || reject_handoff 'not-root'
         [ "${'$'}(current_boot)" = "${'$'}EXPECTED_BOOT" ] || reject_handoff 'boot-changed'
@@ -632,6 +653,7 @@ internal object RootRecovery {
             exit 0
         }
         ${handoffConsumedSnippet()}
+        ${cleanupFilesSnippet("/data/local/tmp/rmgnext-soft-reboot.log", listOf("/data/local/tmp/rmgnext-soft-reboot-ksud.log"))}
 
         [ "${'$'}(id -u 2>/dev/null)" = "0" ] || reject_handoff 'not-root'
         [ "${'$'}(current_boot)" = "${'$'}EXPECTED_BOOT" ] || reject_handoff 'boot-changed'
@@ -653,8 +675,8 @@ internal object RootRecovery {
         fi
         printf '%s\n' "${'$'}EXPECTED_BOOT" > "${'$'}LOCK/boot_id" 2>/dev/null
         printf '%s\n' "${'$'}${'$'}" > "${'$'}LOCK/pid" 2>/dev/null
-        cleanup() { rm -rf -- "${'$'}LOCK" 2>/dev/null; }
-        trap cleanup EXIT INT TERM
+        cleanup() { rmg_cleanup_files; rm -rf -- "${'$'}LOCK" 2>/dev/null; }
+        trap cleanup EXIT
 
         i=0
         while [ "${'$'}i" -lt $SOFT_REBOOT_BOOT_WAIT_ITERATIONS ]; do
@@ -775,6 +797,7 @@ internal object RootRecovery {
             exit 0
         }
         ${handoffConsumedSnippet()}
+        ${cleanupFilesSnippet("/data/local/tmp/rmgnext-reload-modules.log", listOf("/data/local/tmp/rmgnext-reload-modules-ksud.log"))}
 
         [ "${'$'}(id -u 2>/dev/null)" = "0" ] || reject_handoff 'not-root'
         [ "${'$'}(current_boot)" = "${'$'}EXPECTED_BOOT" ] || reject_handoff 'boot-changed'
@@ -795,8 +818,8 @@ internal object RootRecovery {
         fi
         printf '%s\n' "${'$'}EXPECTED_BOOT" > "${'$'}LOCK/boot_id" 2>/dev/null
         printf '%s\n' "${'$'}${'$'}" > "${'$'}LOCK/pid" 2>/dev/null
-        cleanup() { rm -rf -- "${'$'}LOCK" 2>/dev/null; }
-        trap cleanup EXIT INT TERM
+        cleanup() { rmg_cleanup_files; rm -rf -- "${'$'}LOCK" 2>/dev/null; }
+        trap cleanup EXIT
 
         rm -f -- "${'$'}STAGE"
         /system/bin/cp "${'$'}KSUD" "${'$'}STAGE" || reject_handoff 'ksud-stage-copy-failed'
@@ -895,6 +918,7 @@ internal object RootRecovery {
             exit 0
         }
         ${handoffConsumedSnippet()}
+        ${cleanupFilesSnippet("/data/local/tmp/rmgnext-reboot.log")}
 
         $privilegeCheck
         [ "${'$'}(current_boot)" = "${'$'}EXPECTED_BOOT" ] || reject_handoff 'boot-changed'
@@ -909,7 +933,7 @@ internal object RootRecovery {
         }
 
         sleep 0.75
-        rm -f -- "${'$'}0"
+        rmg_cleanup_files
         $reboot
     """.trimIndent() + "\n"
     }
