@@ -22,15 +22,15 @@
     "size": 54634,
     "sha256": "8bea92389e8b9ddcf63de83b776e7baed25636d6c85d07490c9c7016a969fb29"
   },
-  "created_utc": "2026-10-31",
-  "app_base_commit": "8741b52713ef39b12bbc23aac65050f2afe4a34e",
+  "created_utc": "2026-11-10",
+  "app_base_commit": "d038485cec93a9e4883e995fafaa654e47cca9f0",
   "upstream_repository": "https://github.com/KOWX712/KernelSU",
-  "upstream_commit": "6ecdd69224fe6769e6c8715a4ef2b91602b23362",
-  "upstream_commit_count": 2740,
-  "driver_version": 32740,
+  "upstream_commit": "21787ce135c988bae4244a44cfcb5a542aa3347f",
+  "upstream_commit_count": 2750,
+  "driver_version": 32750,
   "uapi_version": 6,
   "manager_required_uapi": 6,
-  "daemon_version": "3.3.0-139-g6ecdd692",
+  "daemon_version": "3.3.0-149-g21787ce1",
   "validation": {
     "kernel_build": "passed",
     "daemon_build": "passed",
@@ -42,36 +42,36 @@
   "source_provenance": "RMGU KernelSU Samsung compatibility changes adapted to KowSU 6366f25b; upstream UAPI, version formula and manager signer retained.",
   "outputs": {
     "ksud": {
-      "size": 5311896,
-      "sha256": "39600c0cb903dcb410dd1f91958f8c1435f9c1e714baaee55dfb25cf2e615427"
+      "size": 5311768,
+      "sha256": "22604b9f77f74bf92b4045dcb85f638d4dc97a552897d81dd44bc72a0a2ac0b9"
     },
     "kernelsu.ko": {
-      "size": 544512,
-      "sha256": "51b5f108f106a2a505eb79f03259137370019c17c671684cae866efd6995e278"
+      "size": 547608,
+      "sha256": "1fa547c0b439768662e70417dab05e303c650aa348a164b45b57e47f838c0820"
     },
     "helper": {
       "size": 24232,
-      "sha256": "99cc1c70dec90036b21ddff85e15a58f409b6215582374f2c0de7bfe8150fe06"
+      "sha256": "625f971fbda9746a2a792567c9450688281812479c6703fabcb981ef06d9d1d8"
     }
   },
   "rebased_patch": {
-    "path": "samsung-compat-32740.patch",
-    "size": 68446,
-    "sha256": "233f7f222574ee4b70deb2f2e210ae17496aa66c0327151ff56de72ef6db68bc"
+    "path": "samsung-compat-32750.patch",
+    "size": 68405,
+    "sha256": "8b6398b572a16527b5d481a01c3d02c841ee6ae5a78ce922e6385f0eebb78ef4"
   },
   "patched_source_sha256": {
-    "kernel/Kbuild": "efa4852ad86d8a6417908bdb654bf7889a611f192488ff61176b3f5d3cadc2d3",
+    "kernel/Kbuild": "321617ae0d68b982c5c2a3c41f3e181f9961ff380838f2e913c906a6f14c4129",
     "kernel/compat/samsung_defex.c": "d7615f3db9af2d5ba3d5e4580db6732a71a72ee9d29081da62dfdf73f860a148",
     "kernel/compat/samsung_defex.h": "f50410ca28b421ba61f4bf10aca611f50b2ea150b8d0c508fbeb119194f0e387",
     "kernel/compat/samsung_kdp.c": "d1f3da9d0a1c5eb85ef5c57808d395e1a32711acd73f42918098f2f2bd94ecc3",
-    "kernel/core/init.c": "85c2d44fba2901b01550644d7f6df4a445b96a2eeff21050f3538c570f837e8b",
-    "kernel/feature/selinux_hide.c": "6ed77f2225ee91e70d444c2974aef28366ae413b45aa42bb0b056d241e56e072",
+    "kernel/core/init.c": "bc7880210a41da036770c4ca667563fd9f4cd7ff0d37348b0c13da0ceb3b7404",
+    "kernel/feature/selinux_hide.c": "6d7eaf90cc4777377107c7770b0e3ad4f1fa58f5843d195cf216324f4dcdffc5",
     "kernel/feature/sucompat.c": "8396821725b9792d009e0fa3e441cc08c035cf5e95c249762675f3aa92b18974",
-    "kernel/hook/arm64/patch_memory.c": "a6260251b4d370edb5ec26bd7cfcbbdca72f709f90908f3169243a39cade943a",
+    "kernel/hook/arm64/patch_memory.c": "8f0bf34a6c3889628bb71f2879824806546c0aed42f02c69936651d069ca5647",
     "kernel/hook/arm64/syscall_hook.c": "74d41d8bee979df90343954bd423babfc4fee2bd4aa435e80c3f51da42a2ba07",
     "kernel/hook/syscall_hook.h": "3d266eee4bdfdd1f4feff2c47cafe488033f1e04eb56711665dc944ce63b8882",
     "kernel/hook/syscall_hook_manager.c": "0acdf2ed7af216705e81f1379014bc012b9af9cefb0e664556c14dd96620d9a9",
-    "kernel/hook/tp_marker.c": "f4ad44b344c3d84cfded8977f9083793a15e46d9601c332f7623d91aa1524757",
+    "kernel/hook/tp_marker.c": "1e967df61e68d00203aa470e281340661576619c4a0e84bcee0b8edd794e10b9",
     "kernel/include/ksu_samsung_kdp.h": "cbf754febc1afc5ba794f8d00ba9106bd6f292bee829e85ee058967a6a09177e",
     "kernel/policy/app_profile.c": "ed726a7c12eb431389277efa02f4c65e1bda8d54c21742af40d990afb7834d49",
     "kernel/selinux/selinux.c": "8acc0e979b9d2f242dd16af856dda99bb866f9a62781f71b18cacb1995d43489",
@@ -80,7 +80,7 @@
     "userspace/ksud/src/soft_reboot.rs": "3b4de8e7112f43240969ad16c0e4e6938713c814d77f832e7932d75e547af407",
     "userspace/ksud/src/utils.rs": "f1300cad6f81900e7cfb04dad768bc0125c8538c39634835c9f0f677479922bb"
   },
-  "app_version": "1.3.5",
-  "previous_upstream_commit": "6366f25b89f2bc5e287c1983715ebae60cd5540e",
+  "app_version": "1.3.7",
+  "previous_upstream_commit": "6ecdd69224fe6769e6c8715a4ef2b91602b23362",
   "local_app_base_commit": "df7c69670851a031ab81b95ee7557254d078440a"
 }

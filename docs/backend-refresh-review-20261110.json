@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "qualificationRun": "https://github.com/xorpix/Root-My-Galaxy-Ultra/actions/runs/42775583110",
+  "artifactId": 13744935179,
+  "artifactSha256": "dbc5d61f73b8606d94aa4b2b274eb8bdcfe224a430768f0e4428d4e3447d7ec5",
+  "sourceCommit": "d038485cec93a9e4883e995fafaa654e47cca9f0",
+  "sourceHead": "afbf210f01b5c5a1b1795919c3825fb34c1aa4a5",
+  "changed": [
+    "kernelsu",
+    "kernelsu-next",
+    "resukisu",
+    "kowsu"
+  ],
+  "targets": {
+    "kernelsu": {
+      "repository": "tiann/KernelSU",
+      "commit": "02ffbd447eb6a2f05d9f46e17b1e1c3bcfdd9971",
+      "commit_count": 2725,
+      "version": 32725,
+      "daemon_version": "3.3.1-45-g02ffbd44",
+      "rust": "1.98.1",
+      "rebuild": true,
+      "compat_sha256": "c223d17344f8808536abaa3d5c4dc1266af6764b707a1e18bf416c92eb7a9b68",
+      "branch": "main",
+      "version_offset": 30000,
+      "uapi": 6
+    },
+    "kernelsu-next": {
+      "repository": "KernelSU-Next/KernelSU-Next",
+      "commit": "b90876426197f5d35c3003bf42d8bf927dc20181",
+      "commit_count": 3501,
+      "version": 33501,
+      "daemon_version": "3.4.2-146-gb9087642",
+      "rust": "1.98.1",
+      "rebuild": true,
+      "compat_sha256": "4f1d23259252b7330f0992c0afbed00e648a17936380aff5b94b1d6f6229aa37",
+      "branch": "dev",
+      "version_offset": 30000,
+      "uapi": 6
+    },
+    "resukisu": {
+      "repository": "Baka-SU/BakaSU",
+      "commit": "548d1dda060ca198823d8808804d01f5209ef4a9",
+      "commit_count": 4559,
+      "version": 35259,
+      "daemon_version": "4.2.0-rc3-88-g548d1dda",
+      "rust": "nightly-2026-09-25",
+      "rebuild": true,
+      "compat_sha256": "aaf1940255e776b3d065d0ec719e07479d5369f8d418de4e6dc8ea7355c0fb15",
+      "branch": "main",
+      "version_offset": 30700,
+      "uapi": 6
+    },
+    "kowsu": {
+      "repository": "KOWX712/KernelSU",
+      "branch": "master",
+      "commit": "21787ce135c988bae4244a44cfcb5a542aa3347f",
+      "commit_count": 2750,
+      "version": 32750,
+      "version_offset": 30000,
+      "daemon_version": "3.3.0-149-g21787ce1",
+      "rust": "1.98.1",
+      "uapi": 6,
+      "rebuild": true,
+      "compat_sha256": "8b6398b572a16527b5d481a01c3d02c841ee6ae5a78ce922e6385f0eebb78ef4"
+    }
+  },
+  "buildAndAndroidChecks": "passed",
+  "trustedSourceAndArtifactChecks": "passed",
+  "localApkChecks": "exact bytes, native payloads, binary manifest and companion; signatures checked in CI",
+  "hardwareValidated": false
+}

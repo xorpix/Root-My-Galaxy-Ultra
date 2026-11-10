@@ -1,0 +1,467 @@
+{
+  "hardware_validated": false,
+  "results": [
+    {
+      "suite": "audit_repairs",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 2.57,
+      "log": "audit_repairs.log"
+    },
+    {
+      "suite": "audit_repairs",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 3.07,
+      "log": "audit_repairs-sanitizers.log"
+    },
+    {
+      "suite": "avc_spoof",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.26,
+      "log": "avc_spoof.log"
+    },
+    {
+      "suite": "avc_spoof",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.42,
+      "log": "avc_spoof-sanitizers.log"
+    },
+    {
+      "suite": "control_lifetime",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.11,
+      "log": "control_lifetime.log"
+    },
+    {
+      "suite": "control_lifetime",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.16,
+      "log": "control_lifetime-sanitizers.log"
+    },
+    {
+      "suite": "feature_hooks",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.31,
+      "log": "feature_hooks.log"
+    },
+    {
+      "suite": "feature_hooks",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.52,
+      "log": "feature_hooks-sanitizers.log"
+    },
+    {
+      "suite": "fp_hooks",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.37,
+      "log": "fp_hooks.log"
+    },
+    {
+      "suite": "fp_hooks",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.67,
+      "log": "fp_hooks-sanitizers.log"
+    },
+    {
+      "suite": "identity_controls",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 4.69,
+      "log": "identity_controls.log"
+    },
+    {
+      "suite": "identity_controls",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 9.88,
+      "log": "identity_controls-sanitizers.log"
+    },
+    {
+      "suite": "kprobe_reuse",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 1.07,
+      "log": "kprobe_reuse.log"
+    },
+    {
+      "suite": "kprobe_reuse",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 1.82,
+      "log": "kprobe_reuse-sanitizers.log"
+    },
+    {
+      "suite": "kstat_compat",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.42,
+      "log": "kstat_compat.log"
+    },
+    {
+      "suite": "kstat_statx",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.62,
+      "log": "kstat_statx.log"
+    },
+    {
+      "suite": "kstat_statx",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.67,
+      "log": "kstat_statx-sanitizers.log"
+    },
+    {
+      "suite": "ksu_policy",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 1.78,
+      "log": "ksu_policy.log"
+    },
+    {
+      "suite": "ksu_policy",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 2.28,
+      "log": "ksu_policy-sanitizers.log"
+    },
+    {
+      "suite": "lifecycle",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 4.77,
+      "log": "lifecycle.log"
+    },
+    {
+      "suite": "lifecycle",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 7.32,
+      "log": "lifecycle-sanitizers.log"
+    },
+    {
+      "suite": "lsm_lifetime",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.22,
+      "log": "lsm_lifetime.log"
+    },
+    {
+      "suite": "lsm_lifetime",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.37,
+      "log": "lsm_lifetime-sanitizers.log"
+    },
+    {
+      "suite": "lsm_static_call",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.27,
+      "log": "lsm_static_call.log"
+    },
+    {
+      "suite": "lsm_static_call",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.42,
+      "log": "lsm_static_call-sanitizers.log"
+    },
+    {
+      "suite": "map_files",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 8.07,
+      "log": "map_files.log"
+    },
+    {
+      "suite": "map_files",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 9.3,
+      "log": "map_files-sanitizers.log"
+    },
+    {
+      "suite": "map_hooks",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.62,
+      "log": "map_hooks.log"
+    },
+    {
+      "suite": "map_hooks",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 1.32,
+      "log": "map_hooks-sanitizers.log"
+    },
+    {
+      "suite": "module_control",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 1.43,
+      "log": "module_control.log"
+    },
+    {
+      "suite": "mount_hooks",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.87,
+      "log": "mount_hooks.log"
+    },
+    {
+      "suite": "mount_hooks",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 2.03,
+      "log": "mount_hooks-sanitizers.log"
+    },
+    {
+      "suite": "mount_prefix",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.22,
+      "log": "mount_prefix.log"
+    },
+    {
+      "suite": "mount_prefix",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.52,
+      "log": "mount_prefix-sanitizers.log"
+    },
+    {
+      "suite": "mshow_filter",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.77,
+      "log": "mshow_filter.log"
+    },
+    {
+      "suite": "mshow_filter",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 1.68,
+      "log": "mshow_filter-sanitizers.log"
+    },
+    {
+      "suite": "mshow_identity",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 3.94,
+      "log": "mshow_identity.log"
+    },
+    {
+      "suite": "mshow_identity",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 6.01,
+      "log": "mshow_identity-sanitizers.log"
+    },
+    {
+      "suite": "patch_memory_flush",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.17,
+      "log": "patch_memory_flush.log"
+    },
+    {
+      "suite": "patch_memory_flush",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.22,
+      "log": "patch_memory_flush-sanitizers.log"
+    },
+    {
+      "suite": "path_creds",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 1.17,
+      "log": "path_creds.log"
+    },
+    {
+      "suite": "path_creds",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 2.0,
+      "log": "path_creds-sanitizers.log"
+    },
+    {
+      "suite": "path_entry",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.67,
+      "log": "path_entry.log"
+    },
+    {
+      "suite": "path_entry",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.97,
+      "log": "path_entry-sanitizers.log"
+    },
+    {
+      "suite": "path_index",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.32,
+      "log": "path_index.log"
+    },
+    {
+      "suite": "path_index",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.62,
+      "log": "path_index-sanitizers.log"
+    },
+    {
+      "suite": "path_listing",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.87,
+      "log": "path_listing.log"
+    },
+    {
+      "suite": "path_listing",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 11.94,
+      "log": "path_listing-sanitizers.log"
+    },
+    {
+      "suite": "path_readlink_lsm",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 1.48,
+      "log": "path_readlink_lsm.log"
+    },
+    {
+      "suite": "path_readlink_lsm",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 2.69,
+      "log": "path_readlink_lsm-sanitizers.log"
+    },
+    {
+      "suite": "priority_filter",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 14.84,
+      "log": "priority_filter.log"
+    },
+    {
+      "suite": "priority_filter",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 22.66,
+      "log": "priority_filter-sanitizers.log"
+    },
+    {
+      "suite": "priority_publication",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.72,
+      "log": "priority_publication.log"
+    },
+    {
+      "suite": "priority_publication",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 1.18,
+      "log": "priority_publication-sanitizers.log"
+    },
+    {
+      "suite": "priority_tool",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.73,
+      "log": "priority_tool.log"
+    },
+    {
+      "suite": "priority_tool",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 1.18,
+      "log": "priority_tool-sanitizers.log"
+    },
+    {
+      "suite": "r18_fixes",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 1.42,
+      "log": "r18_fixes.log"
+    },
+    {
+      "suite": "r18_fixes",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 2.38,
+      "log": "r18_fixes-sanitizers.log"
+    },
+    {
+      "suite": "redirect_entry",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.32,
+      "log": "redirect_entry.log"
+    },
+    {
+      "suite": "redirect_entry",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.62,
+      "log": "redirect_entry-sanitizers.log"
+    },
+    {
+      "suite": "redirect_maps",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.26,
+      "log": "redirect_maps.log"
+    },
+    {
+      "suite": "redirect_maps",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.47,
+      "log": "redirect_maps-sanitizers.log"
+    },
+    {
+      "suite": "redirect_statfs",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.27,
+      "log": "redirect_statfs.log"
+    },
+    {
+      "suite": "redirect_statfs",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.37,
+      "log": "redirect_statfs-sanitizers.log"
+    },
+    {
+      "suite": "userspace",
+      "sanitizers": false,
+      "exit_code": 0,
+      "seconds": 0.47,
+      "log": "userspace.log"
+    },
+    {
+      "suite": "userspace",
+      "sanitizers": true,
+      "exit_code": 0,
+      "seconds": 0.87,
+      "log": "userspace-sanitizers.log"
+    }
+  ]
+}

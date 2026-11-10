@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "sourceCommit": "177aa8907a8ee7d7c156c1330cbab1d55515c5e4",
+  "sourceTree": "d45f899fbe41b37678ba5b7dbf36f07c5d0af2fb",
+  "sourceArchiveSha256": "86bcacc3dfa0e6095b362307332b0d6b202d6d97575b5a49f545442f1186fb61",
+  "module": {
+    "path": "app/src/main/assets/susfs/bzig/susfs_guard_lkm.ko",
+    "bytes": 600768,
+    "sha256": "876042df9c6b2450f87a67b7f25323957a82c5acd89427aa53c0821545aa7c36"
+  },
+  "qualificationRun": "https://github.com/xorpix/Root-My-Galaxy-Ultra/actions/runs/42775583170",
+  "nativeArtifactId": 13744300264,
+  "nativeArtifactSha256": "90e927d88d9ec0df0c0d5659055b150e9be692f2701961baee8bff94d8a94988",
+  "hardwareValidated": false,
+  "hostRunnerExecutions": 66,
+  "hostPassed": true,
+  "nativeBuildPassed": true,
+  "abiChecksPassed": true,
+  "androidBuildPassed": true,
+  "androidJob": "https://github.com/xorpix/Root-My-Galaxy-Ultra/actions/runs/42775583170/job/129693863985"
+}

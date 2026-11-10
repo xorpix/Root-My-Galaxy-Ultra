@@ -6,4 +6,4 @@ The scoped history bridge accepts only this old pin and the reviewed replacement
 
 The new patch requires a complete matched driver/daemon rebuild. Old binaries and manifests remain the baseline until that rebuild is staged. Native and automation checks are required; no new phone result is claimed.
 
-The expired November 9 schedule exception was removed. The existing validated backend publication workflow can now also be started by a main-branch release-note commit whose first line explicitly names the computed next version as “Refresh and release VERSION”. Ordinary note edits do not publish. Default-branch, exact-source, tag, matched-payload and signing gates remain in place.
+The expired November 9 schedule exception was removed. The verified backend update is staged with the qualified SusFS module before the ordinary production Release Build workflow publishes 1.3.7. Source snapshots, matched payloads, tag binding and release-key checks remain in place.

@@ -1,9 +1,6 @@
 name: Weekly backend release
 
 on:
-  push:
-    branches: [main]
-    paths: ['docs/release-notes/*.md']
   schedule:
     # Mondays, 03:17 UTC. Avoid the busy top of the hour.
     - cron: '17 3 * * 1'
@@ -39,21 +36,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  schedule-gate:
-    # A deliberate release commit can use the same guarded path as dispatch.
-    if: github.event_name != 'push' || startsWith(github.event.head_commit.message, 'Refresh and release ')
-    runs-on: ubuntu-24.04
-    timeout-minutes: 2
-    outputs:
-      run: ${{ steps.gate.outputs.run }}
-    steps:
-      - id: gate
-        run: echo 'run=true' >> "$GITHUB_OUTPUT"
-
   probe:
-    needs: schedule-gate
     # Repository PRs build without publishing; releases use the default branch.
-    if: needs.schedule-gate.outputs.run == 'true' && (github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || (github.event_name == 'workflow_dispatch' && !inputs.publish) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository))
+    if: (github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || (github.event_name == 'workflow_dispatch' && !inputs.publish) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
@@ -73,19 +58,6 @@ jobs:
           python3 tools/backend-refresh/test_patching.py
           python3 tools/backend-refresh/test_notify.py
           python3 tools/backend-refresh/test_managers.py
-      - name: Verify an explicit release request
-        if: github.event_name == 'push'
-        run: |
-          python3 - <<'PYCODE'
-          import json, os, sys
-          from pathlib import Path
-          sys.path.insert(0, 'tools/backend-refresh')
-          from common import PROJECT, app_version, capture, next_version
-          version = next_version(app_version(PROJECT), capture(['git', 'tag', '--list'], PROJECT).splitlines())
-          event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
-          assert event['head_commit']['message'].splitlines()[0] == 'Refresh and release ' + version
-          assert (PROJECT / 'docs/release-notes' / (version + '.md')).is_file()
-          PYCODE
       - name: Snapshot the official upstream branches
         id: probe
         env:
@@ -95,7 +67,7 @@ jobs:
           if [ "$FORCE_REBUILD" = true ]; then FLAGS+=(--force-rebuild); fi
           python3 tools/backend-refresh/probe.py --output "$RUNNER_TEMP/upstream-heads.json" "${FLAGS[@]}"
       - name: Check release configuration before spending build time
-        if: steps.probe.outputs.changed == 'true' && (github.event_name == 'schedule' || github.event_name == 'push' || inputs.publish)
+        if: steps.probe.outputs.changed == 'true' && (github.event_name == 'schedule' || inputs.publish)
         env:
           HAS_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' }}
           HAS_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD != '' }}
@@ -213,7 +185,7 @@ jobs:
 
   publish:
     needs: [probe, build]
-    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && (github.event_name == 'schedule' || github.event_name == 'push' || inputs.publish)
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && (github.event_name == 'schedule' || inputs.publish)
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
