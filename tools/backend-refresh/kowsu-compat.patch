@@ -1,5 +1,5 @@
 diff --git a/kernel/Kbuild b/kernel/Kbuild
-index 442335848c27f2ef42096e6b6ced58e6add45966..f70ff558158669311e2b724e571a140eccebf2b1 100644
+index db409bfbcd22a9a96e30d99ad3724515f319ce76..6fed7facb2b83d8d23acc499d3ea998a1ba3f736 100644
 --- a/kernel/Kbuild
 +++ b/kernel/Kbuild
 @@ -1,5 +1,8 @@
@@ -11,7 +11,7 @@ index 442335848c27f2ef42096e6b6ced58e6add45966..f70ff558158669311e2b724e571a140e
  kernelsu-objs += feature/kernel_umount.o
  kernelsu-objs += feature/module_blacklist.o
  kernelsu-objs += feature/sulog.o
-@@ -69,11 +72,24 @@ endif
+@@ -71,11 +74,24 @@ endif
  ifeq ($(CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER),y)
  ccflags-y += -DCONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER=1
  endif
@@ -36,7 +36,7 @@ index 442335848c27f2ef42096e6b6ced58e6add45966..f70ff558158669311e2b724e571a140e
  ccflags-y += -I$(objtree)/security/selinux -include $(srctree)/include/uapi/asm-generic/errno.h
  
  ifneq ($(KBUILD_EXTMOD),)
-@@ -90,7 +106,7 @@ KSU_KERNEL_DIR := $(src)
+@@ -92,7 +108,7 @@ KSU_KERNEL_DIR := $(src)
  endif
  endif
  
@@ -406,7 +406,7 @@ index 0000000000000000000000000000000000000000..2104f2e9a82be77e46603bec3c4292dc
 +#endif
 +}
 diff --git a/kernel/core/init.c b/kernel/core/init.c
-index 6ee1c35de07c806c5c4c5b1710bb97852580585b..08a0972157991295938443c4dc8fb17f01739458 100644
+index 81f3b6584c278b6baa9a4cf1e5d6131a5f8e4d2e..8498f511bdacec41bcfb6bd5f83cd571f31ddfb4 100644
 --- a/kernel/core/init.c
 +++ b/kernel/core/init.c
 @@ -8,6 +8,7 @@
@@ -425,7 +425,7 @@ index 6ee1c35de07c806c5c4c5b1710bb97852580585b..08a0972157991295938443c4dc8fb17f
  
  #if defined(__x86_64__) && !defined(CONFIG_KSU_X86_PATCH_SYSCALL_DISPATCHER)
  #include <asm/cpufeature.h>
-@@ -129,13 +131,36 @@ int __init kernelsu_init(void)
+@@ -131,19 +133,33 @@ int __init kernelsu_init(void)
          pr_alert("shell is allowed at init!");
      }
  
@@ -449,21 +449,21 @@ index 6ee1c35de07c806c5c4c5b1710bb97852580585b..08a0972157991295938443c4dc8fb17f
          return -ENOSYS;
      }
  
+-    pr_info("initializing symbol resolver\n");
 -    ksu_init_symbol_resolver();
-+    {
-+        int ret = ksu_samsung_defex_init();
-+
-+        if (ret) {
-+            ksu_put_cred(ksu_cred);
-+            ksu_samsung_kdp_exit();
-+            return ret;
-+        }
-+    }
-+
-     ksu_syscall_hook_init();
+-
+     ret = ksu_selinux_inode_init();
++    if (!ret)
++        ret = ksu_samsung_defex_init();
+     if (ret) {
+-        put_cred(ksu_cred);
++        ksu_put_cred(ksu_cred);
+         ksu_cred = NULL;
++        ksu_samsung_kdp_exit();
+         return ret;
+     }
  
-     // Block modules early, before vendor modules are loaded in second stage.
-@@ -234,7 +259,9 @@ void __exit kernelsu_exit(void)
+@@ -245,7 +261,9 @@ void __exit kernelsu_exit(void)
      ksu_feature_exit();
      ksu_module_blacklist_exit();
  
@@ -475,7 +475,7 @@ index 6ee1c35de07c806c5c4c5b1710bb97852580585b..08a0972157991295938443c4dc8fb17f
  
  #if NEED_OWN_STACKPROTECTOR
 diff --git a/kernel/feature/selinux_hide.c b/kernel/feature/selinux_hide.c
-index 2a41b8056d6e2e0a416d37e9fd984b4e7852070a..042b627217b61fca2cae0b949b8a735611ac583a 100644
+index 67c866d6c549f646de770e0dc6e199b0ed096b2e..ee1a7dcd4d9358d1a705981e54833b9e091780ce 100644
 --- a/kernel/feature/selinux_hide.c
 +++ b/kernel/feature/selinux_hide.c
 @@ -16,6 +16,8 @@
@@ -487,7 +487,7 @@ index 2a41b8056d6e2e0a416d37e9fd984b4e7852070a..042b627217b61fca2cae0b949b8a7356
  // security/selinux/include/security.h
  #include <security.h>
  #include <ss/context.h>
-@@ -189,6 +191,7 @@ out:
+@@ -190,6 +192,7 @@ out:
  
  static int my_setprocattr(const char *name, void *value, size_t size);
  struct ksu_lsm_hook selinux_setprocattr_hook = KSU_LSM_HOOK_INIT(setprocattr, "selinux_setprocattr", my_setprocattr, 0);
@@ -495,7 +495,7 @@ index 2a41b8056d6e2e0a416d37e9fd984b4e7852070a..042b627217b61fca2cae0b949b8a7356
  
  /*
   * get the security ID of a set of credentials
-@@ -380,6 +383,213 @@ static int my_sel_open_handle_status(struct inode *inode, struct file *filp)
+@@ -387,6 +390,213 @@ static int my_sel_open_handle_status(struct inode *inode, struct file *filp)
      return ret;
  }
  
@@ -709,7 +709,7 @@ index 2a41b8056d6e2e0a416d37e9fd984b4e7852070a..042b627217b61fca2cae0b949b8a7356
  static void hook_selinux_status_open();
  static void ksu_selinux_hide_unhook();
  static int ksu_selinux_hide_enable()
-@@ -408,27 +618,26 @@ static int ksu_selinux_hide_enable()
+@@ -415,27 +625,26 @@ static int ksu_selinux_hide_enable()
  
      context_write = &selinux_write_op[SEL_CONTEXT];
      pr_info("selinux_hide: context_write: 0x%lx [%pSb]\n", (unsigned long)*context_write, *context_write);
@@ -744,7 +744,7 @@ index 2a41b8056d6e2e0a416d37e9fd984b4e7852070a..042b627217b61fca2cae0b949b8a7356
          goto unhook;
      }
  
-@@ -442,7 +651,11 @@ unhook:
+@@ -449,7 +658,11 @@ unhook:
  static void ksu_selinux_hide_unhook()
  {
      int ret;
@@ -757,7 +757,7 @@ index 2a41b8056d6e2e0a416d37e9fd984b4e7852070a..042b627217b61fca2cae0b949b8a7356
          ret =
              ksu_patch_text(context_write, &orig_context_write, sizeof(orig_context_write), KSU_PATCH_TEXT_FLUSH_DCACHE);
          orig_context_write = NULL;
-@@ -450,14 +663,22 @@ static void ksu_selinux_hide_unhook()
+@@ -457,14 +670,22 @@ static void ksu_selinux_hide_unhook()
              pr_err("selinux_hide: exit: patch_text context_write err: %d\n", ret);
          }
      }
@@ -782,7 +782,7 @@ index 2a41b8056d6e2e0a416d37e9fd984b4e7852070a..042b627217b61fca2cae0b949b8a7356
          ret = ksu_patch_text(sel_open_handle_status_slot, &orig_sel_open_handle_status,
                               sizeof(orig_sel_open_handle_status), KSU_PATCH_TEXT_FLUSH_DCACHE);
          orig_sel_open_handle_status = NULL;
-@@ -465,7 +686,14 @@ static void ksu_selinux_hide_unhook()
+@@ -472,7 +693,14 @@ static void ksu_selinux_hide_unhook()
              pr_err("selinux_hide: exit: patch_text sel_open_handle_status err: %d\n", ret);
          }
      }
@@ -798,7 +798,7 @@ index 2a41b8056d6e2e0a416d37e9fd984b4e7852070a..042b627217b61fca2cae0b949b8a7356
  }
  
  static void ksu_selinux_hide_disable()
-@@ -486,7 +714,6 @@ static int selinux_hide_feature_set(u64 value)
+@@ -493,7 +721,6 @@ static int selinux_hide_feature_set(u64 value)
      int ret = 0;
      pr_info("selinux_hide: set to %d\n", enable);
      mutex_lock(&selinux_hide_mutex);
@@ -806,7 +806,7 @@ index 2a41b8056d6e2e0a416d37e9fd984b4e7852070a..042b627217b61fca2cae0b949b8a7356
      if (enable) {
          if (!ksu_selinux_hide_running) {
              ret = ksu_selinux_hide_enable();
-@@ -500,6 +727,10 @@ static int selinux_hide_feature_set(u64 value)
+@@ -507,6 +734,10 @@ static int selinux_hide_feature_set(u64 value)
              ksu_selinux_hide_running = false;
          }
      }
@@ -817,7 +817,7 @@ index 2a41b8056d6e2e0a416d37e9fd984b4e7852070a..042b627217b61fca2cae0b949b8a7356
      mutex_unlock(&selinux_hide_mutex);
      return ret;
  }
-@@ -542,11 +773,15 @@ static void hook_selinux_status_open()
+@@ -549,11 +780,15 @@ static void hook_selinux_status_open()
          }
          sel_open_handle_status_slot = &ops->open;
      }
@@ -850,10 +850,10 @@ index e11cfd76ff80b2ad4256f3a5b29846ca43dfa15b..d278f75e8070a784d52ff5596d8bd708
      ksu_unregister_feature_handler(KSU_FEATURE_SU_COMPAT);
  }
 diff --git a/kernel/hook/arm64/patch_memory.c b/kernel/hook/arm64/patch_memory.c
-index c344bd5517e165478518ea202ab21c9edea767ca..cd631aefb377dd7ca8992ec7b564ef110893ec55 100644
+index fdbb5dea8bde0c951c47d78d9accafb53e805e9d..ddde9b7fb1b45812768f3bc9afc073d75ffa6acf 100644
 --- a/kernel/hook/arm64/patch_memory.c
 +++ b/kernel/hook/arm64/patch_memory.c
-@@ -188,6 +188,11 @@ static int ksu_patch_text_cb(void *arg)
+@@ -176,6 +176,11 @@ static int ksu_patch_text_cb(void *arg)
  
  int ksu_patch_text(void *dst, void *src, size_t len, int flags)
  {
@@ -862,13 +862,13 @@ index c344bd5517e165478518ea202ab21c9edea767ca..cd631aefb377dd7ca8992ec7b564ef11
 +            flags);
 +    return -EOPNOTSUPP;
 +#else
+     int ret;
      struct patch_text_info info = {
          .dst = dst,
-         .src = src,
-@@ -197,6 +202,7 @@ int ksu_patch_text(void *dst, void *src, size_t len, int flags)
-     };
- 
-     return stop_machine(ksu_patch_text_cb, &info, cpu_online_mask);
+@@ -189,6 +194,7 @@ int ksu_patch_text(void *dst, void *src, size_t len, int flags)
+     if (ret)
+         pr_err("failed to patch kernel address 0x%lx: %d\n", (unsigned long)dst, ret);
+     return ret;
 +#endif
  }
  
@@ -1312,7 +1312,7 @@ index cf21fed88a7ae2704d2950b00295472f31b28674..7cb8674b250eb31f18138a95379c0fa4
      unregister_trace_sys_enter(ksu_sys_enter_handler, NULL);
      tracepoint_synchronize_unregister();
 diff --git a/kernel/hook/tp_marker.c b/kernel/hook/tp_marker.c
-index c78bbbdd930a452f359aca054f945e51b43c4a79..5666403a0eaf6b30d76b9ecfa1351e4e291bce3b 100644
+index 61935e3c6ed8cf0aa38eac1ff1ce35a0d6abbf9b..37210723df6dbd5cabf4ea25fc5cc8c7cfe7f1b5 100644
 --- a/kernel/hook/tp_marker.c
 +++ b/kernel/hook/tp_marker.c
 @@ -7,6 +7,7 @@
@@ -1320,12 +1320,12 @@ index c78bbbdd930a452f359aca054f945e51b43c4a79..5666403a0eaf6b30d76b9ecfa1351e4e
  
  #include "policy/allowlist.h"
 +#include "ksu_samsung_kdp.h"
- #include "klog.h" // IWYU pragma: keep
  #include "selinux/selinux.h"
  
-@@ -100,7 +101,7 @@ void ksu_mark_running_process_locked(void)
+ // Tracepoint registration count management
+@@ -95,7 +96,7 @@ void ksu_mark_running_process_locked(void)
+         } else {
              ksu_clear_task_tracepoint_flag(t);
-             pr_info("tp_marker: unmark process: pid:%d, uid: %d, comm:%s\n", t->pid, uid, t->comm);
          }
 -        put_cred(cred);
 +        ksu_put_cred(cred);

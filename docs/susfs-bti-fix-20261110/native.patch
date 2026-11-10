@@ -1,0 +1,218 @@
+diff --git a/kernel/susfs_hide_syms.c b/kernel/susfs_hide_syms.c
+index 16c5359d42170b820fa2d13811b4fd840637b5d8..bfff6aebd00b4bd3dc701d040f16889aa7563075 100644
+--- a/kernel/susfs_hide_syms.c
++++ b/kernel/susfs_hide_syms.c
+@@ -662,8 +662,10 @@ static int __nocfi noinline hide_syms_resolve_show(struct kprobe *kp,
+ {
+ 	const struct seq_operations *op;
+ 	unsigned long addr, show, target, pc;
++	u32 insn;
+ 
+ 	*table_out = NULL;
++	kp->offset = 0;
+ 	addr = find_kernel_symbol_exact(table_name);
+ 	if (!addr)
+ 		return -ENOENT;
+@@ -675,8 +677,6 @@ static int __nocfi noinline hide_syms_resolve_show(struct kprobe *kp,
+ 
+ 	target = show;
+ 	if (!ksu_symbol_is_start(show, symbol_name)) {
+-		u32 insn;
+-
+ 		pc = show;
+ 		if (copy_from_kernel_nofault(&insn, (void *)pc, sizeof(insn)))
+ 			return -EFAULT;
+@@ -694,6 +694,13 @@ static int __nocfi noinline hide_syms_resolve_show(struct kprobe *kp,
+ 				table_name, (void *)show, (void *)target);
+ 	}
+ 
++	/* Preserve BTI at an indirect-call target. Use the kprobe offset for both
++	 * address and Samsung by-name registration, without moving past PAC or
++	 * any instruction that changes the entry arguments, LR or SP. */
++	if (copy_from_kernel_nofault(&insn, (void *)target, sizeof(insn)))
++		return -EFAULT;
++	if (insn == 0xd503245f || insn == 0xd50324df) /* bti c / bti jc */
++		kp->offset = sizeof(insn);
+ 	kp->addr = (kprobe_opcode_t *)target;
+ 	*table_out = op;
+ 	SUSFS_LOGI("susfs_hide_syms: %s.show=%px, probe body=%px\n",
+@@ -743,12 +750,13 @@ static int __nocfi noinline hide_syms_modules_show_start(void)
+ 			&modules_op_target);
+ 	if (rc)
+ 		goto fail;
+-	expected = (unsigned long)resolved.addr;
++	expected = (unsigned long)resolved.addr + resolved.offset;
+ 
+ 	/* Preserve Samsung's phone-tested registration path, but validate the
+ 	 * address the kernel actually chose. Until then the handler is inert. */
+ 	susfs_kp_forget_addr(&kp_m_show);
+ 	kp_m_show.symbol_name = "m_show";
++	kp_m_show.offset = resolved.offset;
+ 	rc = register_kprobe(&kp_m_show);
+ 	if (rc) {
+ 		susfs_kp_forget_addr(&kp_m_show);
+diff --git a/tests/mshow_filter/host_kernel.h b/tests/mshow_filter/host_kernel.h
+index db21df0a499b5c661bc7a6832476210548d2e983..334ca891a478725adcf0f397c7e6193ab8e13849 100644
+--- a/tests/mshow_filter/host_kernel.h
++++ b/tests/mshow_filter/host_kernel.h
+@@ -72,7 +72,7 @@ static unsigned long regs_get_kernel_argument(struct pt_regs *r, int n) { return
+ static void regs_set_return_value(struct pt_regs *r, unsigned long v) { r->regs[0] = v; }
+ struct seq_file { const void *op; void *private; };
+ struct seq_operations { void *start; void *stop; void *next; int (*show)(struct seq_file *, void *); };
+-struct kprobe { int (*pre_handler)(struct kprobe *, struct pt_regs *); kprobe_opcode_t *addr; const char *symbol_name; unsigned int flags; u32 opcode; };
++struct kprobe { int (*pre_handler)(struct kprobe *, struct pt_regs *); kprobe_opcode_t *addr; const char *symbol_name; unsigned int flags, offset; u32 opcode; };
+ struct list_head { struct list_head *next; struct list_head *prev; };
+ struct module { char name[MODULE_NAME_LEN]; struct list_head list; };
+ 
+diff --git a/tests/mshow_identity/identity_test.c b/tests/mshow_identity/identity_test.c
+index 96e1e51d5de0c87bb51a95e2c3847eb4731e4975..12717db5059ac89b371111c1839d2a1fca2b2eed 100644
+--- a/tests/mshow_identity/identity_test.c
++++ b/tests/mshow_identity/identity_test.c
+@@ -12,7 +12,8 @@ static struct module subject;
+ static struct seq_file reader;
+ static u32 code[64] __attribute__((aligned(4)));
+ static unsigned long named_addr, valid_addr;
+-static bool missing_table, unreadable_table;
++static const char *table_name="modules_op", *symbol_name="m_show";
++static bool missing_table, unreadable_table, unreadable_body, vendor_bti_adjust;
+ static int registration_error, registered, unregistered;
+ static int registered_live;
+ struct readable { const void *p; size_t n; };
+@@ -28,6 +29,7 @@ static int copy_from_kernel_nofault(void *to, const void *from, size_t n)
+ {
+     uintptr_t p=(uintptr_t)from;
+     host_nofault_calls++;
++    if (unreadable_body && p==valid_addr) return -EFAULT;
+     for (unsigned int i=0;i<n_memory;i++) {
+         uintptr_t base=(uintptr_t)memory[i].p;
+         if (p>=base && p-base<=memory[i].n && n<=memory[i].n-(p-base)) {
+@@ -38,12 +40,12 @@ static int copy_from_kernel_nofault(void *to, const void *from, size_t n)
+ }
+ static unsigned long find_kernel_symbol_exact(const char *name)
+ {
+-    assert(!strcmp(name,"modules_op"));
++    assert(!strcmp(name,table_name));
+     return missing_table ? 0 : (unsigned long)&ops;
+ }
+ static int ksu_symbol_is_start(unsigned long addr, const char *name)
+ {
+-    assert(!strcmp(name,"m_show"));
++    assert(!strcmp(name,symbol_name));
+     return addr==valid_addr;
+ }
+ static void callback_must_be_inert(struct kprobe *p)
+@@ -56,13 +58,21 @@ static void callback_must_be_inert(struct kprobe *p)
+ }
+ static int register_kprobe(struct kprobe *p)
+ {
+-    assert(!registered_live && !p->addr && !strcmp(p->symbol_name,"m_show"));
++    assert(!registered_live);
++    if (p->symbol_name) assert(!p->addr && !strcmp(p->symbol_name,symbol_name));
++    else assert(p->addr);
+     assert(!(p->flags & KPROBE_FLAG_DISABLED));
+     assert(!modules_show_ready);
+     registered++;
+-    p->addr=(void *)named_addr; /* kernel retains this even on failure */
++    p->addr=(void *)((p->symbol_name ? named_addr : (unsigned long)p->addr)+p->offset);
++    if (vendor_bti_adjust && (*p->addr==0xd503245f || *p->addr==0xd50324df)) p->addr++;
+     if (registration_error) return registration_error;
+     registered_live=1;
++    /* An indirect call must still land on BTI while the probe is armed. */
++    if (*(u32 *)valid_addr==0xd503245f || *(u32 *)valid_addr==0xd50324df) {
++        assert(p->addr==(u32 *)(valid_addr+4));
++        assert(p->offset==4);
++    }
+     p->opcode=*p->addr;
+     *p->addr=0xd4200000; /* real entry instruction is patched during registration */
+     callback_must_be_inert(p);
+@@ -111,6 +121,24 @@ int main(int argc, char **argv)
+     strscpy(hide_modules[0],subject.name,MODULE_NAME_LEN);n_hide_modules=1;
+     reader.op=&other_ops; /* deliberately different from modules_op: BZIG regression */
+     readable(&subject,sizeof(subject));readable(code,sizeof(code));
++    if (!strncmp(c,"s-show-",7)) {
++        struct kprobe probe={.pre_handler=hide_syms_m_show_pre};
++        const struct seq_operations *resolved_ops;
++        table_name="kallsyms_op";symbol_name="s_show";
++        readable(&ops,sizeof(ops));
++        code[16]=!strcmp(c,"s-show-bti-jc") ? 0xd50324df :
++                 !strcmp(c,"s-show-pac") ? 0xd503233f : 0xd503245f;
++        code[17]=0xd503233f;
++        u32 original=code[16];
++        assert(!hide_syms_resolve_show(&probe,table_name,symbol_name,&resolved_ops));
++        assert(resolved_ops==&ops && (unsigned long)probe.addr==valid_addr);
++        assert(probe.offset==(!strcmp(c,"s-show-pac") ? 0 : 4));
++        assert(!register_kprobe(&probe));
++        if (probe.offset) assert(code[16]==original);
++        unregister_kprobe(&probe);
++        assert(code[16]==original && code[17]==0xd503233f);
++        printf("PASS %s\n",c);return 0;
++    }
+     int expected=0;
+     if (!strcmp(c,"wrong-body")) { named_addr=(unsigned long)&code[40];expected=-EINVAL; }
+     else if (!strcmp(c,"missing-table")) { missing_table=true;expected=-ENOENT; }
+@@ -118,15 +146,20 @@ int main(int argc, char **argv)
+     else if (!strcmp(c,"null-show")) { ops.show=NULL;expected=-EINVAL; }
+     else if (!strcmp(c,"unaligned-show")) { ops.show=(void *)(valid_addr+1);expected=-EINVAL; }
+     else if (!strcmp(c,"unproven-body")) { ops.show=(void *)&code[40];expected=-EINVAL; }
+-    else if (!strcmp(c,"cfi-stub") || !strcmp(c,"call-stub") || !strcmp(c,"wrong-stub")) {
++    else if (!strcmp(c,"unreadable-body")) { unreadable_body=true;expected=-EFAULT; }
++    else if (!strcmp(c,"cfi-stub") || !strcmp(c,"cfi-stub-bti") || !strcmp(c,"call-stub") || !strcmp(c,"wrong-stub")) {
+         code[0]=0xd503245f;branch(&code[1],!strcmp(c,"wrong-stub")?&code[40]:&code[16],!strcmp(c,"call-stub"));
+         ops.show=(void *)&code[0];
+-        if (strcmp(c,"cfi-stub")) expected=-EINVAL;
++        if (!strcmp(c,"cfi-stub-bti")) code[16]=0xd503245f;
++        else if (strcmp(c,"cfi-stub")) expected=-EINVAL;
+     } else if (!strcmp(c,"cfi-negative-branch")) {
+         branch(&code[40],&code[16],false);ops.show=(void *)&code[40];
+     } else if (!strcmp(c,"register-failure")) { registration_error=-EIO;expected=-EIO; }
+-    else if (!strcmp(c,"bti-adjustment") || !strcmp(c,"bti-jc-adjustment")) {
+-        code[16]=!strcmp(c,"bti-adjustment")?0xd503245f:0xd50324df;named_addr+=4;
++    else if (!strcmp(c,"bti-adjustment") || !strcmp(c,"bti-jc-adjustment") || !strcmp(c,"bti-vendor-adjustment")) {
++        code[16]=!strcmp(c,"bti-jc-adjustment")?0xd50324df:0xd503245f;
++        vendor_bti_adjust=!strcmp(c,"bti-vendor-adjustment");
++    } else if (!strcmp(c,"bti-pac") || !strcmp(c,"bti-restart")) {
++        code[16]=0xd503245f;code[17]=0xd503233f;
+     } else if (!strcmp(c,"pac-adjustment")) { code[16]=0xd503233f;named_addr+=4;expected=-EINVAL; }
+     else if (!strcmp(c,"offset-adjustment")) { named_addr+=8;expected=-EINVAL; }
+     if (!unreadable_table) readable(&ops,sizeof(ops));
+@@ -172,10 +205,15 @@ int main(int argc, char **argv)
+         hide_syms_modules_show_stop();
+         assert(!modules_show_ready && !m_show_registered && !registered_live && !kp_m_show.addr);
+         assert(!invoke((unsigned long)&subject.list));
+-        if (!strcmp(c,"stop-and-restart")) {
++        if (!strcmp(c,"stop-and-restart") || !strcmp(c,"bti-restart")) {
+             assert(!hide_syms_modules_show_start());assert(invoke((unsigned long)&subject.list));
+             hide_syms_modules_show_stop();assert(registered==2 && unregistered==2);
+         }
++        if (!strcmp(c,"bti-restart")) {
++            code[16]=0xd503233f;
++            assert(!hide_syms_modules_show_start());assert(!kp_m_show.offset);
++            hide_syms_modules_show_stop();assert(registered==3 && unregistered==3);
++        }
+     }
+     printf("PASS %s\n",c);return 0;
+ }
+diff --git a/tests/mshow_identity/run.py b/tests/mshow_identity/run.py
+index b488fedb7408a89d59624c091aa081233e140551..2886fdb941b929ac3fa21e13d566a6c9a00e91ac 100644
+--- a/tests/mshow_identity/run.py
++++ b/tests/mshow_identity/run.py
+@@ -41,7 +41,9 @@ cases = ['ordinary', 'foreign-seq-ops', 'wrong-body', 'missing-table',
+          'register-failure', 'bti-adjustment', 'bti-jc-adjustment',
+          'pac-adjustment', 'offset-adjustment', 'not-ready', 'unreadable-module',
+          'underflow', 'unterminated-name', 'prefix-lookalike', 'stop-and-restart',
+-         'nomount-reader-policy']
++         'nomount-reader-policy', 'unreadable-body', 'bti-vendor-adjustment',
++         'bti-pac', 'bti-restart', 'cfi-stub-bti',
++         's-show-bti', 's-show-bti-jc', 's-show-pac']
+ flags = ['-O1', '-g', '-fsanitize=address,undefined', '-fno-omit-frame-pointer', '-no-pie'] if a.sanitizers else ['-O2']
+ env = dict(os.environ, ASAN_OPTIONS='detect_leaks=0:abort_on_error=1', UBSAN_OPTIONS='halt_on_error=1')
+ with tempfile.TemporaryDirectory(prefix='susfs-mshow-identity-') as t:
+@@ -61,6 +63,8 @@ with tempfile.TemporaryDirectory(prefix='susfs-mshow-identity-') as t:
+     # Each mutation removes a distinct safety property; the corresponding
+     # real-world failure case must reject the mutated implementation.
+     mutations = [
++        ('bti-overwritten', 'kp->offset = sizeof(insn);', 'kp->offset = 0;', 'bti-adjustment'),
++        ('bti-offset-lost', 'kp_m_show.offset = resolved.offset;', 'kp_m_show.offset = 0;', 'bti-adjustment'),
+         ('unverified-target', '!hide_syms_modules_probe_matches(expected)', '(false && hide_syms_modules_probe_matches(expected))', 'wrong-body'),
+         ('early-callback', '!smp_load_acquire(&modules_show_ready) || ', '', 'ordinary'),
+         ('samsung-gate', '|| !m || !p)', '|| !m || (modules_op_target && m->op != modules_op_target) || !p)', 'foreign-seq-ops'),

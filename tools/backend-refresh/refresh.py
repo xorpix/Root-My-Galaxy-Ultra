@@ -48,6 +48,12 @@ REVIEWED_HISTORY_TRANSITIONS = {
 REVIEWED_HISTORY_BRIDGES = {
     ('kowsu', '6366f25b89f2bc5e287c1983715ebae60cd5540e'):
         '6ecdd69224fe6769e6c8715a4ef2b91602b23362',
+    # KowSU rebased its fork onto newer KernelSU sources. Reviewed the endpoint
+    # runtime delta: reference balancing, BTF-based SELinux inode layout,
+    # policy generation/type tracking and reduced hot-path logging. Userspace
+    # and UAPI are identical; the Samsung patch is rebased and rebuilt below.
+    ('kowsu', '6ecdd69224fe6769e6c8715a4ef2b91602b23362'):
+        '21787ce135c988bae4244a44cfcb5a542aa3347f',
 }
 
 

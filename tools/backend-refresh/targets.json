@@ -54,7 +54,7 @@
       "rust": "1.98.1",
       "uapi": 6,
       "rebuild": false,
-      "compat_sha256": "233f7f222574ee4b70deb2f2e210ae17496aa66c0327151ff56de72ef6db68bc"
+      "compat_sha256": "8b6398b572a16527b5d481a01c3d02c841ee6ae5a78ce922e6385f0eebb78ef4"
     }
   },
   "local_app_base": "df7c69670851a031ab81b95ee7557254d078440a"
