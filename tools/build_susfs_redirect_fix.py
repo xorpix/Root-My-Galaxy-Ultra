@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reconstruct and qualify the protected-table redirect fallback candidate."""
+"""Reconstruct and qualify the production protected-table redirect fallback."""
 import argparse
 import gzip
 import hashlib
@@ -72,7 +72,7 @@ def main():
     git('update-ref', 'refs/heads/candidate', candidate)
     receipt = {'schema': 1, 'baseAppCommit': BASE_APP, 'sourceParent': BASE_NATIVE,
                'sourceCommit': candidate, 'sourceTree': tree,
-               'patchSha256': digest(patch.read_bytes()), 'hardwareValidated': False, 'candidateFix': True}
+               'patchSha256': digest(patch.read_bytes()), 'hardwareValidated': False, 'productionHotfix': True}
     (out / 'source.json').write_text(json.dumps(receipt, indent=2) + '\n')
     if a.prepare_only:
         print('Reconstructed reviewed candidate ' + candidate)
@@ -118,10 +118,11 @@ def main():
     manifest['validation'] = {
         **manifest.get('validation', {}),
         'hardwareValidated': False,
-        'redirectStartupReceipt': DOC + '/README.md',
+        'redirectEntryFallback': DOC + '/README.md',
+        'acceptedHardwareCandidate': json.loads((root / DOC / 'phone-validation.json').read_text()),
         'kernelImports': 140, 'syscallWrappers': 27,
         'nativeQualificationRun': os.environ.get('GITHUB_RUN_ID'),
-        'deviceValidation': 'Targeted fallback for phone-confirmed EFAULT on all five table writes; guarded entry probes retain normal-context open handling. Phone confirmation of this candidate is pending.'}
+        'deviceValidation': 'Maintainer confirmed the signed fallback candidate starts SusFS with all five redirect entries. This production binary removes only the temporary startup receipt and its state; it has no separate phone test. Redirect rule execution and long-uptime behavior were not independently measured.'}
     current_validation = json.loads((root / 'backends/susfs/build-manifest.json').read_text())
     if (current_validation['sourceCommit'] == candidate and
             current_validation['module'] == module_info and

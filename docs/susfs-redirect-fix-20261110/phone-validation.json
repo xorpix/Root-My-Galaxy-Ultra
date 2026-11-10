@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "date": "2026-11-10",
+  "result": "passed",
+  "evidenceType": "Maintainer confirmation in conversation and supplied read-only startup output",
+  "sourceCommit": "37e2d78e2948d710141ae85acff67b23f27066c9",
+  "moduleSha256": "c961ede7db5b7365bb49db0e707c07823f75a0b993c67d26d5111d0a8f2f0ffa",
+  "testedApkSha256": "10e47bb2f5db4cc243bd80ecdd9eca12bc36fedfc4ecf818b609688a2492b8a4",
+  "testedAppCommit": "358a43f35520adc24a553fee1672966f5f7b4a75",
+  "testContext": "Signed RootMyGalaxyUltra-redirect-fix-test1.apk, supplied with full-reboot and root/SusFS reactivation instructions.",
+  "confirmation": "Previous chat broke. But I confirm that the fix works",
+  "observedStartup": {
+    "armed": true,
+    "entries": "5/5",
+    "hits": 0,
+    "init_rc": 0,
+    "symbols_checked": true,
+    "missing": "none",
+    "route": "kprobe",
+    "probe_rc": 0
+  },
+  "scope": "Maintainer-reported successful SusFS operation and all five redirect entries armed in the diagnostic-bearing candidate.",
+  "limitations": [
+    "The supplied rule table was empty and hit count was zero; this output does not demonstrate redirect-rule execution.",
+    "The production module removes temporary startup diagnostics and has a different hash; it is covered by build and regression checks, not a separate phone confirmation.",
+    "No new unload/restoration, detector or long-uptime measurement was supplied."
+  ]
+}

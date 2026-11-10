@@ -1,5 +1,5 @@
 diff --git a/kernel/susfs_or_entry.c b/kernel/susfs_or_entry.c
-index 2cec045fea8579608bde9ccea8117e9182a1c505..6815ea12331e02a545a94b0bf2d2b53997bcf3be 100644
+index 2cec045..0aa61aa 100644
 --- a/kernel/susfs_or_entry.c
 +++ b/kernel/susfs_or_entry.c
 @@ -44,6 +44,10 @@
@@ -98,63 +98,16 @@ index 2cec045fea8579608bde9ccea8117e9182a1c505..6815ea12331e02a545a94b0bf2d2b539
  	/* Both native entries must carry the wrapper: openat is what every caller that predates
  	 * openat2 arrives with, and a rule that only works for half the opens on the system is
  	 * a rule that silently does not apply.  `or_entry_ready` covers the load window in
-@@ -561,6 +576,17 @@ unsigned long susfs_or_entry_hits(void)
- 	return (unsigned long)atomic_read(&or_entry_hits);
- }
- 
-+/* Test-only startup receipt. Written only by init, never by an open wrapper.
-+ * Keep the actual failure available when the kernel log cannot be collected. */
-+static int or_entry_init_rc = -EINPROGRESS;
-+static bool or_entry_symbols_checked;
-+static unsigned int or_entry_missing_symbols;
-+static int or_entry_hook_rc[5] = { [0 ... 4] = -ECANCELED };
-+static const char *const or_entry_symbol_names[] = {
-+	"getname_flags", "filename_lookup", "putname", "filp_open",
-+	"get_unused_fd_flags", "fd_install", "put_unused_fd",
-+};
-+
- /* One line of counters for /sys/module/susfs_guard_lkm/parameters/or_entry_stat (fork style, like
-  * redirect_map_stat): armed state, how many of the five entries actually carry a wrapper, and how
-  * many redirects the wrappers handed out.  Not the /proc hooks line - that one's format belongs to
-@@ -569,13 +595,36 @@ static int or_entry_stat_get(char *buf, const struct kernel_param *kp)
- {
- 	int installed = 0;
- 	int i;
-+	int n;
-+	unsigned int missing = READ_ONCE(or_entry_missing_symbols);
- 
+@@ -573,6 +588,8 @@ static int or_entry_stat_get(char *buf, const struct kernel_param *kp)
  	for (i = 0; i < (int)ARRAY_SIZE(or_hooks); i++)
  		if (READ_ONCE(or_hooks[i].installed))
  			installed++;
--	return scnprintf(buf, PAGE_SIZE, "armed=%d entries=%d/%u hits=%lu\n",
 +	if (READ_ONCE(or_entry_probe_active))
 +		installed = IS_ENABLED(CONFIG_COMPAT) ? SUSFS_OR_ENTRY_KIND_COUNT : 2;
-+	n = scnprintf(buf, PAGE_SIZE, "armed=%d entries=%d/%u hits=%lu\n",
+ 	return scnprintf(buf, PAGE_SIZE, "armed=%d entries=%d/%u hits=%lu\n",
  			 susfs_or_entry_armed(), installed,
  			 (unsigned int)ARRAY_SIZE(or_hooks), susfs_or_entry_hits());
-+	n += scnprintf(buf + n, PAGE_SIZE - n,
-+		"init_rc=%d symbols_checked=%u missing=",
-+		READ_ONCE(or_entry_init_rc), READ_ONCE(or_entry_symbols_checked) ? 1 : 0);
-+	if (!missing)
-+		n += scnprintf(buf + n, PAGE_SIZE - n, "none");
-+	for (i = 0; i < (int)ARRAY_SIZE(or_entry_symbol_names); i++) {
-+		if (!(missing & (1U << i)))
-+			continue;
-+		n += scnprintf(buf + n, PAGE_SIZE - n, "%s%s",
-+			(missing & ((1U << i) - 1)) ? "," : "", or_entry_symbol_names[i]);
-+	}
-+	n += scnprintf(buf + n, PAGE_SIZE - n, "\nhook_rc:");
-+	for (i = 0; i < (int)ARRAY_SIZE(or_hooks); i++)
-+		n += scnprintf(buf + n, PAGE_SIZE - n, " %s=%d",
-+			or_hooks[i].name, READ_ONCE(or_entry_hook_rc[i]));
-+	n += scnprintf(buf + n, PAGE_SIZE - n, "\nroute=%s probe_rc=%d\n",
-+		READ_ONCE(or_entry_probe_active) ? "kprobe" : (installed ? "syscall-table" : "none"),
-+		READ_ONCE(or_entry_probe_rc));
-+	return n;
- }
- static const struct kernel_param_ops or_entry_stat_ops = { .get = or_entry_stat_get };
- module_param_cb(or_entry_stat, &or_entry_stat_ops, NULL, 0444);
-@@ -583,6 +632,7 @@ module_param_cb(or_entry_stat, &or_entry_stat_ops, NULL, 0444);
+@@ -583,6 +600,7 @@ module_param_cb(or_entry_stat, &or_entry_stat_ops, NULL, 0444);
  int susfs_or_entry_init(void)
  {
  	int installed = 0;
@@ -162,39 +115,10 @@ index 2cec045fea8579608bde9ccea8117e9182a1c505..6815ea12331e02a545a94b0bf2d2b539
  	int rc;
  	int i;
  
-@@ -591,6 +641,7 @@ int susfs_or_entry_init(void)
- 	 * keep the entries occupied without ever redirecting, so the parameter is honoured
- 	 * here and the entries simply stay untouched. */
- 	if (!READ_ONCE(or_entry_param)) {
-+		WRITE_ONCE(or_entry_init_rc, -ECANCELED);
- 		SUSFS_LOGI("or_entry=0: name layer off (open_redirect will refuse rules)\n");
- 		return 0;
- 	}
-@@ -619,9 +670,19 @@ int susfs_or_entry_init(void)
- 	if (!or_check_zeroed_user_fn)
- 		SUSFS_LOGI("or_entry: check_zeroed_user not found - openat2 with a larger open_how is not redirected\n");
- 
-+	WRITE_ONCE(or_entry_missing_symbols,
-+		(!or_getname_flags_fn ? 1U << 0 : 0) |
-+		(!or_filename_lookup_fn ? 1U << 1 : 0) |
-+		(!or_putname_fn ? 1U << 2 : 0) |
-+		(!or_filp_open_fn ? 1U << 3 : 0) |
-+		(!or_get_unused_fd_flags_fn ? 1U << 4 : 0) |
-+		(!or_fd_install_fn ? 1U << 5 : 0) |
-+		(!or_put_unused_fd_fn ? 1U << 6 : 0));
-+	WRITE_ONCE(or_entry_symbols_checked, true);
- 	if (!or_getname_flags_fn || !or_filename_lookup_fn || !or_putname_fn ||
- 	    !or_filp_open_fn || !or_get_unused_fd_flags_fn || !or_fd_install_fn ||
- 	    !or_put_unused_fd_fn) {
-+		WRITE_ONCE(or_entry_init_rc, -ENOENT);
- 		SUSFS_LOGI("or_entry: not armed, a symbol is missing (getname_flags=%d filename_lookup=%d putname=%d filp_open=%d get_unused_fd_flags=%d fd_install=%d put_unused_fd=%d) - open_redirect will refuse rules\n",
- 			   !!or_getname_flags_fn, !!or_filename_lookup_fn, !!or_putname_fn,
- 			   !!or_filp_open_fn, !!or_get_unused_fd_flags_fn, !!or_fd_install_fn,
-@@ -637,6 +698,11 @@ int susfs_or_entry_init(void)
+@@ -637,6 +655,10 @@ int susfs_or_entry_init(void)
  		struct susfs_fp_hook *h = &or_hooks[i];
  
  		rc = susfs_fp_install(h);
-+		WRITE_ONCE(or_entry_hook_rc[i], rc);
 +		if (rc == -EFAULT) {
 +			table_fault = true;
 +			break;
@@ -202,7 +126,7 @@ index 2cec045fea8579608bde9ccea8117e9182a1c505..6815ea12331e02a545a94b0bf2d2b539
  		if (rc) {
  			pr_warn("or_entry: %s not installed (%d) - that syscall answers the kernel's own way\n",
  				h->name, rc);
-@@ -644,7 +710,20 @@ int susfs_or_entry_init(void)
+@@ -644,6 +666,16 @@ int susfs_or_entry_init(void)
  		}
  		installed++;
  	}
@@ -212,26 +136,14 @@ index 2cec045fea8579608bde9ccea8117e9182a1c505..6815ea12331e02a545a94b0bf2d2b539
 +		for (i = (int)ARRAY_SIZE(or_hooks) - 1; i >= 0; i--)
 +			susfs_fp_remove(&or_hooks[i]);
 +		rc = or_entry_probe_start();
-+		WRITE_ONCE(or_entry_probe_rc, rc);
-+		WRITE_ONCE(or_entry_init_rc, rc);
 +		if (!rc)
 +			smp_store_release(&or_entry_ready, true);
 +		return 0;
 +	}
  	if (!installed) {
-+		WRITE_ONCE(or_entry_init_rc, or_entry_hook_rc[0]);
  		pr_warn("or_entry: none of the %u open entries could be installed - the name layer stays off (open_redirect will refuse rules)\n",
  			(unsigned int)ARRAY_SIZE(or_hooks));
- 		return 0;
-@@ -657,6 +736,7 @@ int susfs_or_entry_init(void)
- 	 * freshly published wrapper before this store sees PASS and runs the original syscall -
- 	 * the safe direction - so the store needs no ordering against the table patch. */
- 	WRITE_ONCE(or_entry_ready, true);
-+	WRITE_ONCE(or_entry_init_rc, susfs_or_entry_armed() ? 0 : -EOPNOTSUPP);
- 
- 	SUSFS_LOGI("or_entry armed: %d of %u open entries; open_redirect rules hold no inode while it is on\n",
- 		   installed, (unsigned int)ARRAY_SIZE(or_hooks));
-@@ -671,6 +751,8 @@ void susfs_or_entry_exit(void)
+@@ -671,6 +703,8 @@ void susfs_or_entry_exit(void)
  	 * everything from here on instead of consulting a layer that is about to be torn down. */
  	WRITE_ONCE(or_entry_ready, false);
  	smp_mb();
@@ -242,10 +154,10 @@ index 2cec045fea8579608bde9ccea8117e9182a1c505..6815ea12331e02a545a94b0bf2d2b539
  	 * and open_redirect's exit clears the rule table itself, so no wrapper that survives in
 diff --git a/kernel/susfs_or_probe.h b/kernel/susfs_or_probe.h
 new file mode 100644
-index 0000000000000000000000000000000000000000..9f1728ab5986a922375d5ca1fa07d5c00774d719
+index 0000000..5b260c3
 --- /dev/null
 +++ b/kernel/susfs_or_probe.h
-@@ -0,0 +1,252 @@
+@@ -0,0 +1,251 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +/* Private fallback for or_entry when Samsung refuses syscall-table writes.
 + * Included after the five existing wrappers and their hook descriptors. */
@@ -263,7 +175,6 @@ index 0000000000000000000000000000000000000000..9f1728ab5986a922375d5ca1fa07d5c0
 +static struct or_entry_probe or_entry_probes[SUSFS_OR_ENTRY_KIND_COUNT];
 +static int or_entry_probe_count;
 +static bool or_entry_probe_active;
-+static int or_entry_probe_rc = -ECANCELED;
 +
 +/* Original-call markers live on the calling task's stack. The bucket lock
 + * protects lookup/removal, but is never held across the original syscall.
@@ -499,7 +410,7 @@ index 0000000000000000000000000000000000000000..9f1728ab5986a922375d5ca1fa07d5c0
 +
 +#endif
 diff --git a/tests/fp_hooks/run.py b/tests/fp_hooks/run.py
-index 3293e4a1ea0479ce47df5387b07ae5b4737a1223..70fd926dc0f1300ea17a7c9bc26f2e8a5f618b02 100644
+index 3293e4a..70fd926 100644
 --- a/tests/fp_hooks/run.py
 +++ b/tests/fp_hooks/run.py
 @@ -63,6 +63,7 @@ long susfs_fp_callback_return(struct susfs_fp_hook *h,long v) {assert(h==expecte
@@ -512,10 +423,10 @@ index 3293e4a1ea0479ce47df5387b07ae5b4737a1223..70fd926dc0f1300ea17a7c9bc26f2e8a
   enum=re.sub(r'^#include[^\n]*\n','',(root/'kernel/susfs_or_entry.h').read_text(),flags=re.M);(d/'enum.h').write_text(enum)
 diff --git a/tests/redirect_probe/probe_test.c b/tests/redirect_probe/probe_test.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..73809e4b56555d2ae9284db078cf02c533d7dcbe
+index 0000000..263992c
 --- /dev/null
 +++ b/tests/redirect_probe/probe_test.c
-@@ -0,0 +1,170 @@
+@@ -0,0 +1,169 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +#include <assert.h>
 +#include <errno.h>
@@ -643,7 +554,6 @@ index 0000000000000000000000000000000000000000..73809e4b56555d2ae9284db078cf02c5
 +static void counters_clear(void) {for(int i=0;i<5;i++)assert(!or_hooks[i].active_callbacks);}
 +int main(int argc,char **argv) {
 +    assert(argc==2);const char *c=argv[1];
-+    assert(or_entry_probe_rc==-ECANCELED);
 +    native[56]=core0;native[437]=core1;compat[5]=core2;compat[322]=core3;compat[437]=core1;
 +    if(!strcmp(c,"bti-config"))bti_config=true;
 +    if(!strcmp(c,"bti-entry"))first_instruction=0xd503245f;
@@ -688,7 +598,7 @@ index 0000000000000000000000000000000000000000..73809e4b56555d2ae9284db078cf02c5
 +}
 diff --git a/tests/redirect_probe/run.py b/tests/redirect_probe/run.py
 new file mode 100644
-index 0000000000000000000000000000000000000000..d5607077c523190780e68ce195adc9f76c872a31
+index 0000000..d560707
 --- /dev/null
 +++ b/tests/redirect_probe/run.py
 @@ -0,0 +1,61 @@
@@ -755,12 +665,12 @@ index 0000000000000000000000000000000000000000..d5607077c523190780e68ce195adc9f7
 +        print('PASS mutation rejected: ' + label)
 diff --git a/tests/redirect_startup/run.py b/tests/redirect_startup/run.py
 new file mode 100644
-index 0000000000000000000000000000000000000000..b272d0e99556c7cb6573307431ada308614350ea
+index 0000000..154b603
 --- /dev/null
 +++ b/tests/redirect_startup/run.py
-@@ -0,0 +1,66 @@
+@@ -0,0 +1,68 @@
 +#!/usr/bin/env python3
-+"""Inject startup failures into the real redirect init and status getter."""
++"""Verify production redirect startup, fallback cleanup and refusal behavior."""
 +import argparse
 +import importlib.util
 +import os
@@ -777,7 +687,6 @@ index 0000000000000000000000000000000000000000..b272d0e99556c7cb6573307431ada308
 +extract = importlib.util.module_from_spec(spec)
 +spec.loader.exec_module(extract)
 +source = (root / 'kernel/susfs_or_entry.c').read_text()
-+receipt = source[source.index('static int or_entry_init_rc'):source.index('/* One line of counters for')]
 +hook_table = source[source.index('static struct susfs_fp_hook or_hooks[]'):source.index('bool susfs_or_entry_armed')]
 +names = re.findall(r'\.name = "([^"]+)"', hook_table)
 +assert len(names) == 5
@@ -785,12 +694,13 @@ index 0000000000000000000000000000000000000000..b272d0e99556c7cb6573307431ada308
 +slots = re.findall(r'^static [^;\n]*\(\*(or_\w+_fn)\)', source, re.M)
 +assert len(slots) == 9
 +declarations = '\n'.join('static void *' + n + ';' for n in slots)
-+production = receipt + '\n' + declarations + '\n' + hooks + '\n'
++production = declarations + '\n' + hooks + '\n'
 +production += '\n\n'.join(extract.function(source, n) for n in (
 +    'susfs_or_entry_armed', 'susfs_or_entry_hits', 'or_entry_stat_get', 'susfs_or_entry_init'))
 +cases = ['pending', 'success', 'disabled', 'protected-table', 'protected-table-refused', 'missing-all', 'optional-missing', 'fail-all']
 +cases += ['missing-' + str(i) for i in range(7)]
 +cases += ['fail-' + str(i) for i in range(5)]
++cases += ['fault-after-' + str(i) for i in range(5)]
 +flags = ['-O1', '-g', '-fsanitize=address,undefined', '-fno-omit-frame-pointer', '-no-pie'] if a.sanitizers else ['-O2']
 +env = dict(os.environ, ASAN_OPTIONS='detect_leaks=0:abort_on_error=1', UBSAN_OPTIONS='halt_on_error=1')
 +here = Path(__file__).resolve().parent
@@ -808,12 +718,14 @@ index 0000000000000000000000000000000000000000..b272d0e99556c7cb6573307431ada308
 +    for case in cases:
 +        subprocess.run([str(exe), case], check=True, env=env, timeout=15)
 +    mutations = [
-+        ('missing-mask-lost', 'or_entry_missing_symbols,\n', 'or_entry_missing_symbols, 0 * (\n',
-+         '(!or_put_unused_fd_fn ? 1U << 6 : 0));', '(!or_put_unused_fd_fn ? 1U << 6 : 0)));', 'missing-6'),
-+        ('hook-error-lost', 'WRITE_ONCE(or_entry_hook_rc[i], rc);',
-+         'WRITE_ONCE(or_entry_hook_rc[i], 0);', None, None, 'fail-3'),
-+        ('init-error-lost', 'WRITE_ONCE(or_entry_init_rc, -ENOENT);',
-+         'WRITE_ONCE(or_entry_init_rc, 0);', None, None, 'missing-0'),
++        ('required-symbol-lost', '|| !or_fd_install_fn ||\n\t    !or_put_unused_fd_fn)',
++         '|| !or_fd_install_fn)', None, None, 'missing-6'),
++        ('fallback-cleanup-lost', 'susfs_fp_remove(&or_hooks[i]);',
++         '(void)susfs_fp_remove;', None, None, 'fault-after-1'),
++        ('failed-fallback-published', 'if (!rc)\n\t\t\tsmp_store_release',
++         'if (rc)\n\t\t\tsmp_store_release', None, None, 'protected-table-refused'),
++        ('first-fault-stop-lost', 'table_fault = true;\n\t\t\tbreak;',
++         'table_fault = true;\n\t\t\tcontinue;', None, None, 'protected-table'),
 +    ]
 +    for label, old, new, old2, new2, case in mutations:
 +        assert old in production
@@ -827,10 +739,10 @@ index 0000000000000000000000000000000000000000..b272d0e99556c7cb6573307431ada308
 +        print('PASS mutation rejected: ' + label)
 diff --git a/tests/redirect_startup/startup_test.c b/tests/redirect_startup/startup_test.c
 new file mode 100644
-index 0000000000000000000000000000000000000000..82be6419e8de6ec1802361fdc55dfd6f54542403
+index 0000000..c6ad56c
 --- /dev/null
 +++ b/tests/redirect_startup/startup_test.c
-@@ -0,0 +1,112 @@
+@@ -0,0 +1,122 @@
 +/* SPDX-License-Identifier: GPL-2.0 */
 +#include <assert.h>
 +#include <errno.h>
@@ -853,12 +765,12 @@ index 0000000000000000000000000000000000000000..82be6419e8de6ec1802361fdc55dfd6f
 +struct susfs_fp_hook { const char *name; bool installed, compat_installed; };
 +static bool or_entry_ready, or_entry_param = true;
 +static bool or_entry_probe_active;
-+static int or_entry_probe_rc = -ECANCELED, fallback_rc;
++static int fallback_rc;
 +static int or_entry_hits;
 +#define atomic_read(p) (*(p))
 +static unsigned int missing;
 +static bool optional_missing;
-+static int installs, lookups, failures[5];
++static int installs, removals, lookups, failures[5];
 +static const char *const required[] = {
 +    "getname_flags", "filename_lookup", "putname", "filp_open",
 +    "get_unused_fd_flags", "fd_install", "put_unused_fd",
@@ -880,24 +792,38 @@ index 0000000000000000000000000000000000000000..82be6419e8de6ec1802361fdc55dfd6f
 +        hook->installed = hook->compat_installed = true;
 +    return rc;
 +}
-+static void susfs_fp_remove(struct susfs_fp_hook *h) {h->installed=h->compat_installed=false;}
-+static int or_entry_probe_start(void) {or_entry_probe_active=!fallback_rc;return fallback_rc;}
++static void susfs_fp_remove(struct susfs_fp_hook *h) {removals++;h->installed=h->compat_installed=false;}
++static int or_entry_probe_start(void);
 +#include PRODUCTION
++static int or_entry_probe_start(void)
++{
++    assert(removals == 5);
++    for (int i = 0; i < 5; i++)
++        assert(!or_hooks[i].installed && !or_hooks[i].compat_installed);
++    or_entry_probe_active = !fallback_rc;
++    return fallback_rc;
++}
 +int main(int argc, char **argv)
 +{
-+    char buf[PAGE_SIZE], expected[128];
-+    int target = -1, i;
++    char buf[PAGE_SIZE];
++    int target = -1, fault_at = -1, i;
 +    assert(argc == 2);
 +    const char *c = argv[1];
 +    if (!strcmp(c, "pending")) {
 +        or_entry_stat_get(buf, NULL);
-+        assert(strstr(buf, "init_rc=-115 symbols_checked=0"));
-+        assert(strstr(buf, "or/openat=-125"));
++        assert(!strcmp(buf, "armed=0 entries=0/5 hits=0\n"));
 +        puts("PASS pending");
 +        return 0;
 +    }
-+    if (!strncmp(c, "protected-table",15)) {for(i=0;i<5;i++)failures[i]=-EFAULT;if(strstr(c,"refused"))fallback_rc=-EOPNOTSUPP;}
-+    else if (!strcmp(c, "disabled")) or_entry_param = false;
++    if (!strncmp(c, "protected-table", 15)) {
++        for (i = 0; i < 5; i++) failures[i] = -EFAULT;
++        fault_at = 0;
++        if (strstr(c, "refused")) fallback_rc = -EOPNOTSUPP;
++    } else if (!strncmp(c, "fault-after-", 12)) {
++        fault_at = atoi(c + 12);
++        assert(fault_at >= 0 && fault_at < 5);
++        failures[fault_at] = -EFAULT;
++    } else if (!strcmp(c, "disabled")) or_entry_param = false;
 +    else if (!strncmp(c, "missing-", 8)) {
 +        if (!strcmp(c, "missing-all")) missing = 127;
 +        else { target = atoi(c + 8); assert(target >= 0 && target < 7); missing = 1U << target; }
@@ -906,37 +832,33 @@ index 0000000000000000000000000000000000000000..82be6419e8de6ec1802361fdc55dfd6f
 +    else if (!strncmp(c, "fail-", 5)) {
 +        target = atoi(c + 5); assert(target >= 0 && target < 5); failures[target] = -EIO - target;
 +    } else assert(!strcmp(c, "success"));
-+    assert(!susfs_or_entry_init()); /* Receipt does not change the existing API. */
++    assert(!susfs_or_entry_init());
 +    int n = or_entry_stat_get(buf, NULL);
 +    assert(n > 0 && n < 1000 && (size_t)n == strlen(buf));
-+    if (!strncmp(c,"protected-table",15)) {assert(installs==1);assert(or_entry_init_rc==fallback_rc && or_entry_probe_rc==fallback_rc);assert(or_entry_ready==!fallback_rc && susfs_or_entry_armed()==!fallback_rc);assert(strstr(buf,fallback_rc?"entries=0/5":"entries=5/5"));puts("PASS protected table fallback");return 0;}
-+    if (!or_entry_param) {
-+        assert(!lookups && !installs && !or_entry_symbols_checked && !or_entry_ready);
-+        assert(or_entry_init_rc == -ECANCELED);
++    assert(!strstr(buf, "init_rc") && !strstr(buf, "hook_rc") && !strstr(buf, "probe_rc"));
++    if (fault_at >= 0) {
++        assert(installs == fault_at + 1);
++        assert(or_entry_probe_active == !fallback_rc);
++        assert(or_entry_ready == !fallback_rc && susfs_or_entry_armed() == !fallback_rc);
++        assert(strstr(buf, fallback_rc ? "entries=0/5" : "entries=5/5"));
++    } else if (!or_entry_param) {
++        assert(!lookups && !installs && !or_entry_ready);
++        assert(strstr(buf, "entries=0/5"));
 +    } else if (missing) {
-+        assert(lookups == 9 && !installs && or_entry_symbols_checked && !or_entry_ready);
-+        assert(or_entry_init_rc == -ENOENT && or_entry_missing_symbols == missing);
-+        if (target >= 0) {
-+            snprintf(expected, sizeof(expected), "missing=%s\n", required[target]);
-+            assert(strstr(buf, expected));
-+        } else assert(strstr(buf, "missing=getname_flags,filename_lookup,putname,filp_open,get_unused_fd_flags,fd_install,put_unused_fd\n"));
-+        for (i = 0; i < 5; i++) assert(or_entry_hook_rc[i] == -ECANCELED);
++        assert(lookups == 9 && !installs && !or_entry_ready);
++        assert(strstr(buf, "entries=0/5"));
 +    } else {
-+        assert(lookups == 9 && installs == 5 && or_entry_symbols_checked);
-+        assert(!or_entry_missing_symbols && strstr(buf, "missing=none\n"));
-+        for (i = 0; i < 5; i++) {
-+            assert(or_entry_hook_rc[i] == failures[i]);
-+            snprintf(expected, sizeof(expected), "%s=%d", or_hooks[i].name, failures[i]);
-+            assert(strstr(buf, expected));
-+        }
++        assert(lookups == 9 && installs == 5 && !removals && !or_entry_probe_active);
++        for (i = 0; i < 5; i++)
++            assert(or_hooks[i].installed == !failures[i]);
 +        if (!strcmp(c, "fail-all")) {
-+            assert(or_entry_init_rc == -EIO && !or_entry_ready && !susfs_or_entry_armed());
++            assert(!or_entry_ready && !susfs_or_entry_armed());
 +            assert(strstr(buf, "entries=0/5"));
 +        } else if (target >= 0) {
-+            assert(or_entry_init_rc == -EOPNOTSUPP && or_entry_ready && !susfs_or_entry_armed());
++            assert(or_entry_ready && !susfs_or_entry_armed());
 +            assert(strstr(buf, "entries=4/5"));
 +        } else {
-+            assert(!or_entry_init_rc && or_entry_ready && susfs_or_entry_armed());
++            assert(or_entry_ready && susfs_or_entry_armed());
 +            assert(strstr(buf, "armed=1 entries=5/5"));
 +        }
 +    }
@@ -944,7 +866,7 @@ index 0000000000000000000000000000000000000000..82be6419e8de6ec1802361fdc55dfd6f
 +    return 0;
 +}
 diff --git a/tools/check_priority_artifact.py b/tools/check_priority_artifact.py
-index 3ba8cbb88117ecc93d5a972635205d24a104e556..9b0f451e4a82f453fec6dc62bafbedd69d4a3036 100644
+index 3ba8cbb..9b0f451 100644
 --- a/tools/check_priority_artifact.py
 +++ b/tools/check_priority_artifact.py
 @@ -1,5 +1,5 @@
