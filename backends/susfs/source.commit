@@ -1,6 +1,6 @@
-tree d45f899fbe41b37678ba5b7dbf36f07c5d0af2fb
-parent 05c9e5cecdf7453ae80179ea42c372ffb1835203
-author Codex <codex@openai.com> 1794295475 +0100
-committer Codex <codex@openai.com> 1794295535 +0100
+tree a1a9862d946cbb7ba4537c4dee020ba7f488ee85
+parent 177aa8907a8ee7d7c156c1330cbab1d55515c5e4
+author Codex <codex@openai.com> 1794351850 +0100
+committer Codex <codex@openai.com> 1794351850 +0100
 
-Preserve BTI landing pads in validated Samsung show probes
+Handle protected redirect tables without temporary startup diagnostics

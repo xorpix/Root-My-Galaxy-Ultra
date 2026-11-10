@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "baseAppCommit": "c6bb0d48ab4665f2cc61387fcfdb3069a85cf6ea",
+  "sourceParent": "177aa8907a8ee7d7c156c1330cbab1d55515c5e4",
+  "sourceCommit": "3ebe7cf0cb08108856e79fdcdbfe4b3c2bd3a3a1",
+  "sourceTree": "a1a9862d946cbb7ba4537c4dee020ba7f488ee85",
+  "patchSha256": "1edc4a2019316a185e310b714aaab76df760b1833fddbb2e7b2a36f7a83e33b4",
+  "hardwareValidated": false,
+  "productionHotfix": true
+}
