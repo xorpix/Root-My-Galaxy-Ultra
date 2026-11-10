@@ -111,7 +111,6 @@ jobs:
         shell: bash
         env:
           INPUT_TAG_NAME: ${{ inputs.tag_name }}
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
@@ -135,34 +134,6 @@ jobs:
           if [ "$TAG_NAME" != "$EXPECTED_TAG" ]; then
             echo "Tag $TAG_NAME does not match app version $VERSION_NAME (expected $EXPECTED_TAG)." >&2
             exit 1
-          fi
-
-          # One-time replacement authorized by the maintainer after deleting the unused release.
-          # Refuse to replace a changed tag or a release that has become public again.
-          if [ "$TAG_NAME" = '1.3.8' ] && git rev-parse -q --verify 'refs/tags/1.3.8' >/dev/null; then
-            python3 - <<'PY_REPLACE_138'
-          import os, subprocess, urllib.error, urllib.request
-          def git(*args):
-              return subprocess.check_output(['git', *args], text=True).strip()
-          ref = 'refs/tags/1.3.8'
-          old = git('rev-parse', ref)
-          previous = git('rev-list', '-n', '1', ref)
-          if previous != git('rev-parse', 'HEAD'):
-              assert old == 'c937ae6f2df1dd70bf1ceac503cacb409a8ed608', 'Tag moved; refusing replacement'
-              assert previous == 'f260067061fe684b7c53f4520018e44482a915be', 'Unexpected original release commit'
-              request = urllib.request.Request(
-                  'https://api.github.com/repos/' + os.environ['GITHUB_REPOSITORY'] + '/releases/tags/1.3.8',
-                  headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json'})
-              try:
-                  with urllib.request.urlopen(request, timeout=30):
-                      raise RuntimeError('1.3.8 is public again; refusing to replace it')
-              except urllib.error.HTTPError as error:
-                  if error.code != 404:
-                      raise
-              git('tag', '-f', '-a', '1.3.8', '-m', 'Release 1.3.8')
-              git('push', '--force-with-lease=' + ref + ':' + old, 'origin', ref)
-              print('Replaced the tag for the deleted, unused 1.3.8 release')
-          PY_REPLACE_138
           fi
 
           if ! git rev-parse -q --verify "refs/tags/$TAG_NAME" >/dev/null; then
@@ -344,24 +315,3 @@ jobs:
               --notes-file release-notes.md \
               --latest
           fi
-
-      - name: Remove merged family and recovery cleanup branch
-        if: steps.release_tag.outputs.tag_name == '1.3.8'
-        env:
-          TAG_COMMIT: ${{ steps.release_tag.outputs.tag_commit }}
-        run: |
-          python3 - <<'PY_CLEANUP'
-          import os, subprocess
-          def git(*args):
-              return subprocess.check_output(['git', *args], text=True).strip()
-          branch = 'refs/heads/fix/susfs-family-recovery-cleanup'
-          result = git('ls-remote', 'origin', branch).split()
-          if result:
-              head = result[0]
-              if head == git('rev-parse', os.environ['TAG_COMMIT'] + '^2'):
-                  git('merge-base', '--is-ancestor', head, os.environ['TAG_COMMIT'])
-                  git('push', '--force-with-lease=' + branch + ':' + head, 'origin', ':' + branch)
-                  print('Removed merged family/recovery work branch')
-              else:
-                  print('Work branch moved after merge; retained it')
-          PY_CLEANUP
