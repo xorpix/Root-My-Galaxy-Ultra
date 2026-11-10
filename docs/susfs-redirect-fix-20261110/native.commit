@@ -1,0 +1,6 @@
+tree 4d85fa27fe36e98bb016fcff9e68bd02b462a6d2
+parent 177aa8907a8ee7d7c156c1330cbab1d55515c5e4
+author Codex <codex@openai.com> 1794346660 +0100
+committer Codex <codex@openai.com> 1794350607 +0100
+
+Handle refused redirect table writes with validated syscall entry probes
