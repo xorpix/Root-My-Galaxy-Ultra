@@ -1,15 +1,15 @@
 {
   "schema": 2,
-  "created_utc": "2026-11-08",
-  "app_version": "1.3.5",
-  "app_base_commit": "debb8b3d0b8acf16a604bd12f876f099a35b9e17",
+  "created_utc": "2026-11-10",
+  "app_version": "1.3.7",
+  "app_base_commit": "d038485cec93a9e4883e995fafaa654e47cca9f0",
   "upstream_repository": "https://github.com/KernelSU-Next/KernelSU-Next",
-  "upstream_commit": "8c63b58a59529f922d9f8033760772dfd9a8438a",
-  "previous_upstream_commit": "a6c81fa4a8b7341d0bc5c3e4507531459df871ae",
-  "upstream_commit_count": 3487,
-  "driver_version": 33487,
+  "upstream_commit": "b90876426197f5d35c3003bf42d8bf927dc20181",
+  "previous_upstream_commit": "8c63b58a59529f922d9f8033760772dfd9a8438a",
+  "upstream_commit_count": 3501,
+  "driver_version": 33501,
   "uapi_version": 6,
-  "daemon_version": "3.4.2-132-g8c63b58a",
+  "daemon_version": "3.4.2-146-gb9087642",
   "source_provenance": "Existing complete Samsung compatibility patch rebased onto the pinned UAPI 5 upstream; late-load Rust hunks carried forward with current ScriptWait API.",
   "companion_patch": {
     "repository": "https://github.com/rushiranpise/Root-My-Galaxy-Payloads",
@@ -35,22 +35,22 @@
   },
   "outputs": {
     "ksud": {
-      "size": 4383400,
-      "sha256": "291d627e123bc8f0c613ec908b6e479ff5e211cb82730517c53bd9bcab77a3a6"
+      "size": 4384168,
+      "sha256": "9f770e4df46ddb15280a58bd4e25c6692ca357afbce450fc647e901a18e7f6b3"
     },
     "kernelsu.ko": {
-      "size": 558144,
-      "sha256": "7250e93aac0705c8ea1e0045910238edc6c2019eac83b063936de0d7c60cb291"
+      "size": 558920,
+      "sha256": "2153b519c3c63707e3fe11cc202cab05196c40cd54422d1eb7fe301673033412"
     },
     "helper": {
       "size": 24232,
-      "sha256": "95cdf5f6695d2460d37a3d33c63797abb366bc91a69ad12cfd656cfd6b64fe39"
+      "sha256": "71087c7ab11f0dd0f14c4ff34391f477b6454612c609e546094cdec6e81ea86f"
     }
   },
   "rebased_patch": {
-    "path": "samsung-compat-33487.patch",
+    "path": "samsung-compat-33501.patch",
     "size": 73058,
-    "sha256": "4f1d23259252b7330f0992c0afbed00e648a17936380aff5b94b1d6f6229aa37"
+    "sha256": "334f705398166133eff563c44f7f6740aee5956228473cc8e00a721cf00a5fba"
   },
   "validation": {
     "kernel_build": "passed",
@@ -62,13 +62,13 @@
   },
   "manager_required_uapi": 6,
   "patched_source_sha256": {
-    "kernel/Kbuild": "df745e0f5df8b50680e5557d9cc336c0989f92823c1085a3b11bd2d1cc7af4f5",
+    "kernel/Kbuild": "8d8c92d357643a17cd4ed071cae3e756ac5aab7eef62a443ade50a0a137f7c84",
     "kernel/Kconfig": "021d5bd90475e2023257f72fffe72ff8cca40994e4e516d6b4f42781d4b0d272",
     "kernel/compat/samsung_defex.c": "d7615f3db9af2d5ba3d5e4580db6732a71a72ee9d29081da62dfdf73f860a148",
     "kernel/compat/samsung_defex.h": "f50410ca28b421ba61f4bf10aca611f50b2ea150b8d0c508fbeb119194f0e387",
     "kernel/compat/samsung_kdp.c": "d1f3da9d0a1c5eb85ef5c57808d395e1a32711acd73f42918098f2f2bd94ecc3",
     "kernel/core/init.c": "75134809fa79b423ec6901ba5ecc33c185c082fbee395be7e0d9945f53af20fc",
-    "kernel/feature/selinux_hide.c": "aee49072a58050c73b2e6000bf856bfbfcb6aeace141851e2d1d57aaaf8379d8",
+    "kernel/feature/selinux_hide.c": "6d7eaf90cc4777377107c7770b0e3ad4f1fa58f5843d195cf216324f4dcdffc5",
     "kernel/feature/sucompat.c": "8e599c452683d5005fc0c7e3d15ea2211295def8fc96064e341abdc79d418a72",
     "kernel/hook/arm64/patch_memory.c": "24eb4d79feea999c42971cc92f4aec9adfeebf0635e6a7965201dce2c5475bbe",
     "kernel/hook/arm64/syscall_hook.c": "30b08c711e1dd79c92717b20579cd0c5a973d73fb2a86a88a5e2e9da0e8401c9",

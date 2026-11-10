@@ -1,6 +1,6 @@
-tree 27d20887b795e84449aa7de2da4a19be533910e2
-parent 08cff8220c7db9e37fa378a5757d950e6bdb0d1a
-author Codex <codex@openai.com> 1794190631 +0000
-committer Codex <codex@openai.com> 1794190631 +0000
+tree d45f899fbe41b37678ba5b7dbf36f07c5d0af2fb
+parent 05c9e5cecdf7453ae80179ea42c372ffb1835203
+author Codex <codex@openai.com> 1794295475 +0100
+committer Codex <codex@openai.com> 1794295535 +0100
 
-Fix module status lock ordering
+Preserve BTI landing pads in validated Samsung show probes

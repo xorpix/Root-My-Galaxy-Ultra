@@ -35,8 +35,8 @@
       },
       "kernelsu": {
         "url": "asset://azhl/kernelsu/ksud",
-        "size": 5303512,
-        "sha256": "74fe1a7f4937e9b876c6e2f37bb24273deb87317df35fb595547bc8442d257c4",
+        "size": 5304120,
+        "sha256": "633782ed27b11f99fc3e9821bf91487380a987e35b641b83d9f7a2451a88effc",
         "version": "3.3.1"
       }
     },
@@ -74,8 +74,8 @@
       },
       "kernelsu": {
         "url": "asset://azhl/kernelsu-next/ksud",
-        "size": 4383400,
-        "sha256": "291d627e123bc8f0c613ec908b6e479ff5e211cb82730517c53bd9bcab77a3a6",
+        "size": 4384168,
+        "sha256": "9f770e4df46ddb15280a58bd4e25c6692ca357afbce450fc647e901a18e7f6b3",
         "version": "3.4.2"
       }
     },
@@ -113,8 +113,8 @@
       },
       "kernelsu": {
         "url": "asset://azhl/resukisu/ksud",
-        "size": 4477792,
-        "sha256": "92c879b1e265c1b8cb9e6de76a873e66e1077b7cc682d4d8f6ca1d89a782ae01",
+        "size": 4475904,
+        "sha256": "3451a6661c65a9bbcca316e8ef30b364277ba90d894d6a2d5779bb957342555a",
         "version": "4.2.0-rc3"
       }
     },
@@ -153,8 +153,8 @@
       "kernelsu": {
         "url": "asset://azhl/kowsu/ksud",
         "version": "3.3.0",
-        "size": 5311896,
-        "sha256": "39600c0cb903dcb410dd1f91958f8c1435f9c1e714baaee55dfb25cf2e615427"
+        "size": 5311768,
+        "sha256": "22604b9f77f74bf92b4045dcb85f638d4dc97a552897d81dd44bc72a0a2ac0b9"
       }
     },
     {
@@ -191,8 +191,8 @@
       },
       "kernelsu": {
         "url": "asset://azhl/kernelsu/ksud",
-        "size": 5303512,
-        "sha256": "74fe1a7f4937e9b876c6e2f37bb24273deb87317df35fb595547bc8442d257c4",
+        "size": 5304120,
+        "sha256": "633782ed27b11f99fc3e9821bf91487380a987e35b641b83d9f7a2451a88effc",
         "version": "3.3.1"
       }
     },
@@ -230,8 +230,8 @@
       },
       "kernelsu": {
         "url": "asset://azhl/kernelsu-next/ksud",
-        "size": 4383400,
-        "sha256": "291d627e123bc8f0c613ec908b6e479ff5e211cb82730517c53bd9bcab77a3a6",
+        "size": 4384168,
+        "sha256": "9f770e4df46ddb15280a58bd4e25c6692ca357afbce450fc647e901a18e7f6b3",
         "version": "3.4.2"
       }
     },
@@ -269,8 +269,8 @@
       },
       "kernelsu": {
         "url": "asset://azhl/resukisu/ksud",
-        "size": 4477792,
-        "sha256": "92c879b1e265c1b8cb9e6de76a873e66e1077b7cc682d4d8f6ca1d89a782ae01",
+        "size": 4475904,
+        "sha256": "3451a6661c65a9bbcca316e8ef30b364277ba90d894d6a2d5779bb957342555a",
         "version": "4.2.0-rc3"
       }
     },
@@ -309,8 +309,8 @@
       "kernelsu": {
         "url": "asset://azhl/kowsu/ksud",
         "version": "3.3.0",
-        "size": 5311896,
-        "sha256": "39600c0cb903dcb410dd1f91958f8c1435f9c1e714baaee55dfb25cf2e615427"
+        "size": 5311768,
+        "sha256": "22604b9f77f74bf92b4045dcb85f638d4dc97a552897d81dd44bc72a0a2ac0b9"
       }
     }
   ]
