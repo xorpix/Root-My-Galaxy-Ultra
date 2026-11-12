@@ -255,9 +255,9 @@ def package_result(source, work):
     result.mkdir(exist_ok=True)
     # Include added provenance files while preserving deleted superseded patches.
     subprocess.run(['git', 'add', '-N', '--', '.'], cwd=source, check=True)
-    subprocess.run(['git', 'diff', '--check', '--', '.', ':(exclude)backends/**/*.patch',
+    subprocess.run(['git', 'diff', 'HEAD', '--check', '--', '.', ':(exclude)backends/**/*.patch',
                     ':(exclude)tools/backend-refresh/*-compat.patch'], cwd=source, check=True)
-    patch = subprocess.check_output(['git', 'diff', '--no-renames', '--binary', '--full-index'], cwd=source)
+    patch = subprocess.check_output(['git', 'diff', 'HEAD', '--no-renames', '--binary', '--full-index'], cwd=source)
     subprocess.run(['git', 'apply', '--check', '-'], input=patch, cwd=PROJECT, check=True)
     (result / 'apply-matched-backends.patch').write_bytes(patch)
     shutil.copytree(source / 'backends', result / 'backends', dirs_exist_ok=True)

@@ -498,6 +498,36 @@ static const __u32 KSU_IOCTL_GET_INFO = _IOR('K', 2, struct ksu_get_info_cmd);
                     release.apply_checked_update(result)
             self.assertEqual('', common.capture(['git', 'status', '--porcelain'], source))
 
+    def test_repackaging_keeps_removed_provenance_and_new_files(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work, source, publisher = root / 'work', root / 'source', root / 'publisher'
+            (work / 'logs').mkdir(parents=True)
+            (source / 'backends').mkdir(parents=True)
+            retired = source / 'backends/retired.patch'
+            current = source / 'backends/current.patch'
+            retired.write_text('retired provenance\n')
+            current.write_text('current provenance\n')
+            subprocess.run(['git', 'init', '--quiet', source], check=True)
+            for key, value in [('user.name', 'Packaging test'), ('user.email', 'test@example.invalid')]:
+                common.capture(['git', 'config', key, value], source)
+            common.capture(['git', 'add', '.'], source)
+            common.capture(['git', 'commit', '--quiet', '-m', 'baseline'], source)
+            subprocess.run(['git', 'clone', '--quiet', source, publisher], check=True)
+            retired.unlink()
+            (source / 'backends/new.patch').write_text('new provenance\n')
+            # finish-build packages again after the initial native build. Both
+            # packages must retain deletions already recorded in the index.
+            with patch.object(refresh, 'PROJECT', publisher):
+                refresh.package_result(source, work)
+                refresh.package_result(source, work)
+            update = work / 'result/apply-matched-backends.patch'
+            subprocess.run(['git', 'apply', '--check', update], cwd=publisher, check=True)
+            subprocess.run(['git', 'apply', update], cwd=publisher, check=True)
+            self.assertFalse((publisher / 'backends/retired.patch').exists())
+            self.assertEqual('new provenance\n', (publisher / 'backends/new.patch').read_text())
+            self.assertEqual(current.read_text(), (publisher / 'backends/current.patch').read_text())
+
     def test_valid_staged_source_update_passes_the_signing_gate(self):
         # Source/bundle gate only: this fixture is not an Android APK/build result.
         with tempfile.TemporaryDirectory() as directory:

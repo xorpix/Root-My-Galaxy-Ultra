@@ -85,8 +85,8 @@ The current source bundles these driver/daemon pairs:
 
 | Backend | Driver / UAPI | Verified compatible manager downloads |
 |---|---|---|
-| KernelSU | `32725 / 6` | [Manager APK (ZIP)](https://nightly.link/tiann/KernelSU/actions/runs/42752125733/manager.zip) · [Official build](https://github.com/tiann/KernelSU/actions/runs/42752125733) |
-| KernelSU-Next | `33501 / 6` | [Manager APK (ZIP)](https://nightly.link/KernelSU-Next/KernelSU-Next/actions/runs/42766993784/manager.zip) · [Official build](https://github.com/KernelSU-Next/KernelSU-Next/actions/runs/42766993784) |
+| KernelSU | `32727 / 6` | [Manager APK (ZIP)](https://nightly.link/tiann/KernelSU/actions/runs/42841909373/manager.zip) · [Official build](https://github.com/tiann/KernelSU/actions/runs/42841909373) |
+| KernelSU-Next | `33548 / 6` | [Manager APK (ZIP)](https://nightly.link/KernelSU-Next/KernelSU-Next/actions/runs/43244992299/manager.zip) · [Official build](https://github.com/KernelSU-Next/KernelSU-Next/actions/runs/43244992299) |
 | BakaSU | `35259 / 6` | [Manager APKs (ZIP)](https://nightly.link/Baka-SU/BakaSU/actions/runs/42723315215/Manager-release.zip) · [Official build](https://github.com/Baka-SU/BakaSU/actions/runs/42723315215) |
 | KowSU | `32750 / 6` | [Manager APK (ZIP)](https://nightly.link/KOWX712/KernelSU/actions/runs/42572945101/manager.zip) · [Official build](https://github.com/KOWX712/KernelSU/actions/runs/42572945101) |
 

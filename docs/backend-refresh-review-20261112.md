@@ -21,3 +21,10 @@ Source pins in `targets.json` describe the currently bundled pairs until the
 native build completes. The refresh then updates the manifests, payloads,
 helper versions, hashes and release table together. Build results and Android
 unit tests do not constitute an on-device test.
+
+The source-update packager now compares against HEAD, including staged
+deletions. Its earlier working-tree-only diff lost deleted provenance files
+after intent-to-add updated the index, so superseded patches accumulated.
+A regression test packages twice and applies the resulting patch to a clean
+clone, checking both deletion and new-file preservation. Unreferenced backend
+patches are removed; each current manifest's patch is retained.
