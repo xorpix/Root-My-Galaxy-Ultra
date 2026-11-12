@@ -61,6 +61,20 @@ kernel family still requires matching native builds.
 
 ## Validation
 
+The 1.4.0 November coverage includes the official Korean SM-S948N /
+S948NKSS6BZK1 kernel identity:
+`6.12.69-android16-6-p342046c-abogkiS948NKSS6BZK1-4k`.
+Its offline boot-image check was recorded on 9 November 2026. Regional model
+tests use synthetic November identities to verify selection of all four
+backends, exact identity binding and rejection of profiles from the previous
+firmware. These fixtures are not inventories of regional firmware releases.
+SusFS checks cover the same November family through its shared bundle.
+
+The maintainer reports multiple DFRpot successes on November firmware. These
+reports support using the existing route; they do not establish hardware
+validation of this RMGU build or every regional backend. No date cutoff or
+per-firmware allowlist is added. The tested 1.3.8 SusFS module is retained.
+
 Host tests cover regional/carrier names, all four backend choices, immutable
 payload staging, generated profile/cache round trips, changed-firmware refusal,
 unsupported hardware/kernel rejection and the known AZHL/recorded DF routes.

@@ -2037,3 +2037,79 @@ index 21ce82d15df78bc385d59751418affe224194a54..51b98e4f2b17ff43cf4ab953debe86bc
      }
  
      init_module_buffer(buffer, params)
+diff --git a/userspace/ksud/src/cli.rs b/userspace/ksud/src/cli.rs
+index 79ebd9f425b151bc87b18dc48a7010b254320207..30504d0e846f3e39738c4b8bad42f5cb870854b1 100644
+--- a/userspace/ksud/src/cli.rs
++++ b/userspace/ksud/src/cli.rs
+@@ -742,13 +742,13 @@ pub fn run() -> Result<()> {
+         Commands::Profile { command } => match command {
+             Profile::Get { package, uid } => crate::profile::get_profile(&package, uid),
+             Profile::Set { file } => crate::profile::set_profile(file.as_deref()),
+-            Profile::GetSepolicy { package } => crate::profile::get_sepolicy(package),
++            Profile::GetSepolicy { package } => crate::profile::get_sepolicy(&package),
+             Profile::SetSepolicy { package, policy } => {
+-                crate::profile::set_sepolicy(package, policy)
++                crate::profile::set_sepolicy(&package, policy)
+             }
+-            Profile::GetTemplate { id } => crate::profile::get_template(id),
+-            Profile::SetTemplate { id, template } => crate::profile::set_template(id, template),
+-            Profile::DeleteTemplate { id } => crate::profile::delete_template(id),
++            Profile::GetTemplate { id } => crate::profile::get_template(&id),
++            Profile::SetTemplate { id, template } => crate::profile::set_template(&id, template),
++            Profile::DeleteTemplate { id } => crate::profile::delete_template(&id),
+             Profile::ListTemplates => crate::profile::list_templates(),
+         },
+ 
+diff --git a/userspace/ksud/src/profile.rs b/userspace/ksud/src/profile.rs
+index d4bd259116e4b72ef3a5564970ae72fd8553e553..22e81da41cc868b3a1c1190b5925e404d6180d36 100644
+--- a/userspace/ksud/src/profile.rs
++++ b/userspace/ksud/src/profile.rs
+@@ -15,38 +15,38 @@ fn profile_path(dir: &str, name: &str) -> Result<PathBuf> {
+     Ok(Path::new(dir).join(name))
+ }
+ 
+-pub fn set_sepolicy(pkg: String, policy: String) -> Result<()> {
+-    let policy_file = profile_path(defs::PROFILE_SELINUX_DIR, &pkg)?;
++pub fn set_sepolicy(pkg: &str, policy: String) -> Result<()> {
++    let policy_file = profile_path(defs::PROFILE_SELINUX_DIR, pkg)?;
+     ensure_dir_exists(defs::PROFILE_SELINUX_DIR)?;
+     std::fs::write(&policy_file, policy)?;
+     sepolicy::apply_file(&policy_file)?;
+     Ok(())
+ }
+ 
+-pub fn get_sepolicy(pkg: String) -> Result<()> {
+-    let policy_file = profile_path(defs::PROFILE_SELINUX_DIR, &pkg)?;
++pub fn get_sepolicy(pkg: &str) -> Result<()> {
++    let policy_file = profile_path(defs::PROFILE_SELINUX_DIR, pkg)?;
+     let policy = std::fs::read_to_string(policy_file)?;
+     println!("{policy}");
+     Ok(())
+ }
+ 
+ // ksud doesn't guarteen the correctness of template, it just save
+-pub fn set_template(id: String, template: String) -> Result<()> {
+-    let template_file = profile_path(defs::PROFILE_TEMPLATE_DIR, &id)?;
++pub fn set_template(id: &str, template: String) -> Result<()> {
++    let template_file = profile_path(defs::PROFILE_TEMPLATE_DIR, id)?;
+     ensure_dir_exists(defs::PROFILE_TEMPLATE_DIR)?;
+     std::fs::write(template_file, template)?;
+     Ok(())
+ }
+ 
+-pub fn get_template(id: String) -> Result<()> {
+-    let template_file = profile_path(defs::PROFILE_TEMPLATE_DIR, &id)?;
++pub fn get_template(id: &str) -> Result<()> {
++    let template_file = profile_path(defs::PROFILE_TEMPLATE_DIR, id)?;
+     let template = std::fs::read_to_string(template_file)?;
+     println!("{template}");
+     Ok(())
+ }
+ 
+-pub fn delete_template(id: String) -> Result<()> {
+-    let template_file = profile_path(defs::PROFILE_TEMPLATE_DIR, &id)?;
++pub fn delete_template(id: &str) -> Result<()> {
++    let template_file = profile_path(defs::PROFILE_TEMPLATE_DIR, id)?;
+     std::fs::remove_file(template_file)?;
+     Ok(())
+ }

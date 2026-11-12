@@ -33,6 +33,13 @@ The recorded BZIG and Canadian BZID entries keep their existing profile IDs.
 BZJA (`S948BXXU5BZJA`) root and SusFS have been confirmed by the maintainer;
 users have also reported successful tests on other S26 Ultra variants.
 
+November 2026 firmware, including BZK1, uses the same automatic family route
+across regional models; it needs no separate firmware profile. The maintainer
+reports multiple successful November tests with DFRpot. These support the root
+method's continued availability, while each RMGU backend still needs validation
+on the particular phone. After a firmware update, start a fresh root run so the
+app selects payloads for the phone's current identity.
+
 **Recognition is not a hardware-test result.** Patched firmware can block
 DirtyFrag, and a compatible kernel family does not by itself verify Samsung
 backend loading. Other kernel families and 16 KB pages need matching native

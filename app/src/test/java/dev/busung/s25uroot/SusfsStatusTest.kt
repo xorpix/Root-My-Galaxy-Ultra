@@ -79,6 +79,19 @@ class SusfsStatusTest {
             assertEquals(release, SusfsTarget.Supported, susfsTargetFor(device().copy(kernelRelease = release)))
         }
     }
+    @Test fun novemberBzk1UsesTheSharedBundleAcrossRegionalModels() {
+        val bzk1 = device().copy(model = "SM-S948N", incremental = "S948NKSS6BZK1",
+            kernelRelease = "6.12.69-android16-6-p342046c-abogkiS948NKSS6BZK1-4k")
+        assertEquals(SusfsTarget.Supported, susfsTargetFor(bzk1))
+        // Synthetic regional identities exercise the same November kernel-family rule.
+        listOf("SM-S948B", "SM-S948B/DS", "SM-S948U", "SM-S948U1", "SM-S948W",
+            "SM-S9480", "SM-S9480V", "SM-S948Q", "SM-S948Z", "SM-S948C",
+            "SM-S948D", "SM-S948J", "SC-53G", "SCG37").forEachIndexed { index, model ->
+            val regional = bzk1.copy(model = model, incremental = "november-fixture-$index",
+                kernelRelease = "6.12.69-android16-6-november-fixture-$index-4k")
+            assertEquals(model, SusfsTarget.Supported, susfsTargetFor(regional))
+        }
+    }
     @Test fun differentHardwareAndKernelSeriesAreRefused() {
         listOf(device().copy(model = "SM-S918B", device = "dm1q"),
             device().copy(pageSize = 16384), device().copy(abi = "x86_64"),
