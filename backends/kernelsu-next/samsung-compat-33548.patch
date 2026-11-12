@@ -1,5 +1,5 @@
 diff --git a/kernel/Kbuild b/kernel/Kbuild
-index a02fd187706a2aca3bf2dab46387e59ffdf33bd1..de7a40e19bb180af45ab6a8332ce3d6971caddc0 100644
+index eef9f70a3d32d24c826eab3492f678a23b212233..5cdc086ccfcd290f09952d551e5cfc6c9757188e 100644
 --- a/kernel/Kbuild
 +++ b/kernel/Kbuild
 @@ -1,5 +1,8 @@
@@ -529,7 +529,7 @@ index a14faa545164c1eb6aa8875e440730f20a9137f8..987e93b9105c13914fcbbfe529f54935
  
  #if NEED_OWN_STACKPROTECTOR
 diff --git a/kernel/feature/selinux_hide.c b/kernel/feature/selinux_hide.c
-index 385b415a0ee7b39c1a94567c504cd0cbada9c0fb..1c113f255be949c1afe1d698c9c445c1305e5828 100644
+index 67c866d6c549f646de770e0dc6e199b0ed096b2e..ee1a7dcd4d9358d1a705981e54833b9e091780ce 100644
 --- a/kernel/feature/selinux_hide.c
 +++ b/kernel/feature/selinux_hide.c
 @@ -16,6 +16,8 @@
@@ -541,7 +541,7 @@ index 385b415a0ee7b39c1a94567c504cd0cbada9c0fb..1c113f255be949c1afe1d698c9c445c1
  // security/selinux/include/security.h
  #include <security.h>
  #include <ss/context.h>
-@@ -189,6 +191,7 @@ out:
+@@ -190,6 +192,7 @@ out:
  
  static int my_setprocattr(const char *name, void *value, size_t size);
  struct ksu_lsm_hook selinux_setprocattr_hook = KSU_LSM_HOOK_INIT(setprocattr, "selinux_setprocattr", my_setprocattr, 0);
@@ -549,7 +549,7 @@ index 385b415a0ee7b39c1a94567c504cd0cbada9c0fb..1c113f255be949c1afe1d698c9c445c1
  
  /*
   * get the security ID of a set of credentials
-@@ -380,6 +383,213 @@ static int my_sel_open_handle_status(struct inode *inode, struct file *filp)
+@@ -387,6 +390,213 @@ static int my_sel_open_handle_status(struct inode *inode, struct file *filp)
      return ret;
  }
  
@@ -763,7 +763,7 @@ index 385b415a0ee7b39c1a94567c504cd0cbada9c0fb..1c113f255be949c1afe1d698c9c445c1
  static void hook_selinux_status_open();
  static void ksu_selinux_hide_unhook();
  static int ksu_selinux_hide_enable()
-@@ -408,27 +618,26 @@ static int ksu_selinux_hide_enable()
+@@ -415,27 +625,26 @@ static int ksu_selinux_hide_enable()
  
      context_write = &selinux_write_op[SEL_CONTEXT];
      pr_info("selinux_hide: context_write: 0x%lx [%pSb]\n", (unsigned long)*context_write, *context_write);
@@ -798,7 +798,7 @@ index 385b415a0ee7b39c1a94567c504cd0cbada9c0fb..1c113f255be949c1afe1d698c9c445c1
          goto unhook;
      }
  
-@@ -442,7 +651,11 @@ unhook:
+@@ -449,7 +658,11 @@ unhook:
  static void ksu_selinux_hide_unhook()
  {
      int ret;
@@ -811,7 +811,7 @@ index 385b415a0ee7b39c1a94567c504cd0cbada9c0fb..1c113f255be949c1afe1d698c9c445c1
          ret =
              ksu_patch_text(context_write, &orig_context_write, sizeof(orig_context_write), KSU_PATCH_TEXT_FLUSH_DCACHE);
          orig_context_write = NULL;
-@@ -450,14 +663,22 @@ static void ksu_selinux_hide_unhook()
+@@ -457,14 +670,22 @@ static void ksu_selinux_hide_unhook()
              pr_err("selinux_hide: exit: patch_text context_write err: %d\n", ret);
          }
      }
@@ -836,7 +836,7 @@ index 385b415a0ee7b39c1a94567c504cd0cbada9c0fb..1c113f255be949c1afe1d698c9c445c1
          ret = ksu_patch_text(sel_open_handle_status_slot, &orig_sel_open_handle_status,
                               sizeof(orig_sel_open_handle_status), KSU_PATCH_TEXT_FLUSH_DCACHE);
          orig_sel_open_handle_status = NULL;
-@@ -465,7 +686,14 @@ static void ksu_selinux_hide_unhook()
+@@ -472,7 +693,14 @@ static void ksu_selinux_hide_unhook()
              pr_err("selinux_hide: exit: patch_text sel_open_handle_status err: %d\n", ret);
          }
      }
@@ -852,7 +852,7 @@ index 385b415a0ee7b39c1a94567c504cd0cbada9c0fb..1c113f255be949c1afe1d698c9c445c1
  }
  
  static void ksu_selinux_hide_disable()
-@@ -486,7 +714,6 @@ static int selinux_hide_feature_set(u64 value)
+@@ -493,7 +721,6 @@ static int selinux_hide_feature_set(u64 value)
      int ret = 0;
      pr_info("selinux_hide: set to %d\n", enable);
      mutex_lock(&selinux_hide_mutex);
@@ -860,7 +860,7 @@ index 385b415a0ee7b39c1a94567c504cd0cbada9c0fb..1c113f255be949c1afe1d698c9c445c1
      if (enable) {
          if (!ksu_selinux_hide_running) {
              ret = ksu_selinux_hide_enable();
-@@ -500,6 +727,10 @@ static int selinux_hide_feature_set(u64 value)
+@@ -507,6 +734,10 @@ static int selinux_hide_feature_set(u64 value)
              ksu_selinux_hide_running = false;
          }
      }
@@ -871,7 +871,7 @@ index 385b415a0ee7b39c1a94567c504cd0cbada9c0fb..1c113f255be949c1afe1d698c9c445c1
      mutex_unlock(&selinux_hide_mutex);
      return ret;
  }
-@@ -542,11 +773,15 @@ static void hook_selinux_status_open()
+@@ -549,11 +780,15 @@ static void hook_selinux_status_open()
          }
          sel_open_handle_status_slot = &ops->open;
      }
@@ -1487,6 +1487,29 @@ index 1a76dbd784767c5a819bde5e8dc46d83152f4272..7f8ed68a8d3b00dfcb8093fe295a2521
 +     * enforcing against the task it still believes is a root task. */
 +    ksu_samsung_defex_sync_current();
  }
+diff --git a/userspace/ksud/src/cli.rs b/userspace/ksud/src/cli.rs
+index 79ebd9f425b151bc87b18dc48a7010b254320207..30504d0e846f3e39738c4b8bad42f5cb870854b1 100644
+--- a/userspace/ksud/src/cli.rs
++++ b/userspace/ksud/src/cli.rs
+@@ -742,13 +742,13 @@ pub fn run() -> Result<()> {
+         Commands::Profile { command } => match command {
+             Profile::Get { package, uid } => crate::profile::get_profile(&package, uid),
+             Profile::Set { file } => crate::profile::set_profile(file.as_deref()),
+-            Profile::GetSepolicy { package } => crate::profile::get_sepolicy(package),
++            Profile::GetSepolicy { package } => crate::profile::get_sepolicy(&package),
+             Profile::SetSepolicy { package, policy } => {
+-                crate::profile::set_sepolicy(package, policy)
++                crate::profile::set_sepolicy(&package, policy)
+             }
+-            Profile::GetTemplate { id } => crate::profile::get_template(id),
+-            Profile::SetTemplate { id, template } => crate::profile::set_template(id, template),
+-            Profile::DeleteTemplate { id } => crate::profile::delete_template(id),
++            Profile::GetTemplate { id } => crate::profile::get_template(&id),
++            Profile::SetTemplate { id, template } => crate::profile::set_template(&id, template),
++            Profile::DeleteTemplate { id } => crate::profile::delete_template(&id),
+             Profile::ListTemplates => crate::profile::list_templates(),
+         },
+ 
 diff --git a/userspace/ksud/src/late_load.rs b/userspace/ksud/src/late_load.rs
 index c086df0939dde1ce345d9282262871ee13fb93b1..031a85d9ccb4a4d4bdf9fdc82bfec9000fc524d5 100644
 --- a/userspace/ksud/src/late_load.rs
@@ -1541,6 +1564,59 @@ index c086df0939dde1ce345d9282262871ee13fb93b1..031a85d9ccb4a4d4bdf9fdc82bfec900
 -        ])
 -        .status();
 -
+     Ok(())
+ }
+diff --git a/userspace/ksud/src/profile.rs b/userspace/ksud/src/profile.rs
+index d4bd259116e4b72ef3a5564970ae72fd8553e553..22e81da41cc868b3a1c1190b5925e404d6180d36 100644
+--- a/userspace/ksud/src/profile.rs
++++ b/userspace/ksud/src/profile.rs
+@@ -15,38 +15,38 @@ fn profile_path(dir: &str, name: &str) -> Result<PathBuf> {
+     Ok(Path::new(dir).join(name))
+ }
+ 
+-pub fn set_sepolicy(pkg: String, policy: String) -> Result<()> {
+-    let policy_file = profile_path(defs::PROFILE_SELINUX_DIR, &pkg)?;
++pub fn set_sepolicy(pkg: &str, policy: String) -> Result<()> {
++    let policy_file = profile_path(defs::PROFILE_SELINUX_DIR, pkg)?;
+     ensure_dir_exists(defs::PROFILE_SELINUX_DIR)?;
+     std::fs::write(&policy_file, policy)?;
+     sepolicy::apply_file(&policy_file)?;
+     Ok(())
+ }
+ 
+-pub fn get_sepolicy(pkg: String) -> Result<()> {
+-    let policy_file = profile_path(defs::PROFILE_SELINUX_DIR, &pkg)?;
++pub fn get_sepolicy(pkg: &str) -> Result<()> {
++    let policy_file = profile_path(defs::PROFILE_SELINUX_DIR, pkg)?;
+     let policy = std::fs::read_to_string(policy_file)?;
+     println!("{policy}");
+     Ok(())
+ }
+ 
+ // ksud doesn't guarteen the correctness of template, it just save
+-pub fn set_template(id: String, template: String) -> Result<()> {
+-    let template_file = profile_path(defs::PROFILE_TEMPLATE_DIR, &id)?;
++pub fn set_template(id: &str, template: String) -> Result<()> {
++    let template_file = profile_path(defs::PROFILE_TEMPLATE_DIR, id)?;
+     ensure_dir_exists(defs::PROFILE_TEMPLATE_DIR)?;
+     std::fs::write(template_file, template)?;
+     Ok(())
+ }
+ 
+-pub fn get_template(id: String) -> Result<()> {
+-    let template_file = profile_path(defs::PROFILE_TEMPLATE_DIR, &id)?;
++pub fn get_template(id: &str) -> Result<()> {
++    let template_file = profile_path(defs::PROFILE_TEMPLATE_DIR, id)?;
+     let template = std::fs::read_to_string(template_file)?;
+     println!("{template}");
+     Ok(())
+ }
+ 
+-pub fn delete_template(id: String) -> Result<()> {
+-    let template_file = profile_path(defs::PROFILE_TEMPLATE_DIR, &id)?;
++pub fn delete_template(id: &str) -> Result<()> {
++    let template_file = profile_path(defs::PROFILE_TEMPLATE_DIR, id)?;
+     std::fs::remove_file(template_file)?;
      Ok(())
  }
 diff --git a/userspace/ksud/src/soft_reboot.rs b/userspace/ksud/src/soft_reboot.rs

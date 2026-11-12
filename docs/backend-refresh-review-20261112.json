@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "baseCommit": "8fba9060a98aeca094958f89663e44d2f0911a71",
+  "version": "1.4.0",
+  "changed": [
+    "kernelsu",
+    "kernelsu-next"
+  ],
+  "targets": {
+    "kernelsu": {
+      "commit": "dbb73665d103da40c7ecbd21ba3b5ac76eb95784",
+      "version": 32727,
+      "uapi": 6
+    },
+    "kernelsu-next": {
+      "commit": "3987e4d5de21348050b923e7d7a6540ddc2d5c8c",
+      "version": 33548,
+      "uapi": 6
+    },
+    "resukisu": {
+      "commit": "548d1dda060ca198823d8808804d01f5209ef4a9",
+      "version": 35259,
+      "uapi": 6
+    },
+    "kowsu": {
+      "commit": "21787ce135c988bae4244a44cfcb5a542aa3347f",
+      "version": 32750,
+      "uapi": 6
+    }
+  },
+  "trustedSourceAndHelperValidation": "passed",
+  "matchedDriverDaemonValidation": "passed",
+  "apkPackageVersionAndPayloadValidation": "passed with production binary XML parser",
+  "exploitAndSusfsUnchanged": true,
+  "hardwareTested": false,
+  "date": "2026-11-12",
+  "backendBuildRun": "https://github.com/xorpix/Root-My-Galaxy-Ultra/actions/runs/43325093426",
+  "backendBuildArtifact": {
+    "id": 13993600981,
+    "sha256": "3d5db80fc659fb221032a66f6ec5270a5d8ae76a6adf0cf7f6f5c10eb38374d4"
+  },
+  "susfsQualificationRun": "https://github.com/xorpix/Root-My-Galaxy-Ultra/actions/runs/43325093403",
+  "obsoletePatchesRemoved": [
+    "backends/kernelsu-next/samsung-compat-33487.patch",
+    "backends/kernelsu-next/samsung-compat-33501.patch",
+    "backends/kowsu/samsung-compat-32740.patch",
+    "backends/kernelsu/samsung-compat-32725.patch",
+    "backends/kernelsu/samsung-compat-32718.patch",
+    "backends/resukisu/samsung-compat-35257.patch"
+  ]
+}

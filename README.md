@@ -33,6 +33,13 @@ The recorded BZIG and Canadian BZID entries keep their existing profile IDs.
 BZJA (`S948BXXU5BZJA`) root and SusFS have been confirmed by the maintainer;
 users have also reported successful tests on other S26 Ultra variants.
 
+November 2026 firmware, including BZK1, uses the same automatic family route
+across regional models; it needs no separate firmware profile. The maintainer
+reports multiple successful November tests with DFRpot. These support the root
+method's continued availability, while each RMGU backend still needs validation
+on the particular phone. After a firmware update, start a fresh root run so the
+app selects payloads for the phone's current identity.
+
 **Recognition is not a hardware-test result.** Patched firmware can block
 DirtyFrag, and a compatible kernel family does not by itself verify Samsung
 backend loading. Other kernel families and 16 KB pages need matching native
@@ -78,8 +85,8 @@ The current source bundles these driver/daemon pairs:
 
 | Backend | Driver / UAPI | Verified compatible manager downloads |
 |---|---|---|
-| KernelSU | `32725 / 6` | [Manager APK (ZIP)](https://nightly.link/tiann/KernelSU/actions/runs/42752125733/manager.zip) · [Official build](https://github.com/tiann/KernelSU/actions/runs/42752125733) |
-| KernelSU-Next | `33501 / 6` | [Manager APK (ZIP)](https://nightly.link/KernelSU-Next/KernelSU-Next/actions/runs/42766993784/manager.zip) · [Official build](https://github.com/KernelSU-Next/KernelSU-Next/actions/runs/42766993784) |
+| KernelSU | `32727 / 6` | [Manager APK (ZIP)](https://nightly.link/tiann/KernelSU/actions/runs/42841909373/manager.zip) · [Official build](https://github.com/tiann/KernelSU/actions/runs/42841909373) |
+| KernelSU-Next | `33548 / 6` | [Manager APK (ZIP)](https://nightly.link/KernelSU-Next/KernelSU-Next/actions/runs/43244992299/manager.zip) · [Official build](https://github.com/KernelSU-Next/KernelSU-Next/actions/runs/43244992299) |
 | BakaSU | `35259 / 6` | [Manager APKs (ZIP)](https://nightly.link/Baka-SU/BakaSU/actions/runs/42723315215/Manager-release.zip) · [Official build](https://github.com/Baka-SU/BakaSU/actions/runs/42723315215) |
 | KowSU | `32750 / 6` | [Manager APK (ZIP)](https://nightly.link/KOWX712/KernelSU/actions/runs/42572945101/manager.zip) · [Official build](https://github.com/KOWX712/KernelSU/actions/runs/42572945101) |
 

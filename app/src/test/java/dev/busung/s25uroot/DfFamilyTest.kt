@@ -6,6 +6,9 @@ import org.junit.Test
 
 class DfFamilyTest {
     private fun catalog() = File("src/main/assets/df/catalog.json").readBytes()
+    private val regionalModels = listOf("SM-S948B", "SM-S948B/DS", "SM-S948U", "SM-S948U1", "SM-S948W",
+        "SM-S948N", "SM-S9480", "SM-S9480V", "SM-S948Q", "SM-S948Z", "SM-S948C",
+        "SM-S948D", "SM-S948J", "SC-53G", "SCG37")
     private val device = DeviceSnapshot(
         manufacturer = "samsung", model = "SM-S948U1", device = "m3q",
         kernelRelease = "6.12.69-android16-6-test-regional-build-4k",
@@ -16,10 +19,7 @@ class DfFamilyTest {
     )
 
     @Test fun regionalAndJapaneseModelsSelectEachOfTheirOwnBundledBackends() {
-        val models = listOf("SM-S948B", "SM-S948B/DS", "SM-S948U", "SM-S948U1", "SM-S948W",
-            "SM-S948N", "SM-S9480", "SM-S9480V", "SM-S948Q", "SM-S948Z", "SM-S948C",
-            "SM-S948D", "SM-S948J", "SC-53G", "SCG37")
-        models.forEach { model ->
+        regionalModels.forEach { model ->
             val snapshot = device.copy(model = model)
             assertTrue("Family not recognized: $model", DfPort.matches(snapshot))
             assertNull(DfPort.identityRefusal(snapshot))
@@ -73,6 +73,34 @@ class DfFamilyTest {
             assertEquals(current, DfCatalog.requireCurrent(catalog(), bzja, current))
             assertNotNull(backendRunRefusal(old, bzja, flavor, null, false))
             assertTrue(runCatching { DfCatalog.requireCurrent(catalog(), bzja, old) }.isFailure)
+        }
+    }
+
+    @Test fun novemberFirmwareSelectsEveryBackendAndInvalidatesThePreviousFirmwareProfile() {
+        regionalModels.forEachIndexed { index, model ->
+            // The Korean identity was extracted from its official November boot image.
+            // Other identities are synthetic fixtures for the regional family rule.
+            val november = device.copy(model = model,
+                incremental = if (model == "SM-S948N") "S948NKSS6BZK1" else "november-fixture-$index",
+                kernelRelease = if (model == "SM-S948N")
+                    "6.12.69-android16-6-p342046c-abogkiS948NKSS6BZK1-4k"
+                else "6.12.69-android16-6-november-fixture-$index-4k")
+            val previous = november.copy(incremental = "previous-fixture-$index",
+                kernelRelease = "6.12.69-android16-6-previous-fixture-$index-4k")
+            val before = DfCatalog.forDevice(catalog(), previous)
+            val after = DfCatalog.forDevice(catalog(), november)
+            assertTrue(model, DfPort.matches(november))
+            KernelSuFlavor.entries.forEach { flavor ->
+                val old = requireNotNull(before.resolveFor(previous, flavor))
+                val current = requireNotNull(after.resolveFor(november, flavor))
+                assertEquals(DfPort.firmwareFor(november), current.firmware)
+                assertEquals(old.kernelSu, current.kernelSu)
+                assertNotEquals(old.profileId, current.profileId)
+                assertNull(backendRunRefusal(current, november, flavor, null, false))
+                assertNotNull(backendRunRefusal(old, november, flavor, null, false))
+                assertEquals(current, DfCatalog.requireCurrent(catalog(), november, current))
+                assertTrue(runCatching { DfCatalog.requireCurrent(catalog(), november, old) }.isFailure)
+            }
         }
     }
 
