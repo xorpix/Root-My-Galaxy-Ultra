@@ -73,6 +73,13 @@ class EarlyRootService : Service() {
                         error.message ?: error.javaClass.simpleName, startedLocked, !unlocked(),
                         evidence = launchEvidence)
                 }
+                // A stale Direct Boot policy must not swallow the normal post-unlock path.
+                // Once native staging claimed this boot, no fallback may attempt root again.
+                runCatching {
+                    if (error !is kotlinx.coroutines.CancellationException && earlyRootMayFallback(unlocked(), EarlyRootStore.requested(this@EarlyRootService),
+                            bootToken.isNotBlank() && DfBootAttempt.claimed(this@EarlyRootService, bootToken),
+                            bootToken.isNotBlank())) AutoRootService.start(this@EarlyRootService)
+                }
             } finally {
                 handler.removeCallbacks(watchdog)
                 runCatching { if (wakeLock?.isHeld == true) wakeLock?.release() }

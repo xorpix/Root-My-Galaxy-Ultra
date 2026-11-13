@@ -3,7 +3,6 @@ package dev.busung.s25uroot
 import android.content.Context
 import android.system.Os
 import java.io.File
-import java.io.FileOutputStream
 import java.security.MessageDigest
 
 /** Where a run's payload files came from. */
@@ -53,9 +52,12 @@ internal object KnownGoodPayloadStore {
     private const val PREFERENCES = "known_good_payload"
     private const val ACTIVE = "active"
     private const val ROOT = "payloads/known-good"
-    private const val DESCRIPTOR = "payload.json"
-    private const val EXPLOIT = "cve-2026-43499-app.so"
-    private const val KSUD = "ksud-s25u-kdp"
+    private fun cache(context: Context) = PayloadCache(
+        File(context.filesDir, ROOT),
+        SharedJsonFile(File(context.filesDir, "payloads/known-good-active.json")),
+        legacyActive = { context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).getString(ACTIVE, null) },
+        protect = { Os.chmod(it.absolutePath, 0b100100100) },
+    )
 
     /** Name of the root helper this app bundles, as the manifest's own metadata describes it. */
     const val ROOT_HELPER_LIBRARY = "libcve43499root.so"
@@ -86,24 +88,9 @@ internal object KnownGoodPayloadStore {
      */
     fun load(context: Context, requestedProfileId: String? = null,
         snapshot: DeviceSnapshot = DeviceSnapshot.current()): VerifiedPayloads {
-        val cached = usableDescriptor(context, requestedProfileId, snapshot)
-        val directory = directory(context, cached.id)
-        val exploit = File(directory, EXPLOIT)
-        val kernelSu = File(directory, KSUD)
-        require(fileMatchesArtifact(exploit, cached.exploit)) {
-            context.getString(R.string.offline_cached_artifact_invalid, exploit.name)
-        }
-        require(fileMatchesArtifact(kernelSu, cached.kernelSu)) {
-            context.getString(R.string.offline_cached_artifact_invalid, kernelSu.name)
-        }
-        Os.chmod(exploit.absolutePath, 0b100100100)
-        Os.chmod(kernelSu.absolutePath, 0b100100100)
-        // The cache is what an offline run loads, so this is one of the moments the app decides which
-        // KernelSU this device will run - and the manager rows offer that release's manager from it.
-        // Recorded here rather than when the cache was published, because the run happening now is what
-        // the offer is about.
-        rememberResolvedPayload(context, cached.profile())
-        return VerifiedPayloads(cached.profile(), exploit, kernelSu, PayloadOrigin.Cached)
+        val payloads = cache(context).load { cached -> validate(context, cached, requestedProfileId, snapshot) }
+        rememberResolvedPayload(context, payloads.profile)
+        return payloads
     }
 
     /**
@@ -143,13 +130,7 @@ internal object KnownGoodPayloadStore {
         )
 
         val descriptor = CachedPayload(
-            id = knownGoodId(
-                // The feed's own digests when it states them, because those are what the run checked
-                // the files against; computed only for a feed that does not.
-                exploitSha256 = profile.exploit.sha256 ?: sha256Of(payloads.exploit),
-                kernelSuSha256 = profile.kernelSu.sha256 ?: sha256Of(payloads.kernelSu),
-                helperSha256 = helperSha256,
-            ),
+            id = "", // The cache assigns a new immutable generation when metadata or files change.
             profileId = profile.profileId,
             displayName = profile.displayName,
             models = profile.models.toList(),
@@ -168,38 +149,7 @@ internal object KnownGoodPayloadStore {
             firmware = profile.firmware,
         )
 
-        val root = File(context.filesDir, ROOT).apply {
-            require(mkdirs() || isDirectory) { "Unable to create the offline payload cache" }
-        }
-        val destination = File(root, descriptor.id)
-        if (!destination.isDirectory) {
-            val temporary = File(root, ".${descriptor.id}.${System.nanoTime()}.tmp")
-            temporary.deleteRecursively()
-            require(temporary.mkdirs()) { "Unable to create the offline payload cache entry" }
-            try {
-                copyVerified(payloads.exploit, File(temporary, EXPLOIT), profile.exploit)
-                copyVerified(payloads.kernelSu, File(temporary, KSUD), profile.kernelSu)
-                FileOutputStream(File(temporary, DESCRIPTOR)).use { output ->
-                    output.write(descriptor.toJson().toByteArray())
-                    output.fd.sync()
-                }
-                if (destination.exists()) destination.deleteRecursively()
-                require(temporary.renameTo(destination)) { "Unable to publish the offline payload cache" }
-            } finally {
-                temporary.deleteRecursively()
-            }
-        }
-
-        val stored = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-            .edit()
-            .putString(ACTIVE, descriptor.id)
-            .putString(ACTIVE + "_profile", descriptor.profileId)
-            .commit()
-        require(stored) { "Unable to activate the offline payload cache" }
-
-        // One payload is all Offline mode can use, so keeping others would only be disk.
-        root.listFiles()?.filter { it.name != descriptor.id }?.forEach(File::deleteRecursively)
-        return descriptor
+        return cache(context).publish(descriptor, payloads.exploit, payloads.kernelSu)
     }
 
     /**
@@ -209,16 +159,17 @@ internal object KnownGoodPayloadStore {
      */
     @Synchronized
     fun clear(context: Context) {
-        context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE).edit()
-            .remove(ACTIVE)
-            .remove(ACTIVE + "_profile")
-            .commit()
-        File(context.filesDir, ROOT).deleteRecursively()
+        cache(context).clear()
     }
 
     /** The descriptor, with the checks that make it usable for this device and this build applied. */
     private fun usableDescriptor(context: Context, requestedProfileId: String?, snapshot: DeviceSnapshot): CachedPayload {
         val cached = descriptor(context)
+        validate(context, cached, requestedProfileId, snapshot)
+        return cached
+    }
+
+    private fun validate(context: Context, cached: CachedPayload, requestedProfileId: String?, snapshot: DeviceSnapshot) {
         val helper = bundledRootHelper(context)
         // A missing helper is its own refusal rather than a digest mismatch: the message for a
         // mismatch tells the user to run an online install, which would not help here.
@@ -231,23 +182,9 @@ internal object KnownGoodPayloadStore {
             snapshot = snapshot,
             requestedProfileId = requestedProfileId,
         )?.let { reason -> error(reason) }
-        return cached
     }
 
-    private fun descriptor(context: Context): CachedPayload {
-        val id = context.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
-            .getString(ACTIVE, null)
-            ?.trim()
-            ?.takeIf(String::isNotBlank)
-            ?: error(context.getString(R.string.offline_cache_empty))
-        val file = File(directory(context, id), DESCRIPTOR)
-        require(file.isFile) { context.getString(R.string.offline_cache_empty) }
-        val cached = CachedPayload.parse(file.readText())
-        require(cached.id == id) { "Offline payload cache does not describe itself" }
-        return cached
-    }
-
-    private fun directory(context: Context, id: String): File = File(File(context.filesDir, ROOT), id)
+    private fun descriptor(context: Context): CachedPayload = cache(context).describe()
 
     /**
      * The helper the app bundles, as an artifact-like pair of hash and size.
@@ -267,17 +204,7 @@ internal object KnownGoodPayloadStore {
         )
     }
 
-    private fun copyVerified(source: File, destination: File, artifact: RemoteArtifact) {
-        require(fileMatchesArtifact(source, artifact))
-        source.inputStream().use { input ->
-            FileOutputStream(destination).use { output ->
-                input.copyTo(output)
-                output.fd.sync()
-            }
-        }
-        Os.chmod(destination.absolutePath, 0b100100100)
-        require(fileMatchesArtifact(destination, artifact))
-    }
+
 }
 
 /**

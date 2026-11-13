@@ -145,14 +145,7 @@ private fun JSONObject.artifact(): RemoteArtifact = RemoteArtifact(
     sha256 = optString("sha256").trim().takeIf(String::isNotEmpty),
 )
 
-/**
- * The identity of a cached payload.
- *
- * Built from the hashes of what was cached rather than from a timestamp or a counter, so the same
- * verified payload caches to the same id and re-publishing it is a no-op instead of an accumulating
- * copy. The helper is part of it because the payload only works with the helper it was verified
- * against: an app update that ships a different one must not be able to load the old pairing.
- */
+/** Legacy v1 identity, used when reading/testing caches created before immutable generations. */
 internal fun knownGoodId(exploitSha256: String, kernelSuSha256: String, helperSha256: String): String =
     "v1-${exploitSha256.take(16)}-${kernelSuSha256.take(16)}-${helperSha256.take(16)}"
 
@@ -179,6 +172,6 @@ internal fun cacheRejectionReason(
     !cached.profile().matchesKernelVersion(snapshot) ->
         "The cached payload does not list this kernel version"
     !cached.profile().matches(snapshot) ->
-        "The cached payload does not match this exact firmware identity"
+        "Firmware changed since this backend was cached. Complete one manual root run to refresh automatic root."
     else -> null
 }

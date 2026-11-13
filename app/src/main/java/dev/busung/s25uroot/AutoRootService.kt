@@ -184,20 +184,14 @@ class AutoRootService : Service() {
                 return
             }
             AutoRootDecision.NeedsPriorInstall -> {
-                AppLog.warn(AppLogTags.BOOT, "Root on boot needs one online install first")
-                finish(getString(R.string.autoroot_prior_install_required))
+                val detail = runCatching { KnownGoodPayloadStore.load(this) }.exceptionOrNull()?.message
+                    ?: getString(R.string.autoroot_prior_install_required)
+                AppLog.warn(AppLogTags.BOOT, "Root on boot is not ready: $detail")
+                finish(detail)
                 return
             }
             AutoRootDecision.Run -> Unit
         }
-        // The attempt is claimed before the run rather than after, so two components racing the same
-        // boot cannot both spend it.
-        if (!AutoRootSupport.claimAttempt(this, initialBootToken)) {
-            AppLog.warn(AppLogTags.BOOT, "Root on boot skipped: this boot's attempt is already spent")
-            stopWithoutResult()
-            return
-        }
-
         val wakeLock = acquireGateWakeLock()
         try {
             withTimeout(GATE_LIMIT_MILLIS) {
@@ -219,9 +213,8 @@ class AutoRootService : Service() {
                 }
                 // Asked again, because the walk to the phone takes minutes and a run can be started from the
                 // app during it: the decision above answered for the boot, and this answers for the device as
-                // it is now. It is reported rather than silent, because by here the attempt has been claimed -
-                // so this is a boot that got no automatic install, and the notification is the only account
-                // of why. The run it yields to is the user's own and has its own notification.
+                // it is now. The notification explains why the automatic install stood down after waiting.
+                // No native attempt has been claimed yet. The run it yields to is the user's own and has its own notification.
                 if (RunInFlight.holder(this@AutoRootService) != null) {
                     AppLog.warn(AppLogTags.BOOT, "Root on boot stood down after the wait: a run was in flight")
                     finish(getString(R.string.autoroot_run_in_flight))
@@ -243,7 +236,20 @@ class AutoRootService : Service() {
                         finish(step.refusal.message, answers = step.refusal.answers)
                         return@withTimeout
                     }
-                    is ShizukuStep.Run -> runInstall(bootToken, withoutShell = step.withoutShell)
+                    is ShizukuStep.Run -> {
+                        if (!AppPreferences.bootRootMode(this@AutoRootService) &&
+                            !AppPreferences.retryPendingForBoot(this@AutoRootService, bootToken)) {
+                            stopWithoutResult()
+                            return@withTimeout
+                        }
+                        // Preparation must not consume a one-shot retry before the policy recheck.
+                        // Claim immediately before the run, after delay and transport preparation.
+                        if (!AutoRootSupport.claimAttempt(this@AutoRootService, bootToken)) {
+                            stopWithoutResult()
+                            return@withTimeout
+                        }
+                        runInstall(bootToken, withoutShell = step.withoutShell)
+                    }
                 }
             }
         } catch (timeout: TimeoutCancellationException) {

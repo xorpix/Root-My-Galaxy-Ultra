@@ -369,13 +369,17 @@ object AppPreferences {
             .apply()
     }
 
+    private fun bootOptions(context: Context) = SharedJsonFile(java.io.File(context.filesDir, "boot-root-options.json"))
+
     fun bootRootMode(context: Context): Boolean =
-        prefs(context).getBoolean(BOOT_ROOT_MODE, false)
+        bootOptions(context).read()?.takeIf { it.has("enabled") }?.getBoolean("enabled")
+            ?: prefs(context).getBoolean(BOOT_ROOT_MODE, false)
 
     fun setBootRootMode(context: Context, enabled: Boolean) {
         prefs(context).edit()
             .putBoolean(BOOT_ROOT_MODE, enabled)
             .apply()
+        bootOptions(context).update { (it ?: JSONObject()).put("enabled", enabled) }
         EarlyRootStore.syncOptions(context)
     }
 
@@ -415,10 +419,28 @@ object AppPreferences {
         // Committed rather than applied: the retry is armed before a reboot is asked for, and an
         // asynchronous write that had not landed would lose the whole decision.
         editor.commit()
+        bootOptions(context).update { (it ?: JSONObject()).put("retryBoot", armedForBoot.orEmpty()) }
     }
 
-    fun retryArmedInBoot(context: Context): String? =
-        prefs(context).getString(RETRY_AFTER_REBOOT, null)?.takeIf(String::isNotBlank)
+    fun retryArmedInBoot(context: Context): String? {
+        val saved = bootOptions(context).read()
+        return (if (saved?.has("retryBoot") == true) saved.getString("retryBoot")
+            else prefs(context).getString(RETRY_AFTER_REBOOT, null))?.takeIf(String::isNotBlank)
+    }
+
+    /** Consume only the retry that requested this boot, preserving one armed for the next boot. */
+    internal fun consumeRetryForBoot(context: Context, bootToken: String) {
+        val consumed = bootOptions(context).transaction { saved, save ->
+            val current = saved ?: JSONObject()
+            val armed = (if (current.has("retryBoot")) current.getString("retryBoot")
+                else prefs(context).getString(RETRY_AFTER_REBOOT, null))?.takeIf(String::isNotBlank)
+            if (skipTakesBackRetry(armed, bootToken)) {
+                save(current.put("retryBoot", ""))
+                true
+            } else false
+        }
+        if (consumed) prefs(context).edit().remove(RETRY_AFTER_REBOOT).commit()
+    }
 
     /** Whether a retry is armed and this is not the boot it was armed in. */
     fun retryPendingForBoot(context: Context, bootToken: String?): Boolean {
