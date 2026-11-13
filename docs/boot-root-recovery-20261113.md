@@ -15,6 +15,8 @@ old firmware identity. Removing app data removed that directory and concealed th
 - Read the active cache, root receipt, boot claims, root-on-boot switch and retry request from files
   reopened across processes. Serialize changes with operating-system file locks. Existing settings
   and valid v1 caches remain readable; a cleared cache cannot be resurrected by a stale legacy pointer.
+  A running worker sees a later master-switch opt-out. Damaged boot options stay off until an explicit
+  edit repairs them, without silently restoring an older retry request.
 - Save the cache before activating SusFS, while the observed kernel name is still the run's original
   identity. A verified manual DirtyFrag run also renews an already-enabled early-root policy for the
   same backend. Disabled choices stay disabled, and the current bundled profile must match exactly.
@@ -34,7 +36,8 @@ Android unit suite, boot handoff tests, signed APK build, embedded companion ver
 backend/SusFS integrity checks run in the Early Root Test Build workflow.
 
 A new phone test is still required. Install the signed candidate over 1.4.0, keep the app's existing
-data, fully reboot, and perform one manual root run. With early root already enabled, the next full
-reboot should use the renewed configuration without toggling it or reinstalling. Firmware or backend
+data, and fully reboot to check automatic rooting. If the previous cache was rejected after a firmware
+update, complete one manual root run and reboot again. With early root already enabled, that reboot
+should use the renewed configuration without toggling it or reinstalling. Firmware or backend
 changes still require a successful manual run before early-root approval is renewed. The native root
 method, bundled backends and SusFS module are unchanged.

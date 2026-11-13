@@ -996,10 +996,6 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                     runCatching { KnownGoodPayloadStore.publish(app, payloads) }
                         .onSuccess { cached ->
                             appendLog(app.getString(R.string.log_payload_cached_now, cached.profileId))
-                            if (dfVerifiedInstall && !runIsUnattended) {
-                                runCatching { EarlyRootStore.refreshAfterVerifiedRun(app, cached.profile()) }
-                                    .onFailure { appendLog("Early root setup could not be refreshed: ${it.message}") }
-                            }
                         }
                         .onFailure { error ->
                             appendLog(
@@ -1009,6 +1005,14 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                                 ),
                             )
                         }
+                }
+                if (dfVerifiedInstall && !runIsUnattended) {
+                    runCatching {
+                        // Offline manual runs must also repair an existing early-root policy.
+                        val cached = KnownGoodPayloadStore.load(app)
+                        check(cached.profile == payloads.profile) { "The current run was not saved as the boot backend" }
+                        EarlyRootStore.refreshAfterVerifiedRun(app, cached.profile)
+                    }.onFailure { appendLog("Early root setup could not be refreshed: ${it.message}") }
                 }
                 activateSusfsIfEnabled()
 

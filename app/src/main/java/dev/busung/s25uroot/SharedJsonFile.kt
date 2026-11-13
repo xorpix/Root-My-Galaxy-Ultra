@@ -9,6 +9,8 @@ import java.nio.file.StandardCopyOption
 
 /** Reopened reads and locked, atomic writes shared by the UI and boot workers. */
 internal class SharedJsonFile(private val file: File) {
+    fun exists(): Boolean = file.exists()
+
     fun read(): JSONObject? {
         if (!file.exists()) return null
         require(file.length() in 1..65_536) { "Invalid saved state: ${file.name}" }

@@ -242,7 +242,7 @@ class AutoRootDecisionTest {
         val source = source("src/main/java/dev/busung/s25uroot/InstallViewModel.kt")
         val verified = source.indexOf("installKernelSu(payloads)")
         val cached = source.indexOf("KnownGoodPayloadStore.publish(app, payloads)")
-        val renewed = source.indexOf("EarlyRootStore.refreshAfterVerifiedRun(app, cached.profile())")
+        val renewed = source.indexOf("EarlyRootStore.refreshAfterVerifiedRun(app, cached.profile)")
         val susfs = source.indexOf("activateSusfsIfEnabled()")
         assertTrue(verified in 0 until cached && cached < renewed && renewed < susfs)
     }

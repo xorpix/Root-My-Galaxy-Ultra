@@ -96,7 +96,7 @@ class ManagerOfferTest {
             "src/main/java/dev/busung/s25uroot/PayloadRepository.kt" to
                 "rememberResolvedPayload(context, resolved)",
             "src/main/java/dev/busung/s25uroot/OfflinePayloadStore.kt" to
-                "rememberResolvedPayload(context, cached.profile())",
+                "rememberResolvedPayload(context, payloads.profile)",
             "src/main/java/dev/busung/s25uroot/MainActivity.kt" to
                 "rememberResolvedPayload(context, profile)",
         )
