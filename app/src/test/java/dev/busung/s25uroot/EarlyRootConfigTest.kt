@@ -66,7 +66,7 @@ class EarlyRootConfigTest {
         assertTrue(renewed.matches(snapshot, profile))
         assertTrue(renewed.susfsAutoEnable)
         assertTrue(renewed.restartAfterRoot)
-        assertEquals(old.settleSeconds, renewed.settleSeconds)
+        assertEquals(0, renewed.settleSeconds)
         assertNull(old.copy(enabled = false).afterVerifiedRun(snapshot, profile))
         assertNull(old.copy(rootOnBoot = false).afterVerifiedRun(snapshot, profile))
         assertNull(old.copy(flavor = KernelSuFlavor.KernelSuNext.id).afterVerifiedRun(snapshot, profile))

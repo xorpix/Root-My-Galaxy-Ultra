@@ -36,7 +36,12 @@ internal object BootSettle {
      * automatic path read the manual setting, then turning automation on and finding it too slow would
      * change what a manual run does next time - one decision quietly rewriting another.
      */
+    // Used only by payloads with a settling stage; DirtyFrag automatic runs use automaticSeconds().
     const val AUTO_ROOT_DEFAULT_SECONDS = 60
+
+    /** DirtyFrag has no allocator-settling gate; old saved delays must not hold its boot path. */
+    fun automaticSeconds(configuredSeconds: Int, dirtyFrag: Boolean): Int =
+        if (dirtyFrag) 0 else normalize(configuredSeconds)
 
     /** The name the payload reads the window below under. */
     const val PAYLOAD_QUIET_WINDOW_ENV = "P0_MIN_BOOT_UPTIME_SEC"

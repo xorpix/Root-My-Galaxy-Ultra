@@ -10,6 +10,10 @@ on:
       - 'app/src/main/java/dev/busung/s25uroot/*Root*.kt'
       - 'app/src/main/java/dev/busung/s25uroot/*Payload*.kt'
       - 'app/src/main/java/dev/busung/s25uroot/SharedJsonFile.kt'
+      - 'app/src/main/java/dev/busung/s25uroot/DfRunner.kt'
+      - 'app/src/main/java/dev/busung/s25uroot/RootReadyProbe.java'
+      - 'app/src/main/java/dev/busung/s25uroot/BootSettle.kt'
+      - 'tools/fixtures/ReadyProbeHarness.java'
       - 'app/src/main/java/dev/busung/s25uroot/InstallViewModel.kt'
       - 'app/src/main/java/dev/busung/s25uroot/AppPreferences.kt'
       - 'app/src/test/java/dev/busung/s25uroot/*Root*Test.kt'
@@ -89,7 +93,7 @@ jobs:
         run: ./gradlew testDebugUnitTest --no-daemon
 
       - name: Build signed boot recovery candidate
-        run: ./gradlew assembleRelease -PrmguVersionSuffix=boot-recovery-test1 --no-daemon
+        run: ./gradlew assembleRelease -PrmguVersionSuffix=fast-boot-test1 --no-daemon
 
       - name: Verify embedded D2 companions
         run: |

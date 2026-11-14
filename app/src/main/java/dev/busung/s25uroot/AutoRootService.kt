@@ -292,7 +292,7 @@ class AutoRootService : Service() {
     }
 
     /**
-     * Waits out this path's own boot-settle floor, reporting the countdown.
+     * Keeps a settling floor only for payloads that need it; DirtyFrag starts immediately.
      *
      * It is a separate setting from the manual one because the two are waiting out different amounts.
      * By the time this service is running, `BOOT_COMPLETED` has already passed, so part of the boot is
@@ -301,7 +301,7 @@ class AutoRootService : Service() {
      * would make the second decision silently rewrite the first.
      */
     private suspend fun awaitSettledFloor() {
-        val required = AppPreferences.autoRootSettleSeconds(this)
+        val required = AutoRootSupport.bootPayloadSettleSeconds(this, retryArmedThisBoot)
         while (true) {
             val left = BootSettle.remainingMillis(required, BootSettle.elapsedMillis())
             if (left <= 0L) return

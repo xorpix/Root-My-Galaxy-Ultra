@@ -33,7 +33,7 @@ internal data class EarlyRootConfig(
     fun afterVerifiedRun(snapshot: DeviceSnapshot, profile: TargetProfile): EarlyRootConfig? {
         if (!requested || flavor != profile.flavor.id || !DfCatalog.isDfPayload(profile) || !profile.matches(snapshot)) return null
         return copy(model = snapshot.model, device = snapshot.device, incremental = snapshot.incremental,
-            kernel = snapshot.kernelRelease, daemonHash = requireNotNull(profile.kernelSu.sha256))
+            kernel = snapshot.kernelRelease, daemonHash = requireNotNull(profile.kernelSu.sha256), settleSeconds = 0)
     }
 
     fun json(): JSONObject = JSONObject().put("api", 1).put("enabled", enabled).put("rootOnBoot", rootOnBoot)
@@ -80,7 +80,7 @@ internal object EarlyRootStore {
         save(current.copy(
             enabled = current.enabled && current.flavor == AppPreferences.kernelsuFlavor(context).id,
             rootOnBoot = AppPreferences.bootRootMode(context),
-            settleSeconds = AppPreferences.autoRootSettleSeconds(context),
+            settleSeconds = 0,
             disableModules = AppPreferences.disableKsuModules(context),
             wipeModules = AppPreferences.wipeModuleState(context),
             protectImages = AppPreferences.partitionReadOnlyMode(context),

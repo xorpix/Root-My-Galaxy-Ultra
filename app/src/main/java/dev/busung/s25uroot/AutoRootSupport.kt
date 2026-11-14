@@ -68,6 +68,13 @@ internal fun bootPayloadNeedsShell(
     ?.prefersShellTransport
     ?: true
 
+/** Apply the timing rule to the same descriptor that the eventual boot run will resolve. */
+internal fun bootPayloadSettleSeconds(configured: Int, preferAttempted: Boolean,
+    attempted: CachedPayload?, cached: CachedPayload?): Int {
+    val selected = (if (preferAttempted) attempted else null) ?: cached
+    return BootSettle.automaticSeconds(configured, selected?.profile()?.let(DfCatalog::isDfPayload) == true)
+}
+
 /**
  * Whether taking back the install in front of you also takes back the retry this device has armed.
  *
@@ -167,6 +174,13 @@ internal object AutoRootSupport {
     fun bootPayloadNeedsShell(context: Context, preferAttempted: Boolean): Boolean = bootPayloadNeedsShell(
         preferAttempted = preferAttempted,
         attempted = AttemptedPayloadStore.describe(context),
+        cached = KnownGoodPayloadStore.describe(context),
+    )
+
+    fun bootPayloadSettleSeconds(context: Context, preferAttempted: Boolean): Int = bootPayloadSettleSeconds(
+        configured = AppPreferences.autoRootSettleSeconds(context),
+        preferAttempted = preferAttempted,
+        attempted = if (preferAttempted) AttemptedPayloadStore.describe(context) else null,
         cached = KnownGoodPayloadStore.describe(context),
     )
 

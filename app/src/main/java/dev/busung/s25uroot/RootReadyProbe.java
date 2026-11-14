@@ -3,10 +3,19 @@ package dev.busung.s25uroot;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BooleanSupplier;
 
-/** A short saved-grant probe: only a completed command printing root's numeric UID qualifies. */
+/** A short saved-grant probe, with an optional already-completed native success marker. */
 final class RootReadyProbe {
+    /** The marker is the same proof the runner requires after native cleanup. */
+    static boolean check(long timeoutMillis, BooleanSupplier nativeCompleted) {
+        try { if (nativeCompleted.getAsBoolean()) return true; }
+        catch (SecurityException ignored) { /* A denied marker read still requires a completed root command. */ }
+        return check(timeoutMillis);
+    }
+
     static boolean check(long timeoutMillis) {
+        if (timeoutMillis <= 0) return false;
         long start = System.nanoTime();
         Process process = null;
         try {

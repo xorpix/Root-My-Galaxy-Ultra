@@ -27,7 +27,7 @@ internal object EarlyRootCoordinator {
         } ?: error("Run the selected bundled backend on this firmware before enabling early root")
         val config = EarlyRootConfig(false, true, profile.flavor.id, snapshot.model, snapshot.device,
             snapshot.incremental, snapshot.kernelRelease, requireNotNull(profile.kernelSu.sha256),
-            AppPreferences.autoRootSettleSeconds(context), AppPreferences.disableKsuModules(context),
+            0, AppPreferences.disableKsuModules(context),
             AppPreferences.wipeModuleState(context), AppPreferences.partitionReadOnlyMode(context),
             AppPreferences.susfsAutoEnable(context), AppPreferences.restartAfterRoot(context))
         EarlyRootStore.save(context, config)

@@ -1469,6 +1469,7 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                 }
             },
             checkStop = ::stopIfAskedFromOutside,
+            adaptiveWait = runIsUnattended,
         )
         dfVerifiedInstall = false
         when (val outcome = dfRunner.execute(payloads, expectRoPreload = AppPreferences.partitionReadOnlyMode(app))) {
