@@ -35,7 +35,8 @@ opt-ins, and independent JVM processes contending for shared state and the same 
 Android unit suite, boot handoff tests, signed APK build, embedded companion verification, and retained
 backend/SusFS integrity checks run in the Early Root Test Build workflow.
 
-A new phone test is still required. Install the signed candidate over 1.4.0, keep the app's existing
+The maintainer confirmed the combined fast-boot candidate working on an S26 Ultra on 14 November 2026.
+The firmware-update cache-repair case has automated regression coverage. Install the update over the existing app, keep its existing
 data, and fully reboot to check automatic rooting. If the previous cache was rejected after a firmware
 update, complete one manual root run and reboot again. With early root already enabled, that reboot
 should use the renewed configuration without toggling it or reinstalling. Firmware or backend
