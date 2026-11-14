@@ -4,6 +4,20 @@ on:
   push:
     branches: [feat/early-root-before-unlock]
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/early-root-test.yml'
+      - 'app/src/main/java/dev/busung/s25uroot/*Root*.kt'
+      - 'app/src/main/java/dev/busung/s25uroot/*Payload*.kt'
+      - 'app/src/main/java/dev/busung/s25uroot/SharedJsonFile.kt'
+      - 'app/src/main/java/dev/busung/s25uroot/DfRunner.kt'
+      - 'app/src/main/java/dev/busung/s25uroot/RootReadyProbe.java'
+      - 'app/src/main/java/dev/busung/s25uroot/BootSettle.kt'
+      - 'tools/fixtures/ReadyProbeHarness.java'
+      - 'app/src/main/java/dev/busung/s25uroot/InstallViewModel.kt'
+      - 'app/src/main/java/dev/busung/s25uroot/AppPreferences.kt'
+      - 'app/src/test/java/dev/busung/s25uroot/*Root*Test.kt'
+      - 'app/src/test/java/dev/busung/s25uroot/*Payload*Test.kt'
 
 permissions:
   contents: read
@@ -14,6 +28,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     name: Early root test build
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -21,11 +36,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '25'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
@@ -36,7 +51,7 @@ jobs:
       - name: Setup NDK
         uses: nttld/setup-ndk@v1
         with:
-          ndk-version: r28
+          ndk-version: r28c
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -77,13 +92,12 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest --no-daemon
 
-      - name: Build APKs
-        run: ./gradlew assembleDebug assembleRelease --no-daemon
+      - name: Build signed boot recovery candidate
+        run: ./gradlew assembleRelease -PrmguVersionSuffix=fast-boot-test1 --no-daemon
 
       - name: Verify embedded D2 companions
         run: |
           python3 -m unittest discover -s tools/backend-refresh -p test_d2_signing.py
-          python3 tools/verify_d2_helper.py app/build/outputs/apk/debug/app-debug.apk
           python3 tools/verify_d2_helper.py app/build/outputs/apk/release/app-release.apk
 
       - name: Verify release APK signature
@@ -112,12 +126,29 @@ jobs:
             echo "- SHA-256: \`$SIGNED_SHA256\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Verify bundled backend and SusFS bytes
+        run: |
+          python3 tools/test_backend_bundle.py
+          python3 tools/check_susfs_bundle.py --apk app/build/outputs/apk/release/app-release.apk
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-root-test-results
+          path: app/build/test-results/testDebugUnitTest/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Remove temporary signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks"
+
       - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
           name: early-root-test-apks
           path: |
-            app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/release/*.apk
           if-no-files-found: error
           retention-days: 14

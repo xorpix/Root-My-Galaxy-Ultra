@@ -101,12 +101,10 @@ class AutoRootBootReceiver : BroadcastReceiver() {
                 AppLogTags.BOOT,
                 "Ignoring a repeated BOOT_COMPLETED within one kernel boot",
             )
-            AutoRootService.stop(context)
             return
         }
         if (AutoRootSupport.hasAttemptedBoot(context, bootToken)) {
             AppLog.warn(AppLogTags.BOOT, "This boot has already had an attempt; standing down")
-            AutoRootService.stop(context)
             return
         }
         if (!AutoRootSupport.shouldRunForBoot(context, bootToken)) {
@@ -114,7 +112,6 @@ class AutoRootBootReceiver : BroadcastReceiver() {
                 AppLogTags.BOOT,
                 "The boot gate refused the install before the service was started",
             )
-            AutoRootService.stop(context)
             return
         }
         AutoRootService.start(context)

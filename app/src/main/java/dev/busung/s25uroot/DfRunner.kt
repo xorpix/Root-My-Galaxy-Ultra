@@ -80,7 +80,7 @@ internal class DfRunner(
         val reporter = object : DfReporter {
             override fun report(text: String) { log(text.trim()) }
             override fun rootReady(timeoutMillis: Long): Boolean =
-                adaptiveWait && RootReadyProbe.check(timeoutMillis)
+                adaptiveWait && RootReadyProbe.check(timeoutMillis) { File(SUCCESS_MARKER).exists() }
         }
         val rc = try {
             withTimeout(DF_RUN_TIMEOUT_MS) {

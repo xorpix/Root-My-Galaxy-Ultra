@@ -369,13 +369,19 @@ object AppPreferences {
             .apply()
     }
 
-    fun bootRootMode(context: Context): Boolean =
-        prefs(context).getBoolean(BOOT_ROOT_MODE, false)
+    private fun bootOptions(context: Context) = BootRootOptions(
+        SharedJsonFile(java.io.File(context.filesDir, "boot-root-options.json")),
+        legacyEnabled = { prefs(context).getBoolean(BOOT_ROOT_MODE, false) },
+        legacyRetry = { prefs(context).getString(RETRY_AFTER_REBOOT, null)?.takeIf(String::isNotBlank) },
+    )
+
+    fun bootRootMode(context: Context): Boolean = bootOptions(context).enabled()
 
     fun setBootRootMode(context: Context, enabled: Boolean) {
         prefs(context).edit()
             .putBoolean(BOOT_ROOT_MODE, enabled)
             .apply()
+        bootOptions(context).setEnabled(enabled)
         EarlyRootStore.syncOptions(context)
     }
 
@@ -415,10 +421,15 @@ object AppPreferences {
         // Committed rather than applied: the retry is armed before a reboot is asked for, and an
         // asynchronous write that had not landed would lose the whole decision.
         editor.commit()
+        bootOptions(context).setRetry(armedForBoot)
     }
 
-    fun retryArmedInBoot(context: Context): String? =
-        prefs(context).getString(RETRY_AFTER_REBOOT, null)?.takeIf(String::isNotBlank)
+    fun retryArmedInBoot(context: Context): String? = bootOptions(context).retry()
+
+    /** Consume only the retry that requested this boot, preserving one armed for the next boot. */
+    internal fun consumeRetryForBoot(context: Context, bootToken: String) {
+        if (bootOptions(context).consumeRetry(bootToken)) prefs(context).edit().remove(RETRY_AFTER_REBOOT).commit()
+    }
 
     /** Whether a retry is armed and this is not the boot it was armed in. */
     fun retryPendingForBoot(context: Context, bootToken: String?): Boolean {

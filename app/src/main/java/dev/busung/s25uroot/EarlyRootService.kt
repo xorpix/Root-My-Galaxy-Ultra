@@ -20,7 +20,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -72,6 +71,13 @@ class EarlyRootService : Service() {
                     } else EarlyRootStore.record(this@EarlyRootService, bootToken, "failed",
                         error.message ?: error.javaClass.simpleName, startedLocked, !unlocked(),
                         evidence = launchEvidence)
+                }
+                // A stale Direct Boot policy must not swallow the normal post-unlock path.
+                // Once native staging claimed this boot, no fallback may attempt root again.
+                runCatching {
+                    if (error !is kotlinx.coroutines.CancellationException && earlyRootMayFallback(unlocked(), EarlyRootStore.requested(this@EarlyRootService),
+                            bootToken.isNotBlank() && DfBootAttempt.claimed(this@EarlyRootService, bootToken),
+                            bootToken.isNotBlank())) AutoRootService.start(this@EarlyRootService)
                 }
             } finally {
                 handler.removeCallbacks(watchdog)
@@ -126,24 +132,14 @@ class EarlyRootService : Service() {
             return
         }
         holdAwake()
-        EarlyRootStore.record(this, bootToken, "waiting", "Waiting for the configured boot delay", startedLocked,
-            evidence = launchEvidence)
-        while (true) {
-            val policy = EarlyRootStore.config(this) ?: return
-            if (!policy.requested) {
-                EarlyRootStore.record(this, bootToken, "skipped", "Automatic root was switched off", startedLocked,
-                    evidence = launchEvidence)
-                return
-            }
-            if (BootSettle.remainingMillis(policy.settleSeconds, BootSettle.elapsedMillis()) <= 0) break
-            delay(500)
-        }
-        if (!EarlyRootStore.requested(this) || RootStatusProbe.isActive()) {
+        // This worker only supports DirtyFrag. Start immediately even when an older saved
+        // policy still carries the normal boot path's 60-second settling delay.
+        val current = EarlyRootStore.config(this) ?: return
+        if (!current.requested || RootStatusProbe.isActiveQuick()) {
             EarlyRootStore.record(this, bootToken, "skipped", "Root is no longer needed or was switched off", startedLocked,
                 evidence = launchEvidence)
             return
         }
-        val current = requireNotNull(EarlyRootStore.config(this))
         val snapshot = EarlyRootDevice.current(helper)
         val profile = DfCatalog.load(this, snapshot).singleOrNull { current.matches(snapshot, it) }
             ?: error("Firmware or bundled backend changed. Complete a manual root run and enable early root again.")

@@ -223,6 +223,30 @@ class AutoRootDecisionTest {
         )
     }
 
+    @Test
+    fun `boot preparation keeps retry armed until immediately before the run`() {
+        val service = source("src/main/java/dev/busung/s25uroot/AutoRootService.kt")
+        val wait = service.indexOf("awaitSettledFloor()")
+        val transport = service.indexOf("when (val step = shizukuStep(payloadNeedsShell))")
+        val claim = service.indexOf("AutoRootSupport.claimAttempt(")
+        val run = service.indexOf("runInstall(bootToken, withoutShell = step.withoutShell)")
+        assertTrue(wait in 0 until transport)
+        assertTrue(transport < claim && claim < run)
+        val receiver = source("src/main/java/dev/busung/s25uroot/AutoRootBootReceiver.kt")
+            .substringBefore("class AutoRootActionReceiver")
+        assertFalse("Repeated boot broadcasts must not cancel the active gate", receiver.contains("AutoRootService.stop"))
+    }
+
+    @Test
+    fun `successful manual runs save boot identity before SusFS can override uname`() {
+        val source = source("src/main/java/dev/busung/s25uroot/InstallViewModel.kt")
+        val verified = source.indexOf("installKernelSu(payloads)")
+        val cached = source.indexOf("KnownGoodPayloadStore.publish(app, payloads)")
+        val renewed = source.indexOf("EarlyRootStore.refreshAfterVerifiedRun(app, cached.profile)")
+        val susfs = source.indexOf("activateSusfsIfEnabled()")
+        assertTrue(verified in 0 until cached && cached < renewed && renewed < susfs)
+    }
+
     private fun source(relativeToApp: String): String = listOf(
         File(relativeToApp),
         File("app/$relativeToApp"),

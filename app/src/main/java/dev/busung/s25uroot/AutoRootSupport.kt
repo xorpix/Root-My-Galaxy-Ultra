@@ -68,6 +68,13 @@ internal fun bootPayloadNeedsShell(
     ?.prefersShellTransport
     ?: true
 
+/** Apply the timing rule to the same descriptor that the eventual boot run will resolve. */
+internal fun bootPayloadSettleSeconds(configured: Int, preferAttempted: Boolean,
+    attempted: CachedPayload?, cached: CachedPayload?): Int {
+    val selected = (if (preferAttempted) attempted else null) ?: cached
+    return BootSettle.automaticSeconds(configured, selected?.profile()?.let(DfCatalog::isDfPayload) == true)
+}
+
 /**
  * Whether taking back the install in front of you also takes back the retry this device has armed.
  *
@@ -138,12 +145,23 @@ internal object AutoRootSupport {
     private const val LAST_BOOT_COMPLETED_TOKEN = "last_boot_completed_boot_id"
     private const val LAST_ATTEMPT_TOKEN = "last_attempt_boot_id"
 
+    private fun state(context: Context) = BootRootState(
+        SharedJsonFile(java.io.File(context.filesDir, "boot-root-state.json")),
+        legacy = {
+            val receipt = context.getSharedPreferences(RECEIPT, Context.MODE_PRIVATE)
+            val previous = context.getSharedPreferences(STATE, Context.MODE_PRIVATE)
+            org.json.JSONObject().put("verified", receipt.getBoolean(RECEIPT_VERIFIED, false))
+                .put("verifiedBoot", receipt.getString(RECEIPT_BOOT_TOKEN, null))
+                .put("broadcastBoot", previous.getString(LAST_BOOT_COMPLETED_TOKEN, null))
+                .put("attemptedBoot", previous.getString(LAST_ATTEMPT_TOKEN, null))
+        },
+    )
+
     fun currentBootToken(): String? = kernelBootToken()
 
     /** Whether an install has been verified on this device at all, which is what a boot run needs. */
     fun hasVerifiedInstall(context: Context, snapshot: DeviceSnapshot = DeviceSnapshot.current()): Boolean =
-        context.getSharedPreferences(RECEIPT, Context.MODE_PRIVATE)
-            .getBoolean(RECEIPT_VERIFIED, false) && KnownGoodPayloadStore.hasValid(context, snapshot)
+        state(context).hasReceipt() && KnownGoodPayloadStore.hasValid(context, snapshot)
 
     /**
      * Whether the payload this boot is about to run says it needs a shell.
@@ -159,14 +177,15 @@ internal object AutoRootSupport {
         cached = KnownGoodPayloadStore.describe(context),
     )
 
+    fun bootPayloadSettleSeconds(context: Context, preferAttempted: Boolean): Int = bootPayloadSettleSeconds(
+        configured = AppPreferences.autoRootSettleSeconds(context),
+        preferAttempted = preferAttempted,
+        attempted = if (preferAttempted) AttemptedPayloadStore.describe(context) else null,
+        cached = KnownGoodPayloadStore.describe(context),
+    )
+
     /** The boot an install was last verified in, or null when none has been. */
-    fun verifiedBootToken(context: Context): String? {
-        val preferences = context.getSharedPreferences(RECEIPT, Context.MODE_PRIVATE)
-        if (!preferences.getBoolean(RECEIPT_VERIFIED, false)) return null
-        return preferences.getString(RECEIPT_BOOT_TOKEN, null)
-            ?.trim()
-            ?.takeIf(String::isNotBlank)
-    }
+    fun verifiedBootToken(context: Context): String? = state(context).verifiedBoot()
 
     /**
      * Whether this boot still needs an install.
@@ -178,14 +197,7 @@ internal object AutoRootSupport {
         verifiedBootToken(context) != bootToken
 
     /** Records that root was verified in [bootToken], which is what stops a re-run within it. */
-    fun markVerifiedForBoot(context: Context, bootToken: String) {
-        val stored = context.getSharedPreferences(RECEIPT, Context.MODE_PRIVATE)
-            .edit()
-            .putString(RECEIPT_BOOT_TOKEN, bootToken)
-            .putBoolean(RECEIPT_VERIFIED, true)
-            .commit()
-        require(stored) { context.getString(R.string.error_receipt) }
-    }
+    fun markVerifiedForBoot(context: Context, bootToken: String) = state(context).markVerified(bootToken)
 
     /**
      * Consumes the framework's `BOOT_COMPLETED` for this kernel boot exactly once.
@@ -193,18 +205,11 @@ internal object AutoRootSupport {
      * A userspace restart can publish another one while the kernel stays up, and treating that as a
      * fresh boot is how a boot automation starts twice. Returns false when this boot has been seen.
      */
-    @Synchronized
-    fun claimBootCompletedForKernel(context: Context, bootToken: String): Boolean {
-        val preferences = context.getSharedPreferences(STATE, Context.MODE_PRIVATE)
-        if (preferences.getString(LAST_BOOT_COMPLETED_TOKEN, null) == bootToken) return false
-        return preferences.edit()
-            .putString(LAST_BOOT_COMPLETED_TOKEN, bootToken)
-            .commit()
-    }
+    fun claimBootCompletedForKernel(context: Context, bootToken: String): Boolean =
+        state(context).claimBroadcast(bootToken)
 
     fun hasAttemptedBoot(context: Context, bootToken: String): Boolean =
-        DfBootAttempt.claimed(context, bootToken) || context.getSharedPreferences(STATE, Context.MODE_PRIVATE)
-            .getString(LAST_ATTEMPT_TOKEN, null) == bootToken
+        DfBootAttempt.claimed(context, bootToken) || state(context).attempted(bootToken)
 
     /**
      * Claims this boot's single attempt.
@@ -215,14 +220,10 @@ internal object AutoRootSupport {
      */
     @Synchronized
     fun claimAttempt(context: Context, bootToken: String): Boolean {
-        val preferences = context.getSharedPreferences(STATE, Context.MODE_PRIVATE)
-        if (preferences.getString(LAST_ATTEMPT_TOKEN, null) == bootToken) return false
-        val stored = preferences.edit()
-            .putString(LAST_ATTEMPT_TOKEN, bootToken)
-            .commit()
+        val stored = state(context).claimAttempt(bootToken)
         // Spending the attempt is what consumes a one-shot retry: the flag means "this boot gets an
         // install it was not otherwise owed", and it has now been given one.
-        if (stored) AppPreferences.setRetryAfterReboot(context, null)
+        if (stored) AppPreferences.consumeRetryForBoot(context, bootToken)
         return stored
     }
 
@@ -261,8 +262,9 @@ internal object AutoRootSupport {
     }
 
     /** Forgets the boot-scoped bookkeeping, so the next boot is treated as a fresh one. */
-    @Synchronized
-    fun reset(context: Context) {
-        context.getSharedPreferences(STATE, Context.MODE_PRIVATE).edit().clear().commit()
-    }
+    fun reset(context: Context) = state(context).reset()
 }
+
+/** Fallback is only preparation recovery, never a second native attempt in the same boot. */
+internal fun earlyRootMayFallback(unlocked: Boolean, requested: Boolean, attempted: Boolean, bootKnown: Boolean): Boolean =
+    unlocked && requested && !attempted && bootKnown

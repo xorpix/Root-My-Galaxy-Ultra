@@ -17,6 +17,11 @@ public final class ReadyProbeHarness {
             if (answer != expected[i] || elapsed > 1500) throw new AssertionError("Probe case " + i + ": " + answer + " in " + elapsed + "ms");
             if (!process.waitFor(1, TimeUnit.SECONDS)) throw new AssertionError("Timed-out probe survived");
         }
-        System.out.println("Saved-grant readiness: PASS (8 real-process cases)");
+        long markerStart = System.nanoTime();
+        if (!RootReadyProbe.check(0, () -> true)) throw new AssertionError("Native success marker did not release readiness");
+        if (TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - markerStart) > 1000) throw new AssertionError("Completed marker waited for su");
+        if (RootReadyProbe.check(0, () -> false)) throw new AssertionError("No proof was accepted as ready");
+        if (RootReadyProbe.check(0, () -> { throw new SecurityException("denied"); })) throw new AssertionError("Denied marker was accepted");
+        System.out.println("Saved-grant readiness: PASS (8 real-process cases and native-marker controls)");
     }
 }

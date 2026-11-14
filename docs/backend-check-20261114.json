@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "checkedDate": "2026-11-14",
+  "release": "1.4.1",
+  "newBackends": [],
+  "backends": {
+    "kernelsu": {
+      "repository": "tiann/KernelSU",
+      "branch": "main",
+      "upstreamCommit": "dbb73665d103da40c7ecbd21ba3b5ac76eb95784",
+      "bundledCommit": "dbb73665d103da40c7ecbd21ba3b5ac76eb95784",
+      "driverVersion": 32727,
+      "uapi": 6,
+      "changed": false
+    },
+    "kernelsu-next": {
+      "repository": "KernelSU-Next/KernelSU-Next",
+      "branch": "dev",
+      "upstreamCommit": "3987e4d5de21348050b923e7d7a6540ddc2d5c8c",
+      "bundledCommit": "3987e4d5de21348050b923e7d7a6540ddc2d5c8c",
+      "driverVersion": 33548,
+      "uapi": 6,
+      "changed": false
+    },
+    "resukisu": {
+      "repository": "Baka-SU/BakaSU",
+      "branch": "main",
+      "upstreamCommit": "548d1dda060ca198823d8808804d01f5209ef4a9",
+      "bundledCommit": "548d1dda060ca198823d8808804d01f5209ef4a9",
+      "driverVersion": 35259,
+      "uapi": 6,
+      "changed": false
+    },
+    "kowsu": {
+      "repository": "KOWX712/KernelSU",
+      "branch": "master",
+      "upstreamCommit": "21787ce135c988bae4244a44cfcb5a542aa3347f",
+      "bundledCommit": "21787ce135c988bae4244a44cfcb5a542aa3347f",
+      "driverVersion": 32750,
+      "uapi": 6,
+      "changed": false
+    }
+  },
+  "matchedBundleValidation": "passed",
+  "phoneValidation": {
+    "candidateVersion": "1.4.0-fast-boot-test1",
+    "apkSha256": "27e4e1069fa0b335d493b9081d544a160e4ca2ef518fc790deb3dbc060c49e74",
+    "scope": "Maintainer confirmed working on S26 Ultra; firmware-update cache recovery has automated regression coverage."
+  }
+}

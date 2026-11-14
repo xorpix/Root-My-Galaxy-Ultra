@@ -3,8 +3,6 @@ package dev.busung.s25uroot
 import android.content.Context
 import org.json.JSONObject
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
 
 /** Only boot policy and public firmware identity go into device-protected storage. */
 internal data class EarlyRootConfig(
@@ -31,6 +29,13 @@ internal data class EarlyRootConfig(
             kernel == snapshot.kernelRelease && flavor == profile.flavor.id &&
             daemonHash == profile.kernelSu.sha256 && profile.matches(snapshot) && DfCatalog.isDfPayload(profile)
 
+    /** Renew only an existing opt-in after this exact bundled backend has worked manually. */
+    fun afterVerifiedRun(snapshot: DeviceSnapshot, profile: TargetProfile): EarlyRootConfig? {
+        if (!requested || flavor != profile.flavor.id || !DfCatalog.isDfPayload(profile) || !profile.matches(snapshot)) return null
+        return copy(model = snapshot.model, device = snapshot.device, incremental = snapshot.incremental,
+            kernel = snapshot.kernelRelease, daemonHash = requireNotNull(profile.kernelSu.sha256), settleSeconds = 0)
+    }
+
     fun json(): JSONObject = JSONObject().put("api", 1).put("enabled", enabled).put("rootOnBoot", rootOnBoot)
         .put("flavor", flavor).put("model", model).put("device", device).put("incremental", incremental)
         .put("kernel", kernel).put("daemonHash", daemonHash).put("settleSeconds", settleSeconds)
@@ -54,60 +59,47 @@ internal data class EarlyRootConfig(
     }
 }
 
-/** Files are re-opened on every read: SharedPreferences would cache another process's old policy. */
+/** Policy and results are shared through atomic records, with process-wide file locks on updates. */
 internal object EarlyRootStore {
-    private fun file(context: Context, name: String) = File(
+    private fun file(context: Context, name: String) = SharedJsonFile(File(
         context.createDeviceProtectedStorageContext().filesDir, "early-root-$name.json",
-    )
+    ))
 
-    private fun read(context: Context, name: String): JSONObject? {
-        val target = file(context, name)
-        if (!target.exists()) return null
-        require(target.length() in 1..32_768) { "Invalid early root record" }
-        return JSONObject(target.readText())
-    }
-
-    private fun write(context: Context, name: String, value: JSONObject) {
-        val target = file(context, name)
-        val directory = target.parentFile!!
-        check(directory.isDirectory || directory.mkdirs())
-        val temporary = File.createTempFile("early-root-", ".tmp", directory)
-        try {
-            temporary.outputStream().use {
-                it.write(value.toString().toByteArray(Charsets.UTF_8))
-                it.fd.sync()
-            }
-            Files.move(temporary.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE,
-                StandardCopyOption.REPLACE_EXISTING)
-        } finally { temporary.delete() }
-    }
-
-    fun config(context: Context): EarlyRootConfig? = read(context, "config")?.let(EarlyRootConfig::parse)
+    fun config(context: Context): EarlyRootConfig? = file(context, "config").read()?.let(EarlyRootConfig::parse)
     fun requested(context: Context): Boolean = runCatching { config(context)?.requested == true }.getOrDefault(false)
+    fun save(context: Context, config: EarlyRootConfig) = file(context, "config").write(config.json())
 
-    @Synchronized fun save(context: Context, config: EarlyRootConfig) = write(context, "config", config.json())
-
-    @Synchronized fun disable(context: Context) {
-        val current = config(context) ?: return
-        save(context, current.copy(enabled = false))
+    fun disable(context: Context) = file(context, "config").transaction { previous, save ->
+        previous?.let { save(EarlyRootConfig.parse(it).copy(enabled = false).json()) }
+        Unit
     }
 
-    /** The controller updates this snapshot whenever a relevant setting changes. */
-    @Synchronized fun syncOptions(context: Context) {
-        val current = config(context) ?: return
-        save(context, current.copy(
+    /** Read-modify-write stays under the same lock as renewal and opt-out. */
+    fun syncOptions(context: Context) = file(context, "config").transaction { previous, save ->
+        val current = previous?.let(EarlyRootConfig::parse) ?: return@transaction
+        save(current.copy(
             enabled = current.enabled && current.flavor == AppPreferences.kernelsuFlavor(context).id,
             rootOnBoot = AppPreferences.bootRootMode(context),
-            settleSeconds = AppPreferences.autoRootSettleSeconds(context),
+            settleSeconds = 0,
             disableModules = AppPreferences.disableKsuModules(context),
             wipeModules = AppPreferences.wipeModuleState(context),
             protectImages = AppPreferences.partitionReadOnlyMode(context),
             susfsAutoEnable = AppPreferences.susfsAutoEnable(context),
             restartAfterRoot = AppPreferences.restartAfterRoot(context),
-        ))
+        ).json())
     }
 
-    fun result(context: Context): JSONObject? = runCatching { read(context, "result") }.getOrNull()
+    fun refreshAfterVerifiedRun(context: Context, profile: TargetProfile) {
+        val snapshot = DeviceSnapshot.current()
+        if (!DfCatalog.isDfPayload(profile)) return
+        context.assets.open("df/catalog.json").use { DfCatalog.requireCurrent(it.readBytes(), snapshot, profile) }
+        file(context, "config").transaction { previous, save ->
+            val current = previous?.let(EarlyRootConfig::parse) ?: return@transaction
+            current.afterVerifiedRun(snapshot, profile)?.let { save(it.json()) }
+        }
+    }
+
+    fun result(context: Context): JSONObject? = runCatching { file(context, "result").read() }.getOrNull()
 
     /** Keep a failed or still-running native handoff until verification or a new kernel boot. */
     fun protectsStaging(context: Context): Boolean {
@@ -117,38 +109,38 @@ internal object EarlyRootStore {
             runCatching { DfBootAttempt.claimed(context, boot) }.getOrDefault(true)
     }
 
-    @Synchronized fun record(context: Context, token: String, state: String, detail: String,
+    fun record(context: Context, token: String, state: String, detail: String,
         startedLocked: Boolean, finishedLocked: Boolean = false, finalized: Boolean = false,
         evidence: JSONObject? = null) {
         val next = JSONObject().put("boot", token).put("state", state)
             .put("detail", detail.take(1600)).put("startedLocked", startedLocked)
             .put("finishedLocked", finishedLocked).put("uptimeMs", BootSettle.elapsedMillis())
             .put("finalized", finalized).apply { evidence?.let { put("launch", it) } }
-        val previous = result(context)
-        if (previous != null && previous.optString("boot") != token) {
-            write(context, "previous-result", previous)
+        file(context, "result").transaction { previous, save ->
+            if (previous != null && previous.optString("boot") != token) file(context, "previous-result").write(previous)
+            save(EarlyRootResult.merge(previous, next))
         }
-        write(context, "result", EarlyRootResult.merge(previous, next))
     }
 
-    @Synchronized fun finalized(context: Context) {
-        val current = result(context) ?: return
-        write(context, "result", current.put("finalized", true))
+    fun finalized(context: Context) = file(context, "result").transaction { current, save ->
+        current?.let { save(it.put("finalized", true)) }
+        Unit
     }
 
     /** Only the worker updates setup progress, preserving the original root/unlock evidence. */
-    @Synchronized fun <T> updateVerified(context: Context, token: String, update: (EarlyRootProgress) -> T): T {
-        val current = checkNotNull(result(context)) { "The early root result is unavailable" }
-        check(current.optString("boot") == token && current.optString("state") == "verified") {
-            "The verified kernel boot changed"
+    fun <T> updateVerified(context: Context, token: String, update: (EarlyRootProgress) -> T): T =
+        file(context, "result").transaction { previous, save ->
+            val current = checkNotNull(previous) { "The early root result is unavailable" }
+            check(current.optString("boot") == token && current.optString("state") == "verified") {
+                "The verified kernel boot changed"
+            }
+            val value = update(EarlyRootProgress(current))
+            save(current)
+            value
         }
-        val value = update(EarlyRootProgress(current))
-        write(context, "result", current)
-        return value
-    }
 
-    @Synchronized fun finalizationFailed(context: Context, detail: String) {
-        val current = result(context) ?: return
-        write(context, "result", current.put("postUnlockDetail", detail.take(1600)))
+    fun finalizationFailed(context: Context, detail: String) = file(context, "result").transaction { current, save ->
+        current?.let { save(it.put("postUnlockDetail", detail.take(1600))) }
+        Unit
     }
 }

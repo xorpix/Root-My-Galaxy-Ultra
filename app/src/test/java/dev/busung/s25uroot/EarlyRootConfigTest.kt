@@ -53,4 +53,24 @@ class EarlyRootConfigTest {
             assertFalse(config.matches(snapshot, profile.copy(kernelSu = profile.kernelSu.copy(sha256 = "0".repeat(64)))))
         }
     }
+    @Test fun successfulManualRunRenewsFirmwareAndDaemonWhilePreservingOptIns() {
+        val old = sample().copy(susfsAutoEnable = true, restartAfterRoot = true)
+        val firmware = DfPort.firmwares.getValue("bzig")
+        val snapshot = DeviceSnapshot("samsung", firmware.model, firmware.device,
+            "6.12.69-android16-6-november-fixture-4k", "#1 SMP PREEMPT", "aarch64", "display",
+            "samsung/m3q", "17", firmware.sdk, firmware.abi, firmware.pageSize, "november-fixture")
+        val profile = DfCatalog.forDevice(File("src/main/assets/df/catalog.json").readBytes(), snapshot)
+            .single { it.matches(snapshot) && it.flavor.id == old.flavor }
+        assertFalse(old.matches(snapshot, profile))
+        val renewed = requireNotNull(old.afterVerifiedRun(snapshot, profile))
+        assertTrue(renewed.matches(snapshot, profile))
+        assertTrue(renewed.susfsAutoEnable)
+        assertTrue(renewed.restartAfterRoot)
+        assertEquals(0, renewed.settleSeconds)
+        assertNull(old.copy(enabled = false).afterVerifiedRun(snapshot, profile))
+        assertNull(old.copy(rootOnBoot = false).afterVerifiedRun(snapshot, profile))
+        assertNull(old.copy(flavor = KernelSuFlavor.KernelSuNext.id).afterVerifiedRun(snapshot, profile))
+        assertNull(old.afterVerifiedRun(snapshot.copy(incremental = "other"), profile))
+    }
+
 }

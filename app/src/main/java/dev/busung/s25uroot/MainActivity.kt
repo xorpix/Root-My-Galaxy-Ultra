@@ -4830,9 +4830,9 @@ private fun SettingsPage(
                     icon = Icons.Rounded.HourglassEmpty,
                     title = stringResource(R.string.settings_autoroot_settle),
                     description = stringResource(R.string.settings_autoroot_settle_summary),
-                    value = BootSettle.label(autoRootSettleSeconds),
+                    value = BootSettle.label(BootSettle.automaticSeconds(autoRootSettleSeconds, DfPort.matches(device))),
                     position = SettingsCardPosition.Bottom,
-                    enabled = loadKernelSu,
+                    enabled = loadKernelSu && !DfPort.matches(device),
                     onClick = {
                         clickHaptic(view)
                         showAutoRootSettleDialog = true

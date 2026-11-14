@@ -983,6 +983,37 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                 activeStage = RunStage.Verify
                 setPhase(InstallPhase.LoadingKernelSu, "Verifying the selected backend")
                 installKernelSu(payloads)
+                // A payload becomes the offline fallback only here, once KernelSU is verified: that is
+                // what makes "known good" mean something, and it is why nothing is written while the
+                // exploit is running. Publishing is best-effort - a full disk must not turn a root
+                // that worked into a failure - but it is said out loud when it does not happen.
+                // DirtyFrag included, verified or not: the files are hash-checked
+                // either way, and a trigger run is enough to attempt boot root —
+                // the persisted su grant verifies there, or its absence fails
+                // the boot fast by name. "Known good" here means ran once.
+                if (payloads.origin == PayloadOrigin.Bundled || payloads.origin == PayloadOrigin.Downloaded ||
+                    payloads.origin == PayloadOrigin.Attempted) {
+                    runCatching { KnownGoodPayloadStore.publish(app, payloads) }
+                        .onSuccess { cached ->
+                            appendLog(app.getString(R.string.log_payload_cached_now, cached.profileId))
+                        }
+                        .onFailure { error ->
+                            appendLog(
+                                app.getString(
+                                    R.string.log_payload_cache_failed,
+                                    error.message ?: error.javaClass.simpleName,
+                                ),
+                            )
+                        }
+                }
+                if (dfVerifiedInstall && !runIsUnattended) {
+                    runCatching {
+                        // Offline manual runs must also repair an existing early-root policy.
+                        val cached = KnownGoodPayloadStore.load(app)
+                        check(cached.profile == payloads.profile) { "The current run was not saved as the boot backend" }
+                        EarlyRootStore.refreshAfterVerifiedRun(app, cached.profile)
+                    }.onFailure { appendLog("Early root setup could not be refreshed: ${it.message}") }
+                }
                 activateSusfsIfEnabled()
 
                 // While the run still holds the root it just obtained: the permission below cannot be
@@ -1011,28 +1042,6 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                         if (loadKernelSu) R.string.log_install_complete else R.string.log_root_only_complete,
                     ),
                 )
-                // A payload becomes the offline fallback only here, once KernelSU is verified: that is
-                // what makes "known good" mean something, and it is why nothing is written while the
-                // exploit is running. Publishing is best-effort - a full disk must not turn a root
-                // that worked into a failure - but it is said out loud when it does not happen.
-                // DirtyFrag included, verified or not: the files are hash-checked
-                // either way, and a trigger run is enough to attempt boot root —
-                // the persisted su grant verifies there, or its absence fails
-                // the boot fast by name. "Known good" here means ran once.
-                if (payloads.origin == PayloadOrigin.Bundled || payloads.origin == PayloadOrigin.Downloaded) {
-                    runCatching { KnownGoodPayloadStore.publish(app, payloads) }
-                        .onSuccess { cached ->
-                            appendLog(app.getString(R.string.log_payload_cached_now, cached.profileId))
-                        }
-                        .onFailure { error ->
-                            appendLog(
-                                app.getString(
-                                    R.string.log_payload_cache_failed,
-                                    error.message ?: error.javaClass.simpleName,
-                                ),
-                            )
-                        }
-                }
                 AppLog.info(
                     RUN_LOG_TAG,
                     if (loadKernelSu) {
@@ -1460,6 +1469,7 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                 }
             },
             checkStop = ::stopIfAskedFromOutside,
+            adaptiveWait = runIsUnattended,
         )
         dfVerifiedInstall = false
         when (val outcome = dfRunner.execute(payloads, expectRoPreload = AppPreferences.partitionReadOnlyMode(app))) {
@@ -1781,19 +1791,12 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
         // thread: the native paths alone under-report on this hardware once the system locks down.
         if (RootStatusProbe.isActive()) return true
         val bootToken = currentBootToken() ?: return false
-        val receipt = app.getSharedPreferences(INSTALL_RECEIPT, Application.MODE_PRIVATE)
-        return receipt.getString(RECEIPT_BOOT_TOKEN, null) == bootToken &&
-            receipt.getBoolean(RECEIPT_VERIFIED, false)
+        return AutoRootSupport.verifiedBootToken(app) == bootToken
     }
 
     private fun storeInstallReceipt() {
         val bootToken = currentBootToken() ?: error(app.getString(R.string.error_boot_id))
-        val stored = app.getSharedPreferences(INSTALL_RECEIPT, Application.MODE_PRIVATE)
-            .edit()
-            .putString(RECEIPT_BOOT_TOKEN, bootToken)
-            .putBoolean(RECEIPT_VERIFIED, true)
-            .commit()
-        require(stored) { app.getString(R.string.error_receipt) }
+        AutoRootSupport.markVerifiedForBoot(app, bootToken)
     }
 
     private fun currentBootToken(): String? = kernelBootToken()
@@ -2295,9 +2298,6 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                 fi
             fi
         """.trimIndent()
-        private const val INSTALL_RECEIPT = "install_receipt"
-        private const val RECEIPT_BOOT_TOKEN = "kernel_boot_id"
-        private const val RECEIPT_VERIFIED = "verified"
         private const val P0_CACHE = "p0_cache"
         private const val P0_CACHE_BOOT_TOKEN = "kernel_boot_id"
         private const val P0_CACHE_OFFSET = "offset"
