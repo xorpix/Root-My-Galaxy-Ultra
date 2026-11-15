@@ -38,6 +38,8 @@ jobs:
           python3 tools/backend-refresh/test_samsung_composer.py
           python3 tools/backend-refresh/test_patching.py
           python3 tools/backend-refresh/test_notify.py
+          python3 tools/backend-refresh/test_schedule.py
+          python3 tools/backend-refresh/test_selinux_hide.py
       - name: Snapshot official upstream branches
         run: python3 tools/backend-refresh/probe.py --output "$RUNNER_TEMP/upstream-heads.json"
       - name: Check changed sources without building

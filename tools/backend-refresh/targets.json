@@ -12,7 +12,7 @@
       "daemon_version": "3.3.1-47-gdbb73665",
       "rust": "1.98.1",
       "rebuild": false,
-      "compat_sha256": "3f2ebf4a7a51c94dd00c0797fffa31426ea37a185f096acf8af7aaa83d87b45f",
+      "compat_sha256": "8673d2238f517cd092c109e791ffa9b3a5c58e77587259ffaa13d52c8e3795b3",
       "branch": "main",
       "version_offset": 30000,
       "uapi": 6
@@ -25,7 +25,7 @@
       "daemon_version": "3.4.2-193-g3987e4d5",
       "rust": "1.98.1",
       "rebuild": false,
-      "compat_sha256": "034de3f2070d5e95a7e27f99be74bcccff5e9c69af892d95f8a81fe362ec4cbc",
+      "compat_sha256": "fc7e530229ecc0e370335aa387d21cf201e47395fca883773f49b90cc539e676",
       "branch": "dev",
       "version_offset": 30000,
       "uapi": 6
@@ -54,7 +54,7 @@
       "rust": "1.98.1",
       "uapi": 6,
       "rebuild": false,
-      "compat_sha256": "8b6398b572a16527b5d481a01c3d02c841ee6ae5a78ce922e6385f0eebb78ef4"
+      "compat_sha256": "fc3013fd4b884dde3de3b705a02eea1b658079364057f9f46744c0fdb984c55e"
     }
   },
   "local_app_base": "df7c69670851a031ab81b95ee7557254d078440a"
