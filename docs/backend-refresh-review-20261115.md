@@ -13,7 +13,9 @@ The rebased patches retain upstream's new SELinux hook, superblock lookup,
 policy lifetime protection and profile-name validation. The new hook uses the
 existing guarded Samsung kprobe route when its LSM slot cannot be written.
 Its trampoline preserves all arguments and return codes, suppresses recursive
-entry and releases the per-task guard. Cleanup follows the installed route.
+entry and releases the per-task guard. Cleanup follows the installed route and
+retains the immutable original kernel handler for callbacks which may finish
+after the probe has been unregistered.
 The old redundant Rust hunks are removed where upstream already supplies them.
 
 KowSU rewrote its history again. The reviewed endpoint delta from `21787ce1`
@@ -25,7 +27,8 @@ reviewed replacement plus ordinary descendants; unrelated rewrites still fail.
 The new host fixture compiles the actual added route functions from all three
 patches for the 5.10, 5.15 and 6.12 function signatures with UBSan. It exercises
 argument forwarding, errors, recursion, disabled state, both hook routes and
-their cleanup. Full matched native builds and bundle checks remain mandatory.
+their cleanup, including removal during an active diverted call. Full matched
+native builds and bundle checks remain mandatory.
 
 ## SusFS decision
 

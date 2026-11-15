@@ -24,7 +24,7 @@ struct kprobe {
 };
 struct hook { void *original; };
 static struct hook selinux_inode_setxattr_hook;
-static bool ksu_selinux_hide_enabled, guard;
+static bool ksu_selinux_hide_enabled, guard, teardown_during_call;
 static int lsm_result, probe_result, probe_calls, unprobe_calls, unhook_calls, handler_calls;
 static const void *original = (void *)0x123400;
 static struct dentry entry;
@@ -35,6 +35,7 @@ static struct mnt_idmap ns;
 static struct user_namespace ns;
 #endif
 static int sel_hide_setxattr_pre(struct kprobe *, struct pt_regs *);
+static void sel_hide_unroute_setxattr(void);
 static bool sel_hide_guard_enter(void) { if (guard) return false; guard = true; return true; }
 static void sel_hide_guard_exit(void) { assert(guard); guard = false; }
 static void instruction_pointer_set(struct pt_regs *regs, unsigned long pc) { regs->pc = pc; }
@@ -59,6 +60,10 @@ static int my_inode_setxattr(struct dentry *d, const char *n, const void *v, siz
     struct pt_regs nested = {0};
     assert(d == &entry && n == name && v == value && s == sizeof(value) && f == 7);
     assert(guard && !sel_hide_setxattr_pre(NULL, &nested) && !nested.pc);
+    if (teardown_during_call)
+        sel_hide_unroute_setxattr();
+    /* The real handler may reach call_orig after its probe was removed. */
+    assert(selinux_inode_setxattr_hook.original == original);
     handler_calls++;
     return -EACCES;
 }
@@ -85,10 +90,16 @@ int main(void) {
     assert(unhook_calls == 1 && !unprobe_calls);
     lsm_result = -EOPNOTSUPP;
     assert(!sel_hide_route_setxattr() && probe_calls == 1);
-    sel_hide_unroute_setxattr();
+    teardown_during_call = true;
+    assert(sel_hide_setxattr_pre(NULL, &regs) == 1 && guard);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,12,0)
+    assert(sel_hide_setxattr_tramp(&ns, &entry, name, value, sizeof(value), 7) == -EACCES);
+#else
+    assert(sel_hide_setxattr_tramp(&entry, name, value, sizeof(value), 7) == -EACCES);
+#endif
+    assert(!guard && handler_calls == 2);
     assert(unprobe_calls == 1 && unhook_calls == 1);
-    assert(!sel_hide_setxattr_kprobe.addr && !selinux_inode_setxattr_hook.original);
-    selinux_inode_setxattr_hook.original = (void *)original;
+    assert(!sel_hide_setxattr_kprobe.addr && selinux_inode_setxattr_hook.original == original);
     probe_result = -EINVAL;
     assert(sel_hide_route_setxattr() == -EINVAL && !sel_hide_setxattr_kprobe.addr);
     return 0;
