@@ -22,15 +22,15 @@
     "size": 54634,
     "sha256": "8bea92389e8b9ddcf63de83b776e7baed25636d6c85d07490c9c7016a969fb29"
   },
-  "created_utc": "2026-11-12",
-  "app_base_commit": "8fba9060a98aeca094958f89663e44d2f0911a71",
+  "created_utc": "2026-11-15",
+  "app_base_commit": "52595ea13813c8c659c47f81600c991f87bc943a",
   "upstream_repository": "https://github.com/tiann/KernelSU",
-  "upstream_commit": "dbb73665d103da40c7ecbd21ba3b5ac76eb95784",
-  "upstream_commit_count": 2727,
-  "driver_version": 32727,
+  "upstream_commit": "64833c005eca6a8dc3d73ec2d37d84c37e0d9ad2",
+  "upstream_commit_count": 2730,
+  "driver_version": 32730,
   "uapi_version": 6,
   "manager_required_uapi": 6,
-  "daemon_version": "3.3.1-47-gdbb73665",
+  "daemon_version": "3.3.1-50-g64833c00",
   "validation": {
     "kernel_build": "passed",
     "daemon_build": "passed",
@@ -42,22 +42,22 @@
   "source_provenance": "Existing Samsung compatibility changes rebased onto pinned upstream.",
   "outputs": {
     "ksud": {
-      "size": 5305176,
-      "sha256": "235b9894b7a664e2c71a4e964f81f524bdc6e1d7adfc4793021614850d421de6"
+      "size": 5307072,
+      "sha256": "532368c307162fbe22eaf29d1e5222a4b31b6bcab2b162601ff4f55c85c5f01f"
     },
     "kernelsu.ko": {
-      "size": 447720,
-      "sha256": "8680098485971a3614cc0db1ee42a9a9186d621da525549bce3838d077b9d770"
+      "size": 451576,
+      "sha256": "97e6f6175d2cf84fc5dd42867a24f90a0847d6449d20bd373402c2fcd2964cc3"
     },
     "helper": {
       "size": 24232,
-      "sha256": "1f221ef4870daf36e379164506102c6b96948eb1fd72f001ae8e10e514f9d536"
+      "sha256": "885dc8adf092c332e4c77aaaf54e088d7fd6ee09638b94ac261d64e76b33cd23"
     }
   },
   "rebased_patch": {
-    "path": "samsung-compat-32727.patch",
-    "size": 72224,
-    "sha256": "3f2ebf4a7a51c94dd00c0797fffa31426ea37a185f096acf8af7aaa83d87b45f"
+    "path": "samsung-compat-32730.patch",
+    "size": 71183,
+    "sha256": "f00e8dd3ae518fc57232b85eacde545ebb59b9b029f7fca6f4cc8511a68bf515"
   },
   "patched_source_sha256": {
     "kernel/Kbuild": "54d7812a0acea6746e149869acf169094fdba28c22980a7aff5e161a0657e7b6",
@@ -65,7 +65,7 @@
     "kernel/compat/samsung_defex.h": "f50410ca28b421ba61f4bf10aca611f50b2ea150b8d0c508fbeb119194f0e387",
     "kernel/compat/samsung_kdp.c": "d1f3da9d0a1c5eb85ef5c57808d395e1a32711acd73f42918098f2f2bd94ecc3",
     "kernel/core/init.c": "6e574a646a2882ca97e8abd5bbc238252ca67e63ac5dc81bbd68c656da435400",
-    "kernel/feature/selinux_hide.c": "6d7eaf90cc4777377107c7770b0e3ad4f1fa58f5843d195cf216324f4dcdffc5",
+    "kernel/feature/selinux_hide.c": "ac8b7a3e25411f98cead241e3dac0789787d03c0f271d28c8b77f6f95380aeba",
     "kernel/feature/sucompat.c": "8b32fb52b1ba2208ece9f813be39252728a0a5bc073f013a812cb6f8ea34ce4a",
     "kernel/hook/arm64/patch_memory.c": "f21056d5c780c52f6e42cb7eb8c976555b9c4ff6da7368bc03094cac23dca4eb",
     "kernel/hook/arm64/syscall_hook.c": "74d41d8bee979df90343954bd423babfc4fee2bd4aa435e80c3f51da42a2ba07",
@@ -75,13 +75,11 @@
     "kernel/include/ksu_samsung_kdp.h": "cbf754febc1afc5ba794f8d00ba9106bd6f292bee829e85ee058967a6a09177e",
     "kernel/policy/app_profile.c": "ed726a7c12eb431389277efa02f4c65e1bda8d54c21742af40d990afb7834d49",
     "kernel/selinux/selinux.c": "8acc0e979b9d2f242dd16af856dda99bb866f9a62781f71b18cacb1995d43489",
-    "userspace/ksud/src/cli.rs": "52102214a24e83cad82287cb6ac98587a14ca1c99db99e0116b16ea5ae294c48",
     "userspace/ksud/src/late_load.rs": "f4a657ab1a1cce7df55dcf11bc6f94cd53dce4ad6b079a4e98a5c6faad761a05",
-    "userspace/ksud/src/profile.rs": "ffa89525b843e43e04deba6be630116d5b7fc18593360a615d724e949b14e444",
     "userspace/ksud/src/soft_reboot.rs": "3b4de8e7112f43240969ad16c0e4e6938713c814d77f832e7932d75e547af407",
     "userspace/ksud/src/utils.rs": "f1300cad6f81900e7cfb04dad768bc0125c8538c39634835c9f0f677479922bb"
   },
-  "app_version": "1.4.0",
-  "previous_upstream_commit": "02ffbd447eb6a2f05d9f46e17b1e1c3bcfdd9971",
+  "app_version": "1.4.2",
+  "previous_upstream_commit": "dbb73665d103da40c7ecbd21ba3b5ac76eb95784",
   "local_app_base_commit": "df7c69670851a031ab81b95ee7557254d078440a"
 }

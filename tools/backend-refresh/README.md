@@ -44,6 +44,8 @@ download toolchains, execute upstream build scripts, sign an APK or publish.
 A default-branch failure opens one bot-owned issue with a link to the run and
 logs. Further failures update that issue; a successful check closes it. The
 notification job needs `issues: write`, but the check job has read-only access.
+Backend-related changes merged into `main` also run this check, so a repaired
+refresh can resolve its alert immediately instead of waiting for the next day.
 GitHub scheduling delays still apply; this is early warning, not a guarantee
 that an upstream update cannot arrive immediately before the weekly build.
 

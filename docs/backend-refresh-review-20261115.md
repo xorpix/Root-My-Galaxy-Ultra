@@ -62,3 +62,20 @@ compatibility check remains enabled.
 
 The user's previously reported extra full reboot after a soft reboot is still
 unconfirmed. Neither this refresh nor the upstream reports establish its cause.
+
+## Qualification
+
+The corrected [matched-backend build](https://github.com/xorpix/Root-My-Galaxy-Ultra/actions/runs/43763258405)
+passed all four native builds, driver/daemon pairing, host boot checks, Android
+unit tests, release APK compilation, embedded companion/signature checks and
+bundle provenance validation. All four manager downloads match the selected
+upstream revisions and UAPI 6, with official artifact digests verified.
+
+The downloaded source update was hash-checked and applied using the trusted
+release validator at its exact CI base `52595ea13813c8c659c47f81600c991f87bc943a`.
+Its source tree equals reviewed PR head `69776264050a3c426d5f6322ddd81da5c2ec2259`.
+The validator rechecked allowed changes, generated helpers, catalogs, native
+pairs, packaged APK bytes and companion identity/signature. Source-only final
+edits add immediate default-branch compatibility checking and guarded cleanup
+of the merged release branch. Hardware testing of the updated backends has
+not been performed during this refresh.
