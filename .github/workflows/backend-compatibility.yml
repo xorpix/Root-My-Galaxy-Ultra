@@ -1,6 +1,15 @@
 name: Daily backend compatibility
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/backend-compatibility.yml'
+      - '.github/workflows/backend-refresh.yml'
+      - 'tools/backend-refresh/**'
+      - 'tools/prepare_m3q_helpers.py'
+      - 'tools/prepare_df_backends.py'
+      - 'backends/**'
   schedule:
     # Runs before the Monday 03:17 UTC release check.
     - cron: '43 2 * * *'
@@ -38,6 +47,8 @@ jobs:
           python3 tools/backend-refresh/test_samsung_composer.py
           python3 tools/backend-refresh/test_patching.py
           python3 tools/backend-refresh/test_notify.py
+          python3 tools/backend-refresh/test_schedule.py
+          python3 tools/backend-refresh/test_selinux_hide.py
       - name: Snapshot official upstream branches
         run: python3 tools/backend-refresh/probe.py --output "$RUNNER_TEMP/upstream-heads.json"
       - name: Check changed sources without building
