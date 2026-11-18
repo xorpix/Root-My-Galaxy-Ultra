@@ -1,15 +1,15 @@
 {
   "schema": 2,
-  "created_utc": "2026-11-15",
-  "app_version": "1.4.2",
-  "app_base_commit": "52595ea13813c8c659c47f81600c991f87bc943a",
+  "created_utc": "2026-11-18",
+  "app_version": "1.4.3",
+  "app_base_commit": "124bbaa21ed104a2ca67f1cfbf86c1602e681f33",
   "upstream_repository": "https://github.com/KernelSU-Next/KernelSU-Next",
-  "upstream_commit": "7ccf61479621f240c0d968ef46f1b167b6ceb500",
-  "previous_upstream_commit": "3987e4d5de21348050b923e7d7a6540ddc2d5c8c",
-  "upstream_commit_count": 3553,
-  "driver_version": 33553,
+  "upstream_commit": "aa235b99574b5b349cdb4980bcb98fd58e6abb28",
+  "previous_upstream_commit": "7ccf61479621f240c0d968ef46f1b167b6ceb500",
+  "upstream_commit_count": 3554,
+  "driver_version": 33554,
   "uapi_version": 6,
-  "daemon_version": "3.4.2-198-g7ccf6147",
+  "daemon_version": "3.4.2-199-gaa235b99",
   "source_provenance": "Existing complete Samsung compatibility patch rebased onto the pinned UAPI 5 upstream; late-load Rust hunks carried forward with current ScriptWait API.",
   "companion_patch": {
     "repository": "https://github.com/rushiranpise/Root-My-Galaxy-Payloads",
@@ -36,19 +36,19 @@
   "outputs": {
     "ksud": {
       "size": 4386856,
-      "sha256": "f76fd899762ec2ac1000c552886d989f8ef6b79d9ae6e42620fff6d74fe15404"
+      "sha256": "60e94eb55eed67677c71c67f64048284780235991f17e27447359208b1237730"
     },
     "kernelsu.ko": {
       "size": 567456,
-      "sha256": "022a875101d56bab4aee8159caf2326889e216cba59e26eda5094defefe23c67"
+      "sha256": "1369c6ea06429509442dec56aede65813c71004ef87403a287985b62f751aa57"
     },
     "helper": {
       "size": 24232,
-      "sha256": "a09158bcaf6fe94f552f3b92fd8e7692f48b21bd87574f743dc8a381d8ad2fe1"
+      "sha256": "8d0823b004aeb527f612a7538c18a31ac908db19def043dd32b2ac1b5a17c0e0"
     }
   },
   "rebased_patch": {
-    "path": "samsung-compat-33553.patch",
+    "path": "samsung-compat-33554.patch",
     "size": 75646,
     "sha256": "032afde5bcac80a7f0a3959360d404e063b45d3ce5225d3114f82911d2c538a5"
   },
