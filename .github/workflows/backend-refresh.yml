@@ -16,6 +16,9 @@ on:
         type: boolean
         default: false
         required: false
+  push:
+    branches: [main]
+    paths: ['.github/workflows/backend-refresh.yml']
   pull_request:
     paths:
       - '.github/workflows/backend-refresh.yml'
@@ -38,6 +41,11 @@ concurrency:
 
 jobs:
   schedule_gate:
+    # Enable the maintainer's one-time 1.4.3 release from the verified merge.
+    if: >-
+      github.event_name != 'push' ||
+      (github.event.before == '55ca979c6ebf1ce19c13e26565de175b8a6a62c4' &&
+        github.event.head_commit.message == 'Run the 1.4.3 backend release')
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     outputs:
@@ -86,7 +94,7 @@ jobs:
           if [ "$FORCE_REBUILD" = true ]; then FLAGS+=(--force-rebuild); fi
           python3 tools/backend-refresh/probe.py --output "$RUNNER_TEMP/upstream-heads.json" "${FLAGS[@]}"
       - name: Check release configuration before spending build time
-        if: steps.probe.outputs.changed == 'true' && (github.event_name == 'schedule' || inputs.publish)
+        if: steps.probe.outputs.changed == 'true' && (github.event_name == 'schedule' || inputs.publish || github.event_name == 'push')
         env:
           HAS_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' }}
           HAS_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD != '' }}
@@ -204,7 +212,7 @@ jobs:
 
   publish:
     needs: [probe, build]
-    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && (github.event_name == 'schedule' || inputs.publish)
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && (github.event_name == 'schedule' || inputs.publish || github.event_name == 'push')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
