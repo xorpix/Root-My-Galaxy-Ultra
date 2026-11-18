@@ -27,6 +27,7 @@ on:
       - 'tools/provision_*.py'
       - 'tools/test_backend_bundle.py'
       - 'backends/**'
+      - 'docs/release-notes/1.4.3.md'
 
 permissions:
   contents: read
