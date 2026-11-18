@@ -1478,10 +1478,12 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                 dfVerifiedInstall = true
             }
             is DfOutcome.GrantMissing -> {
+                val message = "Could not verify ${payloads.profile.flavor.label}. " +
+                    "Check the backend status and this app's superuser access in its manager."
                 if (runIsUnattended) {
-                    error("Root has no su grant for this app yet. Open the app once, grant it su in the ${payloads.profile.flavor.label} manager, then boot auto-root verifies unattended.")
+                    error(message)
                 }
-                dfControlReport = "DirtyFrag trigger ran (unverified; confirm Working in the manager, grant su to verify)"
+                dfControlReport = "DirtyFrag trigger ran (unverified). $message"
             }
         }
         // Only with a proven grant (su-verified): protection itself must not
