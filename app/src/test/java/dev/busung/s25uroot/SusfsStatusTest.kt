@@ -12,6 +12,12 @@ class SusfsStatusTest {
         .put("version", "v2.3.0").put("variant", "GKI")
         .put("features", JSONArray(requiredSusfsFeatures.toList()))
         .put("queries", JSONObject().put("version", reply()).put("variant", reply()).put("features", reply()))
+    private fun unanswered(syscall: Long = -22L) = JSONObject().put("schema", 1).put("available", false)
+        .put("version", "").put("variant", "").put("features", JSONArray())
+        .put("queries", JSONObject()
+            .put("version", reply(126, syscall))
+            .put("variant", reply(126, syscall))
+            .put("features", reply(126, syscall)))
 
     @Test fun requiresAllNativeRepliesAndStandardFeatures() {
         assertEquals(SusfsState.Active, parseSusfsStatus(live().toString(), 0).state)
@@ -35,10 +41,34 @@ class SusfsStatusTest {
         assertEquals(SusfsState.Partial, parseSusfsStatus(json.toString(), 1).state)
     }
     @Test fun unhandledRebootAbiMeansAbsent() {
-        val json = live().put("available", false).put("version", "").put("variant", "").put("features", JSONArray())
-        json.put("queries", JSONObject().put("version", reply(126, -22)).put("variant", reply(126, -22)).put("features", reply(126, -22)))
+        val json = unanswered()
         assertEquals(SusfsState.Absent, parseSusfsStatus(json.toString(), 1).state)
         json.getJSONObject("queries").put("version", reply(126, -11))
+        assertEquals(SusfsState.Unavailable, parseSusfsStatus(json.toString(), 1).state)
+    }
+    @Test fun permissionDenialAndEmptySuccessAreInconclusive() {
+        for (result in listOf(-1L, 0L)) {
+            val mixed = unanswered()
+            mixed.getJSONObject("queries").put("version", reply(126, result))
+            for (json in listOf(unanswered(result), mixed)) {
+                val status = parseSusfsStatus(json.toString(), 1)
+                assertEquals("syscall result $result", SusfsState.Unavailable, status.state)
+                assertEquals("Couldn't determine SusFS status.", status.detail)
+            }
+        }
+    }
+    @Test fun replyDataAlonePreventsAbsence() {
+        val replies = listOf(
+            unanswered().put("version", "v2.3.0"),
+            unanswered().put("variant", "GKI"),
+            unanswered().put("features", JSONArray(listOf("CONFIG_KSU_SUSFS_SUS_PATH"))),
+        )
+        for (json in replies) {
+            assertEquals(SusfsState.Partial, parseSusfsStatus(json.toString(), 1).state)
+        }
+    }
+    @Test fun claimedAvailabilityWithUnansweredQueriesIsInconclusive() {
+        val json = unanswered().put("available", true)
         assertEquals(SusfsState.Unavailable, parseSusfsStatus(json.toString(), 1).state)
     }
     @Test fun malformedMissingOrWrongSchemaIsUnavailable() {

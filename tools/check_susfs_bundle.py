@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """Verify the bundled Samsung module, shared bundle metadata and complete source provenance."""
-import argparse,gzip,hashlib,json,tarfile,zipfile
-from pathlib import Path,PurePosixPath
-ROOT=Path(__file__).resolve().parents[1]
+import argparse
+import hashlib
+import json
+import tarfile
+import zipfile
+from pathlib import Path, PurePosixPath
+
+ROOT = Path(__file__).resolve().parents[1]
+
 def git_hash(kind,data):
     return hashlib.sha1(kind.encode()+b' '+str(len(data)).encode()+b'\0'+data).hexdigest()
 def tree_hash(node):
@@ -13,61 +19,81 @@ def tree_hash(node):
     entries.sort(key=lambda e:e[0].encode()+(b'/' if e[1]=='40000' else b''))
     data=b''.join(mode.encode()+b' '+name.encode()+b'\0'+bytes.fromhex(digest) for name,mode,digest in entries)
     return git_hash('tree',data)
+
+def require(condition, reason):
+    if not condition:
+        raise SystemExit(f'SusFS bundle verification failed ({reason})')
+
+
 def verify(apk=None):
-    base=ROOT/'backends/susfs';manifest=json.loads((base/'build-manifest.json').read_text())
-    archive=base/manifest['sourceArchive']
-    assert hashlib.sha256(archive.read_bytes()).hexdigest()==manifest['sourceArchiveSha256'],'source archive digest'
-    commit=(base/'source.commit').read_bytes()
-    assert git_hash('commit',commit)==manifest['sourceCommit'],'source commit digest'
-    assert commit.startswith(('tree '+manifest['sourceTree']+'\nparent '+manifest['sourceParent']+'\n').encode()),'source ancestry'
-    tree={}
-    with tarfile.open(archive,'r:gz') as tar:
-        assert tar.pax_headers.get('comment')==manifest['sourceCommit'],'git archive commit'
+    base = ROOT / 'backends/susfs'
+    manifest = json.loads((base / 'build-manifest.json').read_text())
+    archive = base / manifest['sourceArchive']
+    require(hashlib.sha256(archive.read_bytes()).hexdigest() == manifest['sourceArchiveSha256'],
+            'source archive digest')
+    commit = (base / 'source.commit').read_bytes()
+    require(git_hash('commit', commit) == manifest['sourceCommit'], 'source commit digest')
+    ancestry = f"tree {manifest['sourceTree']}\nparent {manifest['sourceParent']}\n".encode()
+    require(commit.startswith(ancestry), 'source ancestry')
+
+    tree = {}
+    with tarfile.open(archive, 'r:gz') as tar:
+        require(tar.pax_headers.get('comment') == manifest['sourceCommit'], 'git archive commit')
         for item in tar:
-            parts=PurePosixPath(item.name).parts
-            assert parts and parts[0]=='susfs' and '..' not in parts,'unsafe archive path'
-            if item.isdir():continue
-            assert item.isfile() or item.issym(),'unexpected source entry'
-            data=tar.extractfile(item).read() if item.isfile() else item.linkname.encode()
-            mode='120000' if item.issym() else ('100755' if item.mode&0o111 else '100644')
-            node=tree
-            for part in parts[1:-1]:node=node.setdefault(part,{})
-            assert parts[-1] not in node,'duplicate archive member'
-            node[parts[-1]]=(mode,git_hash('blob',data))
-    assert tree_hash(tree)==manifest['sourceTree'],'source tree digest'
-    module=manifest['module'];data=(ROOT/module['path']).read_bytes()
-    assert len(data)==module['bytes'] and hashlib.sha256(data).hexdigest()==module['sha256'],'module digest'
-    control=manifest.get('priorityControl');control_data=None
-    if control:
-        control_data=(ROOT/control['path']).read_bytes()
-        assert len(control_data)==control['bytes'] and hashlib.sha256(control_data).hexdigest()==control['sha256'],'priority control digest'
-        assert control_data[:4]==b'\x7fELF' and int.from_bytes(control_data[18:20],'little')==183,'priority control ARM64 ELF'
-    helpers={}
-    for kind in ('loader','status'):
-        helper=manifest.get(kind)
-        if not helper:continue
-        payload=(ROOT/helper['path']).read_bytes()
-        assert len(payload)==helper['bytes'] and hashlib.sha256(payload).hexdigest()==helper['sha256'],kind+' digest'
-        assert payload[:4]==b'\x7fELF' and int.from_bytes(payload[18:20],'little')==183,kind+' ARM64 ELF'
-        helpers[kind]=(helper,payload)
-    metadata_path=ROOT/'app/src/main/assets/susfs/bundle.json'
-    p=json.loads(metadata_path.read_text())
-    assert p['schema']==1 and p['sourceCommit']==manifest['sourceCommit'],'bundle source commit'
-    assert p['module']=={'file':Path(module['path']).name,'sha256':module['sha256'],'bytes':module['bytes']},'bundle module'
-    assert not any(key in p for key in ('model','firmware','kernelRelease')),'firmware-specific bundle gate'
-    if control:
-        assert p.get('priorityControl')=={'file':Path(control['path']).name,'sha256':control['sha256']},'bundle priority control'
-    for kind,(helper,payload) in helpers.items():
-        assert p.get(kind)=={'file':Path(helper['path']).name,'sha256':helper['sha256']},'bundle '+kind
+            parts = PurePosixPath(item.name).parts
+            require(parts and parts[0] == 'susfs' and '..' not in parts, 'unsafe archive path')
+            if item.isdir():
+                continue
+            require(item.isfile() or item.issym(), 'unexpected source entry')
+            data = tar.extractfile(item).read() if item.isfile() else item.linkname.encode()
+            mode = '120000' if item.issym() else ('100755' if item.mode & 0o111 else '100644')
+            node = tree
+            for part in parts[1:-1]:
+                node = node.setdefault(part, {})
+            require(parts[-1] not in node, 'duplicate archive member')
+            node[parts[-1]] = (mode, git_hash('blob', data))
+    require(tree_hash(tree) == manifest['sourceTree'], 'source tree digest')
+
+    module = manifest['module']
+    module_data = (ROOT / module['path']).read_bytes()
+    require(len(module_data) == module['bytes'] and hashlib.sha256(module_data).hexdigest() == module['sha256'],
+            'module digest')
+    helpers = {}
+    for key, label in (('priorityControl', 'priority control'), ('loader', 'loader'), ('status', 'status')):
+        helper = manifest.get(key)
+        if not helper:
+            continue
+        payload = (ROOT / helper['path']).read_bytes()
+        require(len(payload) == helper['bytes'] and hashlib.sha256(payload).hexdigest() == helper['sha256'],
+                f'{label} digest')
+        require(payload[:4] == b'\x7fELF' and int.from_bytes(payload[18:20], 'little') == 183,
+                f'{label} ARM64 ELF')
+        helpers[key] = (Path(helper['path']).name, helper['sha256'], payload, label)
+
+    metadata_path = ROOT / 'app/src/main/assets/susfs/bundle.json'
+    metadata = json.loads(metadata_path.read_text())
+    require(metadata['schema'] == 1 and metadata['sourceCommit'] == manifest['sourceCommit'], 'bundle source commit')
+    require(metadata['module'] == {
+        'file': Path(module['path']).name, 'sha256': module['sha256'], 'bytes': module['bytes'],
+    }, 'bundle module')
+    require(not any(key in metadata for key in ('model', 'firmware', 'kernelRelease')),
+            'firmware-specific bundle gate')
+    for key, (filename, digest, _, label) in helpers.items():
+        require(metadata.get(key) == {'file': filename, 'sha256': digest}, f'bundle {label}')
+
     if apk:
-        with zipfile.ZipFile(apk) as z:
-            assert z.read('assets/susfs/susfs_guard_lkm.ko')==data,'APK module'
-            if control:
-                assert z.read('lib/arm64-v8a/'+Path(control['path']).name)==control_data,'APK priority control'
-            for kind,(helper,payload) in helpers.items():
-                assert z.read('lib/arm64-v8a/'+Path(helper['path']).name)==payload,'APK '+kind
-            assert json.loads(z.read('assets/susfs/bundle.json'))==p,'APK shared bundle metadata'
-    print('PASS SusFS module, shared bundle metadata, source archive, Git tree and commit provenance'+(' and APK payload' if apk else ''))
-if __name__=='__main__':
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('--apk',type=Path);a=p.parse_args();verify(a.apk)
+        with zipfile.ZipFile(apk) as package:
+            require(package.read('assets/susfs/susfs_guard_lkm.ko') == module_data, 'APK module')
+            for filename, _, payload, label in helpers.values():
+                require(package.read('lib/arm64-v8a/' + filename) == payload, f'APK {label}')
+            require(json.loads(package.read('assets/susfs/bundle.json')) == metadata, 'APK shared bundle metadata')
+    print('PASS SusFS module, shared bundle metadata, source archive, Git tree and commit provenance'
+          + (' and APK payload' if apk else ''))
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--apk', type=Path)
+    args = parser.parse_args()
+    verify(args.apk)
 
