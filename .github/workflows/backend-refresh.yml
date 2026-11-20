@@ -30,7 +30,7 @@ on:
       - 'tools/provision_*.py'
       - 'tools/test_backend_bundle.py'
       - 'backends/**'
-      - 'docs/release-notes/1.4.3.md'
+      - 'docs/release-notes/1.4.4.md'
 
 permissions:
   contents: read
@@ -41,11 +41,11 @@ concurrency:
 
 jobs:
   schedule_gate:
-    # Enable the maintainer's one-time 1.4.3 release from the verified merge.
+    # Enable the maintainer's one-time 1.4.4 release from the verified merge.
     if: >-
       github.event_name != 'push' ||
-      (github.event.before == '55ca979c6ebf1ce19c13e26565de175b8a6a62c4' &&
-        github.event.head_commit.message == 'Run the 1.4.3 backend release')
+      (github.event.before == '01ff846aa238ba3e776ef932e598dd0c64008370' &&
+        github.event.head_commit.message == 'Run the 1.4.4 backend release')
     runs-on: ubuntu-24.04
     timeout-minutes: 3
     outputs:
@@ -76,6 +76,9 @@ jobs:
           persist-credentials: false
       - name: Check the current bundle and automation guards
         run: |
+          python3 tools/check_susfs_bundle.py
+          python3 -O tools/check_susfs_bundle.py
+          python3 tools/test_susfs_verification.py
           python3 tools/test_m3q_host.py BundleTests
           python3 tools/test_backend_bundle.py
           python3 tools/backend-refresh/test_refresh.py
@@ -191,7 +194,10 @@ jobs:
           KEY_PASSWORD: build-only
         run: ./gradlew :app:testDebugUnitTest :app:assembleRelease --no-daemon --no-configuration-cache
       - name: Check the APK bundle and finalize provenance
-        run: python3 tools/backend-refresh/release.py finish-build --work "$RUNNER_TEMP/rmgu-backends"
+        run: |
+          python3 "$RUNNER_TEMP/rmgu-backends/source/tools/check_susfs_bundle.py" --apk "$RUNNER_TEMP/rmgu-backends/source/app/build/outputs/apk/release/app-release.apk"
+          python3 -O "$RUNNER_TEMP/rmgu-backends/source/tools/check_susfs_bundle.py" --apk "$RUNNER_TEMP/rmgu-backends/source/app/build/outputs/apk/release/app-release.apk"
+          python3 tools/backend-refresh/release.py finish-build --work "$RUNNER_TEMP/rmgu-backends"
       - name: Upload the verified source update and APK for signing
         uses: actions/upload-artifact@v4
         with:
