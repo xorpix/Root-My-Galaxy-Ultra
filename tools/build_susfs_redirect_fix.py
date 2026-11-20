@@ -21,6 +21,13 @@ DOC = 'docs/susfs-redirect-fix-20261110'
 def digest(data):
     return hashlib.sha256(data).hexdigest()
 
+def warn_missing_module_versions(report):
+    sections = json.loads(report.read_text())['version_section_sizes']
+    has_basic_versions = sections.get('__versions', 0) > 0
+    has_extended_versions = sections.get('__version_ext_crcs', 0) > 0 and sections.get('__version_ext_names', 0) > 0
+    if not (has_basic_versions or has_extended_versions):
+        print('::warning::SusFS module has no populated symbol version table.')
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work', type=Path, required=True)
@@ -89,9 +96,11 @@ def main():
     subprocess.run([str(clang / 'llvm-strip'), '-d', str(module)], check=True)
     original = out / 'baseline.ko'
     original.write_bytes(module_data)
+    abi = out / 'abi'
     subprocess.run(['python3', str(source / 'tools/check_priority_artifact.py'),
                     '--baseline-is-priority', '--candidate', str(module), '--baseline', str(original),
-                    '--kdir', str(kdir), '--clang-bin', str(clang), '--output', str(out / 'abi')], check=True)
+                    '--kdir', str(kdir), '--clang-bin', str(clang), '--output', str(abi)], check=True)
+    warn_missing_module_versions(abi / 'artifact.json')
     original.unlink()
     module_info = {'path': MODULE_PATH, 'bytes': module.stat().st_size, 'sha256': digest(module.read_bytes())}
     receipt['module'] = module_info

@@ -4,6 +4,9 @@ import org.json.JSONObject
 
 internal enum class SusfsState { Active, Partial, Absent, Unavailable }
 
+private const val UNANSWERED_STATUS = 126
+private const val SYSCALL_EINVAL = -22L
+
 internal val requiredSusfsFeatures = setOf(
     "CONFIG_KSU_SUSFS_SUS_PATH",
     "CONFIG_KSU_SUSFS_SUS_MOUNT",
@@ -29,21 +32,25 @@ internal data class SusfsStatus(
 internal fun parseSusfsStatus(output: String, exitCode: Int): SusfsStatus = runCatching {
     val json = JSONObject(output.lineSequence().last { it.trim().startsWith("{") })
     require(json.getInt("schema") == 1)
+    val available = json.getBoolean("available")
     val queries = json.getJSONObject("queries")
     val replies = listOf("version", "variant", "features").map { queries.getJSONObject(it) }
     val success = replies.all { it.getLong("syscall") == 0L && it.getInt("error") == 0 && it.getBoolean("terminated") }
-    val answered = replies.any { it.getInt("error") != 126 }
     val version = json.getString("version")
     val variant = json.getString("variant")
     val array = json.getJSONArray("features")
     val features = (0 until array.length()).map { array.getString(it) }.toSet()
+    val answered = version.isNotEmpty() || variant.isNotEmpty() || features.isNotEmpty() ||
+        replies.any { it.getInt("error") != UNANSWERED_STATUS }
     val missing = requiredSusfsFeatures - features
-    val active = exitCode == 0 && json.getBoolean("available") && success &&
+    val active = exitCode == 0 && available && success &&
         version.matches(Regex("v?2\\.\\d+\\.\\d+")) && variant.isNotBlank() && missing.isEmpty()
+    // A denied request or a success without a reply leaves the interface state unknown.
+    val unhandled = replies.all { it.getBoolean("terminated") && it.getLong("syscall") == SYSCALL_EINVAL }
     val state = when {
         active -> SusfsState.Active
         answered -> SusfsState.Partial
-        exitCode == 1 && replies.all { it.getBoolean("terminated") && it.getLong("syscall") in setOf(0L, -1L, -22L) } -> SusfsState.Absent
+        exitCode == 1 && !available && unhandled -> SusfsState.Absent
         else -> SusfsState.Unavailable
     }
     SusfsStatus(
@@ -53,7 +60,7 @@ internal fun parseSusfsStatus(output: String, exitCode: Int): SusfsStatus = runC
             SusfsState.Partial -> if (missing.isNotEmpty()) "SusFS replied, but these features are missing: ${missing.joinToString()}. Fully reboot before another load."
                 else "SusFS returned an incomplete response. Fully reboot before another load."
             SusfsState.Absent -> "SusFS is not active in this boot."
-            SusfsState.Unavailable -> "The kernel status check could not complete. See the report."
+            SusfsState.Unavailable -> "Couldn't determine SusFS status."
         },
         output,
     )

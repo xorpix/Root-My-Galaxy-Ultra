@@ -66,6 +66,9 @@ internal fun SusfsSection() {
     fun record(status: SusfsStatus) {
         SusfsRuntime.recordActivation(context, status)
         refreshRow()
+        if (!row.activeThisBoot && status.state == SusfsState.Unavailable && status.report.isNotBlank()) {
+            row = row.copy(value = status.detail)
+        }
     }
 
     // Best-effort immediate activation (root + grant already present).
