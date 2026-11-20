@@ -1,15 +1,15 @@
 {
   "schema": 3,
-  "app_base": "124bbaa21ed104a2ca67f1cfbf86c1602e681f33",
-  "checked_date": "2026-11-18",
+  "app_base": "b6e4a1e150390aab064e12530e5ba9f080b2d41f",
+  "checked_date": "2026-11-20",
   "build_status": "built",
   "backends": {
     "kernelsu": {
       "repository": "tiann/KernelSU",
-      "commit": "f4603d14bd7f3bf21206d6f7c622ddf1c049ade3",
-      "commit_count": 2732,
-      "version": 32732,
-      "daemon_version": "3.3.1-52-gf4603d14",
+      "commit": "ff70c90d6de46b80b79d0c74d360d85611797b27",
+      "commit_count": 2734,
+      "version": 32734,
+      "daemon_version": "3.3.1-54-gff70c90d",
       "rust": "1.98.1",
       "rebuild": false,
       "compat_sha256": "f00e8dd3ae518fc57232b85eacde545ebb59b9b029f7fca6f4cc8511a68bf515",

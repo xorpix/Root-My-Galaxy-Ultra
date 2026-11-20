@@ -3,22 +3,22 @@
   "variants": {
     "kernelsu": {
       "library": "libm3qroot_kernelsu.so",
-      "driverVersion": 32732,
+      "driverVersion": 32734,
       "uapiVersion": 6,
       "size": 24232,
-      "sha256": "33af60550f0cd028e3bd307ab50bd5c121147687e8b70cebdacbe07b8d2ae59b",
+      "sha256": "833f0152d65bed9fd4864ed2d90b6415ad3274c04c83403d8f1fc371a1e9dd81",
       "changes": [
         {
           "virtual_address": "0x6c94",
           "file_offset": 11412,
           "before": "528fef89",
-          "after": "528ffb89"
+          "after": "528ffbc9"
         },
         {
           "virtual_address": "0x6cc8",
           "file_offset": 11464,
           "before": "528fef82",
-          "after": "528ffb82"
+          "after": "528ffbc2"
         },
         {
           "virtual_address": "0x6ca0",
