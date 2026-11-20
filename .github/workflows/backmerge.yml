@@ -143,3 +143,60 @@ jobs:
           fi
           [ -n "${URL:-}" ] || URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/pulls"
           echo "- back-merge pull request: ${URL}" >> "$GITHUB_STEP_SUMMARY"
+
+  cleanup_release144:
+    name: Remove completed 1.4.4 work branches
+    if: >-
+      github.event_name == 'push' &&
+      github.event.before == '2f89930343b6b772245b162d16f7f01329be3832' &&
+      github.event.head_commit.message == 'Clean completed 1.4.4 release work'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check the published release and remove only unchanged merged branches
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_COMMIT: 2f89930343b6b772245b162d16f7f01329be3832
+        run: |
+          python3 - <<'PY_CLEANUP'
+          import json, os, subprocess
+          def output(*args):
+              return subprocess.check_output(args, text=True).strip()
+          repo = os.environ['GITHUB_REPOSITORY']
+          release = json.loads(output('gh', 'api', f'repos/{repo}/releases/tags/1.4.4'))
+          if release['draft'] or release['prerelease']:
+              raise SystemExit('1.4.4 must be published before branch cleanup')
+          tag = output('git', 'rev-parse', 'refs/tags/1.4.4^{commit}')
+          if tag != os.environ['RELEASE_COMMIT']:
+              raise SystemExit('Published release commit differs from the reviewed cleanup base')
+          branches = {
+              'refs/heads/fix/susfs-status-verification': 'b1f6d3ad33dc4b0f359ca8a37e8d0e9ad09be9d8',
+              'refs/heads/fix/verification-message': '74c93c1f1a3ac4e662d55359c7e05c45e0806c80',
+          }
+          leases, deletes = [], []
+          for ref, expected in branches.items():
+              actual = output('git', 'ls-remote', 'origin', ref).split()
+              if not actual:
+                  print(f'Already removed: {ref}')
+                  continue
+              if actual[0] != expected:
+                  print(f'Branch moved; retained: {ref}')
+                  continue
+              prs = json.loads(output('gh', 'pr', 'list', '--repo', repo, '--head',
+                                      ref.removeprefix('refs/heads/'), '--state', 'open', '--json', 'number'))
+              if prs:
+                  print(f'Open pull request; retained: {ref}')
+                  continue
+              subprocess.run(['git', 'merge-base', '--is-ancestor', expected, tag], check=True)
+              leases.append('--force-with-lease=' + ref + ':' + expected)
+              deletes.append(':' + ref)
+          if deletes:
+              subprocess.run(['git', 'push', '--atomic', *leases, 'origin', *deletes], check=True)
+              print('Removed merged branches:', ', '.join(ref[1:] for ref in deletes))
+          PY_CLEANUP
