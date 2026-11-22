@@ -1,0 +1,324 @@
+diff --git a/kernel/sus_path.c b/kernel/sus_path.c
+index 4579229..5700249 100644
+--- a/kernel/sus_path.c
++++ b/kernel/sus_path.c
+@@ -116,6 +116,8 @@ struct sus_path_entry {
+     struct sus_path_cred *caller;
+     u64 dev;
+     u64 ino;
++    /* A held inode can be unhashed while its number is reused. */
++    u64 generation;
+     char name[NAME_MAX + 1];
+     /* The path as registered, stored without a trailing slash
+      * (path_len == strlen(path)). */
+@@ -456,6 +458,7 @@ static int sus_path_resolve_pending(void)
+         if (slot && inode) {
+             slot->dev = (u64)inode->i_sb->s_dev;
+             slot->ino = (u64)inode->i_ino;
++            slot->generation = (u64)inode->i_generation;
+             strscpy(slot->name, name, sizeof(slot->name));
+             slot->inode = inode;
+             sus_path_index_add(slot);
+@@ -826,8 +829,9 @@ static void sus_path_entry_set_path(struct sus_path_entry *e, const char *path)
+  * can hold an inode no reader ever sees again while a NEW object carries the same (dev, i_ino) - seen
+  * as ptr_equal=0 in sus_path_probe with this module's control nodes readable by uid 2000 again; and
+  * ihold() keeps an inode alive but NOT hashed, so it can be unhashed while its number is handed out
+- * again.  (dev, i_ino) is sound because a rule holds its inode from registration until del / clear /
+- * unload: while that inode is the hashed one, its number cannot be reused.
++ * again. Confirm i_generation on identity-fallback matches when the filesystem maintains it,
++ * so a replacement file does not inherit a rule for the old inode. Exact-object matches still
++ * use the held reference. A zero generation retains the existing identity fallback.
+  * One tier more, for this module's own control nodes only: another INSTANCE of the same filesystem
+  * keeps the inode number but has its own s_dev (measured, a container's /proc: the same 4026535268
+  * with dev 1048754 against the main /proc's 20), so their identity is (filesystem type, i_ino) -
+@@ -867,6 +871,11 @@ static bool sus_path_inode_hidden(struct inode *inode)
+         if (!e->ino || e->ino != (u64)inode->i_ino)
+             continue;
+         if (e->dev == dev) {
++            /* A different generation identifies a replacement file. Filesystems
++             * without generation numbers retain their existing identity match. */
++            if (e->generation && inode->i_generation &&
++                e->generation != (u64)inode->i_generation)
++                continue;
+             by_identity = true;
+             if (sus_path_entry_gate_inode(e, inode)) {
+                 hidden = true;
+@@ -2164,6 +2173,7 @@ static int sus_path_add_hidden_ex_impl(const char *path, bool self_protect)
+ 
+ 	e->dev = (u64)inode->i_sb->s_dev;
+ 	e->ino = (u64)inode->i_ino;
++	e->generation = (u64)inode->i_generation;
+ 	e->inode = inode;
+ 	e->pass = 0;
+ 	e->self_protect = self_protect;
+@@ -2585,6 +2595,7 @@ static void sus_path_supercall_impl(unsigned int cmd, void __user **arg)
+         ino = (u64)inode->i_ino;
+         e->dev = dev;
+         e->ino = ino;
++        e->generation = (u64)inode->i_generation;
+         e->inode = inode;
+         /* Hold the inode: the LSM hooks match on this pointer, and the dentry is
+          * about to be released by path_put(), which would otherwise be free to
+@@ -2633,6 +2644,7 @@ static void sus_path_supercall_impl(unsigned int cmd, void __user **arg)
+             if (inode && !cur->inode && !strcmp(cur->path, e->path)) {
+                 cur->dev = dev;
+                 cur->ino = ino;
++                cur->generation = e->generation;
+                 strscpy(cur->name, e->name, sizeof(cur->name));
+                 cur->inode = e->inode;      /* the reference moves over */
+                 sus_path_index_add(cur);
+diff --git a/kernel/susfs_hide_syms.c b/kernel/susfs_hide_syms.c
+index bfff6ae..18f964d 100644
+--- a/kernel/susfs_hide_syms.c
++++ b/kernel/susfs_hide_syms.c
+@@ -524,7 +524,9 @@ static bool modules_show_ready;
+  * validated (see hide_syms_resolve_show()) - this gate is the only identity test there is. */
+ static bool hide_syms_iter_plausible(const struct kallsym_iter_local *it)
+ {
+-	if (!it->type || !strchr("aAbBdDgGijNnRrSsTtUuVvWw", it->type))
++	/* Rust modules on Android 16 GKI also expose type '3'. Keep the
++	 * bounded alphabet for the unverified by-name fallback. */
++	if (!it->type || !strchr("3aAbBdDgGijNnRrSsTtUuVvWw", it->type))
+ 		return false;
+ 	if (strnlen(it->name, sizeof(it->name)) >= sizeof(it->name))
+ 		return false;
+diff --git a/tests/kallsyms_types/run.py b/tests/kallsyms_types/run.py
+new file mode 100644
+index 0000000..bdea715
+--- /dev/null
++++ b/tests/kallsyms_types/run.py
+@@ -0,0 +1,81 @@
++#!/usr/bin/env python3
++"""Check the production kallsyms iterator gate, including Android Rust symbols."""
++import argparse
++import importlib.util
++import os
++from pathlib import Path
++import subprocess
++import tempfile
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--sanitizers', action='store_true')
++    args = parser.parse_args()
++    root = Path(__file__).resolve().parents[2]
++    spec = importlib.util.spec_from_file_location('extract', root / 'tests/path_creds/run.py')
++    extract = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(extract)
++    source = (root / 'kernel/susfs_hide_syms.c').read_text()
++    function = extract.function(source, 'hide_syms_iter_plausible')
++    harness = r'''
++#include <assert.h>
++#include <stdbool.h>
++#include <stdio.h>
++#include <string.h>
++struct kallsym_iter_local {
++    char type;
++    char name[128];
++    char module_name[56];
++};
++#include "production.h"
++int main(void)
++{
++    struct kallsym_iter_local iter = {.name = "rust_symbol", .module_name = "ashmem_rust"};
++    const char allowed[] = "3aAbBdDgGijNnRrSsTtUuVvWw";
++    for (size_t i = 0; i < sizeof(allowed) - 1; i++) {
++        iter.type = allowed[i];
++        assert(hide_syms_iter_plausible(&iter));
++    }
++    for (unsigned int type = 0; type <= 255; type++) {
++        iter.type = (char)type;
++        bool expected = type != 0 && strchr(allowed, (char)type) != NULL;
++        assert(hide_syms_iter_plausible(&iter) == expected);
++    }
++    iter.type = '3';
++    memset(iter.name, 'x', sizeof(iter.name));
++    assert(!hide_syms_iter_plausible(&iter));
++    strcpy(iter.name, "rust_symbol");
++    memset(iter.module_name, 'x', sizeof(iter.module_name));
++    assert(!hide_syms_iter_plausible(&iter));
++    puts("PASS Rust type, all 256 type bytes and unterminated iterator fields");
++    return 0;
++}
++'''
++    flags = (['-O1', '-g', '-fsanitize=address,undefined', '-fno-omit-frame-pointer', '-no-pie']
++             if args.sanitizers else ['-O2'])
++    env = dict(os.environ, ASAN_OPTIONS='detect_leaks=0:abort_on_error=1',
++               UBSAN_OPTIONS='halt_on_error=1')
++    with tempfile.TemporaryDirectory(prefix='susfs-kallsyms-types-') as directory:
++        work = Path(directory)
++        header = work / 'production.h'
++        header.write_text(function)
++        test = work / 'test.c'
++        test.write_text(harness)
++        command = ['cc', '-std=gnu11', '-Wall', '-Wextra', '-Werror', *flags,
++                   str(test), '-o', str(work / 'test')]
++        subprocess.run(command, check=True)
++        subprocess.run([str(work / 'test')], check=True, env=env)
++        old = function.replace('"3aAbBdDgGijNnRrSsTtUuVvWw"', '"aAbBdDgGijNnRrSsTtUuVvWw"')
++        if old == function:
++            raise RuntimeError('Rust type regression control did not change the production gate')
++        header.write_text(old)
++        subprocess.run(command, check=True)
++        result = subprocess.run([str(work / 'test')], env=env, capture_output=True)
++        if result.returncode == 0:
++            raise RuntimeError('The old alphabet escaped the Rust type regression')
++        print('PASS rejected old-alphabet negative control')
++
++
++if __name__ == '__main__':
++    main()
+diff --git a/tests/path_creds/host_kernel.h b/tests/path_creds/host_kernel.h
+index 5884b21..27fd8b4 100644
+--- a/tests/path_creds/host_kernel.h
++++ b/tests/path_creds/host_kernel.h
+@@ -86,7 +86,7 @@ static bool atomic_inc_not_zero(atomic_int *v) {
+     return n!=0;
+ }
+ static void deactivate_super(struct super_block *sb) { assert(atomic_fetch_sub(&sb->s_active,1)>1); }
+-struct inode { struct super_block *i_sb; u64 i_ino; umode_t i_mode; atomic_int refs; };
++struct inode { struct super_block *i_sb; u64 i_ino; umode_t i_mode; atomic_int refs; u64 i_generation; };
+ struct dentry { struct inode *inode; struct { char *name; } d_name; };
+ struct path { struct dentry *dentry; };
+ struct delayed_work { int unused; };
+diff --git a/tests/path_creds/path_creds_test.c b/tests/path_creds/path_creds_test.c
+index ac33a4d..8e3c54e 100644
+--- a/tests/path_creds/path_creds_test.c
++++ b/tests/path_creds/path_creds_test.c
+@@ -86,7 +86,7 @@ static struct sus_path_entry *find(const char *p) {
+ }
+ static void setup(void) {
+     const char *names[]={"/owned/a","/owned/b","/owned/c","/owned/d"};
+-    for(unsigned i=0;i<4;++i) { files[i].path=names[i];files[i].tag=i+10;files[i].inode=(struct inode){.i_sb=&sb,.i_ino=100+i,.i_mode=0600,.refs=ATOMIC_INIT(1)};files[i].dentry=(struct dentry){.inode=&files[i].inode,.d_name={.name=(char *)names[i]+7}}; }
++    for(unsigned i=0;i<4;++i) { files[i].path=names[i];files[i].tag=i+10;files[i].inode=(struct inode){.i_sb=&sb,.i_ino=100+i,.i_generation=7+i,.i_mode=0600,.refs=ATOMIC_INIT(1)};files[i].dentry=(struct dentry){.inode=&files[i].inode,.d_name={.name=(char *)names[i]+7}}; }
+ }
+ static void verify_index(void) {
+     unsigned indexed=0,resolved=0;
+@@ -94,6 +94,7 @@ static void verify_index(void) {
+     for(unsigned b=0;b<SUS_PATH_INDEX_SIZE;b++) {
+         for(e=sus_path_index[b];e;e=e->index_next) {
+             assert(e->inode&&sus_path_index_bucket(e->ino)==b&&find(e->path)==e);
++            assert(e->generation == e->inode->i_generation);
+             assert(++indexed<=sus_path_count);
+         }
+     }
+diff --git a/tests/path_index/index_test.c b/tests/path_index/index_test.c
+index 415232d..c1d710a 100644
+--- a/tests/path_index/index_test.c
++++ b/tests/path_index/index_test.c
+@@ -13,7 +13,7 @@ int main(void) {
+         struct sus_path_entry *rules=calloc(count?count:1,sizeof(*rules));
+         struct inode *inodes=calloc(count?count:1,sizeof(*inodes));assert(rules&&inodes);
+         for(int i=0;i<count;i++) {
+-            inodes[i]=(struct inode){&sb,(u64)i+1,{0}};
++            inodes[i]=(struct inode){.i_sb=&sb,.i_ino=(u64)i+1};
+             rules[i]=(struct sus_path_entry){.inode=&inodes[i],.ino=i+1,.dev=1};
+             sus_path_index_add(&rules[i]);
+         }
+@@ -30,7 +30,7 @@ int main(void) {
+             total+=n;
+         }
+         assert(total==(unsigned)count&&max<=40);
+-        struct inode miss={&sb,100000,{0}};double best=1e30;
++        struct inode miss={.i_sb=&sb,.i_ino=100000};double best=1e30;
+         for(int trial=0;trial<3;trial++) {
+             double start=now();for(int j=0;j<20000;j++)assert(!sus_path_inode_hidden(&miss));
+             double ns=(now()-start)/20000;if(ns<best)best=ns;
+@@ -42,7 +42,7 @@ int main(void) {
+     }
+     struct sus_path_entry pending={.ino=11,.dev=1};sus_path_index_add(&pending);
+     assert(!sus_path_index[sus_path_index_bucket(11)]);
+-    struct inode zero={&sb,0,{0}};struct sus_path_entry rule={.inode=&zero};
++    struct inode zero={.i_sb=&sb,.i_ino=0};struct sus_path_entry rule={.inode=&zero};
+     sus_path_count=1;sus_path_index_add(&rule);assert(sus_path_inode_hidden(&zero));sus_path_index_del(&rule);
+     puts("PASS pending exclusion, inode-zero pointer matching and complete removal");return 0;
+ }
+diff --git a/tests/path_readlink_lsm/readlink_test.c b/tests/path_readlink_lsm/readlink_test.c
+index cfb1d60..6f912d7 100644
+--- a/tests/path_readlink_lsm/readlink_test.c
++++ b/tests/path_readlink_lsm/readlink_test.c
+@@ -38,14 +38,14 @@ static pthread_mutex_t sus_path_lock = PTHREAD_MUTEX_INITIALIZER;
+ struct file_system_type { int id; };
+ struct super_block { u64 s_dev; struct file_system_type *s_type; };
+ typedef struct { unsigned int val; } kuid_t;
+-struct inode { struct super_block *i_sb; u64 i_ino; kuid_t i_uid; };
++struct inode { struct super_block *i_sb; u64 i_ino; kuid_t i_uid; u64 i_generation; };
+ struct dentry { struct inode *inode; };
+ #define d_inode(d) ((d)->inode)
+ struct sus_path_entry {
+     struct sus_path_entry *index_next;
+     struct list_head list;
+     struct inode *inode;
+-    u64 dev, ino;
++    u64 dev, ino, generation;
+     bool self_protect;
+ };
+ #include "../../kernel/sus_path_index.h"
+@@ -103,7 +103,7 @@ int main(int argc, char **argv)
+     const char *test=argv[1];
+     struct file_system_type proc={1}, other={2};
+     struct super_block sb={1,&proc}, alternate={2,&proc}, unrelated={2,&other};
+-    struct inode target={&sb,11,{0}}, clone=target;
++    struct inode target={.i_sb=&sb,.i_ino=11}, clone=target;
+     struct dentry dentry={&target}, *subject=&dentry;
+     struct sus_path_entry rule={.inode=&target,.dev=1,.ino=11};
+     list_add(&rule.list,&sus_path_list);
+@@ -123,6 +123,19 @@ int main(int argc, char **argv)
+     } else if (!strcmp(test,"self-protected-shell")) { uid=2000; rule.self_protect=true; umounted_app=false;
+     } else if (!strcmp(test,"self-protected-root")) { uid=0; rule.self_protect=true; hidden=false;
+     } else if (!strcmp(test,"same-identity")) { dentry.inode=&clone;
++    } else if (!strcmp(test,"same-generation")) {
++        rule.generation=7; clone.i_generation=7; dentry.inode=&clone;
++    } else if (!strcmp(test,"reused-inode")) {
++        rule.generation=7; clone.i_generation=8; dentry.inode=&clone; hidden=false;
++    } else if (!strcmp(test,"unknown-rule-generation")) {
++        clone.i_generation=8; dentry.inode=&clone;
++    } else if (!strcmp(test,"unknown-inode-generation")) {
++        rule.generation=7; dentry.inode=&clone;
++    } else if (!strcmp(test,"exact-inode-generation")) {
++        rule.generation=7; target.i_generation=8;
++    } else if (!strcmp(test,"reused-control-inode")) {
++        rule.self_protect=true; rule.generation=7;
++        clone.i_generation=8; dentry.inode=&clone; hidden=false;
+     } else if (!strcmp(test,"other-mount")) { clone.i_sb=&alternate; dentry.inode=&clone; hidden=false;
+     } else if (!strcmp(test,"self-protected-proc-instance")) {
+         uid=1000; rule.self_protect=true; clone.i_sb=&alternate; dentry.inode=&clone;
+diff --git a/tests/path_readlink_lsm/run.py b/tests/path_readlink_lsm/run.py
+index 718068e..25f351d 100644
+--- a/tests/path_readlink_lsm/run.py
++++ b/tests/path_readlink_lsm/run.py
+@@ -39,7 +39,9 @@ def main():
+     cases = ['hidden', 'visible-denied', 'visible-allowed', 'visible-retry',
+              'visible-other-error', 'umount-bypass', 'owner-bypass', 'root-bypass',
+              'gate-disabled', 'self-protected-shell', 'self-protected-root',
+-             'same-identity', 'other-mount', 'self-protected-proc-instance',
++             'same-identity', 'same-generation', 'reused-inode',
++             'unknown-rule-generation', 'unknown-inode-generation',
++             'exact-inode-generation', 'reused-control-inode', 'other-mount', 'self-protected-proc-instance',
+              'unrelated-filesystem', 'pending', 'negative-dentry', 'null-dentry',
+              'resolver', 'empty-table', 'sleeping-original']
+     env = dict(os.environ, ASAN_OPTIONS='detect_leaks=0:abort_on_error=1',
+@@ -60,6 +62,13 @@ def main():
+             subprocess.run(command, check=True)
+             for case in cases:
+                 subprocess.run([str(exe), case], env=env, check=True, timeout=10)
++            generation_check = "e->generation != (u64)inode->i_generation"
++            production.write_text(original.replace(generation_check, 'false'))
++            subprocess.run(command, check=True)
++            run = subprocess.run([str(exe), 'reused-inode'], env=env,
++                                 capture_output=True, text=True, timeout=10)
++            assert run.returncode != 0 and 'Assertion' in run.stderr, run.stderr
++            print(f'PASS {version} missing-generation-check negative control')
+             # Removing the early denial must reproduce the SELinux errno leak.
+             needle = 'if (sus_path_dentry_hidden(dentry)) {'
+             assert original.count(needle) == 1
+@@ -80,7 +89,7 @@ def main():
+                                      capture_output=True, text=True, timeout=10)
+                 assert run.returncode != 0 and 'Assertion' in run.stderr, run.stderr
+                 print('PASS 612 missing-original-call-exit negative control')
+-    print('PASS production readlink LSM: 42 cases, 3 runtime negative controls')
++    print('PASS production readlink LSM: 54 cases, 5 runtime negative controls')
+ 
+ 
+ if __name__ == '__main__':

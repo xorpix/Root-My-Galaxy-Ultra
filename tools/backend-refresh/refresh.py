@@ -46,6 +46,12 @@ REVIEWED_HISTORY_TRANSITIONS = {
 # this reviewed replacement and ordinary descendants of it, even if upstream
 # advances before the next scheduled build. Another rewrite still needs review.
 REVIEWED_HISTORY_BRIDGES = {
+    # KowSU rebased onto KernelSU's first-match symbol lookup and logd getattr
+    # permission fixes. Endpoint UAPI and userspace sources are identical,
+    # version rises from 32761 to 32766, and the Samsung patch applies directly.
+    # Only this built base and the reviewed replacement lineage are accepted.
+    ('kowsu', 'd4873310a2738c4c5726a804ed58f1b473799a92'):
+        '44758e199257bb973aa6ca5b3a393c1b21694408',
     # KowSU rebased onto the inode_setxattr/profile-validation KernelSU update.
     # Reviewed both endpoint trees: native ARM64 changes are the new SELinux
     # hook/superblock helpers; userspace adds the upstream profile-path fix.

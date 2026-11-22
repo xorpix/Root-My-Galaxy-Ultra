@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'docs/susfs-redirect-fix-20261110/**'
+      - 'docs/susfs-maintenance-20261122/**'
       - 'tools/build_susfs_redirect_fix.py'
       - '.github/workflows/susfs-native.yml'
       - 'backends/susfs/**'
@@ -112,7 +113,7 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Test Android code and build signed candidate
         run: |
-          ./gradlew testDebugUnitTest assembleRelease -PrmguVersionSuffix=family-cleanup-check --no-daemon
+          ./gradlew testDebugUnitTest assembleRelease -PrmguVersionSuffix=susfs-maintenance-check --no-daemon
           python3 tools/check_susfs_bundle.py --apk app/build/outputs/apk/release/app-release.apk
           python3 tools/verify_d2_helper.py app/build/outputs/apk/release/app-release.apk
       - name: Verify signing certificate and stage candidate
@@ -124,14 +125,48 @@ jobs:
           EXPECTED_SHA256="$(keytool -list -v -keystore "$KEYSTORE_FILE" -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" | awk '/SHA256:/ {print $2; exit}' | tr -d ':' | tr 'A-F' 'a-f')"
           test -n "$SIGNED_SHA256" && test "$SIGNED_SHA256" = "$EXPECTED_SHA256"
           mkdir -p candidate
-          cp "$APK" candidate/RootMyGalaxyUltra-family-cleanup-check.apk
-          sha256sum candidate/RootMyGalaxyUltra-family-cleanup-check.apk > candidate/SHA256SUMS.txt
+          cp "$APK" candidate/RootMyGalaxyUltra-susfs-maintenance-check.apk
+          sha256sum candidate/RootMyGalaxyUltra-susfs-maintenance-check.apk > candidate/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: RMGU-family-cleanup-check-${{ github.event.pull_request.head.sha }}
+          name: RMGU-susfs-maintenance-check-${{ github.event.pull_request.head.sha }}
           path: candidate/
           if-no-files-found: error
           retention-days: 14
       - name: Remove temporary signing key
         if: always()
         run: rm -f "$RUNNER_TEMP/redirect-fix-release.jks"
+
+  stage-maintenance:
+    needs: [host, native, android]
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'maintenance/release-1.4.5'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: redirect-fix-native-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/susfs-native
+      - name: Commit the exact qualified source and native bundle
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+          BRANCH: maintenance/release-1.4.5
+        run: |
+          set -euo pipefail
+          CURRENT_HEAD="$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)"
+          test "$CURRENT_HEAD" = "$EXPECTED_HEAD"
+          cp -a "$RUNNER_TEMP/susfs-native/bundle/." .
+          python3 tools/check_susfs_bundle.py
+          python3 -O tools/check_susfs_bundle.py
+          cp "$RUNNER_TEMP/susfs-native/source.json" docs/susfs-maintenance-20261122/build-receipt.json
+          cp "$RUNNER_TEMP/susfs-native/abi/artifact.json" docs/susfs-maintenance-20261122/abi.json
+          git add app/src/main/assets/susfs backends/susfs docs/susfs-maintenance-20261122
+          if git diff --cached --quiet; then exit 0; fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'build: Stage qualified SusFS maintenance bundle'
+          git push origin "HEAD:refs/heads/$BRANCH"

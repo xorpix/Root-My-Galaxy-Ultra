@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reconstruct and qualify the production protected-table redirect fallback."""
+"""Reconstruct and qualify the reviewed Samsung SusFS maintenance source."""
 import argparse
 import gzip
 import hashlib
@@ -10,13 +10,13 @@ import shutil
 import subprocess
 import tarfile
 
-BASE_APP = 'c6bb0d48ab4665f2cc61387fcfdb3069a85cf6ea'
-BASE_NATIVE = '177aa8907a8ee7d7c156c1330cbab1d55515c5e4'
-BASE_ARCHIVE_SHA = '86bcacc3dfa0e6095b362307332b0d6b202d6d97575b5a49f545442f1186fb61'
-BASE_MODULE_SHA = '876042df9c6b2450f87a67b7f25323957a82c5acd89427aa53c0821545aa7c36'
-BASE_MODULE_PATH = 'app/src/main/assets/susfs/bzig/susfs_guard_lkm.ko'
+BASE_APP = '29fdc93d3b2516a1f4bbe73b3a0576fc492c8657'
+BASE_NATIVE = '3ebe7cf0cb08108856e79fdcdbfe4b3c2bd3a3a1'
+BASE_ARCHIVE_SHA = '9e6b1088cec1423c5968f53b5f4788f00951f4102f98ad962b32166aee9c1f2b'
+BASE_MODULE_SHA = '421283dcb5376dd8fb594479fa0b876f4f7b419b35bb0a722108da05081c5e5e'
+BASE_MODULE_PATH = 'app/src/main/assets/susfs/susfs_guard_lkm.ko'
 MODULE_PATH = 'app/src/main/assets/susfs/susfs_guard_lkm.ko'
-DOC = 'docs/susfs-redirect-fix-20261110'
+DOC = 'docs/susfs-maintenance-20261122'
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
@@ -69,7 +69,7 @@ def main():
     git('init', '-q')
     git('config', 'core.autocrlf', 'false')
     git('add', '-f', '--', '.')
-    assert git('write-tree').decode().strip() == 'd45f899fbe41b37678ba5b7dbf36f07c5d0af2fb', 'baseline tree'
+    assert git('write-tree').decode().strip() == 'a1a9862d946cbb7ba4537c4dee020ba7f488ee85', 'baseline tree'
     git('hash-object', '-t', 'commit', '-w', '--stdin', input=baseline('backends/susfs/source.commit'))
     patch = root / DOC / 'native.patch'
     git('apply', '--check', str(patch))
@@ -80,7 +80,7 @@ def main():
     git('update-ref', 'refs/heads/candidate', candidate)
     receipt = {'schema': 1, 'baseAppCommit': BASE_APP, 'sourceParent': BASE_NATIVE,
                'sourceCommit': candidate, 'sourceTree': tree,
-               'patchSha256': digest(patch.read_bytes()), 'hardwareValidated': False, 'productionHotfix': True}
+               'patchSha256': digest(patch.read_bytes()), 'hardwareValidated': False, 'maintenanceReview': DOC + '/README.md'}
     (out / 'source.json').write_text(json.dumps(receipt, indent=2) + '\n')
     if a.prepare_only:
         print('Reconstructed reviewed candidate ' + candidate)
@@ -128,21 +128,10 @@ def main():
     manifest['validation'] = {
         **manifest.get('validation', {}),
         'hardwareValidated': False,
-        'redirectEntryFallback': DOC + '/README.md',
-        'acceptedHardwareCandidate': json.loads((root / DOC / 'phone-validation.json').read_text()),
+        'maintenanceReview': DOC + '/README.md',
         'kernelImports': 140, 'syscallWrappers': 27,
         'nativeQualificationRun': os.environ.get('GITHUB_RUN_ID'),
-        'deviceValidation': 'Maintainer confirmed the signed fallback candidate starts SusFS with all five redirect entries. This production binary removes only the temporary startup receipt and its state; it has no separate phone test. Redirect rule execution and long-uptime behavior were not independently measured.'}
-    current_validation = json.loads((root / 'backends/susfs/build-manifest.json').read_text())
-    if (current_validation['sourceCommit'] == candidate and
-            current_validation['module'] == module_info and
-            current_validation.get('validation', {}).get('hardwareValidated')):
-        assert current_validation['sourceArchiveSha256'] == archive_sha, 'validated archive changed'
-        phone = json.loads((root / DOC / 'phone-validation.json').read_text())
-        assert phone['result'] == 'passed' and phone['sourceCommit'] == candidate
-        assert phone['moduleSha256'] == module_info['sha256'], 'phone-tested module changed'
-        manifest['validation'] = dict(current_validation['validation'])
-        manifest['validation']['nativeQualificationRun'] = os.environ.get('GITHUB_RUN_ID')
+        'deviceValidation': 'Host regressions and ARM64 compilation qualify the maintenance changes. This module has no separate phone or long-uptime validation.'}
     write('backends/susfs/build-manifest.json', (json.dumps(manifest, indent=2) + '\n').encode())
     bundle_path = 'app/src/main/assets/susfs/bundle.json'
     metadata = json.loads((root / bundle_path).read_text())
