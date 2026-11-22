@@ -53,3 +53,5 @@ jobs:
             git merge-base --is-ancestor "$BRANCH_SHA" HEAD
             gh api --method DELETE "repos/$GH_REPO/git/refs/heads/$BRANCH"
           fi
+
+# Release 1.4.5 published. Run the guarded branch cleanup.
