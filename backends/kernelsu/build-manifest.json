@@ -22,15 +22,15 @@
     "size": 54634,
     "sha256": "8bea92389e8b9ddcf63de83b776e7baed25636d6c85d07490c9c7016a969fb29"
   },
-  "created_utc": "2026-11-20",
-  "app_base_commit": "b6e4a1e150390aab064e12530e5ba9f080b2d41f",
+  "created_utc": "2026-11-22",
+  "app_base_commit": "20828cca1df3e1e7aaf4ea7307e4b6388d21e28f",
   "upstream_repository": "https://github.com/tiann/KernelSU",
-  "upstream_commit": "ff70c90d6de46b80b79d0c74d360d85611797b27",
-  "upstream_commit_count": 2734,
-  "driver_version": 32734,
+  "upstream_commit": "2a60b2893b8d0d885d1ceff2287d8ad854f0e0f4",
+  "upstream_commit_count": 2735,
+  "driver_version": 32735,
   "uapi_version": 6,
   "manager_required_uapi": 6,
-  "daemon_version": "3.3.1-54-gff70c90d",
+  "daemon_version": "3.3.1-55-g2a60b289",
   "validation": {
     "kernel_build": "passed",
     "daemon_build": "passed",
@@ -43,19 +43,19 @@
   "outputs": {
     "ksud": {
       "size": 5307072,
-      "sha256": "ed9593f188d747fde0901508802d48c08f1af893f14386f546a04f979de65764"
+      "sha256": "e801da1f7c959b40e5160785b0a9bf918a79545068433d697cdb997a2e108625"
     },
     "kernelsu.ko": {
-      "size": 451576,
-      "sha256": "d91e624e66f6224b5bad901bd2fb4197df9cda59a89a6e22e4f6ad90dd52e0ed"
+      "size": 451648,
+      "sha256": "79c81f9c951be9486740dc2d95b01f5e37a97402f022e22a719807c6b5a8e214"
     },
     "helper": {
       "size": 24232,
-      "sha256": "833f0152d65bed9fd4864ed2d90b6415ad3274c04c83403d8f1fc371a1e9dd81"
+      "sha256": "981514e4e67a645993861cce5202abe49fb6a6494bb7c4694bda687fec3acbe9"
     }
   },
   "rebased_patch": {
-    "path": "samsung-compat-32734.patch",
+    "path": "samsung-compat-32735.patch",
     "size": 71183,
     "sha256": "f00e8dd3ae518fc57232b85eacde545ebb59b9b029f7fca6f4cc8511a68bf515"
   },
@@ -79,7 +79,7 @@
     "userspace/ksud/src/soft_reboot.rs": "3b4de8e7112f43240969ad16c0e4e6938713c814d77f832e7932d75e547af407",
     "userspace/ksud/src/utils.rs": "f1300cad6f81900e7cfb04dad768bc0125c8538c39634835c9f0f677479922bb"
   },
-  "app_version": "1.4.4",
-  "previous_upstream_commit": "f4603d14bd7f3bf21206d6f7c622ddf1c049ade3",
+  "app_version": "1.4.5",
+  "previous_upstream_commit": "ff70c90d6de46b80b79d0c74d360d85611797b27",
   "local_app_base_commit": "df7c69670851a031ab81b95ee7557254d078440a"
 }

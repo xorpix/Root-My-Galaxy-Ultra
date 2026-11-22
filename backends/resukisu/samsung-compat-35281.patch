@@ -1,5 +1,5 @@
 diff --git a/kernel/Kbuild b/kernel/Kbuild
-index 666dcde2c63a418b782f3d7228393ee9d231c4b5..13f004212f016abce558af72b7570307d3d5ed17 100644
+index b637cd8e28d7097db5c8533d46e62153166b9d4b..31bf9c529e8feead2f91167f6efa27c2f7f988a6 100644
 --- a/kernel/Kbuild
 +++ b/kernel/Kbuild
 @@ -19,6 +19,8 @@ kernelsu-objs += manager/manager.o
@@ -35,7 +35,7 @@ index 666dcde2c63a418b782f3d7228393ee9d231c4b5..13f004212f016abce558af72b7570307
  
  REPO_NAME := BakaSU
 diff --git a/kernel/Kconfig b/kernel/Kconfig
-index 79bc79eee88807a19a24807e2c1e8eafab5f1591..4dc1294366c66e9117bf330bf3c7f2d1c855883a 100644
+index da8787d1a56f5ea3d160da5637596476e709ee1f..fba1399251673d5718e30e4eaee33018bd50da73 100644
 --- a/kernel/Kconfig
 +++ b/kernel/Kconfig
 @@ -157,6 +157,45 @@ config KSU_MANUAL_HOOK_AUTO_INPUT_HOOK
@@ -445,10 +445,10 @@ index 0000000000000000000000000000000000000000..2104f2e9a82be77e46603bec3c4292dc
 +#endif
 +}
 diff --git a/kernel/core/init.c b/kernel/core/init.c
-index d68c253213128ddb7cc175b99ca6195915df3f72..9505a80697895c12ac44226b7b64873166c11c67 100644
+index 22265f6d3b5a56b76533ea39fcdf541cf4920fa8..d23d7bafd03a963ace3be05b714b717641cc3a86 100644
 --- a/kernel/core/init.c
 +++ b/kernel/core/init.c
-@@ -38,6 +38,8 @@
+@@ -39,6 +39,8 @@
  #include "infra/symbol_resolver.h"
  #include "preinit/preinit.h"
  #include "uapi/supercall.h"
@@ -457,7 +457,7 @@ index d68c253213128ddb7cc175b99ca6195915df3f72..9505a80697895c12ac44226b7b648731
  
  #ifdef CONFIG_ARM64
  #include "compat/apatch_conflict.h"
-@@ -226,20 +228,41 @@ int __init kernelsu_init(void)
+@@ -227,20 +229,41 @@ int __init kernelsu_init(void)
          pr_alert("shell is allowed at init!");
      }
  
@@ -502,7 +502,7 @@ index d68c253213128ddb7cc175b99ca6195915df3f72..9505a80697895c12ac44226b7b648731
  #ifdef CONFIG_ARM64
      ksu_start_apatch_conflict_check();
  #endif
-@@ -341,7 +364,10 @@ void __exit kernelsu_exit(void)
+@@ -343,7 +366,10 @@ void __exit kernelsu_exit(void)
      ksu_feature_exit();
      ksu_module_blacklist_exit();
  
@@ -513,22 +513,42 @@ index d68c253213128ddb7cc175b99ca6195915df3f72..9505a80697895c12ac44226b7b648731
  }
  
  #if NEED_OWN_STACKPROTECTOR
-diff --git a/kernel/feature/selinux_hide.c b/kernel/feature/selinux_hide.c
-index 91b54efc2c0e2a742829d055ac35417c6668345b..62bc063e413b1551abe96ed555e3a563b2e54567 100644
---- a/kernel/feature/selinux_hide.c
-+++ b/kernel/feature/selinux_hide.c
-@@ -19,6 +19,8 @@
- #include <linux/jump_label.h>
- #include <selinux/sepolicy.h>
- #include <ss/policydb.h>
+diff --git a/kernel/feature/selinux_hide/selinux_hide.c b/kernel/feature/selinux_hide/selinux_hide.c
+index aa90197157c3f4fb391a7d29e01474f1b7daa8f7..b824ed9c23a1d3709d94f502f9a386d81d46b4f6 100644
+--- a/kernel/feature/selinux_hide/selinux_hide.c
++++ b/kernel/feature/selinux_hide/selinux_hide.c
+@@ -116,7 +116,6 @@ static int selinux_hide_feature_set(u64 value)
+     int ret = 0;
+     pr_info("selinux_hide: set to %d\n", enable);
+     mutex_lock(&selinux_hide_mutex);
+-    ksu_selinux_hide_enabled = enable;
+     if (enable) {
+         if (!ksu_selinux_hide_running) {
+             ret = ksu_selinux_hide_enable();
+@@ -130,6 +129,7 @@ static int selinux_hide_feature_set(u64 value)
+             ksu_selinux_hide_running = false;
+         }
+     }
++    ksu_selinux_hide_enabled = ksu_selinux_hide_running;
+     mutex_unlock(&selinux_hide_mutex);
+     return ret;
+ }
+diff --git a/kernel/feature/selinux_hide/selinux_hide_auto.c b/kernel/feature/selinux_hide/selinux_hide_auto.c
+index 94120f304f349c16e39414eba9cc7cc9dbfe9a48..dbb9a49efc8894df02bfad75b6a834edb7dc70de 100644
+--- a/kernel/feature/selinux_hide/selinux_hide_auto.c
++++ b/kernel/feature/selinux_hide/selinux_hide_auto.c
+@@ -15,6 +15,8 @@
+ #include <linux/rwlock_types.h>
+ #include <linux/security.h>
+ #include <linux/xattr.h>
 +#include <linux/kprobes.h>
 +#include <linux/xarray.h>
  
- // security/selinux/include/security.h
- #include <security.h>
-@@ -456,6 +458,10 @@ static u32 ptrace_parent_sid(void)
- #endif
- // clang-format on
+ #include <ss/context.h>
+ #include <ss/mls.h>
+@@ -382,6 +384,10 @@ static u32 ptrace_parent_sid(void)
+     return sid;
+ }
  
 +#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 +static void *orig_selinux_setprocattr;
@@ -537,7 +557,20 @@ index 91b54efc2c0e2a742829d055ac35417c6668345b..62bc063e413b1551abe96ed555e3a563
  #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0) || defined(KSU_COMPAT_SETPROCATTR_USE_NEW_PROTOTYPE)
  int __nocfi ksu_handle_selinux_setprocattr(const char *name, void *value, size_t size)
  #else
-@@ -590,6 +596,216 @@ static int my_sel_open_handle_status(struct inode *inode, struct file *filp)
+@@ -603,6 +609,12 @@ static int selinux_hide_init_setxattr()
+ {
+     int ret;
+ 
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
++    selinux_inode_setxattr_hook.original = ksu_resolve_symbol_for_functable_hook("selinux_inode_setxattr");
++    if (!selinux_inode_setxattr_hook.original)
++        return -ENOENT;
++#endif
++
+     ret = ksu_selinux_superblock_init();
+     if (ret)
+         return ret;
+@@ -645,6 +657,274 @@ static int my_sel_open_handle_status(struct inode *inode, struct file *filp)
      return ret;
  }
  
@@ -751,10 +784,68 @@ index 91b54efc2c0e2a742829d055ac35417c6668345b..62bc063e413b1551abe96ed555e3a563
 +
 +#endif
 +
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
++/* Preserve the Samsung route when the new LSM slot is read-only too. */
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0)
++static int __nocfi sel_hide_setxattr_tramp(struct mnt_idmap *idmap, struct dentry *dentry, const char *name,
++                                         const void *value, size_t size, int flags)
++{
++    int ret = ksu_handle_selinux_inode_setxattr(idmap, dentry, name, value, size, flags);
++#elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
++static int __nocfi sel_hide_setxattr_tramp(struct user_namespace *mnt_userns, struct dentry *dentry, const char *name,
++                                         const void *value, size_t size, int flags)
++{
++    int ret = ksu_handle_selinux_inode_setxattr(mnt_userns, dentry, name, value, size, flags);
++#else
++static int __nocfi sel_hide_setxattr_tramp(struct dentry *dentry, const char *name, const void *value, size_t size, int flags)
++{
++    int ret = ksu_handle_selinux_inode_setxattr(dentry, name, value, size, flags);
++#endif
++    sel_hide_guard_exit();
++    return ret;
++}
++
++static int sel_hide_setxattr_pre(struct kprobe *p, struct pt_regs *regs)
++{
++    if (!ksu_selinux_hide_enabled || !sel_hide_guard_enter())
++        return 0;
++    instruction_pointer_set(regs, (unsigned long)sel_hide_setxattr_tramp);
++    return 1;
++}
++
++static struct kprobe sel_hide_setxattr_kprobe = {
++    .pre_handler = sel_hide_setxattr_pre,
++};
++
++static int sel_hide_route_setxattr(void)
++{
++    int ret = ksu_lsm_hook(&selinux_inode_setxattr_hook);
++
++    if (!ret)
++        return 0;
++    /* init_setxattr publishes the resolved original before either route. */
++    if (!selinux_inode_setxattr_hook.original)
++        return -ENOENT;
++    return sel_hide_register_probe(&sel_hide_setxattr_kprobe, selinux_inode_setxattr_hook.original);
++}
++
++static void sel_hide_unroute_setxattr(void)
++{
++    if (sel_hide_setxattr_kprobe.addr) {
++        unregister_kprobe(&sel_hide_setxattr_kprobe);
++        sel_hide_setxattr_kprobe.addr = NULL;
++        /* A diverted callback can still be finishing after unregister.
++         * Keep the immutable kernel handler valid for that callback. */
++    } else {
++        ksu_lsm_unhook(&selinux_inode_setxattr_hook);
++    }
++}
++#endif
++
  static void hook_selinux_status_open()
  {
      if (orig_sel_open_handle_status)
-@@ -607,11 +823,15 @@ static void hook_selinux_status_open()
+@@ -662,11 +942,15 @@ static void hook_selinux_status_open()
          }
          sel_open_handle_status_slot = &ops->open;
      }
@@ -773,7 +864,7 @@ index 91b54efc2c0e2a742829d055ac35417c6668345b..62bc063e413b1551abe96ed555e3a563
          sel_open_handle_status_slot = NULL;
          orig_sel_open_handle_status = NULL;
      }
-@@ -622,7 +842,11 @@ extern void ksu_unregister_setprocattr_lsm_hook();
+@@ -680,7 +964,11 @@ extern void ksu_unregister_setxattr_lsm_hook();
  static void ksu_selinux_hide_unhook()
  {
      int ret;
@@ -786,7 +877,7 @@ index 91b54efc2c0e2a742829d055ac35417c6668345b..62bc063e413b1551abe96ed555e3a563
          ret =
              ksu_patch_text(context_write, &orig_context_write, sizeof(orig_context_write), KSU_PATCH_TEXT_FLUSH_DCACHE);
          orig_context_write = NULL;
-@@ -630,15 +854,29 @@ static void ksu_selinux_hide_unhook()
+@@ -688,16 +976,30 @@ static void ksu_selinux_hide_unhook()
              pr_err("selinux_hide: exit: patch_text context_write err: %d\n", ret);
          }
      }
@@ -807,6 +898,7 @@ index 91b54efc2c0e2a742829d055ac35417c6668345b..62bc063e413b1551abe96ed555e3a563
 +    // still answers like the stock kernel.
  #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
 -    ksu_lsm_unhook(&selinux_setprocattr_hook);
+-    ksu_lsm_unhook(&selinux_inode_setxattr_hook);
 +    if (sel_hide_setprocattr_kprobe.addr) {
 +        unregister_kprobe(&sel_hide_setprocattr_kprobe);
 +        sel_hide_setprocattr_kprobe.addr = NULL;
@@ -815,15 +907,18 @@ index 91b54efc2c0e2a742829d055ac35417c6668345b..62bc063e413b1551abe96ed555e3a563
 +    } else {
 +        ksu_lsm_unhook(&selinux_setprocattr_hook);
 +    }
++    sel_hide_unroute_setxattr();
  #elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0) || defined(KSU_COMPAT_HAS_LIST_OF_LSM_HOOKS)
      if (ksu_orig_setprocattr) {
          ret = ksu_patch_text((void *)selinux_setprocattr_hook_ptr, &ksu_orig_setprocattr, sizeof(ksu_orig_setprocattr),
-@@ -777,28 +1015,27 @@ static int ksu_selinux_hide_enable()
+@@ -826,34 +1128,33 @@ static int ksu_selinux_hide_hook(void)
  
      context_write = &selinux_write_op[SEL_CONTEXT];
      pr_info("selinux_hide: context_write: 0x%lx [%pSb]\n", (unsigned long)*context_write, *context_write);
 -    write_op_fn my = my_write_context;
      orig_context_write = *context_write;
+     // Keep backup once hooks may run, including failed enable attempts
+     ksu_selinux_hide_keep_backup = true;
 -    ret = ksu_patch_text(context_write, &my, sizeof(my), KSU_PATCH_TEXT_FLUSH_DCACHE);
 +    ret = sel_hide_route_slot(&sel_hide_context_write_kprobe, (void **)context_write, (void *)my_write_context,
 +                              orig_context_write, "context_write");
@@ -853,26 +948,12 @@ index 91b54efc2c0e2a742829d055ac35417c6668345b..62bc063e413b1551abe96ed555e3a563
 -        pr_err("selinux_hide: init: selinux_setprocattr_hook err: %d\n", ret);
          goto unhook;
      }
- #elif LINUX_VERSION_CODE >= KERNEL_VERSION(4, 2, 0) || defined(KSU_COMPAT_HAS_LIST_OF_LSM_HOOKS)
-@@ -869,7 +1106,6 @@ static int selinux_hide_feature_set(u64 value)
-     int ret = 0;
-     pr_info("selinux_hide: set to %d\n", enable);
-     mutex_lock(&selinux_hide_mutex);
--    ksu_selinux_hide_enabled = enable;
-     if (enable) {
-         if (!ksu_selinux_hide_running) {
-             ret = ksu_selinux_hide_enable();
-@@ -883,6 +1119,10 @@ static int selinux_hide_feature_set(u64 value)
-             ksu_selinux_hide_running = false;
-         }
-     }
-+    // The flag means "the hooks are in place", not "someone asked for this". It
-+    // used to be set before the enable path ran, so a refused enable still read
-+    // back as enabled while every probe kept getting stock answers.
-+    ksu_selinux_hide_enabled = ksu_selinux_hide_running;
-     mutex_unlock(&selinux_hide_mutex);
-     return ret;
- }
+ 
+-    ret = ksu_lsm_hook(&selinux_inode_setxattr_hook);
++    ret = sel_hide_route_setxattr();
+     if (ret) {
+         pr_err("selinux_hide: init: selinux_inode_setxattr_hook err: %d\n", ret);
+         goto unhook;
 diff --git a/kernel/hook/arm64/patch_memory.c b/kernel/hook/arm64/patch_memory.c
 index 1ab6befecaad2fa0e7e3e2b0ecb249c26fe5d6f2..33a8787b766ea77884b5670e81891358c2fee482 100644
 --- a/kernel/hook/arm64/patch_memory.c
@@ -1004,7 +1085,7 @@ index 47df6b9136f668607310cdf8afe005466a43d398..cfa270897abdc3592b0fc308ebd3d051
  // Restore syscall_table[@nr] to its original value recorded by
  // ksu_syscall_table_hook(), and remove the entry from the tracking list.
 diff --git a/kernel/hook/syscall_hook_manager.c b/kernel/hook/syscall_hook_manager.c
-index 5dd1f2be2299c99fcf6425133353bc0d764b0708..15394f18f5c1373f12bae69aa79d09ad0563112c 100644
+index cb1aab896e13021fed83d5bb813aee4c93969390..81d9776b0c8e6e18442bbb8fbd265a6aeceeaf82 100644
 --- a/kernel/hook/syscall_hook_manager.c
 +++ b/kernel/hook/syscall_hook_manager.c
 @@ -5,6 +5,7 @@
@@ -1015,7 +1096,7 @@ index 5dd1f2be2299c99fcf6425133353bc0d764b0708..15394f18f5c1373f12bae69aa79d09ad
  #include <trace/events/syscalls.h>
  
  #include <linux/version.h>
-@@ -26,6 +27,327 @@
+@@ -27,6 +28,327 @@
  #if defined(__riscv)
  #include "hook/riscv64/syscall_regs.h"
  #endif
@@ -1343,7 +1424,7 @@ index 5dd1f2be2299c99fcf6425133353bc0d764b0708..15394f18f5c1373f12bae69aa79d09ad
  
  #ifdef CONFIG_KRETPROBES
  
-@@ -160,6 +482,31 @@ void __init ksu_syscall_hook_manager_init(void)
+@@ -161,6 +483,31 @@ void __init ksu_syscall_hook_manager_init(void)
      int ret;
      pr_info("hook_manager: ksu_hook_manager_init called\n");
  
@@ -1375,7 +1456,7 @@ index 5dd1f2be2299c99fcf6425133353bc0d764b0708..15394f18f5c1373f12bae69aa79d09ad
  #ifdef CONFIG_KRETPROBES
      syscall_regfunc_rp = init_kretprobe("syscall_regfunc", syscall_regfunc_handler);
      syscall_unregfunc_rp = init_kretprobe("syscall_unregfunc", syscall_unregfunc_handler);
-@@ -199,6 +546,23 @@ void __init ksu_syscall_hook_manager_init(void)
+@@ -200,6 +547,23 @@ void __init ksu_syscall_hook_manager_init(void)
  void __exit ksu_syscall_hook_manager_exit(void)
  {
      pr_info("hook_manager: ksu_hook_manager_exit called\n");

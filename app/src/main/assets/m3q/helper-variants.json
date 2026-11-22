@@ -3,22 +3,22 @@
   "variants": {
     "kernelsu": {
       "library": "libm3qroot_kernelsu.so",
-      "driverVersion": 32734,
+      "driverVersion": 32735,
       "uapiVersion": 6,
       "size": 24232,
-      "sha256": "833f0152d65bed9fd4864ed2d90b6415ad3274c04c83403d8f1fc371a1e9dd81",
+      "sha256": "981514e4e67a645993861cce5202abe49fb6a6494bb7c4694bda687fec3acbe9",
       "changes": [
         {
           "virtual_address": "0x6c94",
           "file_offset": 11412,
           "before": "528fef89",
-          "after": "528ffbc9"
+          "after": "528ffbe9"
         },
         {
           "virtual_address": "0x6cc8",
           "file_offset": 11464,
           "before": "528fef82",
-          "after": "528ffbc2"
+          "after": "528ffbe2"
         },
         {
           "virtual_address": "0x6ca0",
@@ -36,22 +36,22 @@
     },
     "kernelsu-next": {
       "library": "libm3qroot_kernelsu_next.so",
-      "driverVersion": 33554,
+      "driverVersion": 33646,
       "uapiVersion": 6,
       "size": 24232,
-      "sha256": "8d0823b004aeb527f612a7538c18a31ac908db19def043dd32b2ac1b5a17c0e0",
+      "sha256": "34bb5b112412af127455bc5c172998e06720ca0500efa17c12e7f1aaa3c705c1",
       "changes": [
         {
           "virtual_address": "0x6c94",
           "file_offset": 11412,
           "before": "528fef89",
-          "after": "52906249"
+          "after": "52906dc9"
         },
         {
           "virtual_address": "0x6cc8",
           "file_offset": 11464,
           "before": "528fef82",
-          "after": "52906242"
+          "after": "52906dc2"
         },
         {
           "virtual_address": "0x6ca0",
@@ -75,22 +75,22 @@
     },
     "resukisu": {
       "library": "libm3qroot_resukisu.so",
-      "driverVersion": 35262,
+      "driverVersion": 35281,
       "uapiVersion": 6,
       "size": 24232,
-      "sha256": "578db323a7a26cad752b928b4047326ada3f998d55c077e42e129b983073ba2f",
+      "sha256": "15938b29526eb38c64bf025259553eb4e924761028f6c0a78ef64abae49e4ebe",
       "changes": [
         {
           "virtual_address": "0x6c94",
           "file_offset": 11412,
           "before": "528fef89",
-          "after": "529137c9"
+          "after": "52913a29"
         },
         {
           "virtual_address": "0x6cc8",
           "file_offset": 11464,
           "before": "528fef82",
-          "after": "529137c2"
+          "after": "52913a22"
         },
         {
           "virtual_address": "0x6ca0",
@@ -114,22 +114,22 @@
     },
     "kowsu": {
       "library": "libm3qroot_kowsu.so",
-      "driverVersion": 32761,
+      "driverVersion": 32766,
       "uapiVersion": 6,
       "size": 24232,
-      "sha256": "0dd66de29725363108c8d27fd802917d02afd7c646a2293c87d45890813aa511",
+      "sha256": "f44d839f69cf1be27ec179233d4e34785f175ecf3cd4157f56450bb534756502",
       "changes": [
         {
           "virtual_address": "0x6c94",
           "file_offset": 11412,
           "before": "528fef89",
-          "after": "528fff29"
+          "after": "528fffc9"
         },
         {
           "virtual_address": "0x6cc8",
           "file_offset": 11464,
           "before": "528fef82",
-          "after": "528fff22"
+          "after": "528fffc2"
         },
         {
           "virtual_address": "0x6ca0",

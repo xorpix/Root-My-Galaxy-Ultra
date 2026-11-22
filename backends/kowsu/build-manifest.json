@@ -22,15 +22,15 @@
     "size": 54634,
     "sha256": "8bea92389e8b9ddcf63de83b776e7baed25636d6c85d07490c9c7016a969fb29"
   },
-  "created_utc": "2026-11-15",
-  "app_base_commit": "52595ea13813c8c659c47f81600c991f87bc943a",
+  "created_utc": "2026-11-22",
+  "app_base_commit": "20828cca1df3e1e7aaf4ea7307e4b6388d21e28f",
   "upstream_repository": "https://github.com/KOWX712/KernelSU",
-  "upstream_commit": "d4873310a2738c4c5726a804ed58f1b473799a92",
-  "upstream_commit_count": 2761,
-  "driver_version": 32761,
+  "upstream_commit": "44758e199257bb973aa6ca5b3a393c1b21694408",
+  "upstream_commit_count": 2766,
+  "driver_version": 32766,
   "uapi_version": 6,
   "manager_required_uapi": 6,
-  "daemon_version": "3.3.0-160-gd4873310",
+  "daemon_version": "3.3.0-165-g44758e19",
   "validation": {
     "kernel_build": "passed",
     "daemon_build": "passed",
@@ -42,20 +42,20 @@
   "source_provenance": "RMGU KernelSU Samsung compatibility changes adapted to KowSU 6366f25b; upstream UAPI, version formula and manager signer retained.",
   "outputs": {
     "ksud": {
-      "size": 5314368,
-      "sha256": "472dea6843535d63baa004c21ab2f671bb62e2983bcaee6974ff2d853da35e87"
+      "size": 5314336,
+      "sha256": "70cff423ebd11960d42ec61c9844e57a2f2e328050a16fd403937c9ba869acde"
     },
     "kernelsu.ko": {
-      "size": 555560,
-      "sha256": "908eadc938a806d5a839e2cc1fefe5b8d5067c22d25c0ebfd1c73d5cdcb36cc0"
+      "size": 555632,
+      "sha256": "3050a1cf13f59800c063929e60d6856a8ddb22984a43a8478ca742b0caa8500f"
     },
     "helper": {
       "size": 24232,
-      "sha256": "0dd66de29725363108c8d27fd802917d02afd7c646a2293c87d45890813aa511"
+      "sha256": "f44d839f69cf1be27ec179233d4e34785f175ecf3cd4157f56450bb534756502"
     }
   },
   "rebased_patch": {
-    "path": "samsung-compat-32761.patch",
+    "path": "samsung-compat-32766.patch",
     "size": 70993,
     "sha256": "db2136acc038fb99140ca44734c74b945e9900d02b03b30c94310dffb9605c10"
   },
@@ -80,7 +80,7 @@
     "userspace/ksud/src/soft_reboot.rs": "3b4de8e7112f43240969ad16c0e4e6938713c814d77f832e7932d75e547af407",
     "userspace/ksud/src/utils.rs": "f1300cad6f81900e7cfb04dad768bc0125c8538c39634835c9f0f677479922bb"
   },
-  "app_version": "1.4.4",
-  "previous_upstream_commit": "21787ce135c988bae4244a44cfcb5a542aa3347f",
+  "app_version": "1.4.5",
+  "previous_upstream_commit": "d4873310a2738c4c5726a804ed58f1b473799a92",
   "local_app_base_commit": "df7c69670851a031ab81b95ee7557254d078440a"
 }
