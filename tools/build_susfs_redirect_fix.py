@@ -149,6 +149,7 @@ def main():
     if current['sourceCommit'] == candidate:
         assert current['sourceArchiveSha256'] == archive_sha, 'rebuilt archive differs from bundle'
         assert current['module'] == module_info, 'rebuilt module differs from bundle'
+    (out / 'source.json').write_text(json.dumps(receipt, indent=2) + '\n')
     print(json.dumps(receipt, indent=2))
 
 if __name__ == '__main__':

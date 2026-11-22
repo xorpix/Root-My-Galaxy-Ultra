@@ -9,6 +9,17 @@ The version increases from 32761 to 32766 and the Samsung compatibility patch
 applies directly. `refresh.py` accepts this exact old pin and the reviewed anchor
 or Git-proven descendants. Unrelated rewrites continue to fail verification.
 
+BakaSU subsequently advanced to `2734e0bc155759955880f5fb99be640fc5b92156`.
+Its SELinux feature moved into a central file and separate automatic and
+built-in-SusFS implementations. The Samsung patch now follows that split,
+retains upstream's backup-policy lifetime handling and publishes the feature's
+enabled state after hook installation. The new inode_setxattr hook uses the
+same reviewed Samsung fallback as the other three backends. Existing route
+tests now compile BakaSU's adapter as well, covering arguments, recursion,
+disabled state, failed installation and cleanup during a diverted callback.
+The upstream UAPI and version formulas remain unchanged. The new template
+hash marks this backend for a matched driver and daemon rebuild.
+
 The SusFS survey covered 19 distinct upstream, fork and packaging repositories.
 The old `inforcqb/susfs4ksu-lkm` URL redirects to `susfs4ksu-for-lkm`.
 Their exact inspected revisions follow.

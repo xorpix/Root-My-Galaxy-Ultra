@@ -109,12 +109,18 @@ int main(void) {
 
 class SelinuxRouteTests(unittest.TestCase):
     def test_real_routes_preserve_arguments_guard_errors_and_cleanup(self):
-        for name in ('kernelsu', 'kernelsu-next', 'kowsu'):
+        handlers = {
+            'kernelsu': 'my_inode_setxattr',
+            'kernelsu-next': 'my_inode_setxattr',
+            'kowsu': 'my_inode_setxattr',
+            'resukisu': 'ksu_handle_selinux_inode_setxattr',
+        }
+        for name, handler in handlers.items():
             patch = (HERE / f'{name}-compat.patch').read_text()
             added = '\n'.join(line[1:] for line in patch.splitlines() if line.startswith('+') and not line.startswith('+++'))
             start = added.index('/* Preserve the Samsung route')
             end = added.index('\n}\n', added.index('static void sel_hide_unroute_setxattr', start)) + 3
-            source = PREFIX + added[start:end] + SUFFIX
+            source = PREFIX.replace('my_inode_setxattr', handler) + added[start:end] + SUFFIX
             for version in ((5, 10, 0), (5, 15, 0), (6, 12, 0)):
                 with self.subTest(backend=name, kernel=version), tempfile.TemporaryDirectory() as tmp:
                     c = Path(tmp) / 'route.c'
