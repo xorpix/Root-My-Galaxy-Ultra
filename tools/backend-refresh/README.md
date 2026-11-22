@@ -10,6 +10,11 @@ four official source branches every **Monday at 03:17 UTC**:
 | BakaSU | `Baka-SU/BakaSU`, `main` | `resukisu` |
 | KowSU | `KOWX712/KernelSU`, `master` | `kowsu` |
 
+The manual 1.4.5 release replaces the scheduled refresh on **23 November 2026,
+03:17 UTC / 04:17 Oslo**. The dated schedule gate skips that run. The next
+eligible weekly run is **30 November 2026, 03:17 UTC / 04:17 Oslo**. Manual
+runs and pull-request validation continue to run.
+
 When there are new commits or reviewed Samsung patch updates, it snapshots those revisions, builds each changed
 kernel driver and daemon as a matched pair, updates the bundled files and helper
 version/hash records, runs the bundle checks and Android unit tests, and builds
