@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "baseAppCommit": "29fdc93d3b2516a1f4bbe73b3a0576fc492c8657",
+  "sourceParent": "3ebe7cf0cb08108856e79fdcdbfe4b3c2bd3a3a1",
+  "sourceCommit": "e6ccb947d1ec1d0a0516ae4edd94577fbef38ff6",
+  "sourceTree": "560c1d99557b24066e30dd411a92440e23db312a",
+  "patchSha256": "8101eba7e26a087cdf9c915de8ac4f29a86eedc093e36896b8ebfeb267bbcc85",
+  "hardwareValidated": false,
+  "maintenanceReview": "docs/susfs-maintenance-20261122/README.md",
+  "module": {
+    "path": "app/src/main/assets/susfs/susfs_guard_lkm.ko",
+    "bytes": 609672,
+    "sha256": "b408a49484dfb6ae2047b54d5bc1210a070173531cb12f8b6485809cfc8a56ab"
+  },
+  "workflowRun": "45054984173",
+  "sourceArchiveSha256": "7058775973b96b7c03d0d7546952bf49422af30258eb359b67be4980ac649a6b"
+}

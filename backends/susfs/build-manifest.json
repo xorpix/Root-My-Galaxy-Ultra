@@ -1,14 +1,14 @@
 {
   "schema": 1,
-  "sourceCommit": "3ebe7cf0cb08108856e79fdcdbfe4b3c2bd3a3a1",
-  "sourceTree": "a1a9862d946cbb7ba4537c4dee020ba7f488ee85",
-  "sourceParent": "177aa8907a8ee7d7c156c1330cbab1d55515c5e4",
+  "sourceCommit": "e6ccb947d1ec1d0a0516ae4edd94577fbef38ff6",
+  "sourceTree": "560c1d99557b24066e30dd411a92440e23db312a",
+  "sourceParent": "3ebe7cf0cb08108856e79fdcdbfe4b3c2bd3a3a1",
   "sourceArchive": "source.tar.gz",
-  "sourceArchiveSha256": "9e6b1088cec1423c5968f53b5f4788f00951f4102f98ad962b32166aee9c1f2b",
+  "sourceArchiveSha256": "7058775973b96b7c03d0d7546952bf49422af30258eb359b67be4980ac649a6b",
   "module": {
     "path": "app/src/main/assets/susfs/susfs_guard_lkm.ko",
     "bytes": 609672,
-    "sha256": "421283dcb5376dd8fb594479fa0b876f4f7b419b35bb0a722108da05081c5e5e"
+    "sha256": "b408a49484dfb6ae2047b54d5bc1210a070173531cb12f8b6485809cfc8a56ab"
   },
   "validation": {
     "hardwareValidated": false,
@@ -19,10 +19,10 @@
     },
     "moduleStatusLockOrderFix": "docs/susfs-lock-fix-20261109/README.md",
     "btiProbeFix": "docs/susfs-bti-fix-20261110/README.md",
-    "nativeQualificationRun": "42920346164",
+    "nativeQualificationRun": "45054984173",
     "kernelImports": 140,
     "syscallWrappers": 27,
-    "deviceValidation": "Maintainer confirmed the signed fallback candidate starts SusFS with all five redirect entries. This production binary removes only the temporary startup receipt and its state; it has no separate phone test. Redirect rule execution and long-uptime behavior were not independently measured.",
+    "deviceValidation": "Host regressions and ARM64 compilation qualify the maintenance changes. This module has no separate phone or long-uptime validation.",
     "redirectEntryFallback": "docs/susfs-redirect-fix-20261110/README.md",
     "acceptedHardwareCandidate": {
       "schema": 1,
@@ -51,7 +51,8 @@
         "The production module removes temporary startup diagnostics and has a different hash; it is covered by build and regression checks, not a separate phone confirmation.",
         "No new unload/restoration, detector or long-uptime measurement was supplied."
       ]
-    }
+    },
+    "maintenanceReview": "docs/susfs-maintenance-20261122/README.md"
   },
   "priorityControl": {
     "path": "app/src/main/jniLibs/arm64-v8a/librmgususfs_priority.so",

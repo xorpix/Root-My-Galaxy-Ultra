@@ -1,6 +1,9 @@
-tree a1a9862d946cbb7ba4537c4dee020ba7f488ee85
-parent 177aa8907a8ee7d7c156c1330cbab1d55515c5e4
-author Codex <codex@openai.com> 1794351850 +0100
-committer Codex <codex@openai.com> 1794351850 +0100
+tree 560c1d99557b24066e30dd411a92440e23db312a
+parent 3ebe7cf0cb08108856e79fdcdbfe4b3c2bd3a3a1
+author xorpix <22274805+xorpix@users.noreply.github.com> 1795370284 +0100
+committer xorpix <22274805+xorpix@users.noreply.github.com> 1795370284 +0100
 
-Handle protected redirect tables without temporary startup diagnostics
+Protect path identities from inode reuse and admit Rust kallsyms types
+
+Adapted from LowKeyMerlin/susfs4ksu-lkm commits 766f09b and 759a145.
+Retain Samsung callback policy and existing hook architecture.

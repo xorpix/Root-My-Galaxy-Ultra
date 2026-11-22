@@ -148,6 +148,14 @@ another backend, missing anchor or another unrelated rewrite still stops. The
 old pin must remain retrievable, and all UAPI/version, patch and native-build
 checks still run. See [the source review](../../docs/kowsu-history-review-20261031.md).
 
+KowSU's 2026-11-21 rebase from `d4873310` to `44758e19` has also been
+reviewed. The endpoint runtime changes select the first exact symbol match
+and let logd read root-process attributes. UAPI and userspace sources are
+identical, the version increases from 32761 to 32766, and the existing Samsung
+patch applies directly. The exception is limited to the recorded old pin and
+replacement anchor or its proven descendants. See
+[the maintenance review](../../docs/susfs-maintenance-20261122/README.md).
+
 The existing Samsung compatibility patch must apply to the selected upstream
 revision directly or through a conflict-free Git three-way merge using the
 original source blobs. Samsung initialization variables are scoped inside the

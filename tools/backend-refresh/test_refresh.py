@@ -265,6 +265,13 @@ class RefreshTests(unittest.TestCase):
         self.assertFalse(refresh.reviewed_history_transition('kernelsu-next', rebased_next, 'b' * 40))
         self.assertFalse(refresh.reviewed_history_transition('kernelsu-next', 'a' * 40, reviewed_next))
 
+        previous_kow = 'd4873310a2738c4c5726a804ed58f1b473799a92'
+        reviewed_kow = '44758e199257bb973aa6ca5b3a393c1b21694408'
+        self.assertTrue(refresh.reviewed_history_transition('kowsu', previous_kow, reviewed_kow))
+        self.assertFalse(refresh.reviewed_history_transition('kernelsu', previous_kow, reviewed_kow))
+        self.assertFalse(refresh.reviewed_history_transition('kowsu', previous_kow, 'b' * 40))
+        self.assertFalse(refresh.reviewed_history_transition('kowsu', 'a' * 40, reviewed_kow))
+
     def snapshot(self, changed_heads=(), changed_patches=()):
         config = common.load_config()
         manifests = common.baseline(PROJECT)

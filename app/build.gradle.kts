@@ -190,6 +190,10 @@ dependencies {
     implementation("org.bouncycastle:bcprov-jdk18on:1.80")
     implementation("org.bouncycastle:bcpkix-jdk18on:1.80")
     implementation("org.bouncycastle:bctls-jdk18on:1.80")
+    // Keep the utility dependency on the same release without range metadata lookups.
+    implementation("org.bouncycastle:bcutil-jdk18on") {
+        version { strictly("1.80") }
+    }
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
