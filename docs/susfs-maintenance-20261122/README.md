@@ -78,3 +78,8 @@ tree and commit, compiles with the pinned Android 16 6.12 DDK, compares the
 module ABI and stages matching source and bundle metadata. Historical phone
 receipts keep their own source and module hashes. The new module is recorded
 as hardware-unvalidated until separately tested on a phone.
+
+APK qualification also exposed intermittent Maven resolution failures for the
+transitive `bcutil-jdk18on:[1.80,1.81)` dependency. The app now strictly selects
+`bcutil-jdk18on:1.80`, matching its existing `bcprov`, `bcpkix` and `bctls`
+versions. This removes the dynamic version-range lookup from that dependency.
