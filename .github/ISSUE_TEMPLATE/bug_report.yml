@@ -1,0 +1,112 @@
+name: Bug report
+description: Report a crash, freeze, boot problem, or a feature that is not working.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Fill in the details you have. Logs and attachments are optional if you cannot collect them.
+        Review logs and bug reports for personal information before posting them publicly.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened? For a freeze or reboot, include the approximate time and timezone.
+      placeholder: Describe the problem and any error message you saw.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: How to reproduce
+      description: List the steps leading up to the problem. If it happens randomly, say so and describe what you were doing.
+      placeholder: |
+        1. Open the app and ...
+        2. Select ...
+        3. The problem happens when ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: false
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: Include the build code if available. If this is a test build, include its name or link.
+      placeholder: Version and build code
+    validations:
+      required: true
+
+  - type: textarea
+    id: device-and-setup
+    attributes:
+      label: Device and setup
+      description: Include what you know and write "unknown" for details you cannot find. Use the full model and firmware build number.
+      placeholder: |
+        Device/model (for example, SM-S948B):
+        Firmware/build number:
+        Android / One UI version:
+        Kernel version:
+        Root method:
+        Root backend and version:
+        Root started manually, before unlock, or after unlock:
+        SusFS enabled (yes/no):
+        Protect image partitions enabled (yes/no/unknown):
+        Other installed root modules:
+    validations:
+      required: true
+
+  - type: textarea
+    id: app-logs
+    attributes:
+      label: App and root logs
+      description: |
+        Export the affected run from **History** and attach it here. You can also copy the general diagnostic log from **Logs**.
+        For SusFS activation problems, include the activation report if available.
+      placeholder: Attach the exported log file, or paste the relevant text here.
+    validations:
+      required: false
+
+  - type: textarea
+    id: adb-bugreport
+    attributes:
+      label: adb bugreport
+      description: |
+        Especially useful for freezes, reboots, or system problems. On a computer with ADB and USB debugging enabled, run this after the issue, once the phone is accessible:
+        ```sh
+        adb bugreport bugreport.zip
+        ```
+        Attach the ZIP here. If you cannot collect or share it, say so.
+      placeholder: Attach bugreport.zip, or explain why it is unavailable.
+    validations:
+      required: false
+
+  - type: textarea
+    id: logcat
+    attributes:
+      label: Logcat
+      description: |
+        On a computer with ADB and USB debugging enabled, save the available logs as soon as possible after the issue, before rebooting if possible:
+        ```sh
+        adb logcat -b all -d -v threadtime > logcat.txt
+        ```
+        Attach logcat.txt here. Mention if it was collected after a reboot, as earlier logs may have been lost.
+      placeholder: Attach logcat.txt, or paste the relevant output here.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Screenshots and additional context
+      description: Add screenshots, a screen recording, or anything else that helps. Mention recent firmware, app, backend, or module changes and the last version that worked, if known.
+    validations:
+      required: false
