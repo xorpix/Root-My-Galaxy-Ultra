@@ -16,12 +16,14 @@ class SusfsAutoAppsTest {
             SusfsInstalledApp("random.renamed.manager", 10124),
             SusfsInstalledApp("com.topjohnwu.magisk", 10125),
             SusfsInstalledApp("ordinary.app", 10126),
+            // A shell-started Shizuku may have no root grant or bundled ksud.
+            SusfsInstalledApp("moe.shizuku.privileged.api", 10550),
             SusfsInstalledApp("org.bakasu.bakasu", 110123),
             SusfsInstalledApp("system.app", 1000),
             SusfsInstalledApp("../invalid", 10127),
             SusfsInstalledApp("me.weishu.kernelsu", 10123),
         )
-        assertEquals(listOf("com.topjohnwu.magisk", "me.weishu.kernelsu", "random.renamed.manager"),
+        assertEquals(listOf("com.topjohnwu.magisk", "me.weishu.kernelsu", "moe.shizuku.privileged.api", "random.renamed.manager"),
             susfsAutomaticManagers(apps, setOf("random.renamed.manager", "system.app", "../invalid")))
         assertTrue(susfsAutomaticManagers(emptyList(), setOf("me.weishu.kernelsu")).isEmpty())
     }

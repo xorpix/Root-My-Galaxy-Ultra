@@ -32,6 +32,8 @@ private val rootManagerPackages = setOf(
     "com.resukisu.resukisu", "com.kowx712.supermanager", "com.sukisu.ultra",
     "com.topjohnwu.magisk", "io.github.huskydg.magisk", "me.bmax.apatch",
     "org.lsposed.manager", "org.meowcat.edxposed.manager", "moe.shizuku.manager",
+    // Shizuku's application ID differs from its manager implementation namespace.
+    "moe.shizuku.privileged.api",
 )
 private val rootPackageName = Regex("[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*")
 

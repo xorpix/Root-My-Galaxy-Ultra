@@ -12,6 +12,10 @@ granted root and installed recognized managers. It also recognizes renamed
 managers through their daemon libraries or base/split APKs, without requiring a
 known label or launcher icon.
 
+Shizuku is selected using its installed application ID,
+`moe.shizuku.privileged.api`, including when it runs through ADB without a root
+grant. Its implementation namespace, `moe.shizuku.manager`, is different.
+
 Root grants, revocations and registered-manager changes follow the backend's
 live policy immediately, even when RMGU is closed. Installed-manager extras are
 refreshed after unlock, on app resume and supported package-change events.
