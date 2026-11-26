@@ -55,5 +55,7 @@ jobs:
             test "$BRANCH_SHA" = "$PR_SHA"
             git fetch origin "$BRANCH"
             git merge-base --is-ancestor "$BRANCH_SHA" HEAD
-            gh api --method DELETE "repos/$GH_REPO/git/refs/heads/$BRANCH"
+            git push --force-with-lease="refs/heads/$BRANCH:$BRANCH_SHA" origin ":refs/heads/$BRANCH"
           fi
+
+# Post-release cleanup retains an exact branch-head lease.
