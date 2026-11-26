@@ -534,7 +534,7 @@ index aa90197157c3f4fb391a7d29e01474f1b7daa8f7..b824ed9c23a1d3709d94f502f9a386d8
      return ret;
  }
 diff --git a/kernel/feature/selinux_hide/selinux_hide_auto.c b/kernel/feature/selinux_hide/selinux_hide_auto.c
-index 94120f304f349c16e39414eba9cc7cc9dbfe9a48..dbb9a49efc8894df02bfad75b6a834edb7dc70de 100644
+index eb268b114e82be9d115f476851cba077c915b85e..5d954460fb52918d6c7359273eeb05a4bbedd26a 100644
 --- a/kernel/feature/selinux_hide/selinux_hide_auto.c
 +++ b/kernel/feature/selinux_hide/selinux_hide_auto.c
 @@ -15,6 +15,8 @@

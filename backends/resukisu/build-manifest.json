@@ -23,15 +23,15 @@
     "path": "kernelsu/patches/ReSukiSU-v4.2.0-rc3-samsung-kdp-rkp-defex.patch",
     "sha256": "6f4be33d5f558865f02e6d0010f40320f540c78f80c999ad6bf0b8f22275b4f4"
   },
-  "created_utc": "2026-11-22",
-  "app_base_commit": "20828cca1df3e1e7aaf4ea7307e4b6388d21e28f",
+  "created_utc": "2026-11-26",
+  "app_base_commit": "9b7ac0bb17841017374c067295d44d65f8de3845",
   "upstream_repository": "https://github.com/Baka-SU/BakaSU",
-  "upstream_commit": "2734e0bc155759955880f5fb99be640fc5b92156",
-  "upstream_commit_count": 4581,
-  "driver_version": 35281,
+  "upstream_commit": "57b2db6076f439cfd489f14576444e8f0f2f0a25",
+  "upstream_commit_count": 4585,
+  "driver_version": 35285,
   "uapi_version": 6,
   "manager_required_uapi": 6,
-  "daemon_version": "4.2.0-rc3-110-g2734e0bc",
+  "daemon_version": "4.2.0-rc3-114-g57b2db60",
   "validation": {
     "kernel_build": "passed",
     "daemon_build": "passed",
@@ -44,21 +44,21 @@
   "outputs": {
     "ksud": {
       "size": 4490752,
-      "sha256": "781caee28fc7c174ac7ca21ebc684b064a0294c6a9a33be3c3878b637956d6a4"
+      "sha256": "b3e6b23b2150d5c4d9b98e8328ae7fd054da458d8cb823d014b764e974e3533e"
     },
     "kernelsu.ko": {
       "size": 522776,
-      "sha256": "467c1a933ffbe3a703e204e02400730e9d344bc22bf41490bf513ddf0a8d5207"
+      "sha256": "72141ba6f35ad38975b92fc441b165a847f7394b6fa1cf5725b892537b90560c"
     },
     "helper": {
       "size": 24232,
-      "sha256": "15938b29526eb38c64bf025259553eb4e924761028f6c0a78ef64abae49e4ebe"
+      "sha256": "8260d6ef2695b2e7b40cff437647dd59cc635277046ed1a8ae1a5e7ad75a2cba"
     }
   },
   "rebased_patch": {
-    "path": "samsung-compat-35281.patch",
+    "path": "samsung-compat-35285.patch",
     "size": 80254,
-    "sha256": "7770bb9f43128f3b8ca8ac5d6273e12efc9f8c8be7a1fb3a8eb3861650d9a93f"
+    "sha256": "fb061aca72200f857500c49f54500354ee4052085cbdbad20cd693898fa3d4aa"
   },
   "patched_source_sha256": {
     "kernel/Kbuild": "fb281f9fe8feacbe7aa03fde0d5b443fbc57332db34dffb8d9de7a22c92b6d5f",
@@ -68,7 +68,7 @@
     "kernel/compat/samsung_kdp.c": "d1f3da9d0a1c5eb85ef5c57808d395e1a32711acd73f42918098f2f2bd94ecc3",
     "kernel/core/init.c": "ec843ac4a931bb1694e157a609d8454a6d6fa373390c0b3e28c40e3762aeed60",
     "kernel/feature/selinux_hide/selinux_hide.c": "52bd56d6fcf352d3a98fec9d1dc2230080baa99b9ef5d79042a5eb676abffd57",
-    "kernel/feature/selinux_hide/selinux_hide_auto.c": "52ded1c943b4d6ef2ebcb37823df7e0cfd3e2d543c9096631069d78f19c61742",
+    "kernel/feature/selinux_hide/selinux_hide_auto.c": "f680804b852f1090b5a29cfcf96c114bf9023c70e96d7579a744a9b5a142e7e6",
     "kernel/hook/arm64/patch_memory.c": "4a5c8ad8b5f294ca902267dd9e5a0594eb8e1736c990b3699c09cdec058bfdb6",
     "kernel/hook/arm64/syscall_hook.c": "ddfa64dc1432d0cdd1e683b4e60aaab86cc3b7812f2bd3d4fca7dd580175a1e4",
     "kernel/hook/syscall_hook.h": "584cbc7e307c85b79353fa075cf819466e1c19701b90cb6726d688797c99d5c0",
@@ -84,7 +84,7 @@
     "userspace/ksud/src/android/utils.rs": "0199b78828aaf9fab2474c60d07b8c273b093e6911b7b1875c5078a3ba605e8a",
     "userspace/ksuinit/src/lib.rs": "44d21ff0c74a7fca0b043c3a1780a853d8c942a9eb2139ec59436b8aba9cdf5f"
   },
-  "app_version": "1.4.5",
-  "previous_upstream_commit": "7b65bde0710b5e7c6f755545cb15a4abd417f3a8",
+  "app_version": "1.4.6",
+  "previous_upstream_commit": "2734e0bc155759955880f5fb99be640fc5b92156",
   "local_app_base_commit": "df7c69670851a031ab81b95ee7557254d078440a"
 }
