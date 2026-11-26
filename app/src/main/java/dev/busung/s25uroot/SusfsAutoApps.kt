@@ -34,8 +34,11 @@ private val rootRelatedPackages = setOf(
     "org.lsposed.manager", "org.meowcat.edxposed.manager", "moe.shizuku.manager",
     // Shizuku's application ID differs from its manager implementation namespace.
     "moe.shizuku.privileged.api",
-    // This companion can use Shizuku/ADB instead of having a root grant itself.
-    "com.tribalfs.gmh",
+    // These companions can use Shizuku/ADB instead of having a root grant themselves.
+    "com.tribalfs.gmh", "com.catchingnow.icebox",
+    // Exact companion IDs selected for this fork's UID privacy policy.
+    "tk.zwander.rootactivitylauncher", "bin.mt.plus.canary",
+    "app.universal.revanced.manager", "dev.zwander.installwithoptions", "com.hexodus.debug",
 )
 private val rootPackageName = Regex("[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*")
 
@@ -91,11 +94,15 @@ internal fun susfsCommandSucceeded(result: ShizukuController.ShellResult?): Bool
     json.getInt("schema") == 1 && json.getLong("syscall") == 0L && json.getInt("error") == 0
 }.getOrDefault(false)
 
-internal fun susfsConfirmedFailure(result: ShizukuController.ShellResult?): Boolean = runCatching {
-    if (result == null || result.exitCode != 1) return false
+internal fun susfsCommandError(result: ShizukuController.ShellResult?): Int? = runCatching {
+    if (result == null || result.exitCode != 1) return null
     val json = JSONObject(result.output.lineSequence().last { it.trim().startsWith("{") })
-    json.getInt("schema") == 1 && json.getLong("syscall") == 0L && json.getInt("error") < 0
-}.getOrDefault(false)
+    if (json.getInt("schema") != 1 || json.getLong("syscall") != 0L) return null
+    json.getInt("error").takeIf { it < 0 }
+}.getOrNull()
+
+internal fun susfsConfirmedFailure(result: ShizukuController.ShellResult?): Boolean =
+    susfsCommandError(result) != null
 
 internal fun parseSusfsAutomaticStatus(result: ShizukuController.ShellResult?): SusfsAutomaticStatus? = runCatching {
     if (result == null || result.exitCode != 0) return null
@@ -241,19 +248,29 @@ internal object SusfsAutoApps {
         val rootInventory = parseSusfsRootInventory(
             SuShell.run("cmd package list packages -U --user 0", 10),
         )
-        val names = susfsAutomaticInventory(packages, rootInventory, discovered).joinToString(",")
+        val selected = susfsAutomaticInventory(packages, rootInventory, discovered)
+        val names = selected.joinToString(",")
         check(names.length < 65535) { "Too many root managers for the SusFS package list" }
         return locked(context) {
             if (!eligible(context) || Thread.currentThread().isInterrupted) return@locked false
-            val shell: SusfsShell = SuShell::run
+            // The kernel resolves each package through /data/data. A normal su
+            // can inherit the app's mount namespace, where another app's directory
+            // may be invisible even to UID 0. Configure from init's mount view.
+            val shell: SusfsShell = SuShell::runGlobal
             val command = shellQuote(SusfsRuntime.priorityTool(context).path)
             val result = shell(if (names.isEmpty()) "$command clear" else "$command set ${shellQuote(names)}", 10)
             // One bounded retry also covers a temporarily unavailable root
             // inventory; there is still no recurring scan or root-grant polling.
-            if (susfsCommandSucceeded(result)) return@locked rootInventory == null
+            if (susfsCommandSucceeded(result)) {
+                val source = if (rootInventory != null) "root inventory" else "app inventory"
+                AppLog.info(AppLogTags.KERNEL_SU, "SusFS installed-app selection applied (${selected.size} packages, $source)")
+                return@locked rootInventory == null
+            }
             // Clear only confirmed failed snapshots; an indeterminate timeout
             // must never start a competing fallback command.
-            if (susfsConfirmedFailure(result)) {
+            val kernelError = susfsCommandError(result)
+            if (kernelError != null) {
+                AppLog.warn(AppLogTags.KERNEL_SU, "SusFS package selection rejected (kernel error $kernelError)")
                 val cleared = shell("$command clear", 8)
                 if (susfsCommandSucceeded(cleared)) return@locked true
             }

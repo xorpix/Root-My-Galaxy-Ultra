@@ -12,16 +12,30 @@ granted root and installed recognized managers. It also recognizes renamed
 managers through their daemon libraries or base/split APKs, without requiring a
 known label or launcher icon.
 
-Known companions include Shizuku (`moe.shizuku.privileged.api`) and Galaxy Max Hz
-(`com.tribalfs.gmh`), including when they use ADB or Shizuku without their own
-root grant. Shizuku's implementation namespace, `moe.shizuku.manager`, differs
-from its installed application ID.
+Known companions include Shizuku (`moe.shizuku.privileged.api`), Galaxy Max Hz
+(`com.tribalfs.gmh`) and Ice Box (`com.catchingnow.icebox`), including when they
+use ADB or Shizuku without their own root grant. Ice Box documents its
+[Shizuku/Sui mode](https://icebox.catchingnow.com/guide/shizuku/) separately from
+its direct root mode. Shizuku's implementation namespace, `moe.shizuku.manager`,
+differs from its installed application ID.
 
 The refresh reads a current package/UID snapshot through the root shell, so
 app-list filtering on RMGU does not omit known installed helpers. It falls back
 to the app-visible inventory when that snapshot is unavailable, with one bounded
 retry. Empty or malformed root output is not treated as an authoritative empty
 inventory. APK metadata still provides discovery of renamed managers.
+
+The explicit companion list also includes `tk.zwander.rootactivitylauncher`,
+`bin.mt.plus.canary`, `app.universal.revanced.manager`,
+`dev.zwander.installwithoptions` and `com.hexodus.debug`. Matching uses the exact
+installed package ID and resolves its current UID; a generic debug build or an
+arbitrary package with an unassociated running UID is not added automatically.
+
+Apply and clear commands use the global mount namespace. The kernel resolves
+package UIDs through their `/data/data` directories, and an inherited app mount
+namespace can hide those directories even from a root shell. One failed lookup
+rejects the whole transaction. Normal root commands retain their existing
+namespace mode. Selection acceptance and kernel errors are recorded in Logs.
 
 Root grants, revocations and registered-manager changes follow the backend's
 live policy immediately, even when RMGU is closed. Installed-manager extras are

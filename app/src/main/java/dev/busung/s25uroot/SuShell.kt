@@ -37,8 +37,16 @@ internal object SuShell {
     fun run(
         command: String,
         timeoutSeconds: Long = COMMAND_TIMEOUT_SECONDS,
-    ): ShizukuController.ShellResult? {
-        val process = start(command) ?: return null
+    ): ShizukuController.ShellResult? = runInNamespace(command, timeoutSeconds, false)
+
+    /** For filesystem operations that must see installed apps outside our sandbox. */
+    fun runGlobal(
+        command: String,
+        timeoutSeconds: Long = COMMAND_TIMEOUT_SECONDS,
+    ): ShizukuController.ShellResult? = runInNamespace(command, timeoutSeconds, true)
+
+    private fun runInNamespace(command: String, timeoutSeconds: Long, global: Boolean): ShizukuController.ShellResult? {
+        val process = start(command, global) ?: return null
         return readProcess(process, timeoutSeconds * 1000).also {
             if (it == null) Log.i(TAG, "su did not answer within ${timeoutSeconds}s; treating it as no root shell")
         }
@@ -53,10 +61,16 @@ internal object SuShell {
     /** Whether this app can get a root shell of its own right now. */
     fun isRoot(): Boolean = isRootAnswer(run(ID_COMMAND, PROBE_TIMEOUT_SECONDS))
 
-    private fun start(command: String): Process? = try {
-        ProcessBuilder("su", "-c", "$command 2>&1")
-            .redirectErrorStream(true)
-            .start()
+    internal fun processBuilder(command: String, global: Boolean = false): ProcessBuilder =
+        ProcessBuilder(buildList {
+            add("su")
+            if (global) add("--mount-master")
+            add("-c")
+            add("$command 2>&1")
+        }).redirectErrorStream(true)
+
+    private fun start(command: String, global: Boolean): Process? = try {
+        processBuilder(command, global).start()
     } catch (_: Throwable) {
         // How a device with no `su` at all reports itself, and also how KernelSU's layer reports a
         // caller it refuses: the exec itself fails. Neither is an error worth a stack trace.
