@@ -28,6 +28,37 @@ class SusfsAutoAppsTest {
         assertTrue(susfsAutomaticManagers(emptyList(), setOf("me.weishu.kernelsu")).isEmpty())
     }
 
+    @Test fun rootInventoryFindsShellHelpersHiddenFromTheAppInventory() {
+        val inventory = parseSusfsRootInventory(result("""
+            package:android uid:1000
+            package:com.tribalfs.gmh uid:10530
+            package:moe.shizuku.privileged.api uid:10550
+            package:ordinary.app uid:10531
+        """.trimIndent()))!!
+        assertEquals(listOf("com.tribalfs.gmh", "moe.shizuku.privileged.api"),
+            susfsAutomaticInventory(emptyList(), inventory, emptySet()))
+        assertEquals(listOf("com.tribalfs.gmh"), susfsAutomaticInventory(emptyList(),
+            listOf(SusfsInstalledApp("com.tribalfs.gmh", 10137)), emptySet()))
+    }
+
+    @Test fun freshRootInventoryExcludesRemovedOrReassignedPackages() {
+        val stale = listOf(SusfsInstalledApp("com.tribalfs.gmh", 10530))
+        val current = listOf(SusfsInstalledApp("ordinary.reused.uid", 10530))
+        assertTrue(susfsAutomaticInventory(stale, current, emptySet()).isEmpty())
+        assertEquals(listOf("com.tribalfs.gmh"), susfsAutomaticInventory(stale, null, emptySet()))
+    }
+
+    @Test fun incompleteRootInventoryCannotMasqueradeAsAnEmptySuccessfulSnapshot() {
+        for (answer in listOf(null, result("", 0), result("Permission denied", 1),
+                result("package:com.tribalfs.gmh uid:10530\nError: service unavailable"),
+                result("package:../invalid uid:10530"), result("package:com.tribalfs.gmh uid:2147483648"),
+                result("package:com.tribalfs.gmh uid:10530\npackage:com.tribalfs.gmh uid:10531"))) {
+            assertNull(parseSusfsRootInventory(answer))
+        }
+        assertEquals(listOf(SusfsInstalledApp("com.tribalfs.gmh", 10530)),
+            parseSusfsRootInventory(result("package:com.tribalfs.gmh uid:10530\npackage:com.tribalfs.gmh uid:10530")))
+    }
+
     @Test fun findsSpoofedManagerWithoutAnyKnownPackageLabelOrLauncher() {
         val directory = Files.createTempDirectory("susfs-spoofed-manager-").toFile()
         try {

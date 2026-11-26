@@ -27,13 +27,15 @@ internal data class SusfsAutomaticStatus(
     fun protects(appId: Int) = ready && automatic && rootLookup && ownAppId == appId
 }
 
-private val rootManagerPackages = setOf(
+private val rootRelatedPackages = setOf(
     "me.weishu.kernelsu", "com.rifsxd.ksunext", "org.bakasu.bakasu",
     "com.resukisu.resukisu", "com.kowx712.supermanager", "com.sukisu.ultra",
     "com.topjohnwu.magisk", "io.github.huskydg.magisk", "me.bmax.apatch",
     "org.lsposed.manager", "org.meowcat.edxposed.manager", "moe.shizuku.manager",
     // Shizuku's application ID differs from its manager implementation namespace.
     "moe.shizuku.privileged.api",
+    // This companion can use Shizuku/ADB instead of having a root grant itself.
+    "com.tribalfs.gmh",
 )
 private val rootPackageName = Regex("[A-Za-z_][A-Za-z0-9_]*(?:\\.[A-Za-z_][A-Za-z0-9_]*)*")
 
@@ -59,8 +61,29 @@ internal fun susfsHasManagerDaemon(nativeDir: File?, apks: List<File>, abis: Lis
 internal fun susfsAutomaticManagers(apps: List<SusfsInstalledApp>, discovered: Set<String>): List<String> =
     apps.asSequence().filter { it.uid in 10000..19999 }
         .filter { it.name.length <= 255 && rootPackageName.matches(it.name) }
-        .filter { it.name in rootManagerPackages || it.name in discovered }
+        .filter { it.name in rootRelatedPackages || it.name in discovered }
         .map { it.name }.distinct().sorted().toList()
+
+/** A successful root-owned PackageManager snapshot can see helpers hidden from this app. */
+internal fun parseSusfsRootInventory(result: ShizukuController.ShellResult?): List<SusfsInstalledApp>? {
+    if (result == null || result.exitCode != 0) return null
+    val entries = linkedMapOf<String, SusfsInstalledApp>()
+    val linePattern = Regex("package:([^\\s]+)\\s+uid:([0-9]+)")
+    for (line in result.output.lineSequence().map(String::trim).filter(String::isNotEmpty)) {
+        val match = linePattern.matchEntire(line) ?: return null
+        val name = match.groupValues[1]
+        if (name.length > 255 || !rootPackageName.matches(name)) return null
+        val uid = match.groupValues[2].toIntOrNull() ?: return null
+        val entry = SusfsInstalledApp(name, uid)
+        val previous = entries.put(name, entry)
+        if (previous != null && previous != entry) return null
+    }
+    return entries.values.toList().takeIf { it.isNotEmpty() }
+}
+
+internal fun susfsAutomaticInventory(
+    visible: List<SusfsInstalledApp>, root: List<SusfsInstalledApp>?, discovered: Set<String>,
+): List<String> = susfsAutomaticManagers(root ?: visible, discovered)
 
 internal fun susfsCommandSucceeded(result: ShizukuController.ShellResult?): Boolean = runCatching {
     if (result == null || result.exitCode != 0) return false
@@ -194,7 +217,10 @@ internal object SusfsAutoApps {
         if (!ready) return false
         // APK metadata can take time. Do not hold the configuration lock while
         // scanning: an activation must not wait behind installed-app inventory.
-        val inventory = context.packageManager.getInstalledPackages(0)
+        val inventory = runCatching { context.packageManager.getInstalledPackages(0) }.getOrElse {
+            AppLog.warn(AppLogTags.KERNEL_SU, "SusFS APK metadata could not be read: ${it.message}")
+            emptyList()
+        }
         val packages = inventory.mapNotNull { p ->
             p.applicationInfo?.let { SusfsInstalledApp(p.packageName, it.uid) }
         }
@@ -203,20 +229,28 @@ internal object SusfsAutoApps {
             if (Thread.currentThread().isInterrupted) throw InterruptedException("SusFS app scan stopped")
             val app = installed.applicationInfo ?: continue
             if (app.uid !in 10000..19999 || installed.packageName == context.packageName ||
-                installed.packageName in rootManagerPackages || installed.packageName in discovered) continue
+                installed.packageName in rootRelatedPackages || installed.packageName in discovered) continue
             val apks = (listOfNotNull(app.sourceDir) + app.splitSourceDirs.orEmpty()).map(::File)
             if (susfsHasManagerDaemon(app.nativeLibraryDir?.let(::File), apks, Build.SUPPORTED_ABIS.toList())) {
                 discovered.add(installed.packageName)
             }
         }
-        val names = susfsAutomaticManagers(packages, discovered).joinToString(",")
+        if (Thread.currentThread().isInterrupted) throw InterruptedException("SusFS app scan stopped")
+        // Read only, outside the configuration lock and the early-root path. This
+        // uses the same trusted inventory route as the root-only diagnostic tool.
+        val rootInventory = parseSusfsRootInventory(
+            SuShell.run("cmd package list packages -U --user 0", 10),
+        )
+        val names = susfsAutomaticInventory(packages, rootInventory, discovered).joinToString(",")
         check(names.length < 65535) { "Too many root managers for the SusFS package list" }
         return locked(context) {
             if (!eligible(context) || Thread.currentThread().isInterrupted) return@locked false
             val shell: SusfsShell = SuShell::run
             val command = shellQuote(SusfsRuntime.priorityTool(context).path)
             val result = shell(if (names.isEmpty()) "$command clear" else "$command set ${shellQuote(names)}", 10)
-            if (susfsCommandSucceeded(result)) return@locked false
+            // One bounded retry also covers a temporarily unavailable root
+            // inventory; there is still no recurring scan or root-grant polling.
+            if (susfsCommandSucceeded(result)) return@locked rootInventory == null
             // Clear only confirmed failed snapshots; an indeterminate timeout
             // must never start a competing fallback command.
             if (susfsConfirmedFailure(result)) {
