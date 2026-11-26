@@ -51,9 +51,9 @@ class SusfsAutoAppsTest {
     @Test fun selectsTheExplicitCompanionIdsWithoutTreatingEveryDebugBuildAsPrivileged() {
         val companions = listOf("tk.zwander.rootactivitylauncher", "bin.mt.plus.canary",
             "app.universal.revanced.manager", "dev.zwander.installwithoptions", "com.tribalfs.gmh",
-            "moe.shizuku.privileged.api", "com.hexodus.debug")
+            "moe.shizuku.privileged.api", "com.hexodus.debug", "com.catchingnow.icebox")
         val apps = companions.mapIndexed { index, name -> SusfsInstalledApp(name, 10100 + index) } +
-            listOf(SusfsInstalledApp("ordinary.debug", 10592), SusfsInstalledApp("ordinary.app", 10593))
+            listOf(SusfsInstalledApp("ordinary.debug", 10592), SusfsInstalledApp("ordinary.app", 10548))
         assertEquals(companions.sorted(), susfsAutomaticInventory(emptyList(), apps, emptySet()))
     }
 

@@ -34,8 +34,8 @@ private val rootRelatedPackages = setOf(
     "org.lsposed.manager", "org.meowcat.edxposed.manager", "moe.shizuku.manager",
     // Shizuku's application ID differs from its manager implementation namespace.
     "moe.shizuku.privileged.api",
-    // This companion can use Shizuku/ADB instead of having a root grant itself.
-    "com.tribalfs.gmh",
+    // These companions can use Shizuku/ADB instead of having a root grant themselves.
+    "com.tribalfs.gmh", "com.catchingnow.icebox",
     // Exact companion IDs selected for this fork's UID privacy policy.
     "tk.zwander.rootactivitylauncher", "bin.mt.plus.canary",
     "app.universal.revanced.manager", "dev.zwander.installwithoptions", "com.hexodus.debug",
