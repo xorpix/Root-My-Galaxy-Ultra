@@ -16,14 +16,47 @@ class SusfsAutoAppsTest {
             SusfsInstalledApp("random.renamed.manager", 10124),
             SusfsInstalledApp("com.topjohnwu.magisk", 10125),
             SusfsInstalledApp("ordinary.app", 10126),
+            // A shell-started Shizuku may have no root grant or bundled ksud.
+            SusfsInstalledApp("moe.shizuku.privileged.api", 10550),
             SusfsInstalledApp("org.bakasu.bakasu", 110123),
             SusfsInstalledApp("system.app", 1000),
             SusfsInstalledApp("../invalid", 10127),
             SusfsInstalledApp("me.weishu.kernelsu", 10123),
         )
-        assertEquals(listOf("com.topjohnwu.magisk", "me.weishu.kernelsu", "random.renamed.manager"),
+        assertEquals(listOf("com.topjohnwu.magisk", "me.weishu.kernelsu", "moe.shizuku.privileged.api", "random.renamed.manager"),
             susfsAutomaticManagers(apps, setOf("random.renamed.manager", "system.app", "../invalid")))
         assertTrue(susfsAutomaticManagers(emptyList(), setOf("me.weishu.kernelsu")).isEmpty())
+    }
+
+    @Test fun rootInventoryFindsShellHelpersHiddenFromTheAppInventory() {
+        val inventory = parseSusfsRootInventory(result("""
+            package:android uid:1000
+            package:com.tribalfs.gmh uid:10530
+            package:moe.shizuku.privileged.api uid:10550
+            package:ordinary.app uid:10531
+        """.trimIndent()))!!
+        assertEquals(listOf("com.tribalfs.gmh", "moe.shizuku.privileged.api"),
+            susfsAutomaticInventory(emptyList(), inventory, emptySet()))
+        assertEquals(listOf("com.tribalfs.gmh"), susfsAutomaticInventory(emptyList(),
+            listOf(SusfsInstalledApp("com.tribalfs.gmh", 10137)), emptySet()))
+    }
+
+    @Test fun freshRootInventoryExcludesRemovedOrReassignedPackages() {
+        val stale = listOf(SusfsInstalledApp("com.tribalfs.gmh", 10530))
+        val current = listOf(SusfsInstalledApp("ordinary.reused.uid", 10530))
+        assertTrue(susfsAutomaticInventory(stale, current, emptySet()).isEmpty())
+        assertEquals(listOf("com.tribalfs.gmh"), susfsAutomaticInventory(stale, null, emptySet()))
+    }
+
+    @Test fun incompleteRootInventoryCannotMasqueradeAsAnEmptySuccessfulSnapshot() {
+        for (answer in listOf(null, result("", 0), result("Permission denied", 1),
+                result("package:com.tribalfs.gmh uid:10530\nError: service unavailable"),
+                result("package:../invalid uid:10530"), result("package:com.tribalfs.gmh uid:2147483648"),
+                result("package:com.tribalfs.gmh uid:10530\npackage:com.tribalfs.gmh uid:10531"))) {
+            assertNull(parseSusfsRootInventory(answer))
+        }
+        assertEquals(listOf(SusfsInstalledApp("com.tribalfs.gmh", 10530)),
+            parseSusfsRootInventory(result("package:com.tribalfs.gmh uid:10530\npackage:com.tribalfs.gmh uid:10530")))
     }
 
     @Test fun findsSpoofedManagerWithoutAnyKnownPackageLabelOrLauncher() {

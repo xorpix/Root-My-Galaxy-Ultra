@@ -27,12 +27,16 @@ Root managers should also retain the visibility and permissions they need.
 This does not prevent putting RMGU and managers in HMA's list of apps **hidden
 from other selected apps**. Those are different roles in HMA's configuration.
 
-RMGU deliberately respects the installed-app inventory returned by Android. HMA's
-`shouldHide` checks the querying package's scope and can filter that inventory if
-RMGU is scoped. In that configuration, an inactive manager hidden from RMGU can
-be absent from its optional manager extras. APK inspection recognizes renamed,
-split-APK and launcher-hidden managers only after they appear in that inventory;
-it does not bypass HMA's package filtering. No HMA settings are changed automatically.
+RMGU reads the current installed package/UID list through its root shell for
+known manager and companion IDs, including Shizuku and Galaxy Max Hz. That
+snapshot covers these helpers even when HMA filters RMGU's app-visible inventory.
+If the root query is unavailable, the existing app-visible inventory is used and
+one bounded retry is scheduled. No HMA settings are changed automatically.
+
+APK inspection still recognizes renamed, split-APK and launcher-hidden managers
+only after they appear in the app-visible metadata inventory. An inactive renamed
+manager hidden from that inventory can therefore be absent from optional extras
+until it is discoverable, registered with the backend, or granted root.
 
 RMGU itself, the backend's registered manager and apps currently granted root
 are selected through the live kernel policy. Those decisions do not depend on

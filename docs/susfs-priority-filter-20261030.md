@@ -12,6 +12,17 @@ granted root and installed recognized managers. It also recognizes renamed
 managers through their daemon libraries or base/split APKs, without requiring a
 known label or launcher icon.
 
+Known companions include Shizuku (`moe.shizuku.privileged.api`) and Galaxy Max Hz
+(`com.tribalfs.gmh`), including when they use ADB or Shizuku without their own
+root grant. Shizuku's implementation namespace, `moe.shizuku.manager`, differs
+from its installed application ID.
+
+The refresh reads a current package/UID snapshot through the root shell, so
+app-list filtering on RMGU does not omit known installed helpers. It falls back
+to the app-visible inventory when that snapshot is unavailable, with one bounded
+retry. Empty or malformed root output is not treated as an authoritative empty
+inventory. APK metadata still provides discovery of renamed managers.
+
 Root grants, revocations and registered-manager changes follow the backend's
 live policy immediately, even when RMGU is closed. Installed-manager extras are
 refreshed after unlock, on app resume and supported package-change events.
