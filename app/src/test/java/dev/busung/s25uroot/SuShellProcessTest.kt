@@ -8,6 +8,25 @@ import org.junit.Test
 
 /** Reproduce blocked pipes with real children; a waitFor timeout after read-to-EOF fails these. */
 class SuShellProcessTest {
+    @Test fun ordinaryRootCommandsKeepTheInheritedNamespaceMode() {
+        val builder = SuShell.processBuilder("id")
+        assertEquals(listOf("su", "-c", "id 2>&1"), builder.command())
+        assertTrue(builder.redirectErrorStream())
+    }
+
+    @Test fun filesystemConfigurationExplicitlyRequestsTheGlobalNamespace() {
+        val command = "'/data/app/example/lib/arm64/librmgususfs_priority.so' set 'com.example.one,com.example.two'"
+        val builder = SuShell.processBuilder(command, global = true)
+        assertEquals(listOf("su", "--mount-master", "-c", "$command 2>&1"), builder.command())
+        assertTrue(builder.redirectErrorStream())
+    }
+
+    @Test fun namespaceSelectionPreservesTheCommandAsOneShellArgument() {
+        val command = "printf '%s' 'literal with spaces; and quotes'"
+        assertEquals(command + " 2>&1", SuShell.processBuilder(command, global = true).command().last())
+        assertEquals(4, SuShell.processBuilder(command, global = true).command().size)
+    }
+
     private fun child(script: String): Process {
         assumeTrue("POSIX shell fixture", File("/bin/sh").canExecute())
         return ProcessBuilder("/bin/sh", "-c", script).redirectErrorStream(true).start()

@@ -48,6 +48,15 @@ class SusfsAutoAppsTest {
         assertEquals(listOf("com.tribalfs.gmh"), susfsAutomaticInventory(stale, null, emptySet()))
     }
 
+    @Test fun selectsTheExplicitCompanionIdsWithoutTreatingEveryDebugBuildAsPrivileged() {
+        val companions = listOf("tk.zwander.rootactivitylauncher", "bin.mt.plus.canary",
+            "app.universal.revanced.manager", "dev.zwander.installwithoptions", "com.tribalfs.gmh",
+            "moe.shizuku.privileged.api", "com.hexodus.debug")
+        val apps = companions.mapIndexed { index, name -> SusfsInstalledApp(name, 10100 + index) } +
+            listOf(SusfsInstalledApp("ordinary.debug", 10592), SusfsInstalledApp("ordinary.app", 10593))
+        assertEquals(companions.sorted(), susfsAutomaticInventory(emptyList(), apps, emptySet()))
+    }
+
     @Test fun incompleteRootInventoryCannotMasqueradeAsAnEmptySuccessfulSnapshot() {
         for (answer in listOf(null, result("", 0), result("Permission denied", 1),
                 result("package:com.tribalfs.gmh uid:10530\nError: service unavailable"),
@@ -119,6 +128,8 @@ class SusfsAutoAppsTest {
             assertFalse(susfsCommandSucceeded(answer))
         }
         assertTrue(susfsConfirmedFailure(result("""{"schema":1,"syscall":0,"error":-2}""", 1)))
+        assertEquals(-2, susfsCommandError(result("""{"schema":1,"syscall":0,"error":-2}""", 1)))
+        assertNull(susfsCommandError(result("""{"schema":1,"syscall":0,"error":126}""", 1)))
         assertFalse(susfsConfirmedFailure(result("timeout", 124)))
         assertFalse(susfsConfirmedFailure(result("""{"schema":1,"syscall":0,"error":126}""", 1)))
         assertFalse(susfsConfirmedFailure(null))
