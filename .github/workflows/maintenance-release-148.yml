@@ -1,5 +1,5 @@
 name: Finish 1.4.8 maintenance
-# Exact qualified native bundle adoption; stable publication still uses backend-refresh.
+# Stable 1.4.8 is published; remove this completed helper.
 
 on:
   push:
