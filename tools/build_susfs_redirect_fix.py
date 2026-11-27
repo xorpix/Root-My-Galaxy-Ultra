@@ -10,13 +10,14 @@ import shutil
 import subprocess
 import tarfile
 
-BASE_APP = '29fdc93d3b2516a1f4bbe73b3a0576fc492c8657'
-BASE_NATIVE = '3ebe7cf0cb08108856e79fdcdbfe4b3c2bd3a3a1'
-BASE_ARCHIVE_SHA = '9e6b1088cec1423c5968f53b5f4788f00951f4102f98ad962b32166aee9c1f2b'
-BASE_MODULE_SHA = '421283dcb5376dd8fb594479fa0b876f4f7b419b35bb0a722108da05081c5e5e'
+BASE_APP = '1623733fc84029824f7edd52ae7a1746b3dbb52c'
+BASE_NATIVE = 'e6ccb947d1ec1d0a0516ae4edd94577fbef38ff6'
+BASE_TREE = '560c1d99557b24066e30dd411a92440e23db312a'
+BASE_ARCHIVE_SHA = '7058775973b96b7c03d0d7546952bf49422af30258eb359b67be4980ac649a6b'
+BASE_MODULE_SHA = 'b408a49484dfb6ae2047b54d5bc1210a070173531cb12f8b6485809cfc8a56ab'
 BASE_MODULE_PATH = 'app/src/main/assets/susfs/susfs_guard_lkm.ko'
 MODULE_PATH = 'app/src/main/assets/susfs/susfs_guard_lkm.ko'
-DOC = 'docs/susfs-maintenance-20261122'
+DOC = 'docs/susfs-maintenance-20261127'
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
@@ -69,7 +70,7 @@ def main():
     git('init', '-q')
     git('config', 'core.autocrlf', 'false')
     git('add', '-f', '--', '.')
-    assert git('write-tree').decode().strip() == 'a1a9862d946cbb7ba4537c4dee020ba7f488ee85', 'baseline tree'
+    assert git('write-tree').decode().strip() == BASE_TREE, 'baseline tree'
     git('hash-object', '-t', 'commit', '-w', '--stdin', input=baseline('backends/susfs/source.commit'))
     patch = root / DOC / 'native.patch'
     git('apply', '--check', str(patch))

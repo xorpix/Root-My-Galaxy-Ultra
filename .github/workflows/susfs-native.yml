@@ -4,6 +4,7 @@ on:
     paths:
       - 'docs/susfs-redirect-fix-20261110/**'
       - 'docs/susfs-maintenance-20261122/**'
+      - 'docs/susfs-maintenance-20261127/**'
       - 'tools/build_susfs_redirect_fix.py'
       - '.github/workflows/susfs-native.yml'
       - 'backends/susfs/**'
