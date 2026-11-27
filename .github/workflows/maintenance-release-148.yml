@@ -1,4 +1,5 @@
 name: Finish 1.4.8 maintenance
+# Curated release notes include the managed backend-table marker.
 
 on:
   push:
