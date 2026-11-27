@@ -59,3 +59,21 @@ jobs:
           git rm -- .github/workflows/maintenance-release-148.yml
           git commit -m 'Remove completed 1.4.8 release helper [skip ci]'
           git push origin HEAD:refs/heads/main
+
+  pause:
+    if: startsWith(github.event.head_commit.message, 'Pause 1.4.8 publication')
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Stop publication pending the requested SusFS review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          STATUS="$(gh api repos/$GH_REPO/actions/runs/46024852283 --jq .status)"
+          if [ "$STATUS" != completed ]; then
+            gh api --method POST repos/$GH_REPO/actions/runs/46024852283/cancel
+          fi
