@@ -5,8 +5,8 @@
 struct azhl_backend { const char *id, *version_text, *manager; uint32_t version; };
 static const struct azhl_backend azhl_backends[] = {
   {"kernelsu", "32737", "me.weishu.kernelsu", 32737},
-  {"kernelsu-next", "33647", "com.rifsxd.ksunext", 33647},
-  {"resukisu", "35285", "org.bakasu.bakasu", 35285},
+  {"kernelsu-next", "33686", "com.rifsxd.ksunext", 33686},
+  {"resukisu", "35286", "org.bakasu.bakasu", 35286},
   {"kowsu", "32766", "com.kowx712.supermanager", 32766},
 };
 static inline const struct azhl_backend *azhl_backend_find(const char *id, const char *version) {
