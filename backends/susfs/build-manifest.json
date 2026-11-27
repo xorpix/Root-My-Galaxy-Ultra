@@ -1,14 +1,14 @@
 {
   "schema": 1,
-  "sourceCommit": "e6ccb947d1ec1d0a0516ae4edd94577fbef38ff6",
-  "sourceTree": "560c1d99557b24066e30dd411a92440e23db312a",
-  "sourceParent": "3ebe7cf0cb08108856e79fdcdbfe4b3c2bd3a3a1",
+  "sourceCommit": "5aa17dbd8a5c6377d3ad1462ae5d79672b0603ff",
+  "sourceTree": "a68aeaa88ffbc69c8a0a936c7603a9ba2c20962a",
+  "sourceParent": "e6ccb947d1ec1d0a0516ae4edd94577fbef38ff6",
   "sourceArchive": "source.tar.gz",
-  "sourceArchiveSha256": "7058775973b96b7c03d0d7546952bf49422af30258eb359b67be4980ac649a6b",
+  "sourceArchiveSha256": "65ee7d5bcda4d37fe00f579edc449be4c4c6f58e9c32c4d6d4fa14a3650d8491",
   "module": {
     "path": "app/src/main/assets/susfs/susfs_guard_lkm.ko",
-    "bytes": 609672,
-    "sha256": "b408a49484dfb6ae2047b54d5bc1210a070173531cb12f8b6485809cfc8a56ab"
+    "bytes": 610704,
+    "sha256": "d86437ed17abbf9c0c8cf3989af75c8f961080e5304e339e818dc2b228393c47"
   },
   "validation": {
     "hardwareValidated": false,
@@ -19,7 +19,7 @@
     },
     "moduleStatusLockOrderFix": "docs/susfs-lock-fix-20261109/README.md",
     "btiProbeFix": "docs/susfs-bti-fix-20261110/README.md",
-    "nativeQualificationRun": "45054984173",
+    "nativeQualificationRun": "46033176780",
     "kernelImports": 140,
     "syscallWrappers": 27,
     "deviceValidation": "Host regressions and ARM64 compilation qualify the maintenance changes. This module has no separate phone or long-uptime validation.",
@@ -52,7 +52,7 @@
         "No new unload/restoration, detector or long-uptime measurement was supplied."
       ]
     },
-    "maintenanceReview": "docs/susfs-maintenance-20261122/README.md"
+    "maintenanceReview": "docs/susfs-maintenance-20261127/README.md"
   },
   "priorityControl": {
     "path": "app/src/main/jniLibs/arm64-v8a/librmgususfs_priority.so",

@@ -1,9 +1,10 @@
-tree 560c1d99557b24066e30dd411a92440e23db312a
-parent 3ebe7cf0cb08108856e79fdcdbfe4b3c2bd3a3a1
-author xorpix <22274805+xorpix@users.noreply.github.com> 1795370284 +0100
-committer xorpix <22274805+xorpix@users.noreply.github.com> 1795370284 +0100
+tree a68aeaa88ffbc69c8a0a936c7603a9ba2c20962a
+parent e6ccb947d1ec1d0a0516ae4edd94577fbef38ff6
+author Codex <codex@localhost> 1795796484 +0100
+committer Codex <codex@localhost> 1795796484 +0100
 
-Protect path identities from inode reuse and admit Rust kallsyms types
+Cover proc cmdline through a verified return probe
 
-Adapted from LowKeyMerlin/susfs4ksu-lkm commits 766f09b and 759a145.
-Retain Samsung callback policy and existing hook architecture.
+Adapt the missing /proc/cmdline coverage identified in inforcqb/susfs4ksu-for-lkm 3b0676dbc949494889238647f3f9516b452eb0e9 and KernelSU-Next 2baabd6090291849f52790fc5c8d24221417d761. Leave the __ro_after_init saved_command_line pointer untouched and rewrite only the proc seq_file output. Preserve overflow retry, clear original tails, reject failed probe registration, and retire shared strings through Tasks RCU.
+
+Add host cases, fault-injection controls and ARM64 callback KCFI checks. Hardware validation is not claimed.
