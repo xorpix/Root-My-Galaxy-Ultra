@@ -1,0 +1,60 @@
+name: Finish 1.4.8 maintenance
+
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/maintenance-release-148.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    if: startsWith(github.event.head_commit.message, 'Publish One UI 9.5 beta support')
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Start the validated backend release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh workflow run backend-refresh.yml --ref main -f publish=true -f force_rebuild=false
+
+  cleanup:
+    if: startsWith(github.event.head_commit.message, 'Clean up 1.4.8 maintenance')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Remove completed maintenance files and merged branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          gh release view 1.4.8 --json isDraft,isPrerelease,tagName --jq '.isDraft == false and .isPrerelease == false and .tagName == "1.4.8"' | grep -Fx true
+          git merge-base --is-ancestor '1.4.8^{commit}' HEAD
+          BRANCH=fix/susfs-priority-global-namespace
+          BRANCH_SHA="$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)"
+          if [ -n "$BRANCH_SHA" ]; then
+            test "$(gh api repos/$GH_REPO/pulls/69 --jq .merged)" = true
+            test "$BRANCH_SHA" = "$(gh api repos/$GH_REPO/pulls/69 --jq .head.sha)"
+            git fetch origin "$BRANCH"
+            git merge-base --is-ancestor "$BRANCH_SHA" HEAD
+            git push --force-with-lease="refs/heads/$BRANCH:$BRANCH_SHA" origin ":refs/heads/$BRANCH"
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -- .github/workflows/maintenance-release-148.yml
+          git commit -m 'Remove completed 1.4.8 release helper [skip ci]'
+          git push origin HEAD:refs/heads/main

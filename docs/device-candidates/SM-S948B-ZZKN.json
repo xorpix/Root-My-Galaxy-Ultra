@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "assessment": "existing_family_route_recognizes_reported_beta",
+  "source": {
+    "type": "user_report_and_screenshots",
+    "url": "https://github.com/xorpix/Root-My-Galaxy-Ultra/issues/68#issuecomment-7194900395",
+    "reported_utc": "2026-11-26T14:29:40Z"
+  },
+  "observed": {
+    "model": "SM-S948B",
+    "device": "m3q",
+    "one_ui": "9.5",
+    "android_release": "17",
+    "incremental": "S948BXXU6ZZKN",
+    "build_id": "CP4A.261205.008.S948BXXU6ZZKN",
+    "fingerprint": "samsung/m3qxxx/m3q:17/CP4A.261205.008/S948BXXU6ZZKN_OXM6ZZKN:user/release-keys",
+    "kernel_release": "6.12.69-android16-6-p97fef15-abogkiS948BXXU6ZZKN-4k",
+    "kernel_version_info": "#1 Tue Nov 17 08:13:58 UTC 2026",
+    "selinux": "Enforcing",
+    "manager": "KernelSU samsung-v2.2",
+    "displayed_backend_version": "32687-5",
+    "manager_displays_working_lkm": true
+  },
+  "test_requirements": {
+    "sdk": 37,
+    "machine": "aarch64",
+    "abi": "arm64-v8a",
+    "page_size": 4096,
+    "basis": "Android 17 and the existing ARM64 / 4 KB S26 Ultra route; these fields were not collected by an inventory command."
+  },
+  "validation_limits": [
+    "Working root is reported by the user; no RMGU run or superuser-shell log was supplied.",
+    "No SusFS phone result was supplied.",
+    "Other regional beta identities in tests are synthetic; they are not firmware inventories or hardware-test results."
+  ]
+}

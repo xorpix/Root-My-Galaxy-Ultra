@@ -61,6 +61,32 @@ kernel family still requires matching native builds.
 
 ## Validation
 
+### One UI 9.5 beta
+
+[Issue #68](https://github.com/xorpix/Root-My-Galaxy-Ultra/issues/68#issuecomment-7194900395)
+reports working DirtyFrag/KernelSU on SM-S948B with One UI 9.5 / Android 17.
+The screenshots show build `CP4A.261205.008.S948BXXU6ZZKN` and kernel
+`6.12.69-android16-6-p97fef15-abogkiS948BXXU6ZZKN-4k`.
+The KernelSU manager displays a working LKM backend, version `32687-5`.
+The [recorded screenshot observations](device-candidates/SM-S948B-ZZKN.json)
+separate these visible fields from the requirements used by automated fixtures.
+
+The existing family route already recognizes this kernel. One UI's version
+label does not select a different exploit, native bridge or SusFS binary.
+The same recognition covers all regional and carrier model names listed above.
+Regression coverage checks all four backend choices, full firmware/kernel
+binding, refusal of pre-beta profiles, SusFS eligibility and renewal of an
+existing root-on-boot policy after a verified manual run.
+
+The SM-S948B screenshot identity is reported evidence. Other regional beta
+identities in tests are synthetic fixtures. The report does not include an
+RMGU run log, a superuser-shell transcript or a SusFS result and does not verify
+every regional device or this release's backend revisions on a phone.
+After updating firmware, perform a fresh manual root run before relying on
+automatic root restoration.
+
+### November firmware
+
 The 1.4.0 November coverage includes the official Korean SM-S948N /
 S948NKSS6BZK1 kernel identity:
 `6.12.69-android16-6-p342046c-abogkiS948NKSS6BZK1-4k`.

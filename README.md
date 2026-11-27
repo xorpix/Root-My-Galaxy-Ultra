@@ -40,6 +40,13 @@ method's continued availability, while each RMGU backend still needs validation
 on the particular phone. After a firmware update, start a fresh root run so the
 app selects payloads for the phone's current identity.
 
+One UI 9.5 beta is covered by the same family route across S26 Ultra variants.
+[Issue #68](https://github.com/xorpix/Root-My-Galaxy-Ultra/issues/68#issuecomment-7194900395)
+reports working DirtyFrag/KernelSU on SM-S948B / `S948BXXU6ZZKN`, retaining an
+`android16` / Linux `6.12.69` kernel. Regional model, backend selection, SusFS
+eligibility and boot-policy renewal have automated beta coverage. The report
+does not establish phone testing of every regional variant or RMGU backend.
+
 **Recognition is not a hardware-test result.** Patched firmware can block
 DirtyFrag, and a compatible kernel family does not by itself verify Samsung
 backend loading. Other kernel families and 16 KB pages need matching native
