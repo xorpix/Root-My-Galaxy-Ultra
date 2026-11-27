@@ -2737,5 +2737,42 @@
       "repo": "kingD2N/susfs-lkm-module",
       "pulls": []
     }
+  ],
+  "allOpenUpstreamPullRequests": [
+    {
+      "number": 226,
+      "title": "priority: fix literal newlines in packages.list log strings (build break)",
+      "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/226",
+      "head": "0e4a5c15954038c0d2c9c00fa736df0c32729cb3",
+      "state": "open"
+    },
+    {
+      "number": 225,
+      "title": "ci: make the build-ddk module artifact directly flashable",
+      "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/225",
+      "head": "172704129961a01c8841d1d382f5eb8e8676854e",
+      "state": "open"
+    },
+    {
+      "number": 201,
+      "title": "susfs_kstat: make the unlisted ring slot unsigned",
+      "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/201",
+      "head": "57bcfd34fa54f5d0a93e59ae32f65abcf2dfeff8",
+      "state": "open"
+    },
+    {
+      "number": 198,
+      "title": "susfs: Update version (2.4.0)",
+      "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/198",
+      "head": "d05f723927cfe5444e8b4f3106793de87944b93e",
+      "state": "open"
+    },
+    {
+      "number": 165,
+      "title": "priority_filter, seq hooks: close atomicity and unload races",
+      "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/165",
+      "head": "05f420ac3e3289e1075813c9a378eba142ae27a5",
+      "state": "open"
+    }
   ]
 }

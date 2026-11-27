@@ -1,5 +1,5 @@
 name: Finish 1.4.8 maintenance
-# Curated release notes include the managed backend-table marker.
+# Exact qualified native bundle adoption; stable publication still uses backend-refresh.
 
 on:
   push:
@@ -45,15 +45,18 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           gh release view 1.4.8 --json isDraft,isPrerelease,tagName --jq '.isDraft == false and .isPrerelease == false and .tagName == "1.4.8"' | grep -Fx true
           git merge-base --is-ancestor '1.4.8^{commit}' HEAD
-          BRANCH=fix/susfs-priority-global-namespace
-          BRANCH_SHA="$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)"
-          if [ -n "$BRANCH_SHA" ]; then
-            test "$(gh api repos/$GH_REPO/pulls/69 --jq .merged)" = true
-            test "$BRANCH_SHA" = "$(gh api repos/$GH_REPO/pulls/69 --jq .head.sha)"
-            git fetch origin "$BRANCH"
-            git merge-base --is-ancestor "$BRANCH_SHA" HEAD
-            git push --force-with-lease="refs/heads/$BRANCH:$BRANCH_SHA" origin ":refs/heads/$BRANCH"
-          fi
+          for ENTRY in '69:fix/susfs-priority-global-namespace' '70:fix/susfs-maintenance-20261127'; do
+            PR="${ENTRY%%:*}"
+            BRANCH="${ENTRY#*:}"
+            BRANCH_SHA="$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)"
+            if [ -n "$BRANCH_SHA" ]; then
+              test "$(gh api repos/$GH_REPO/pulls/$PR --jq .merged)" = true
+              test "$BRANCH_SHA" = "$(gh api repos/$GH_REPO/pulls/$PR --jq .head.sha)"
+              git fetch origin "$BRANCH"
+              git merge-base --is-ancestor "$BRANCH_SHA" HEAD
+              git push --force-with-lease="refs/heads/$BRANCH:$BRANCH_SHA" origin ":refs/heads/$BRANCH"
+            fi
+          done
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git rm -- .github/workflows/maintenance-release-148.yml
@@ -77,3 +80,91 @@ jobs:
           if [ "$STATUS" != completed ]; then
             gh api --method POST repos/$GH_REPO/actions/runs/46024852283/cancel
           fi
+
+  adopt:
+    if: startsWith(github.event.head_commit.message, 'Adopt qualified SusFS bundle')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Verify the exact merged qualification
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(gh api repos/$GH_REPO/pulls/70 --jq .merged)" = true
+          test "$(gh api repos/$GH_REPO/pulls/70 --jq .head.sha)" = d0ba3eab6cb95c5bb0fa761dce4517aef52dc132
+          test "$(gh api repos/$GH_REPO/actions/runs/46033176780 --jq .head_sha)" = d0ba3eab6cb95c5bb0fa761dce4517aef52dc132
+          test "$(gh api repos/$GH_REPO/actions/runs/46033176780 --jq .conclusion)" = success
+          git merge-base --is-ancestor d0ba3eab6cb95c5bb0fa761dce4517aef52dc132 HEAD
+      - uses: actions/download-artifact@v4
+        with:
+          name: redirect-fix-native-d0ba3eab6cb95c5bb0fa761dce4517aef52dc132
+          run-id: 46033176780
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/qualified-native
+      - name: Adopt only the verified matching native bundle
+        env:
+          QUALIFIED_NATIVE: ${{ runner.temp }}/qualified-native
+        run: |
+          set -euo pipefail
+          python3 - <<'PY_NATIVE'
+          import json, os, shutil
+          from pathlib import Path
+          source = Path(os.environ['QUALIFIED_NATIVE'])
+          receipt = json.loads((source / 'source.json').read_text())
+          expected = '5aa17dbd8a5c6377d3ad1462ae5d79672b0603ff'
+          assert receipt['sourceCommit'] == expected
+          assert receipt['sourceParent'] == 'e6ccb947d1ec1d0a0516ae4edd94577fbef38ff6'
+          assert str(receipt['workflowRun']) == '46033176780'
+          assert receipt['hardwareValidated'] is False
+          assert receipt['sourceTree'] == 'a68aeaa88ffbc69c8a0a936c7603a9ba2c20962a'
+          assert receipt['module']['sha256'] == 'd86437ed17abbf9c0c8cf3989af75c8f961080e5304e339e818dc2b228393c47'
+          assert receipt['module']['bytes'] == 610704
+          abi = json.loads((source / 'abi/artifact.json').read_text())
+          assert abi['checks'] and all(abi['checks'].values())
+          bundle = source / 'bundle'
+          allowed = {
+              'app/src/main/assets/susfs/susfs_guard_lkm.ko',
+              'app/src/main/assets/susfs/bundle.json',
+              'app/src/main/assets/susfs/NOTICE.txt',
+              'backends/susfs/source.tar.gz',
+              'backends/susfs/source.commit',
+              'backends/susfs/build-manifest.json',
+          }
+          entries = list(bundle.rglob('*'))
+          assert not any(p.is_symlink() for p in entries)
+          assert {str(p.relative_to(bundle)) for p in entries if p.is_file()} == allowed
+          current = json.loads(Path('backends/susfs/build-manifest.json').read_text())
+          assert current['sourceCommit'] == receipt['sourceParent']
+          manifest = json.loads((bundle / 'backends/susfs/build-manifest.json').read_text())
+          assert manifest['sourceCommit'] == expected
+          assert manifest['module'] == receipt['module']
+          for path in sorted(allowed):
+              shutil.copyfile(bundle / path, Path(path))
+          PY_NATIVE
+          python3 tools/check_susfs_bundle.py
+          python3 -O tools/check_susfs_bundle.py
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- app/src/main/assets/susfs/susfs_guard_lkm.ko app/src/main/assets/susfs/bundle.json app/src/main/assets/susfs/NOTICE.txt backends/susfs/source.tar.gz backends/susfs/source.commit backends/susfs/build-manifest.json
+          git commit -m 'Adopt qualified proc cmdline native bundle'
+          git push origin HEAD:refs/heads/main
+      - name: Build refreshed matched backends and publish 1.4.8
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          test "$(git ls-remote origin refs/heads/main | cut -f1)" = "$(git rev-parse HEAD)"
+          gh workflow run backend-refresh.yml --ref main -f publish=true -f force_rebuild=false

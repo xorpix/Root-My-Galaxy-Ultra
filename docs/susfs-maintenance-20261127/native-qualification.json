@@ -1,0 +1,41 @@
+{
+  "workflowUrl": "https://github.com/xorpix/Root-My-Galaxy-Ultra/actions/runs/46033176780",
+  "pullRequest": 70,
+  "qualifiedHead": "d0ba3eab6cb95c5bb0fa761dce4517aef52dc132",
+  "artifact": {
+    "id": 15215072511,
+    "zipSha256": "07959bfc0188b39b9849a77173bc779a781b973eabd473d2059414822bc8d42f"
+  },
+  "source": {
+    "schema": 1,
+    "baseAppCommit": "1623733fc84029824f7edd52ae7a1746b3dbb52c",
+    "sourceParent": "e6ccb947d1ec1d0a0516ae4edd94577fbef38ff6",
+    "sourceCommit": "5aa17dbd8a5c6377d3ad1462ae5d79672b0603ff",
+    "sourceTree": "a68aeaa88ffbc69c8a0a936c7603a9ba2c20962a",
+    "patchSha256": "80f2c7a8ba9cbe5398e4d55a4eff9d0a034558969e85a1333ee04ef0a8a5b145",
+    "hardwareValidated": false,
+    "maintenanceReview": "docs/susfs-maintenance-20261127/README.md",
+    "module": {
+      "path": "app/src/main/assets/susfs/susfs_guard_lkm.ko",
+      "bytes": 610704,
+      "sha256": "d86437ed17abbf9c0c8cf3989af75c8f961080e5304e339e818dc2b228393c47"
+    },
+    "workflowRun": "46033176780",
+    "sourceArchiveSha256": "65ee7d5bcda4d37fe00f579edc449be4c4c6f58e9c32c4d6d4fa14a3650d8491"
+  },
+  "abiChecks": {
+    "27_syscall_wrappers": true,
+    "all_incoming_kcfi_match_real_headers": true,
+    "all_have_call_landing_instructions": true,
+    "priority_probe_callbacks_match_real_headers": true,
+    "cmdline_return_callbacks_match_real_headers": true,
+    "baseline_imports_preserved": true,
+    "imports_match_expected_baseline": true,
+    "module_metadata_matches_production_parameters": true,
+    "version_table_shape_unchanged": true,
+    "baseline_callback_types_preserved": true
+  },
+  "kernelImports": 140,
+  "addedImports": [],
+  "removedImports": []
+}
