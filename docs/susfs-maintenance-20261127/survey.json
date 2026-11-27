@@ -1,0 +1,2741 @@
+{
+  "date": "2026-11-27",
+  "upstream": "17cbf97e70ec0d80b20e02c5537b40baa388f24b",
+  "scope": "Public default heads, branch inventories, divergent native histories and recent pull requests; unavailable and empty repositories are retained.",
+  "repositories": [
+    {
+      "repo": "laninenterline/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "253c3f46401e4b97458de3166361f5748cc146f8",
+      "branches": {
+        "dev": "9b271128dbdc50da85cfd20880db1596268fc21a",
+        "docs/pages-copy-edit": "1e2166baf48b8dc960f1a1e7039f201ea12f55a2",
+        "docs/pages-editorial-layout": "a7b609bfb5edae36035853ade6b6f5e4c1bf6d49",
+        "docs/pages-hardware-theme": "c532a48a9834ba46f295399b210eb651b4a0101e",
+        "feat/2.4.0-feature-query": "323c47afbbecd1b2cce0264cfc32b52f28a0e0fb",
+        "fix/bti-landing-pad": "2c57b4cd9cc5b16be2c655279799538de0061abe",
+        "fix/kstat-unlisted-wrap": "c6a13268064a111cabc376aec377a0b842948f0c",
+        "fix/priority-uid-log-escaping": "0e4a5c15954038c0d2c9c00fa736df0c32729cb3",
+        "gh-pages": "0bb7cf70950f66c277b2cde485109f404e777c40",
+        "inforcqb-self-patch-1": "074c216ac23f57e94cf54a8f6b4787803c8534ee",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "253c3f46401e4b97458de3166361f5748cc146f8",
+        "merge-pr/pr158-pr163-fix-priority-lifetime": "05f420ac3e3289e1075813c9a378eba142ae27a5",
+        "revert/pages-222-220": "34f7592afb94160af6758626be8efbc86a69b0ee",
+        "test/create-gate-debug": "3cfd6f8822b3dc328bd5dcbba594202bdcb77ad4",
+        "test/create-gate-takeover": "8c7795a11d0975d386b7d626ba3a11a949678b88",
+        "test/panic-export": "5bfd72c38a74ed70a8cd2702bc73aefffeab92bd",
+        "test/panic-export-create-gate": "35edf1ba95c5d91adbcce53dc81688974c7de8b3",
+        "try/create-gate-fix": "9422fd87201fc4bfd3bd4e5e45e958067fbd35ae",
+        "try/dcache-whiteout": "4da2efdc761215d42cf26f59e36f690037e2c1e0",
+        "try/dcache-whiteout-lsm-off": "586e30aabff1d53c8ddd4200a1b0e53c7adaa87c",
+        "try/dcache-whiteout-rel": "9c91a4197bbe4867ef38f0c6cbbcde66da2a6a30",
+        "try/sufs": "b93003b9f9a5ffb5c13dcd6f83deb148a85d900e",
+        "try/sus-path-loop-tracking": "639d461c2dfb982f4d0e0673db2e359f02148815"
+      }
+    },
+    {
+      "repo": "VictorGabriel7Dev/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "36df197f5c89aea5aed18e4447649a7fc17475ba",
+      "branches": {
+        "ci-flashable-module-artifact": "172704129961a01c8841d1d382f5eb8e8676854e",
+        "main": "36df197f5c89aea5aed18e4447649a7fc17475ba"
+      }
+    },
+    {
+      "repo": "aikeliyc/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "761b93083afd846858257221453bf306465042a3",
+      "branches": {
+        "dev": "9b271128dbdc50da85cfd20880db1596268fc21a",
+        "feat/lookup-inline": "3047e23036d53dd72b55e1fdb99764432ef8a550",
+        "feat/susfs-hooks": "af6e9c4dd60d200d00df66ff74966bf18f6eae40",
+        "feat/susfs-v2.4.0-uid-filters": "6165135ab91cd7b56767fede41a5f62db175903d",
+        "fix/bti-landing-pad": "2c57b4cd9cc5b16be2c655279799538de0061abe",
+        "fix/kstat-unlisted-wrap": "c6a13268064a111cabc376aec377a0b842948f0c",
+        "gh-pages": "c3470d2916ad36697cfdc9c86449e3b4b316d0cf",
+        "inforcqb-self-patch-1": "074c216ac23f57e94cf54a8f6b4787803c8534ee",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "761b93083afd846858257221453bf306465042a3",
+        "merge-pr/pr158-pr163-fix-priority-lifetime": "05f420ac3e3289e1075813c9a378eba142ae27a5",
+        "refactor/fldp": "686e97b7b11443aabdf9b46c45492685be0b1265",
+        "refactor/fldp-5e": "b331704727de05e3ce30194c7440ca9b813d4937",
+        "refactor/hook-unify": "3baf48a46552f0689b888c5c3517d6e0eb9a933e",
+        "test/create-gate-debug": "3cfd6f8822b3dc328bd5dcbba594202bdcb77ad4",
+        "test/create-gate-takeover": "8c7795a11d0975d386b7d626ba3a11a949678b88",
+        "test/panic-export": "5bfd72c38a74ed70a8cd2702bc73aefffeab92bd",
+        "test/panic-export-create-gate": "35edf1ba95c5d91adbcce53dc81688974c7de8b3",
+        "try/create-gate-fix": "9422fd87201fc4bfd3bd4e5e45e958067fbd35ae",
+        "try/dcache-whiteout": "4da2efdc761215d42cf26f59e36f690037e2c1e0",
+        "try/dcache-whiteout-lsm-off": "586e30aabff1d53c8ddd4200a1b0e53c7adaa87c",
+        "try/dcache-whiteout-rel": "9c91a4197bbe4867ef38f0c6cbbcde66da2a6a30",
+        "try/sufs": "b93003b9f9a5ffb5c13dcd6f83deb148a85d900e",
+        "try/sus-path-loop-tracking": "639d461c2dfb982f4d0e0673db2e359f02148815"
+      }
+    },
+    {
+      "repo": "pavan3999/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "761b93083afd846858257221453bf306465042a3",
+      "branches": {
+        "dev": "9b271128dbdc50da85cfd20880db1596268fc21a",
+        "feat/lookup-inline": "3047e23036d53dd72b55e1fdb99764432ef8a550",
+        "feat/susfs-hooks": "af6e9c4dd60d200d00df66ff74966bf18f6eae40",
+        "fix/bti-landing-pad": "2c57b4cd9cc5b16be2c655279799538de0061abe",
+        "fix/kstat-unlisted-wrap": "c6a13268064a111cabc376aec377a0b842948f0c",
+        "gh-pages": "c3470d2916ad36697cfdc9c86449e3b4b316d0cf",
+        "inforcqb-self-patch-1": "074c216ac23f57e94cf54a8f6b4787803c8534ee",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "761b93083afd846858257221453bf306465042a3",
+        "merge-pr/pr158-pr163-fix-priority-lifetime": "05f420ac3e3289e1075813c9a378eba142ae27a5",
+        "refactor/fldp": "686e97b7b11443aabdf9b46c45492685be0b1265",
+        "refactor/fldp-5e": "2e5109997ea482560b95b3021ef20322c9daa772",
+        "refactor/hook-unify": "3baf48a46552f0689b888c5c3517d6e0eb9a933e",
+        "test/create-gate-debug": "3cfd6f8822b3dc328bd5dcbba594202bdcb77ad4",
+        "test/create-gate-takeover": "8c7795a11d0975d386b7d626ba3a11a949678b88",
+        "test/panic-export": "5bfd72c38a74ed70a8cd2702bc73aefffeab92bd",
+        "test/panic-export-create-gate": "35edf1ba95c5d91adbcce53dc81688974c7de8b3",
+        "try/create-gate-fix": "9422fd87201fc4bfd3bd4e5e45e958067fbd35ae",
+        "try/dcache-whiteout": "4da2efdc761215d42cf26f59e36f690037e2c1e0",
+        "try/dcache-whiteout-lsm-off": "586e30aabff1d53c8ddd4200a1b0e53c7adaa87c",
+        "try/dcache-whiteout-rel": "9c91a4197bbe4867ef38f0c6cbbcde66da2a6a30",
+        "try/sufs": "b93003b9f9a5ffb5c13dcd6f83deb148a85d900e",
+        "try/sus-path-loop-tracking": "639d461c2dfb982f4d0e0673db2e359f02148815"
+      }
+    },
+    {
+      "repo": "tangt875f4b-crypto/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "761b93083afd846858257221453bf306465042a3",
+      "branches": {
+        "main": "761b93083afd846858257221453bf306465042a3",
+        "susfs-2.4.0-6.12": "9646425fa875b0cb47c28fd7eaa1de50981b0d07"
+      }
+    },
+    {
+      "repo": "Carmenzr/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "99ab39d57514a20baf3460754ecc052a347c56ea",
+      "branches": {
+        "dev": "9b271128dbdc50da85cfd20880db1596268fc21a",
+        "feat/lookup-inline": "3047e23036d53dd72b55e1fdb99764432ef8a550",
+        "feat/susfs-hooks": "af6e9c4dd60d200d00df66ff74966bf18f6eae40",
+        "fix/bti-landing-pad": "2c57b4cd9cc5b16be2c655279799538de0061abe",
+        "fix/kstat-unlisted-wrap": "c6a13268064a111cabc376aec377a0b842948f0c",
+        "gh-pages": "c3470d2916ad36697cfdc9c86449e3b4b316d0cf",
+        "inforcqb-self-patch-1": "074c216ac23f57e94cf54a8f6b4787803c8534ee",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "99ab39d57514a20baf3460754ecc052a347c56ea",
+        "merge-pr/pr158-pr163-fix-priority-lifetime": "05f420ac3e3289e1075813c9a378eba142ae27a5",
+        "refactor/fldp": "686e97b7b11443aabdf9b46c45492685be0b1265",
+        "refactor/fldp-5e": "4d0ad0158a72534bab6be52296ac868a54465c3a",
+        "refactor/hook-unify": "3baf48a46552f0689b888c5c3517d6e0eb9a933e",
+        "test/create-gate-debug": "3cfd6f8822b3dc328bd5dcbba594202bdcb77ad4",
+        "test/create-gate-takeover": "8c7795a11d0975d386b7d626ba3a11a949678b88",
+        "test/panic-export": "5bfd72c38a74ed70a8cd2702bc73aefffeab92bd",
+        "test/panic-export-create-gate": "35edf1ba95c5d91adbcce53dc81688974c7de8b3",
+        "try/create-gate-fix": "9422fd87201fc4bfd3bd4e5e45e958067fbd35ae",
+        "try/dcache-whiteout": "4da2efdc761215d42cf26f59e36f690037e2c1e0",
+        "try/dcache-whiteout-lsm-off": "586e30aabff1d53c8ddd4200a1b0e53c7adaa87c",
+        "try/dcache-whiteout-rel": "9c91a4197bbe4867ef38f0c6cbbcde66da2a6a30",
+        "try/sufs": "b93003b9f9a5ffb5c13dcd6f83deb148a85d900e",
+        "try/sus-path-loop-tracking": "639d461c2dfb982f4d0e0673db2e359f02148815"
+      }
+    },
+    {
+      "repo": "ITCJ/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "761b93083afd846858257221453bf306465042a3",
+      "branches": {
+        "dev": "9b271128dbdc50da85cfd20880db1596268fc21a",
+        "feat/lookup-inline": "3047e23036d53dd72b55e1fdb99764432ef8a550",
+        "feat/susfs-hooks": "af6e9c4dd60d200d00df66ff74966bf18f6eae40",
+        "fix/bti-landing-pad": "2c57b4cd9cc5b16be2c655279799538de0061abe",
+        "fix/kstat-unlisted-wrap": "c6a13268064a111cabc376aec377a0b842948f0c",
+        "gh-pages": "c3470d2916ad36697cfdc9c86449e3b4b316d0cf",
+        "inforcqb-self-patch-1": "074c216ac23f57e94cf54a8f6b4787803c8534ee",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "761b93083afd846858257221453bf306465042a3",
+        "merge-pr/pr158-pr163-fix-priority-lifetime": "05f420ac3e3289e1075813c9a378eba142ae27a5",
+        "refactor/fldp": "686e97b7b11443aabdf9b46c45492685be0b1265",
+        "refactor/fldp-5e": "9b76cb62deab7ea794ed3f231bf2836d72c818b6",
+        "refactor/hook-unify": "3baf48a46552f0689b888c5c3517d6e0eb9a933e",
+        "test/create-gate-debug": "3cfd6f8822b3dc328bd5dcbba594202bdcb77ad4",
+        "test/create-gate-takeover": "8c7795a11d0975d386b7d626ba3a11a949678b88",
+        "test/panic-export": "5bfd72c38a74ed70a8cd2702bc73aefffeab92bd",
+        "test/panic-export-create-gate": "35edf1ba95c5d91adbcce53dc81688974c7de8b3",
+        "try/create-gate-fix": "9422fd87201fc4bfd3bd4e5e45e958067fbd35ae",
+        "try/dcache-whiteout": "4da2efdc761215d42cf26f59e36f690037e2c1e0",
+        "try/dcache-whiteout-lsm-off": "586e30aabff1d53c8ddd4200a1b0e53c7adaa87c",
+        "try/dcache-whiteout-rel": "9c91a4197bbe4867ef38f0c6cbbcde66da2a6a30",
+        "try/sufs": "b93003b9f9a5ffb5c13dcd6f83deb148a85d900e",
+        "try/sus-path-loop-tracking": "639d461c2dfb982f4d0e0673db2e359f02148815"
+      }
+    },
+    {
+      "repo": "BritneyOvO/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "761b93083afd846858257221453bf306465042a3",
+      "branches": {
+        "dev": "9b271128dbdc50da85cfd20880db1596268fc21a",
+        "feat/lookup-inline": "3047e23036d53dd72b55e1fdb99764432ef8a550",
+        "feat/susfs-hooks": "af6e9c4dd60d200d00df66ff74966bf18f6eae40",
+        "fix/bti-landing-pad": "2c57b4cd9cc5b16be2c655279799538de0061abe",
+        "fix/kstat-unlisted-wrap": "c6a13268064a111cabc376aec377a0b842948f0c",
+        "gh-pages": "c3470d2916ad36697cfdc9c86449e3b4b316d0cf",
+        "inforcqb-self-patch-1": "074c216ac23f57e94cf54a8f6b4787803c8534ee",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "761b93083afd846858257221453bf306465042a3",
+        "merge-pr/pr158-pr163-fix-priority-lifetime": "05f420ac3e3289e1075813c9a378eba142ae27a5",
+        "refactor/fldp": "686e97b7b11443aabdf9b46c45492685be0b1265",
+        "refactor/fldp-5e": "825bd4f4f0b73be24122adb006b8207d6950ba01",
+        "refactor/hook-unify": "3baf48a46552f0689b888c5c3517d6e0eb9a933e",
+        "test/create-gate-debug": "3cfd6f8822b3dc328bd5dcbba594202bdcb77ad4",
+        "test/create-gate-takeover": "8c7795a11d0975d386b7d626ba3a11a949678b88",
+        "test/panic-export": "5bfd72c38a74ed70a8cd2702bc73aefffeab92bd",
+        "test/panic-export-create-gate": "35edf1ba95c5d91adbcce53dc81688974c7de8b3",
+        "try/create-gate-fix": "9422fd87201fc4bfd3bd4e5e45e958067fbd35ae",
+        "try/dcache-whiteout": "4da2efdc761215d42cf26f59e36f690037e2c1e0",
+        "try/dcache-whiteout-lsm-off": "586e30aabff1d53c8ddd4200a1b0e53c7adaa87c",
+        "try/dcache-whiteout-rel": "9c91a4197bbe4867ef38f0c6cbbcde66da2a6a30",
+        "try/sufs": "b93003b9f9a5ffb5c13dcd6f83deb148a85d900e",
+        "try/sus-path-loop-tracking": "639d461c2dfb982f4d0e0673db2e359f02148815"
+      }
+    },
+    {
+      "repo": "edx-sayed-salem/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "1f8ce706e2f51ad81bbd8a2fa975dfd425fa8a0a",
+      "branches": {
+        "main": "1f8ce706e2f51ad81bbd8a2fa975dfd425fa8a0a"
+      }
+    },
+    {
+      "repo": "kiyonoRin/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "761b93083afd846858257221453bf306465042a3",
+      "branches": {
+        "main": "761b93083afd846858257221453bf306465042a3",
+        "r189-btf-relax": "bb1904e4f0d53d759cac72c0b62757421969fec1"
+      }
+    },
+    {
+      "repo": "Dangzp218/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "39842590a2ce2eb61bb6d234ea7f350ac1da8d22",
+      "branches": {
+        "main": "39842590a2ce2eb61bb6d234ea7f350ac1da8d22"
+      }
+    },
+    {
+      "repo": "ysn715/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "761b93083afd846858257221453bf306465042a3",
+      "branches": {
+        "main": "761b93083afd846858257221453bf306465042a3"
+      }
+    },
+    {
+      "repo": "zzq-be/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "761b93083afd846858257221453bf306465042a3",
+      "branches": {
+        "main": "761b93083afd846858257221453bf306465042a3"
+      }
+    },
+    {
+      "repo": "wawa1314/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "761b93083afd846858257221453bf306465042a3",
+      "branches": {
+        "dev": "9b271128dbdc50da85cfd20880db1596268fc21a",
+        "fix/bti-landing-pad": "2c57b4cd9cc5b16be2c655279799538de0061abe",
+        "fix/kstat-unlisted-wrap": "c6a13268064a111cabc376aec377a0b842948f0c",
+        "gh-pages": "c3470d2916ad36697cfdc9c86449e3b4b316d0cf",
+        "inforcqb-self-patch-1": "074c216ac23f57e94cf54a8f6b4787803c8534ee",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "761b93083afd846858257221453bf306465042a3",
+        "merge-pr/pr158-pr163-fix-priority-lifetime": "05f420ac3e3289e1075813c9a378eba142ae27a5",
+        "refactor/fldp": "75efe2a520aa5488e7002c16145d407b202fd402",
+        "test/create-gate-debug": "3cfd6f8822b3dc328bd5dcbba594202bdcb77ad4",
+        "test/create-gate-takeover": "8c7795a11d0975d386b7d626ba3a11a949678b88",
+        "test/panic-export": "5bfd72c38a74ed70a8cd2702bc73aefffeab92bd",
+        "test/panic-export-create-gate": "35edf1ba95c5d91adbcce53dc81688974c7de8b3",
+        "try/create-gate-fix": "9422fd87201fc4bfd3bd4e5e45e958067fbd35ae",
+        "try/dcache-whiteout": "4da2efdc761215d42cf26f59e36f690037e2c1e0",
+        "try/dcache-whiteout-lsm-off": "586e30aabff1d53c8ddd4200a1b0e53c7adaa87c",
+        "try/dcache-whiteout-rel": "9c91a4197bbe4867ef38f0c6cbbcde66da2a6a30",
+        "try/sufs": "b93003b9f9a5ffb5c13dcd6f83deb148a85d900e",
+        "try/sus-path-loop-tracking": "639d461c2dfb982f4d0e0673db2e359f02148815"
+      }
+    },
+    {
+      "repo": "bygalacos/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "761b93083afd846858257221453bf306465042a3",
+      "branches": {
+        "main": "761b93083afd846858257221453bf306465042a3",
+        "samsung": "ff7a925cdf18673f35896b1977a1918aeaa3a4f7"
+      }
+    },
+    {
+      "repo": "FabrisNick/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "f95ae4c4c7df7050b2e13bc5d26403e5e0786d00",
+      "branches": {
+        "main": "f95ae4c4c7df7050b2e13bc5d26403e5e0786d00",
+        "update-actions": "de26183d5dd4536956b65bc348b6236c0a833eb0"
+      }
+    },
+    {
+      "repo": "shu0011/susfs4ksu-for-lkm-dijun",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "d460b0894f6b5a7ce73cba431da52fd82de971f1",
+      "branches": {
+        "main": "d460b0894f6b5a7ce73cba431da52fd82de971f1"
+      }
+    },
+    {
+      "repo": "windlandneko/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "87e738c44e148e1f4ec75b419b986c82eb7c5c0c",
+      "branches": {
+        "fix/kstat-unlisted-wrap": "57bcfd34fa54f5d0a93e59ae32f65abcf2dfeff8",
+        "main": "87e738c44e148e1f4ec75b419b986c82eb7c5c0c"
+      }
+    },
+    {
+      "repo": "pershoot/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "3b0676dbc949494889238647f3f9516b452eb0e9",
+      "branches": {
+        "main": "3b0676dbc949494889238647f3f9516b452eb0e9",
+        "version": "d05f723927cfe5444e8b4f3106793de87944b93e"
+      }
+    },
+    {
+      "repo": "Dere3046/susfs4ksuNEXT",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "1a39932c9cc79115c13483711ca08e682546cddc",
+      "branches": {
+        "fix/lsm_hook": "fbd34238adf130dceebb07f779775e73538dac08",
+        "kallrecon": "cdbb4909c23f01a80c0af36a2b90b6b483290acc",
+        "main": "1a39932c9cc79115c13483711ca08e682546cddc"
+      }
+    },
+    {
+      "repo": "cak9178/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "eb9fd2328aa2ce9b9fb538e0c7a17f9032e5456e",
+      "branches": {
+        "main": "eb9fd2328aa2ce9b9fb538e0c7a17f9032e5456e"
+      }
+    },
+    {
+      "repo": "CrackerCat/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "848ff01ba95973c2674cf91a7261129a8cc0e169",
+      "branches": {
+        "main": "848ff01ba95973c2674cf91a7261129a8cc0e169"
+      }
+    },
+    {
+      "repo": "Kaushikku/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "6c4ab849a0b6fd9b039552da8664cea77cd7743d",
+      "branches": {
+        "main": "6c4ab849a0b6fd9b039552da8664cea77cd7743d"
+      }
+    },
+    {
+      "repo": "akkun2/inforcqb__susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "6c4ab849a0b6fd9b039552da8664cea77cd7743d",
+      "branches": {
+        "ci/ignore-yaml": "edbbd28279a1124e24647c76481f0c1d354698f5",
+        "ci/module-yaml": "3637000e42d61af99ece781c9179cd8fe44e1d6f",
+        "dev": "9b271128dbdc50da85cfd20880db1596268fc21a",
+        "feat/140-kmi-override": "2f01af143924a3a31053dd9f132e3860920f8adc",
+        "fix/187-revert": "7fe8355f48a704339954a874a8d95dc5ad58669e",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "6c4ab849a0b6fd9b039552da8664cea77cd7743d",
+        "merge-pr/pr158-pr163-fix-priority-lifetime": "05f420ac3e3289e1075813c9a378eba142ae27a5",
+        "revert/hide-syms-direct": "7fe8355f48a704339954a874a8d95dc5ad58669e",
+        "test/create-gate-debug": "3cfd6f8822b3dc328bd5dcbba594202bdcb77ad4",
+        "test/create-gate-takeover": "8c7795a11d0975d386b7d626ba3a11a949678b88",
+        "test/panic-export": "5bfd72c38a74ed70a8cd2702bc73aefffeab92bd",
+        "test/panic-export-create-gate": "35edf1ba95c5d91adbcce53dc81688974c7de8b3",
+        "try/create-gate-fix": "9422fd87201fc4bfd3bd4e5e45e958067fbd35ae",
+        "try/dcache-whiteout": "4da2efdc761215d42cf26f59e36f690037e2c1e0",
+        "try/dcache-whiteout-lsm-off": "586e30aabff1d53c8ddd4200a1b0e53c7adaa87c",
+        "try/dcache-whiteout-rel": "9c91a4197bbe4867ef38f0c6cbbcde66da2a6a30",
+        "try/sufs": "b93003b9f9a5ffb5c13dcd6f83deb148a85d900e",
+        "try/sus-path-loop-tracking": "639d461c2dfb982f4d0e0673db2e359f02148815"
+      }
+    },
+    {
+      "repo": "fengjixuchui/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "6c4ab849a0b6fd9b039552da8664cea77cd7743d",
+      "branches": {
+        "main": "6c4ab849a0b6fd9b039552da8664cea77cd7743d"
+      }
+    },
+    {
+      "repo": "sreeshankark/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "6c4ab849a0b6fd9b039552da8664cea77cd7743d",
+      "branches": {
+        "main": "6c4ab849a0b6fd9b039552da8664cea77cd7743d"
+      }
+    },
+    {
+      "repo": "ymuuuu/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "761b93083afd846858257221453bf306465042a3",
+      "branches": {
+        "ci/ignore-yaml": "edbbd28279a1124e24647c76481f0c1d354698f5",
+        "ci/module-yaml": "3637000e42d61af99ece781c9179cd8fe44e1d6f",
+        "dev": "9b271128dbdc50da85cfd20880db1596268fc21a",
+        "feat/140-kmi-override": "2f01af143924a3a31053dd9f132e3860920f8adc",
+        "feat/sus-unix-abstract": "ca7b829f1b4357c13cbe22f2db95dc394a506b9c",
+        "fix/187-revert": "7fe8355f48a704339954a874a8d95dc5ad58669e",
+        "fix/create-gate-mkdir-eexist": "662684dd7a7a89b947fcc3ad0d7f92f3d1e272db",
+        "fix/fp-landing-pad-no-bti": "364f6a4696ff4df76bfa1c03066ca4bc30abb123",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "761b93083afd846858257221453bf306465042a3",
+        "merge-pr/pr158-pr163-fix-priority-lifetime": "05f420ac3e3289e1075813c9a378eba142ae27a5",
+        "revert/hide-syms-direct": "7fe8355f48a704339954a874a8d95dc5ad58669e",
+        "test/create-gate-debug": "3cfd6f8822b3dc328bd5dcbba594202bdcb77ad4",
+        "test/create-gate-takeover": "8c7795a11d0975d386b7d626ba3a11a949678b88",
+        "test/panic-export": "5bfd72c38a74ed70a8cd2702bc73aefffeab92bd",
+        "test/panic-export-create-gate": "35edf1ba95c5d91adbcce53dc81688974c7de8b3",
+        "try/create-gate-fix": "9422fd87201fc4bfd3bd4e5e45e958067fbd35ae",
+        "try/dcache-whiteout": "4da2efdc761215d42cf26f59e36f690037e2c1e0",
+        "try/dcache-whiteout-lsm-off": "586e30aabff1d53c8ddd4200a1b0e53c7adaa87c",
+        "try/dcache-whiteout-rel": "9c91a4197bbe4867ef38f0c6cbbcde66da2a6a30",
+        "try/sufs": "b93003b9f9a5ffb5c13dcd6f83deb148a85d900e",
+        "try/sus-path-loop-tracking": "639d461c2dfb982f4d0e0673db2e359f02148815"
+      }
+    },
+    {
+      "repo": "LowKeyMerlin/susfs4ksu-lkm",
+      "branch": "susfs-dev",
+      "origin": "fork-network",
+      "head": "775751fc46989a5de40d195fa6d3398fdc8955f3",
+      "branches": {
+        "main": "bcabb0a3d03424b7b3372990d7be87e6d1bf19c2",
+        "susfs-dev": "775751fc46989a5de40d195fa6d3398fdc8955f3",
+        "susfs-main": "367d137e9deb660b6adbe972164cf5d4ae5eb804"
+      }
+    },
+    {
+      "repo": "Yunnijian/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "b69dee412aac54cdf99832412de3b4758118a1eb",
+      "branches": {
+        "bti-safe-indirect-hooks": "53c3c10457280e861129a0e06ad06defdf41b03f",
+        "dev": "9b271128dbdc50da85cfd20880db1596268fc21a",
+        "fix/136-map-proc": "98a778b28f0dd74240e81bc9e4d05144a8d4621b",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "b69dee412aac54cdf99832412de3b4758118a1eb",
+        "try/dcache-whiteout": "4da2efdc761215d42cf26f59e36f690037e2c1e0",
+        "try/dcache-whiteout-lsm-off": "586e30aabff1d53c8ddd4200a1b0e53c7adaa87c",
+        "try/dcache-whiteout-rel": "9c91a4197bbe4867ef38f0c6cbbcde66da2a6a30",
+        "try/sufs": "b93003b9f9a5ffb5c13dcd6f83deb148a85d900e",
+        "try/sus-path-loop-tracking": "639d461c2dfb982f4d0e0673db2e359f02148815"
+      }
+    },
+    {
+      "repo": "mzday123/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "78306397bbd903c88377229df2f3ee7ca9a4a66c",
+      "branches": {
+        "dev": "9b271128dbdc50da85cfd20880db1596268fc21a",
+        "fix/opath-signature-and-dirent-race": "5a4b633ffa7259d4506e3ae382077a66e9765cae",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "78306397bbd903c88377229df2f3ee7ca9a4a66c",
+        "test/fd-ino-stats": "aaa3dcf46ac1257eeda94be99b4dd4e257bb38df",
+        "tmp/or-rev-probe": "b1dfe5074d69e3c5a4ddb7b31ae6c141f9b5fecc"
+      }
+    },
+    {
+      "repo": "17862340956/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "8ab4500ffc3f13ec6ded79d7ab13e2e8147a1879",
+      "branches": {
+        "main": "8ab4500ffc3f13ec6ded79d7ab13e2e8147a1879"
+      }
+    },
+    {
+      "repo": "gkhjn/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "8ab4500ffc3f13ec6ded79d7ab13e2e8147a1879",
+      "branches": {
+        "main": "8ab4500ffc3f13ec6ded79d7ab13e2e8147a1879"
+      }
+    },
+    {
+      "repo": "abluodfa/ksuko-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "5529405cfae9c269a3475696f453feb462b78042",
+      "branches": {
+        "main": "5529405cfae9c269a3475696f453feb462b78042"
+      }
+    },
+    {
+      "repo": "lai19990617-cloud/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "error": "fatal: could not read Username for 'https://github.com': No such device or address\n"
+    },
+    {
+      "repo": "dddaaaswq/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "6753d9c189b058a5978eddd7d2093f95b5be68a2",
+      "branches": {
+        "main": "6753d9c189b058a5978eddd7d2093f95b5be68a2"
+      }
+    },
+    {
+      "repo": "872446136-source/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "6753d9c189b058a5978eddd7d2093f95b5be68a2",
+      "branches": {
+        "main": "6753d9c189b058a5978eddd7d2093f95b5be68a2"
+      }
+    },
+    {
+      "repo": "doccstat/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "a4f475b2485f52c006d7932e157b2d02bfcebf47",
+      "branches": {
+        "main": "a4f475b2485f52c006d7932e157b2d02bfcebf47"
+      }
+    },
+    {
+      "repo": "Hobbit233/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "060fa0e9cb48caf5c554e33ab012ca10e0f1308c",
+      "branches": {
+        "main": "060fa0e9cb48caf5c554e33ab012ca10e0f1308c"
+      }
+    },
+    {
+      "repo": "3273222417/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "36df197f5c89aea5aed18e4447649a7fc17475ba",
+      "branches": {
+        "main": "36df197f5c89aea5aed18e4447649a7fc17475ba"
+      }
+    },
+    {
+      "repo": "3548077732/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "85ef920ccf27682a2a9089b4676547f691b92828",
+      "branches": {
+        "dev": "b92737c1f8a149340bddb95e78d9f9e1d3c408ac",
+        "feat/open-redirect-entry-replacement": "62f28638c6a83c825d16d11a93f279f06f3c82cb",
+        "fix/open-redirect-path-lifetime": "cfbae3673cbc813e841a49dd4a68b830482d1051",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "85ef920ccf27682a2a9089b4676547f691b92828",
+        "test/fd-ino-stats": "aaa3dcf46ac1257eeda94be99b4dd4e257bb38df",
+        "tmp/or-rev-probe": "b1dfe5074d69e3c5a4ddb7b31ae6c141f9b5fecc"
+      }
+    },
+    {
+      "repo": "Tr4cck/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "85ef920ccf27682a2a9089b4676547f691b92828",
+      "branches": {
+        "main": "85ef920ccf27682a2a9089b4676547f691b92828"
+      }
+    },
+    {
+      "repo": "flybird0010/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "85ef920ccf27682a2a9089b4676547f691b92828",
+      "branches": {
+        "dev": "b92737c1f8a149340bddb95e78d9f9e1d3c408ac",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "85ef920ccf27682a2a9089b4676547f691b92828",
+        "test/fd-ino-stats": "3ed985cbad38a590d9c10ac921b0a2f856dc64fc"
+      }
+    },
+    {
+      "repo": "starredjaco/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "3b0676dbc949494889238647f3f9516b452eb0e9",
+      "branches": {
+        "dev": "b92737c1f8a149340bddb95e78d9f9e1d3c408ac",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "3b0676dbc949494889238647f3f9516b452eb0e9",
+        "test/fd-ino-stats": "7fc6009c5aa6f2e8c53be37c6df6fba308fadd5e"
+      }
+    },
+    {
+      "repo": "Shiho-Patch/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "faf696a050b1c64009a4898cae7bcc0c9079f1d3",
+      "branches": {
+        "dev": "2dfeb832606e04360c5ec4204ce69a236eb866d4",
+        "fix/compat-stat-coverage": "89d00615242295532703e5fd1023c166adc36864",
+        "fix/statx-dev-and-or-disarm": "399d7da41fbb9627254e71809fb697e99da8e0ef",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "faf696a050b1c64009a4898cae7bcc0c9079f1d3"
+      }
+    },
+    {
+      "repo": "Alex-Enix/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "error": "fatal: could not read Username for 'https://github.com': No such device or address\n"
+    },
+    {
+      "repo": "rifsxd/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "add7aaf38f749898a24bf03d3892d7f3438a3062",
+      "branches": {
+        "dev": "54653938d125730a75fb8c9bb8ea69c1141e97fd",
+        "fix/compat-stat-coverage": "89d00615242295532703e5fd1023c166adc36864",
+        "fix/statx-dev-and-or-disarm": "399d7da41fbb9627254e71809fb697e99da8e0ef",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "add7aaf38f749898a24bf03d3892d7f3438a3062"
+      }
+    },
+    {
+      "repo": "jackylimsme-svg/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "add7aaf38f749898a24bf03d3892d7f3438a3062",
+      "branches": {
+        "main": "add7aaf38f749898a24bf03d3892d7f3438a3062"
+      }
+    },
+    {
+      "repo": "dreamcolor123/susfs4skp",
+      "branch": "main",
+      "origin": "fork-network",
+      "error": "fatal: could not read Username for 'https://github.com': No such device or address\n"
+    },
+    {
+      "repo": "dhsux/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "error": "fatal: could not read Username for 'https://github.com': No such device or address\n"
+    },
+    {
+      "repo": "CoolBreeze0/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "191339da5db5e9a45a4b011f9f7aa4174a760bae",
+      "branches": {
+        "main": "191339da5db5e9a45a4b011f9f7aa4174a760bae"
+      }
+    },
+    {
+      "repo": "feiyunwill/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "191339da5db5e9a45a4b011f9f7aa4174a760bae",
+      "branches": {
+        "main": "191339da5db5e9a45a4b011f9f7aa4174a760bae"
+      }
+    },
+    {
+      "repo": "AkiHaza/susfs4ksu-lkm-YAAP",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "5908caf9393ceee09aebe2f49798085f5f6b714a",
+      "branches": {
+        "main": "5908caf9393ceee09aebe2f49798085f5f6b714a"
+      }
+    },
+    {
+      "repo": "KaliRootSuperUser/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "f521e6181de2498a7add56326f9eb6e45613fda4",
+      "branches": {
+        "main": "f521e6181de2498a7add56326f9eb6e45613fda4"
+      }
+    },
+    {
+      "repo": "Hotsteel2901/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "87a8b45a0fc1aa146110f1f913c27ffbd29901bf",
+      "branches": {
+        "dev": "8aaf8a11c593cbaa5ef9534a94aa80dc188e3645",
+        "fix/dirent-buffer-residue": "a4752af15aebc287ff96739649e9e0bb0a84195b",
+        "fix/kprobe-rearm": "a8bc7b797a9e74c81fce5b28a05a6741c2eedee5",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "87a8b45a0fc1aa146110f1f913c27ffbd29901bf"
+      }
+    },
+    {
+      "repo": "forskifx/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "761b93083afd846858257221453bf306465042a3",
+      "branches": {
+        "dev": "573e2b76d6ee69ee3a17ce0e7280f5908eb6bde8",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "761b93083afd846858257221453bf306465042a3"
+      }
+    },
+    {
+      "repo": "zhoudinghao408-cell/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "8f6776e7532d38d9b48dfc6e55a600451bb01cf8",
+      "branches": {
+        "main": "8f6776e7532d38d9b48dfc6e55a600451bb01cf8"
+      }
+    },
+    {
+      "repo": "Bouteillepleine/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "8619b6ee0d0629836e9c6ce668e8a785dfd53517",
+      "branches": {
+        "assets/pr85": "83b55459ab171031eb34944b3bd0db622308a4e8",
+        "ci/capability-warnings": "937d063481802bf59545a9d895139e6297cbc6be",
+        "dev": "44c767280b82e7aa226eca9847e87d4a2336214b",
+        "dev2": "4d847e84410671606e4dbc684804f46a590ace1e",
+        "dev2-devline": "820e7356f32326817c90bb79db3546d428ee1972",
+        "dev3": "daf8fd4b72113deea9d71b79aba7ba760852329a",
+        "feat/dirent-prefilter": "d1efcea2e9bd315f4b94a84a16cc8cb9e8f2ffce",
+        "fix/dirent-prefilter-main": "bdcb87b96122c14a51d464c2ec65a69a12ea1fa2",
+        "fix/isolated-procs-and-hide-syms-warning": "eed444179bf88144fad38ff3326fead3463985e0",
+        "fix/mount-tables-sized-for-more-than-a-handful": "6a71f9499d4c45c4c2a74f8ef3f7712e23b726e3",
+        "fix/opath-file-close-fd": "c6cda71110b2f80920dfe88db29b332219f6133e",
+        "fix/stale-records-leaks-residue": "af563036db4175c6b2bffe6e3ab1168d7481f54c",
+        "fix/unload-lifetime": "1463faaa581c68be76ca900b352d577ad04aaca8",
+        "fix/warn-order-placeholder": "34d1d2b856527d8964bc0c2b154bbf423dc3bc1d",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "8619b6ee0d0629836e9c6ce668e8a785dfd53517"
+      }
+    },
+    {
+      "repo": "yapixel/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "494e2dd2c725d4f5f6e6f14af933680e7052e10d",
+      "branches": {
+        "dev": "44c767280b82e7aa226eca9847e87d4a2336214b",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "494e2dd2c725d4f5f6e6f14af933680e7052e10d"
+      }
+    },
+    {
+      "repo": "supervooc/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "9e776d87b731ef13b27ab3b17669336b36d8cdd5",
+      "branches": {
+        "cfi-sites-lightweight": "72fdb3f36dd847f087db442a7bef20cfcb78206d",
+        "dev": "f6587094cfb8ab6f82fa55ba2922913edf0ce78c",
+        "feat/lkm-marker": "0657a7fd56e3220ed69d525bf82755d645fc6ce4",
+        "feat/python-site": "f74d3c1655d6e55f7e594bfdd14d6d6b048938e5",
+        "fix/audit-batch1": "a4c173cb697c928a37757b20550b7ca83d18c93a",
+        "fix/dirent-buffer-residue": "88b7ecc5c8ca86d3a8c23b11091e5f605e989c04",
+        "fix/guard-reloc-note": "2776e98de860991c982c31da0e4b11aed160373a",
+        "fix/imports-guard-dev": "00471c5de1484ef9aefd8e26f7e7b99873f0357c",
+        "fix/kprobe-rearm": "7d3c9fd2897bc0fe4e0da6c585fcf1c2f4bf788b",
+        "fix/opath-fd-toctou": "158c72223727f4f2c9267b11c6071ef0eaaddc8c",
+        "fix/open-redirect-publish": "61f82c30e65f6fdb84e97d3b098e56d5ece88266",
+        "fix/or-scheme4-umount-uid-boundary": "67d9dd4af68fb350c85dcc4e73a7a99e54791c25",
+        "fix/pack-module-input-validation": "5e3680f2266a37ec0a32fb56e29c7c8239f77e1e",
+        "fix/serialise-probe-arm-paths": "635fb677e1fa40c041ff99e8e5e726aeb5fbda1f",
+        "gh-pages": "e329c9c403feff2bd0bc846f259f0770aef265db",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "9e776d87b731ef13b27ab3b17669336b36d8cdd5",
+        "readme-emoji": "344160453c32469fe92283074a54e8f12e770ee1",
+        "readme-qq-group": "a0f0061f91bdcb09b2a1cfec173b576d1e597ce3",
+        "readme-qq-group-badge": "a0f0061f91bdcb09b2a1cfec173b576d1e597ce3",
+        "readme-title-banner": "29975c27aafec2030739f441a5cad7f2645ca1f2",
+        "site-python": "135068a9d93ee043ead80745c20d18dd73874d35"
+      }
+    },
+    {
+      "repo": "FengFaQ/oneplus-susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "fork-network",
+      "head": "f31de37930a3722d4e672fa61af84af5c9393285",
+      "branches": {
+        "main": "f31de37930a3722d4e672fa61af84af5c9393285"
+      }
+    },
+    {
+      "repo": "inforcqb/susfs4ksu-for-lkm",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "7a8d779255e9c5e5b47e09adbc8cb7483f540f20",
+      "branches": {
+        "dev": "9b271128dbdc50da85cfd20880db1596268fc21a",
+        "docs/pages-copy-edit": "1e2166baf48b8dc960f1a1e7039f201ea12f55a2",
+        "docs/pages-editorial-layout": "a7b609bfb5edae36035853ade6b6f5e4c1bf6d49",
+        "docs/pages-hardware-theme": "c532a48a9834ba46f295399b210eb651b4a0101e",
+        "feat/2.4.0-feature-query": "323c47afbbecd1b2cce0264cfc32b52f28a0e0fb",
+        "fix/bti-landing-pad": "2c57b4cd9cc5b16be2c655279799538de0061abe",
+        "fix/kstat-unlisted-wrap": "c6a13268064a111cabc376aec377a0b842948f0c",
+        "gh-pages": "0bb7cf70950f66c277b2cde485109f404e777c40",
+        "inforcqb-self-patch-1": "074c216ac23f57e94cf54a8f6b4787803c8534ee",
+        "legacy": "0b197bfd3d3402ee108e19c66ed3293d9d14481a",
+        "main": "7a8d779255e9c5e5b47e09adbc8cb7483f540f20",
+        "merge-pr/pr158-pr163-fix-priority-lifetime": "05f420ac3e3289e1075813c9a378eba142ae27a5",
+        "revert/pages-222-220": "34f7592afb94160af6758626be8efbc86a69b0ee",
+        "test/create-gate-debug": "3cfd6f8822b3dc328bd5dcbba594202bdcb77ad4",
+        "test/create-gate-takeover": "8c7795a11d0975d386b7d626ba3a11a949678b88",
+        "test/panic-export": "5bfd72c38a74ed70a8cd2702bc73aefffeab92bd",
+        "test/panic-export-create-gate": "35edf1ba95c5d91adbcce53dc81688974c7de8b3",
+        "try/create-gate-fix": "9422fd87201fc4bfd3bd4e5e45e958067fbd35ae",
+        "try/dcache-whiteout": "4da2efdc761215d42cf26f59e36f690037e2c1e0",
+        "try/dcache-whiteout-lsm-off": "586e30aabff1d53c8ddd4200a1b0e53c7adaa87c",
+        "try/dcache-whiteout-rel": "9c91a4197bbe4867ef38f0c6cbbcde66da2a6a30",
+        "try/sufs": "b93003b9f9a5ffb5c13dcd6f83deb148a85d900e",
+        "try/sus-path-loop-tracking": "639d461c2dfb982f4d0e0673db2e359f02148815"
+      }
+    },
+    {
+      "repo": "ymuuuu/susfs4ksu-lkm-x64",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "c6e94c35d45cd2b96b5f97719b4a12236c0cb4fe",
+      "branches": {
+        "main": "c6e94c35d45cd2b96b5f97719b4a12236c0cb4fe"
+      }
+    },
+    {
+      "repo": "evgenyvolferts/susfs4ksu-lkm-hide-mounts-by-mask",
+      "branch": "master",
+      "origin": "repository-search",
+      "head": "b4b57355cf1967a1b9b67ec06f295d0da5abb5de",
+      "branches": {
+        "master": "b4b57355cf1967a1b9b67ec06f295d0da5abb5de"
+      }
+    },
+    {
+      "repo": "matsuzaka-yuki/susfs-lkm-module",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "cf8f05f103434b7cfe99ff9505fc32ba9950012f",
+      "branches": {
+        "main": "cf8f05f103434b7cfe99ff9505fc32ba9950012f"
+      }
+    },
+    {
+      "repo": "Xiaogugtfgdfhgrh/SUSFS4LKM",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "f5416280a86ed8a7e833c053b96b5eb7cf483b39",
+      "branches": {
+        "main": "f5416280a86ed8a7e833c053b96b5eb7cf483b39"
+      }
+    },
+    {
+      "repo": "DawnyFY/lkm-susfs-manager",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "e94d3f6f587b66cabd4b27422f33e3067e008e74",
+      "branches": {
+        "gh-pages": "c07953e6dc5c32f43bf20339e40456fdd70f091f",
+        "main": "e94d3f6f587b66cabd4b27422f33e3067e008e74"
+      }
+    },
+    {
+      "repo": "Hotsteel2901/OP8_BakaSU_SUSFS_LKM_build",
+      "branch": "master",
+      "origin": "repository-search",
+      "head": "bdf67026b550ea5c736d131cc2d94a67380c9d49",
+      "branches": {
+        "finasu": "5653688994c16cee99752422a9e4e6f7d2606448",
+        "master": "bdf67026b550ea5c736d131cc2d94a67380c9d49"
+      }
+    },
+    {
+      "repo": "UIRAN23/SusFS-LKM-by-uran",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "78df4088e0fd118cf0a916d0f2998c1bbca429a8",
+      "branches": {
+        "main": "78df4088e0fd118cf0a916d0f2998c1bbca429a8"
+      }
+    },
+    {
+      "repo": "Dere3046/susfs_LKM",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": null,
+      "branches": {}
+    },
+    {
+      "repo": "supervooc/susfs4ksu-lkm-site",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "bfc18f26309aa5d515fd37394d8e9457ce9b29a6",
+      "branches": {
+        "main": "bfc18f26309aa5d515fd37394d8e9457ce9b29a6"
+      }
+    },
+    {
+      "repo": "kylinmode/SUSFS-Guard-LKM",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "66b7f8bc8d3144be18f9155e6bba73b664ee2531",
+      "branches": {
+        "main": "66b7f8bc8d3144be18f9155e6bba73b664ee2531"
+      }
+    },
+    {
+      "repo": "omrxm18/susfs4ksu-lkm-x64",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "2389af04b8bed074e5c1717dcb982e74c3c0d56c",
+      "branches": {
+        "main": "2389af04b8bed074e5c1717dcb982e74c3c0d56c"
+      }
+    },
+    {
+      "repo": "zhoudinghao408-cell/lkm_KernelSU_SUSFS",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "614bdaebb8d33310176fcc1c923ad985cca2f895",
+      "branches": {
+        "main": "614bdaebb8d33310176fcc1c923ad985cca2f895"
+      }
+    },
+    {
+      "repo": "RR6983/SUSFS4LKM",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "f5416280a86ed8a7e833c053b96b5eb7cf483b39",
+      "branches": {
+        "main": "f5416280a86ed8a7e833c053b96b5eb7cf483b39",
+        "trae/agent-ZaEmjE": "aa755aa2af1729a58b599930d81adde3aa8f76d4",
+        "trae/agent-cStO5U": "0a8b66dd67f5b7ca7b77be230518062308e9197d"
+      }
+    },
+    {
+      "repo": "gsymasd/SUSFS4LKM",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "f5416280a86ed8a7e833c053b96b5eb7cf483b39",
+      "branches": {
+        "main": "f5416280a86ed8a7e833c053b96b5eb7cf483b39"
+      }
+    },
+    {
+      "repo": "5243M/SUSFS4LKM",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "f5416280a86ed8a7e833c053b96b5eb7cf483b39",
+      "branches": {
+        "main": "f5416280a86ed8a7e833c053b96b5eb7cf483b39"
+      }
+    },
+    {
+      "repo": "bikesh109/susfs4ksu-lkm",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "484562df2012c051954d0033a91d76fbe45d2cca",
+      "branches": {
+        "main": "484562df2012c051954d0033a91d76fbe45d2cca"
+      }
+    },
+    {
+      "repo": "AlirezaParsi/susfs4ksu-lkm-x64",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "14bbbca599b28c1c8679d2aacfda9782f82fcbe2",
+      "branches": {
+        "main": "14bbbca599b28c1c8679d2aacfda9782f82fcbe2"
+      }
+    },
+    {
+      "repo": "mohdakil2426/susfs4ksu-lkm-x64",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "40a1c8310842a36b457c6e68f4da7677ae196f30",
+      "branches": {
+        "main": "40a1c8310842a36b457c6e68f4da7677ae196f30"
+      }
+    },
+    {
+      "repo": "CrackerCat/susfs4ksu-lkm-x64",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "14bbbca599b28c1c8679d2aacfda9782f82fcbe2",
+      "branches": {
+        "main": "14bbbca599b28c1c8679d2aacfda9782f82fcbe2"
+      }
+    },
+    {
+      "repo": "ahtuaan309/susfs-lkm-module",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "19482bb7e65457ff213acbc0bd85673e69e58c13",
+      "branches": {
+        "main": "19482bb7e65457ff213acbc0bd85673e69e58c13"
+      }
+    },
+    {
+      "repo": "AJleKcAHgP68/susfs-lkm-module",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "d225075d7e9923cdf0dc33fad234424a7484337e",
+      "branches": {
+        "main": "d225075d7e9923cdf0dc33fad234424a7484337e"
+      }
+    },
+    {
+      "repo": "starredjaco/susfs-lkm-module",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "cf8f05f103434b7cfe99ff9505fc32ba9950012f",
+      "branches": {
+        "main": "cf8f05f103434b7cfe99ff9505fc32ba9950012f"
+      }
+    },
+    {
+      "repo": "3273222417/susfs-lkm-module",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "cf8f05f103434b7cfe99ff9505fc32ba9950012f",
+      "branches": {
+        "main": "cf8f05f103434b7cfe99ff9505fc32ba9950012f"
+      }
+    },
+    {
+      "repo": "edx-sayed-salem/susfs4ksu-lkm-x64",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "c6e94c35d45cd2b96b5f97719b4a12236c0cb4fe",
+      "branches": {
+        "main": "c6e94c35d45cd2b96b5f97719b4a12236c0cb4fe"
+      }
+    },
+    {
+      "repo": "CoolBreeze0/susfs-lkm-module",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "a6677d4aa6ffb7c80685fde89ccb3d0b78ea44f0",
+      "branches": {
+        "main": "a6677d4aa6ffb7c80685fde89ccb3d0b78ea44f0"
+      }
+    },
+    {
+      "repo": "yobreehs/susfs-lkm-module",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "170c672ebff5a35ea30a7bee3949cc67a96c9710",
+      "branches": {
+        "main": "170c672ebff5a35ea30a7bee3949cc67a96c9710"
+      }
+    },
+    {
+      "repo": "strong568/susfs-lkm-module",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "a6677d4aa6ffb7c80685fde89ccb3d0b78ea44f0",
+      "branches": {
+        "main": "a6677d4aa6ffb7c80685fde89ccb3d0b78ea44f0"
+      }
+    },
+    {
+      "repo": "KaliRootSuperUser/susfs-lkm-module",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "a6677d4aa6ffb7c80685fde89ccb3d0b78ea44f0",
+      "branches": {
+        "main": "a6677d4aa6ffb7c80685fde89ccb3d0b78ea44f0"
+      }
+    },
+    {
+      "repo": "kingD2N/susfs-lkm-module",
+      "branch": "main",
+      "origin": "repository-search",
+      "head": "4e6fefe2bbe8ca4252da4758f8e10521d31b5c82",
+      "branches": {
+        "main": "4e6fefe2bbe8ca4252da4758f8e10521d31b5c82"
+      }
+    }
+  ],
+  "classification": [
+    {
+      "head": "253c3f46401e4b97458de3166361f5748cc146f8",
+      "repos": [
+        "laninenterline/susfs4ksu-for-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "36df197f5c89aea5aed18e4447649a7fc17475ba",
+      "repos": [
+        "VictorGabriel7Dev/susfs4ksu-for-lkm",
+        "3273222417/susfs4ksu-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "761b93083afd846858257221453bf306465042a3",
+      "repos": [
+        "aikeliyc/susfs4ksu-for-lkm",
+        "pavan3999/susfs4ksu-for-lkm",
+        "tangt875f4b-crypto/susfs4ksu-for-lkm",
+        "ITCJ/susfs4ksu-for-lkm",
+        "BritneyOvO/susfs4ksu-for-lkm",
+        "kiyonoRin/susfs4ksu-for-lkm",
+        "ysn715/susfs4ksu-for-lkm",
+        "zzq-be/susfs4ksu-for-lkm",
+        "wawa1314/susfs4ksu-for-lkm",
+        "bygalacos/susfs4ksu-for-lkm",
+        "ymuuuu/susfs4ksu-for-lkm",
+        "forskifx/susfs4ksu-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "99ab39d57514a20baf3460754ecc052a347c56ea",
+      "repos": [
+        "Carmenzr/susfs4ksu-for-lkm"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "1f8ce706e2f51ad81bbd8a2fa975dfd425fa8a0a",
+      "repos": [
+        "edx-sayed-salem/susfs4ksu-for-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "39842590a2ce2eb61bb6d234ea7f350ac1da8d22",
+      "repos": [
+        "Dangzp218/susfs4ksu-for-lkm"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "f95ae4c4c7df7050b2e13bc5d26403e5e0786d00",
+      "repos": [
+        "FabrisNick/susfs4ksu-for-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "d460b0894f6b5a7ce73cba431da52fd82de971f1",
+      "repos": [
+        "shu0011/susfs4ksu-for-lkm-dijun"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "87e738c44e148e1f4ec75b419b986c82eb7c5c0c",
+      "repos": [
+        "windlandneko/susfs4ksu-for-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "3b0676dbc949494889238647f3f9516b452eb0e9",
+      "repos": [
+        "pershoot/susfs4ksu-for-lkm",
+        "starredjaco/susfs4ksu-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "1a39932c9cc79115c13483711ca08e682546cddc",
+      "repos": [
+        "Dere3046/susfs4ksuNEXT"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "eb9fd2328aa2ce9b9fb538e0c7a17f9032e5456e",
+      "repos": [
+        "cak9178/susfs4ksu-for-lkm"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "848ff01ba95973c2674cf91a7261129a8cc0e169",
+      "repos": [
+        "CrackerCat/susfs4ksu-for-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "6c4ab849a0b6fd9b039552da8664cea77cd7743d",
+      "repos": [
+        "Kaushikku/susfs4ksu-for-lkm",
+        "akkun2/inforcqb__susfs4ksu-for-lkm",
+        "fengjixuchui/susfs4ksu-for-lkm",
+        "sreeshankark/susfs4ksu-for-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "775751fc46989a5de40d195fa6d3398fdc8955f3",
+      "repos": [
+        "LowKeyMerlin/susfs4ksu-lkm"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "b69dee412aac54cdf99832412de3b4758118a1eb",
+      "repos": [
+        "Yunnijian/susfs4ksu-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "78306397bbd903c88377229df2f3ee7ca9a4a66c",
+      "repos": [
+        "mzday123/susfs4ksu-lkm"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "8ab4500ffc3f13ec6ded79d7ab13e2e8147a1879",
+      "repos": [
+        "17862340956/susfs4ksu-lkm",
+        "gkhjn/susfs4ksu-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "5529405cfae9c269a3475696f453feb462b78042",
+      "repos": [
+        "abluodfa/ksuko-lkm"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "6753d9c189b058a5978eddd7d2093f95b5be68a2",
+      "repos": [
+        "dddaaaswq/susfs4ksu-lkm",
+        "872446136-source/susfs4ksu-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "a4f475b2485f52c006d7932e157b2d02bfcebf47",
+      "repos": [
+        "doccstat/susfs4ksu-lkm"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "060fa0e9cb48caf5c554e33ab012ca10e0f1308c",
+      "repos": [
+        "Hobbit233/susfs4ksu-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "85ef920ccf27682a2a9089b4676547f691b92828",
+      "repos": [
+        "3548077732/susfs4ksu-lkm",
+        "Tr4cck/susfs4ksu-lkm",
+        "flybird0010/susfs4ksu-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "faf696a050b1c64009a4898cae7bcc0c9079f1d3",
+      "repos": [
+        "Shiho-Patch/susfs4ksu-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "add7aaf38f749898a24bf03d3892d7f3438a3062",
+      "repos": [
+        "rifsxd/susfs4ksu-lkm",
+        "jackylimsme-svg/susfs4ksu-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "191339da5db5e9a45a4b011f9f7aa4174a760bae",
+      "repos": [
+        "CoolBreeze0/susfs4ksu-lkm",
+        "feiyunwill/susfs4ksu-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "5908caf9393ceee09aebe2f49798085f5f6b714a",
+      "repos": [
+        "AkiHaza/susfs4ksu-lkm-YAAP"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "f521e6181de2498a7add56326f9eb6e45613fda4",
+      "repos": [
+        "KaliRootSuperUser/susfs4ksu-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "87a8b45a0fc1aa146110f1f913c27ffbd29901bf",
+      "repos": [
+        "Hotsteel2901/susfs4ksu-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "8f6776e7532d38d9b48dfc6e55a600451bb01cf8",
+      "repos": [
+        "zhoudinghao408-cell/susfs4ksu-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "8619b6ee0d0629836e9c6ce668e8a785dfd53517",
+      "repos": [
+        "Bouteillepleine/susfs4ksu-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "494e2dd2c725d4f5f6e6f14af933680e7052e10d",
+      "repos": [
+        "yapixel/susfs4ksu-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "9e776d87b731ef13b27ab3b17669336b36d8cdd5",
+      "repos": [
+        "supervooc/susfs4ksu-lkm"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "f31de37930a3722d4e672fa61af84af5c9393285",
+      "repos": [
+        "FengFaQ/oneplus-susfs4ksu-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "7a8d779255e9c5e5b47e09adbc8cb7483f540f20",
+      "repos": [
+        "inforcqb/susfs4ksu-for-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "c6e94c35d45cd2b96b5f97719b4a12236c0cb4fe",
+      "repos": [
+        "ymuuuu/susfs4ksu-lkm-x64",
+        "edx-sayed-salem/susfs4ksu-lkm-x64"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "b4b57355cf1967a1b9b67ec06f295d0da5abb5de",
+      "repos": [
+        "evgenyvolferts/susfs4ksu-lkm-hide-mounts-by-mask"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "cf8f05f103434b7cfe99ff9505fc32ba9950012f",
+      "repos": [
+        "matsuzaka-yuki/susfs-lkm-module",
+        "starredjaco/susfs-lkm-module",
+        "3273222417/susfs-lkm-module"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "f5416280a86ed8a7e833c053b96b5eb7cf483b39",
+      "repos": [
+        "Xiaogugtfgdfhgrh/SUSFS4LKM",
+        "RR6983/SUSFS4LKM",
+        "gsymasd/SUSFS4LKM",
+        "5243M/SUSFS4LKM"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "e94d3f6f587b66cabd4b27422f33e3067e008e74",
+      "repos": [
+        "DawnyFY/lkm-susfs-manager"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "bdf67026b550ea5c736d131cc2d94a67380c9d49",
+      "repos": [
+        "Hotsteel2901/OP8_BakaSU_SUSFS_LKM_build"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "78df4088e0fd118cf0a916d0f2998c1bbca429a8",
+      "repos": [
+        "UIRAN23/SusFS-LKM-by-uran"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "bfc18f26309aa5d515fd37394d8e9457ce9b29a6",
+      "repos": [
+        "supervooc/susfs4ksu-lkm-site"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "66b7f8bc8d3144be18f9155e6bba73b664ee2531",
+      "repos": [
+        "kylinmode/SUSFS-Guard-LKM"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "2389af04b8bed074e5c1717dcb982e74c3c0d56c",
+      "repos": [
+        "omrxm18/susfs4ksu-lkm-x64"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "614bdaebb8d33310176fcc1c923ad985cca2f895",
+      "repos": [
+        "zhoudinghao408-cell/lkm_KernelSU_SUSFS"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "484562df2012c051954d0033a91d76fbe45d2cca",
+      "repos": [
+        "bikesh109/susfs4ksu-lkm"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": true
+    },
+    {
+      "head": "14bbbca599b28c1c8679d2aacfda9782f82fcbe2",
+      "repos": [
+        "AlirezaParsi/susfs4ksu-lkm-x64",
+        "CrackerCat/susfs4ksu-lkm-x64"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "40a1c8310842a36b457c6e68f4da7677ae196f30",
+      "repos": [
+        "mohdakil2426/susfs4ksu-lkm-x64"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "19482bb7e65457ff213acbc0bd85673e69e58c13",
+      "repos": [
+        "ahtuaan309/susfs-lkm-module"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "d225075d7e9923cdf0dc33fad234424a7484337e",
+      "repos": [
+        "AJleKcAHgP68/susfs-lkm-module"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "a6677d4aa6ffb7c80685fde89ccb3d0b78ea44f0",
+      "repos": [
+        "CoolBreeze0/susfs-lkm-module",
+        "strong568/susfs-lkm-module",
+        "KaliRootSuperUser/susfs-lkm-module"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "170c672ebff5a35ea30a7bee3949cc67a96c9710",
+      "repos": [
+        "yobreehs/susfs-lkm-module"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    },
+    {
+      "head": "4e6fefe2bbe8ca4252da4758f8e10521d31b5c82",
+      "repos": [
+        "kingD2N/susfs-lkm-module"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false
+    }
+  ],
+  "divergentNativeReview": [
+    {
+      "head": "99ab39d57514a20baf3460754ecc052a347c56ea",
+      "repos": [
+        "Carmenzr/susfs4ksu-for-lkm"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": "761b93083afd846858257221453bf306465042a3",
+      "native_file_count": 120,
+      "native_changes": [
+        "99ab39d 2026-11-21 susfs: arm the priority uid feature when its probe is live",
+        "8ce46e8 2026-11-21 priority_uid: report whether the probe armed",
+        "34fbeef 2026-11-21 features: advertise the priority uid filter",
+        "c282c3c 2026-11-21 features: add the 2.4 priority uid filter bit",
+        "182e9c0 2026-11-20 priority_uid: add a debug parameter for the probe",
+        "d1aa486 2026-11-20 build: describe the module as 2.4.0-gki",
+        "7b52b37 2026-11-20 abi: report SUSFS v2.4.0",
+        "0842dfb 2026-11-20 susfs: report 2.4.0 now that the priority uid filter is implemented",
+        "5cf4a95 2026-11-20 priority_uid: intercept getpriority with a kretprobe (stage 2)",
+        "2b67e7d 2026-11-20 priority_uid: drop the unused save pointer",
+        "b7cfdfe 2026-11-20 susfs: remove the priority uid node on unload",
+        "c80456b 2026-11-20 susfs: create the priority uid node at load",
+        "7c2edd1 2026-11-20 susfs: declare the priority uid filter entry points",
+        "1052b33 2026-11-20 build: compile the priority uid filter",
+        "2fd13ab 2026-11-20 priority_uid: add the bitmap and /proc control node (stage 1)"
+      ],
+      "native_diffstat": " kernel/Makefile             |   2 +-\n kernel/susfs.h              |   3 +-\n kernel/susfs_abi.h          |   2 +-\n kernel/susfs_main.c         |   9 +-\n kernel/susfs_priority_uid.c | 336 ++++++++++++++++++++++++++++++++++++++++++++\n kernel/susfs_supercall.c    |   1 +\n 6 files changed, 349 insertions(+), 4 deletions(-)\n"
+    },
+    {
+      "head": "39842590a2ce2eb61bb6d234ea7f350ac1da8d22",
+      "repos": [
+        "Dangzp218/susfs4ksu-for-lkm"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": "761b93083afd846858257221453bf306465042a3",
+      "native_file_count": 119,
+      "native_changes": [],
+      "native_diffstat": ""
+    },
+    {
+      "head": "d460b0894f6b5a7ce73cba431da52fd82de971f1",
+      "repos": [
+        "shu0011/susfs4ksu-for-lkm-dijun"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": "f95ae4c4c7df7050b2e13bc5d26403e5e0786d00",
+      "native_file_count": 86,
+      "native_changes": [],
+      "native_diffstat": ""
+    },
+    {
+      "head": "eb9fd2328aa2ce9b9fb538e0c7a17f9032e5456e",
+      "repos": [
+        "cak9178/susfs4ksu-for-lkm"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": "bcabb0a3d03424b7b3372990d7be87e6d1bf19c2",
+      "native_file_count": 51,
+      "native_changes": [
+        "05f31d8 2026-11-06 Update Makefile",
+        "6f62e67 2026-11-06 Update Makefile",
+        "2024004 2026-11-06 Refactor susfs_main.c to include kprobes and test functions"
+      ],
+      "native_diffstat": " kernel/Makefile     |  73 +------\n kernel/susfs_main.c | 538 ++--------------------------------------------------\n 2 files changed, 16 insertions(+), 595 deletions(-)\n"
+    },
+    {
+      "head": "775751fc46989a5de40d195fa6d3398fdc8955f3",
+      "repos": [
+        "LowKeyMerlin/susfs4ksu-lkm"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": "761b93083afd846858257221453bf306465042a3",
+      "native_file_count": 57,
+      "native_changes": [
+        "12447f6 2026-11-22 create_gate: refuse a name a pending sus_path rule waits for",
+        "33f8bcb 2026-11-22 Track simonpunk's 2.4.0",
+        "eabd660 2026-11-22 selinux_ctx: answer a hidden type in a security.selinux xattr as unknown",
+        "ccabaec 2026-11-22 sus_path: add the uid filter command",
+        "9fb30a5 2026-11-22 susfs_fp: require a landing pad only if the table entry has one",
+        "e09ec46 2026-11-22 create_gate: hand ordinary mkdirat back to the kernel",
+        "4fc7a85 2026-11-22 hide_syms: keep the BTI landing pad under the kprobe",
+        "19341ea 2026-11-05 sus_mount: move id-map records into their own data layer",
+        "e411590 2026-11-05 create_vfs: pass the stripped mode to vfs_mkdir()",
+        "013fc27 2026-11-05 Take upstream/main up to 848ff01",
+        "727cd23 2026-11-04 selinux_status: hide KernelSU policy edits from the status page",
+        "2c5f1a4 2026-11-03 supercall: list the priority uid filter in enabled features (f06acf7)",
+        "11c0bb5 2026-11-03 priority_filter: read uids from packages.list (0d5b1ce, a0ac906)",
+        "5033e6b 2026-11-02 susfs_fp: judge the compat wrapper against the compat entry",
+        "1f3699c 2026-11-02 create_gate: fix mkdirat on \"/\" and the umask before 6.3",
+        "d1a95d8 2026-11-02 create_gate: restore the create-family layer (6c4ab84)",
+        "75b2e4b 2026-11-02 susfs_fp: restore compat entry on unload (46590bb)",
+        "4d7d94f 2026-11-02 kernel: patch the syscall table the dispatcher reads",
+        "6ef5a99 2026-11-02 sus_mount: hide KSU mounts from listmount and statmount on 6.12 and 6.18",
+        "dbcc5e8 2026-11-02 susfs_kstat: use fget_raw so statfs on an O_PATH fd is answered",
+        "b063e5e 2026-11-02 susfs_kstat: arm the fdinfo probe once instead of per rule",
+        "c07fd65 2026-11-02 sus_map: do not warn when the inlined inner gup probe has no symbol",
+        "e220886 2026-11-02 susfs: grow the sus_map, kstat and open_redirect rule tables on demand",
+        "766f09b 2026-11-02 sus_path: confirm i_generation on the identity-fallback match"
+      ],
+      "native_diffstat": " kernel/HooKern/LICENSE                             |  280 ----\n kernel/HooKern/hk.c                                |  252 ----\n kernel/HooKern/hk.h                                |  116 --\n kernel/HooKern/hk_binder.c                         |  277 ----\n kernel/HooKern/hk_binder.h                         |   40 -\n kernel/HooKern/hk_cfi.c                            |   75 --\n kernel/HooKern/hk_cfi.h                            |   11 -\n kernel/HooKern/hk_flush.S                          |   14 -\n kernel/HooKern/hk_inline.c                         | 1359 -------------------\n kernel/HooKern/hk_inline.h                         |  143 --\n kernel/HooKern/hk_kprobe.c                         |  480 -------\n kernel/HooKern/hk_kprobe.h                         |  219 ---\n kernel/HooKern/hk_kretprobe.c                      |  266 ----\n kernel/HooKern/hk_kretprobe.h                      |   93 --\n kernel/HooKern/hk_ksym.c                           |   33 -\n kernel/HooKern/hk_ksym.h                           |   20 -\n kernel/HooKern/hk_lsm.c                            |  734 ----------\n kernel/HooKern/hk_lsm.h                            |   70 -\n kernel/HooKern/hk_patch.c                          | 1417 --------------------\n kernel/HooKern/hk_patch.h                          |  199 ---\n kernel/HooKern/hk_ptr.c                            |  175 ---\n kernel/HooKern/hk_ptr.h                            |   46 -\n kernel/HooKern/hk_redir.c                          |  350 -----\n kernel/HooKern/hk_redir.h                          |  166 ---\n kernel/HooKern/hk_sighook.c                        |  208 ---\n kernel/HooKern/hk_sighook.h                        |   60 -\n kernel/Makefile                                    |   23 +-\n kernel/kallrecon/.github/workflows/build-lkm.yml   |   44 -\n .../kallrecon/.github/workflows/build-test-lkm.yml |   45 -\n .../.github/workflows/build-x86_64-lkm.yml         |   56 -\n kernel/kallrecon/.gitignore                        |   13 -\n kernel/kallrecon/LICENSE                           |  280 ----\n kernel/kallrecon/Makefile                          |  100 --\n kernel/kallrecon/deps.mk                           |    8 -\n kernel/kallrecon/lib/access.c                      |   61 -\n kernel/kallrecon/lib/access.h                      |   26 -\n kernel/kallrecon/lib/anchor.S                      |   52 -\n kernel/kallrecon/lib/core.c                        |  120 --\n kernel/kallrecon/lib/core.h                        |   72 -\n kernel/kallrecon/lib/discover.c                    | 1413 -------------------\n kernel/kallrecon/lib/discover.h                    |   23 -\n kernel/kallrecon/lib/fastboot.c                    |  123 --\n kernel/kallrecon/lib/fastboot.h                    |   21 -\n kernel/kallrecon/lib/hint.c                        |   95 --\n kernel/kallrecon/lib/hint.h                        |   69 -\n kernel/kallrecon/lib/ks_dbg.h                      |   20 -\n kernel/kallrecon/lib/raana/raana.c                 |   99 --\n kernel/kallrecon/lib/raana/raana.h                 |   71 -\n kernel/kallrecon/lib/raana/raana_run_multi.c       |   60 -\n kernel/kallrecon/lib/raana/raana_run_single.c      |   18 -\n kernel/kallrecon/lib/raana/raana_task.c            |  550 --------\n kernel/kallrecon/lib/slide.c                       |  128 --\n kernel/kallrecon/lib/slide.h                       |   42 -\n kernel/kallrecon/lib/symbol.c                      |  580 --------\n kernel/kallrecon/lib/symbol.h                      |   28 -\n kernel/kallrecon/lib/variant.c                     |  359 -----\n kernel/kallrecon/lib/variant.h                     |   19 -\n kernel/kallrecon/src/main.c                        |   84 --\n kernel/kallrecon/src/verify.c                      |  156 ---\n kernel/kallrecon/src/verify.h                      |   14 -\n kernel/kallrecon/test/dbg.c                        |  121 --\n kernel/kallrecon/test/dbg.h                        |    8 -\n kernel/kallrecon/test/variant_diff.c               |  165 ---\n kernel/sus_map.c                                   |  362 +++--\n kernel/sus_mount.c                                 |  823 ++++++++++--\n kernel/sus_mount_ns_iter.c                         |  117 --\n kernel/sus_mount_ns_iter.h                         |   22 -\n kernel/sus_mount_prefix.c                          |   85 --\n kernel/sus_mount_prefix.h                          |   21 -\n kernel/sus_mount_view.c                            |  132 --\n kernel/sus_mount_view.h                            |  181 ---\n kernel/sus_path.c                                  |  519 ++++---\n kernel/sus_path_data.h                             |   29 -\n kernel/sus_path_match.h                            |   32 -\n kernel/sus_path_view.h                             |   83 --\n kernel/susfs.h                                     |   47 +-\n kernel/susfs_abi.h                                 |   25 +-\n kernel/susfs_create_gate.c                         |   51 +-\n kernel/susfs_create_op.h                           |   28 -\n kernel/susfs_create_policy.c                       |  141 +-\n kernel/susfs_create_policy.h                       |    9 +-\n kernel/susfs_create_vfs.c                          |  428 +++---\n kernel/susfs_create_vfs.h                          |   22 +-\n kernel/susfs_create_view.h                         |  154 ---\n kernel/susfs_fp_hook.c                             |  157 ++-\n kernel/susfs_hide_syms.c                           |  182 +--\n kernel/susfs_kstat.c                               |  684 +++++++++-\n kernel/susfs_kstat_view.h                          |   49 -\n kernel/susfs_main.c                                |   62 +-\n kernel/susfs_open_data.h                           |   27 -\n kernel/susfs_open_redirect.c                       |  574 ++++----\n kernel/susfs_open_view.h                           |  145 --\n kernel/susfs_or_entry.c                            |   48 +-\n kernel/susfs_priority_filter.c                     |  205 +++\n kernel/susfs_selinux_ctx.c                         |  712 ++++++++++\n kernel/susfs_selinux_hide.c                        |   85 ++\n kernel/susfs_selinux_status.c                      |  263 ++++\n kernel/susfs_supercall.c                           |   15 +-\n kernel/susfs_uid_filter.c                          |  420 ++++++\n kernel/susfs_uid_filter.h                          |   70 +\n kernel/symbol_resolver.c                           |  645 ++++++---\n kernel/symbol_resolver.h                           |   17 +-\n 102 files changed, 4991 insertions(+), 14949 deletions(-)\n"
+    },
+    {
+      "head": "78306397bbd903c88377229df2f3ee7ca9a4a66c",
+      "repos": [
+        "mzday123/susfs4ksu-lkm"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": "060fa0e9cb48caf5c554e33ab012ca10e0f1308c",
+      "native_file_count": 36,
+      "native_changes": [],
+      "native_diffstat": ""
+    },
+    {
+      "head": "5529405cfae9c269a3475696f453feb462b78042",
+      "repos": [
+        "abluodfa/ksuko-lkm"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": "638374f3566c86239aac5da17f7e5d75530fb01e",
+      "native_file_count": 42,
+      "native_changes": [
+        "5529405 2026-10-29 kernel: taint_spoof.h (hideguard full: ssaid+target_uids+addc)",
+        "870d0c6 2026-10-29 kernel: taint_spoof.c (hideguard full: ssaid+target_uids+addc)",
+        "ed398d9 2026-10-29 kernel: susfs_uname.c (hideguard full: ssaid+target_uids+addc)",
+        "e82014e 2026-10-29 kernel: susfs_opath.c (hideguard full: ssaid+target_uids+addc)",
+        "78db5d0 2026-10-29 kernel: susfs_main.c (hideguard full: ssaid+target_uids+addc)",
+        "caf748f 2026-10-29 kernel: susfs_kstat.c (hideguard full: ssaid+target_uids+addc)",
+        "83af9c3 2026-10-29 kernel: susfs_fp_hook.h (hideguard full: ssaid+target_uids+addc)",
+        "970b1ca 2026-10-29 kernel: susfs_fp_hook.c (hideguard full: ssaid+target_uids+addc)",
+        "2d3147b 2026-10-29 kernel: susfs_avc_spoof.c (hideguard full: ssaid+target_uids+addc)",
+        "ab37092 2026-10-29 kernel: susfs.h (hideguard full: ssaid+target_uids+addc)",
+        "a7dc927 2026-10-29 kernel: sus_path.c (hideguard full: ssaid+target_uids+addc)",
+        "d28d31f 2026-10-29 kernel: sus_mount.c (hideguard full: ssaid+target_uids+addc)",
+        "9376dd5 2026-10-29 kernel: sus_dirent.c (hideguard full: ssaid+target_uids+addc)",
+        "8d4fd47 2026-10-29 kernel: spoof_cmdline.c (hideguard full: ssaid+target_uids+addc)",
+        "2077bd0 2026-10-29 kernel: lsm_hook.c (hideguard full: ssaid+target_uids+addc)",
+        "06b9833 2026-10-29 kernel: imports_guard.c (hideguard full: ssaid+target_uids+addc)",
+        "bd0d29c 2026-10-29 kernel: drm_guard.h (hideguard full: ssaid+target_uids+addc)",
+        "f76605f 2026-10-29 kernel: drm_guard.c (hideguard full: ssaid+target_uids+addc)",
+        "3936724 2026-10-29 kernel: btf_layout.c (hideguard full: ssaid+target_uids+addc)",
+        "7870a04 2026-10-21 drm_guard M3.1: log bwr fields of watched ioctls",
+        "6a0ce0e 2026-10-21 drm_guard M3: scope to BINDER_WRITE_READ + small write streams + auto-learned tgid watch list",
+        "e4d698d 2026-10-21 drm_guard M3: scope to BINDER_WRITE_READ + small write streams + auto-learned tgid watch list",
+        "08f3650 2026-10-21 drm_guard M1.4: stash ioctl arg at entry, drop bogus write_consumed test",
+        "9ff2719 2026-10-21 drm_guard M1.4: stash ioctl arg at entry, drop bogus write_consumed test"
+      ],
+      "native_diffstat": " kernel/Makefile          |    2 +-\n kernel/btf_layout.c      |    2 +\n kernel/drm_guard.c       | 1915 ++++++++++++++\n kernel/drm_guard.h       |   37 +\n kernel/imports_guard.c   |    7 +-\n kernel/lsm_hook.c        |   10 -\n kernel/spoof_cmdline.c   |   58 +-\n kernel/sus_dirent.c      |   25 +-\n kernel/sus_mount.c       |   46 +-\n kernel/sus_path.c        | 6399 +++++++++++++++++++++++++---------------------\n kernel/susfs.h           |   10 +-\n kernel/susfs_avc_spoof.c |   20 +-\n kernel/susfs_fp_hook.c   |  107 +-\n kernel/susfs_fp_hook.h   |   27 +\n kernel/susfs_kstat.c     |   36 +-\n kernel/susfs_main.c      |  859 ++++---\n kernel/susfs_opath.c     |   41 +-\n kernel/susfs_uname.c     |   21 +-\n kernel/taint_spoof.c     |  135 +\n kernel/taint_spoof.h     |   24 +\n 20 files changed, 6350 insertions(+), 3431 deletions(-)\n"
+    },
+    {
+      "head": "a4f475b2485f52c006d7932e157b2d02bfcebf47",
+      "repos": [
+        "doccstat/susfs4ksu-lkm"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": "9f6ddfccb04517b6f798807ae05dc7a81ce545fa",
+      "native_file_count": 36,
+      "native_changes": [],
+      "native_diffstat": ""
+    },
+    {
+      "head": "5908caf9393ceee09aebe2f49798085f5f6b714a",
+      "repos": [
+        "AkiHaza/susfs4ksu-lkm-YAAP"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": "761b93083afd846858257221453bf306465042a3",
+      "native_file_count": 119,
+      "native_changes": [],
+      "native_diffstat": ""
+    },
+    {
+      "head": "9e776d87b731ef13b27ab3b17669336b36d8cdd5",
+      "repos": [
+        "supervooc/susfs4ksu-lkm"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": "f95ae4c4c7df7050b2e13bc5d26403e5e0786d00",
+      "native_file_count": 86,
+      "native_changes": [
+        "e24eea1 2026-11-11 Merge branch 'inforcqb:main' into main",
+        "e2bcc11 2026-11-10 Merge branch 'inforcqb:main' into main",
+        "ea8d832 2026-11-04 Merge branch 'inforcqb:main' into main",
+        "cfe2dd8 2026-10-22 Merge branch 'inforcqb:main' into main",
+        "4341f18 2026-10-19 Merge branch 'main' into main",
+        "635fb67 2026-10-11 kprobe: serialise the four arm paths that clear .addr after a failed registration"
+      ],
+      "native_diffstat": " kernel/sus_map.c         |  2 -\n kernel/susfs_avc_spoof.c | 18 +++------\n kernel/susfs_kstat.c     | 98 ------------------------------------------------\n 3 files changed, 5 insertions(+), 113 deletions(-)\n"
+    },
+    {
+      "head": "c6e94c35d45cd2b96b5f97719b4a12236c0cb4fe",
+      "repos": [
+        "ymuuuu/susfs4ksu-lkm-x64",
+        "edx-sayed-salem/susfs4ksu-lkm-x64"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": "8619b6ee0d0629836e9c6ce668e8a785dfd53517",
+      "native_file_count": 90,
+      "native_changes": [
+        "86ab6f2 2026-11-14 sus_unix: review fixes",
+        "63ac9f6 2026-11-14 sus_unix: port to x86_64",
+        "543ac86 2026-11-14 sus_unix: hide abstract AF_UNIX listeners from app connect()",
+        "c33778e 2026-11-14 create_gate: port the r18.9-1 entries to x86_64",
+        "9697bc0 2026-11-14 merge upstream tag v2.3.0-r18.9-1 (8619b6e)",
+        "14bbbca 2026-11-03 create_gate: answer EEXIST for a last component that is not a name",
+        "2fdccbd 2026-11-03 merge upstream main 6c4ab84 (v2.3.0-r18.8)",
+        "762ffbf 2026-10-26 open_redirect: keep_ident readlink of the own /proc fd link names the original",
+        "19368eb 2026-10-26 kstat: keep_ident takes the fd with fget_raw, so O_PATH fds reach the table",
+        "edc5ec9 2026-10-26 open_redirect: keep_ident rule flag, served fds report the target's dev and ino",
+        "449458e 2026-10-26 prop_view: clear keeps the setresuid probe registered",
+        "89e646f 2026-10-26 open_redirect: its own open of a target is exempt from sus_path",
+        "f3963c6 2026-10-26 prop_view: include linux/file.h for fput",
+        "7ac9aea 2026-10-26 prop_view: per-app property area swap at setresuid (test build)",
+        "81b2cce 2026-10-26 uname: machine spoof for translated arm64 processes (test build)",
+        "f3a43a7 2026-10-26 open_redirect: app_only rule flag (test build)",
+        "60a086f 2026-10-26 merge upstream main b69dee4",
+        "574bff5 2026-10-20 susfs.h: spoof_ids comment, no_reverse rules are not counted",
+        "5c1ea14 2026-10-20 open_redirect: per-rule no_reverse flag",
+        "357fa2d 2026-10-19 merge upstream main ba5c6d0",
+        "4cdb89b 2026-10-19 sus_map: read walk_page_range's ops from rcx on x86_64",
+        "ccf2bc5 2026-10-18 merge upstream main 6753d9c",
+        "6d05778 2026-10-17 sus_path: hide readlinkat on registered paths",
+        "a36bd70 2026-10-16 kernel: fall back to __NR_syscall_max on the 5.10 KMIs (x86_64)"
+      ],
+      "native_diffstat": " kernel/Makefile              |   3 +-\n kernel/imports_guard.c       |  20 ++\n kernel/patch_memory.c        | 196 ++++++++++++++++\n kernel/sus_dirent.c          |   7 +-\n kernel/sus_map.c             |  42 ++--\n kernel/sus_mount.c           |  41 ++--\n kernel/sus_path.c            |  89 ++++++-\n kernel/sus_unix.c            | 331 ++++++++++++++++++++++++++\n kernel/susfs.h               |  40 +++-\n kernel/susfs_avc_spoof.c     |  14 +-\n kernel/susfs_create_gate.c   |  44 ++--\n kernel/susfs_fp_hook.c       |  16 +-\n kernel/susfs_fp_hook.h       |  11 +-\n kernel/susfs_hide_syms.c     |  22 +-\n kernel/susfs_kprobe.h        | 155 +++++++++++++\n kernel/susfs_kstat.c         | 314 ++++++++++++++++++++++++-\n kernel/susfs_main.c          |  38 ++-\n kernel/susfs_opath.c         |  27 ++-\n kernel/susfs_open_redirect.c | 221 ++++++++++++++++--\n kernel/susfs_or_entry.c      |  65 ++++--\n kernel/susfs_or_ident.c      | 176 ++++++++++++++\n kernel/susfs_or_ident.h      |  45 ++++\n kernel/susfs_prop_view.c     | 542 +++++++++++++++++++++++++++++++++++++++++++\n kernel/susfs_supercall.c     | 204 ++++++++--------\n kernel/susfs_uname.c         | 412 ++++++++++++++++++++++++++++++--\n 25 files changed, 2813 insertions(+), 262 deletions(-)\n"
+    },
+    {
+      "head": "b4b57355cf1967a1b9b67ec06f295d0da5abb5de",
+      "repos": [
+        "evgenyvolferts/susfs4ksu-lkm-hide-mounts-by-mask"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": null,
+      "native_file_count": 0,
+      "native_changes": [],
+      "native_diffstat": ""
+    },
+    {
+      "head": "cf8f05f103434b7cfe99ff9505fc32ba9950012f",
+      "repos": [
+        "matsuzaka-yuki/susfs-lkm-module",
+        "starredjaco/susfs-lkm-module",
+        "3273222417/susfs-lkm-module"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": null,
+      "native_file_count": 0,
+      "native_changes": [],
+      "native_diffstat": ""
+    },
+    {
+      "head": "f5416280a86ed8a7e833c053b96b5eb7cf483b39",
+      "repos": [
+        "Xiaogugtfgdfhgrh/SUSFS4LKM",
+        "RR6983/SUSFS4LKM",
+        "gsymasd/SUSFS4LKM",
+        "5243M/SUSFS4LKM"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": null,
+      "native_file_count": 0,
+      "native_changes": [],
+      "native_diffstat": ""
+    },
+    {
+      "head": "e94d3f6f587b66cabd4b27422f33e3067e008e74",
+      "repos": [
+        "DawnyFY/lkm-susfs-manager"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": null,
+      "native_file_count": 0,
+      "native_changes": [],
+      "native_diffstat": ""
+    },
+    {
+      "head": "bdf67026b550ea5c736d131cc2d94a67380c9d49",
+      "repos": [
+        "Hotsteel2901/OP8_BakaSU_SUSFS_LKM_build"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": null,
+      "native_file_count": 0,
+      "native_changes": [],
+      "native_diffstat": ""
+    },
+    {
+      "head": "78df4088e0fd118cf0a916d0f2998c1bbca429a8",
+      "repos": [
+        "UIRAN23/SusFS-LKM-by-uran"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": null,
+      "native_file_count": 114,
+      "native_changes": [
+        "6f989f4 2026-11-19 Improve manager compatibility, mount bind-root hiding, and late-load support",
+        "1e4cf54 2026-11-19 Fix uname proc consistency, add PAC-safe stubs, sus_path UID filter, and upstream fixes",
+        "01d073a 2026-11-14 Initial release: SusFS LKM by uran v2.4.0"
+      ],
+      "native_diffstat": ""
+    },
+    {
+      "head": "bfc18f26309aa5d515fd37394d8e9457ce9b29a6",
+      "repos": [
+        "supervooc/susfs4ksu-lkm-site"
+      ],
+      "present_upstream": true,
+      "upstream_ancestor": false,
+      "common_base": null,
+      "native_file_count": 0,
+      "native_changes": [],
+      "native_diffstat": ""
+    },
+    {
+      "head": "66b7f8bc8d3144be18f9155e6bba73b664ee2531",
+      "repos": [
+        "kylinmode/SUSFS-Guard-LKM"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": null,
+      "native_file_count": 0,
+      "native_changes": [],
+      "native_diffstat": ""
+    },
+    {
+      "head": "2389af04b8bed074e5c1717dcb982e74c3c0d56c",
+      "repos": [
+        "omrxm18/susfs4ksu-lkm-x64"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": "6c4ab849a0b6fd9b039552da8664cea77cd7743d",
+      "native_file_count": 42,
+      "native_changes": [
+        "2389af0 2026-11-04 susfs_create_gate: add missing enum on 7.2.0",
+        "b1b8ff0 2026-11-04 Merge remote-tracking branch 'upstream/main'",
+        "14bbbca 2026-11-03 create_gate: answer EEXIST for a last component that is not a name",
+        "2fdccbd 2026-11-03 merge upstream main 6c4ab84 (v2.3.0-r18.8)",
+        "762ffbf 2026-10-26 open_redirect: keep_ident readlink of the own /proc fd link names the original",
+        "19368eb 2026-10-26 kstat: keep_ident takes the fd with fget_raw, so O_PATH fds reach the table",
+        "edc5ec9 2026-10-26 open_redirect: keep_ident rule flag, served fds report the target's dev and ino",
+        "449458e 2026-10-26 prop_view: clear keeps the setresuid probe registered",
+        "89e646f 2026-10-26 open_redirect: its own open of a target is exempt from sus_path",
+        "f3963c6 2026-10-26 prop_view: include linux/file.h for fput",
+        "7ac9aea 2026-10-26 prop_view: per-app property area swap at setresuid (test build)",
+        "81b2cce 2026-10-26 uname: machine spoof for translated arm64 processes (test build)",
+        "f3a43a7 2026-10-26 open_redirect: app_only rule flag (test build)",
+        "60a086f 2026-10-26 merge upstream main b69dee4",
+        "4578295 2026-10-21 adjust for generic linux",
+        "574bff5 2026-10-20 susfs.h: spoof_ids comment, no_reverse rules are not counted",
+        "5c1ea14 2026-10-20 open_redirect: per-rule no_reverse flag",
+        "357fa2d 2026-10-19 merge upstream main ba5c6d0",
+        "4cdb89b 2026-10-19 sus_map: read walk_page_range's ops from rcx on x86_64",
+        "ccf2bc5 2026-10-18 merge upstream main 6753d9c",
+        "6d05778 2026-10-17 sus_path: hide readlinkat on registered paths",
+        "a36bd70 2026-10-16 kernel: fall back to __NR_syscall_max on the 5.10 KMIs (x86_64)",
+        "6e187e6 2026-10-16 kernel: include linux/pgtable.h for the x86_64 page table walk",
+        "68aa65c 2026-10-16 ksun-pr preview: build the rebased PR tree (dev 4cb8ee68 + port)"
+      ],
+      "native_diffstat": " kernel/Makefile              |   2 +-\n kernel/imports_guard.c       |  20 +\n kernel/lsm_hook.c            | 202 ++++------\n kernel/patch_memory.c        | 196 +++++++++\n kernel/sus_dirent.c          |   7 +-\n kernel/sus_map.c             |  42 +-\n kernel/sus_mount.c           |  41 +-\n kernel/sus_path.c            |  89 +++-\n kernel/susfs.h               |  34 +-\n kernel/susfs_avc_spoof.c     |  14 +-\n kernel/susfs_create_gate.c   | 937 ++++++++++++++++++++++---------------------\n kernel/susfs_fp_hook.c       |  16 +-\n kernel/susfs_fp_hook.h       |  11 +-\n kernel/susfs_hide_syms.c     |  22 +-\n kernel/susfs_kprobe.h        | 155 +++++++\n kernel/susfs_kstat.c         | 314 ++++++++++++++-\n kernel/susfs_main.c          |  32 +-\n kernel/susfs_opath.c         |  27 +-\n kernel/susfs_open_redirect.c | 221 +++++++++-\n kernel/susfs_or_entry.c      |  65 ++-\n kernel/susfs_or_ident.c      | 176 ++++++++\n kernel/susfs_or_ident.h      |  45 +++\n kernel/susfs_prop_view.c     | 542 +++++++++++++++++++++++++\n kernel/susfs_supercall.c     | 204 +++++-----\n kernel/susfs_uname.c         | 412 ++++++++++++++++++-\n 25 files changed, 2999 insertions(+), 827 deletions(-)\n"
+    },
+    {
+      "head": "614bdaebb8d33310176fcc1c923ad985cca2f895",
+      "repos": [
+        "zhoudinghao408-cell/lkm_KernelSU_SUSFS"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": null,
+      "native_file_count": 0,
+      "native_changes": [],
+      "native_diffstat": ""
+    },
+    {
+      "head": "14bbbca599b28c1c8679d2aacfda9782f82fcbe2",
+      "repos": [
+        "AlirezaParsi/susfs4ksu-lkm-x64",
+        "CrackerCat/susfs4ksu-lkm-x64"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": "6c4ab849a0b6fd9b039552da8664cea77cd7743d",
+      "native_file_count": 42,
+      "native_changes": [
+        "14bbbca 2026-11-03 create_gate: answer EEXIST for a last component that is not a name",
+        "2fdccbd 2026-11-03 merge upstream main 6c4ab84 (v2.3.0-r18.8)",
+        "762ffbf 2026-10-26 open_redirect: keep_ident readlink of the own /proc fd link names the original",
+        "19368eb 2026-10-26 kstat: keep_ident takes the fd with fget_raw, so O_PATH fds reach the table",
+        "edc5ec9 2026-10-26 open_redirect: keep_ident rule flag, served fds report the target's dev and ino",
+        "449458e 2026-10-26 prop_view: clear keeps the setresuid probe registered",
+        "89e646f 2026-10-26 open_redirect: its own open of a target is exempt from sus_path",
+        "f3963c6 2026-10-26 prop_view: include linux/file.h for fput",
+        "7ac9aea 2026-10-26 prop_view: per-app property area swap at setresuid (test build)",
+        "81b2cce 2026-10-26 uname: machine spoof for translated arm64 processes (test build)",
+        "f3a43a7 2026-10-26 open_redirect: app_only rule flag (test build)",
+        "60a086f 2026-10-26 merge upstream main b69dee4",
+        "574bff5 2026-10-20 susfs.h: spoof_ids comment, no_reverse rules are not counted",
+        "5c1ea14 2026-10-20 open_redirect: per-rule no_reverse flag",
+        "357fa2d 2026-10-19 merge upstream main ba5c6d0",
+        "4cdb89b 2026-10-19 sus_map: read walk_page_range's ops from rcx on x86_64",
+        "ccf2bc5 2026-10-18 merge upstream main 6753d9c",
+        "6d05778 2026-10-17 sus_path: hide readlinkat on registered paths",
+        "a36bd70 2026-10-16 kernel: fall back to __NR_syscall_max on the 5.10 KMIs (x86_64)",
+        "6e187e6 2026-10-16 kernel: include linux/pgtable.h for the x86_64 page table walk",
+        "68aa65c 2026-10-16 ksun-pr preview: build the rebased PR tree (dev 4cb8ee68 + port)",
+        "b9497ff 2026-10-14 supercall: canary value behind volatile, compiler folded the call; drop B3 diagnostics",
+        "458af48 2026-10-14 supercall: B3 diagnostic round 2, log adjusted probe addr and 16 target bytes",
+        "e17a658 2026-10-14 supercall: B3 diagnostic, probe target byte readback and core-text kstrtoll canary"
+      ],
+      "native_diffstat": " kernel/Makefile              |   2 +-\n kernel/imports_guard.c       |  20 +\n kernel/patch_memory.c        | 196 +++++++++\n kernel/sus_dirent.c          |   7 +-\n kernel/sus_map.c             |  42 +-\n kernel/sus_mount.c           |  41 +-\n kernel/sus_path.c            |  89 ++++-\n kernel/susfs.h               |  34 +-\n kernel/susfs_avc_spoof.c     |  14 +-\n kernel/susfs_create_gate.c   | 932 ++++++++++++++++++++++---------------------\n kernel/susfs_fp_hook.c       |  16 +-\n kernel/susfs_fp_hook.h       |  11 +-\n kernel/susfs_hide_syms.c     |  22 +-\n kernel/susfs_kprobe.h        | 155 +++++++\n kernel/susfs_kstat.c         | 314 ++++++++++++++-\n kernel/susfs_main.c          |  32 +-\n kernel/susfs_opath.c         |  27 +-\n kernel/susfs_open_redirect.c | 221 +++++++++-\n kernel/susfs_or_entry.c      |  65 ++-\n kernel/susfs_or_ident.c      | 176 ++++++++\n kernel/susfs_or_ident.h      |  45 +++\n kernel/susfs_prop_view.c     | 542 +++++++++++++++++++++++++\n kernel/susfs_supercall.c     | 204 +++++-----\n kernel/susfs_uname.c         | 412 ++++++++++++++++++-\n 24 files changed, 2914 insertions(+), 705 deletions(-)\n"
+    },
+    {
+      "head": "40a1c8310842a36b457c6e68f4da7677ae196f30",
+      "repos": [
+        "mohdakil2426/susfs4ksu-lkm-x64"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": "8619b6ee0d0629836e9c6ce668e8a785dfd53517",
+      "native_file_count": 90,
+      "native_changes": [
+        "40a1c83 2026-11-25 kallrecon: widen v2 num_syms scan to KS_NUM_SEARCH (6.12 names stream exceeds 3 MB)",
+        "86ab6f2 2026-11-14 sus_unix: review fixes",
+        "63ac9f6 2026-11-14 sus_unix: port to x86_64",
+        "543ac86 2026-11-14 sus_unix: hide abstract AF_UNIX listeners from app connect()",
+        "c33778e 2026-11-14 create_gate: port the r18.9-1 entries to x86_64",
+        "9697bc0 2026-11-14 merge upstream tag v2.3.0-r18.9-1 (8619b6e)",
+        "14bbbca 2026-11-03 create_gate: answer EEXIST for a last component that is not a name",
+        "2fdccbd 2026-11-03 merge upstream main 6c4ab84 (v2.3.0-r18.8)",
+        "762ffbf 2026-10-26 open_redirect: keep_ident readlink of the own /proc fd link names the original",
+        "19368eb 2026-10-26 kstat: keep_ident takes the fd with fget_raw, so O_PATH fds reach the table",
+        "edc5ec9 2026-10-26 open_redirect: keep_ident rule flag, served fds report the target's dev and ino",
+        "449458e 2026-10-26 prop_view: clear keeps the setresuid probe registered",
+        "89e646f 2026-10-26 open_redirect: its own open of a target is exempt from sus_path",
+        "f3963c6 2026-10-26 prop_view: include linux/file.h for fput",
+        "7ac9aea 2026-10-26 prop_view: per-app property area swap at setresuid (test build)",
+        "81b2cce 2026-10-26 uname: machine spoof for translated arm64 processes (test build)",
+        "f3a43a7 2026-10-26 open_redirect: app_only rule flag (test build)",
+        "60a086f 2026-10-26 merge upstream main b69dee4",
+        "574bff5 2026-10-20 susfs.h: spoof_ids comment, no_reverse rules are not counted",
+        "5c1ea14 2026-10-20 open_redirect: per-rule no_reverse flag",
+        "357fa2d 2026-10-19 merge upstream main ba5c6d0",
+        "4cdb89b 2026-10-19 sus_map: read walk_page_range's ops from rcx on x86_64",
+        "ccf2bc5 2026-10-18 merge upstream main 6753d9c",
+        "6d05778 2026-10-17 sus_path: hide readlinkat on registered paths"
+      ],
+      "native_diffstat": " kernel/Makefile                 |   3 +-\n kernel/imports_guard.c          |  20 ++\n kernel/kallrecon/lib/discover.c |   7 +-\n kernel/patch_memory.c           | 196 +++++++++++++++\n kernel/sus_dirent.c             |   7 +-\n kernel/sus_map.c                |  42 ++--\n kernel/sus_mount.c              |  41 +--\n kernel/sus_path.c               |  89 ++++++-\n kernel/sus_unix.c               | 331 ++++++++++++++++++++++++\n kernel/susfs.h                  |  40 ++-\n kernel/susfs_avc_spoof.c        |  14 +-\n kernel/susfs_create_gate.c      |  44 ++--\n kernel/susfs_fp_hook.c          |  16 +-\n kernel/susfs_fp_hook.h          |  11 +-\n kernel/susfs_hide_syms.c        |  22 +-\n kernel/susfs_kprobe.h           | 155 ++++++++++++\n kernel/susfs_kstat.c            | 314 ++++++++++++++++++++++-\n kernel/susfs_main.c             |  38 ++-\n kernel/susfs_opath.c            |  27 +-\n kernel/susfs_open_redirect.c    | 221 ++++++++++++++--\n kernel/susfs_or_entry.c         |  65 +++--\n kernel/susfs_or_ident.c         | 176 +++++++++++++\n kernel/susfs_or_ident.h         |  45 ++++\n kernel/susfs_prop_view.c        | 542 ++++++++++++++++++++++++++++++++++++++++\n kernel/susfs_supercall.c        | 204 ++++++++-------\n kernel/susfs_uname.c            | 412 ++++++++++++++++++++++++++++--\n 26 files changed, 2818 insertions(+), 264 deletions(-)\n"
+    },
+    {
+      "head": "19482bb7e65457ff213acbc0bd85673e69e58c13",
+      "repos": [
+        "ahtuaan309/susfs-lkm-module"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": null,
+      "native_file_count": 0,
+      "native_changes": [],
+      "native_diffstat": ""
+    },
+    {
+      "head": "d225075d7e9923cdf0dc33fad234424a7484337e",
+      "repos": [
+        "AJleKcAHgP68/susfs-lkm-module"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": null,
+      "native_file_count": 0,
+      "native_changes": [],
+      "native_diffstat": ""
+    },
+    {
+      "head": "a6677d4aa6ffb7c80685fde89ccb3d0b78ea44f0",
+      "repos": [
+        "CoolBreeze0/susfs-lkm-module",
+        "strong568/susfs-lkm-module",
+        "KaliRootSuperUser/susfs-lkm-module"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": null,
+      "native_file_count": 0,
+      "native_changes": [],
+      "native_diffstat": ""
+    },
+    {
+      "head": "170c672ebff5a35ea30a7bee3949cc67a96c9710",
+      "repos": [
+        "yobreehs/susfs-lkm-module"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": null,
+      "native_file_count": 0,
+      "native_changes": [],
+      "native_diffstat": ""
+    },
+    {
+      "head": "4e6fefe2bbe8ca4252da4758f8e10521d31b5c82",
+      "repos": [
+        "kingD2N/susfs-lkm-module"
+      ],
+      "present_upstream": false,
+      "upstream_ancestor": false,
+      "common_base": null,
+      "native_file_count": 0,
+      "native_changes": [],
+      "native_diffstat": ""
+    }
+  ],
+  "recentPullRequests": [
+    {
+      "repo": "laninenterline/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "VictorGabriel7Dev/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "aikeliyc/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "pavan3999/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "tangt875f4b-crypto/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "Carmenzr/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "ITCJ/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "BritneyOvO/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "edx-sayed-salem/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "kiyonoRin/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "Dangzp218/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "ysn715/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "zzq-be/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "wawa1314/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "bygalacos/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "FabrisNick/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "shu0011/susfs4ksu-for-lkm-dijun",
+      "pulls": []
+    },
+    {
+      "repo": "windlandneko/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "pershoot/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "Dere3046/susfs4ksuNEXT",
+      "pulls": []
+    },
+    {
+      "repo": "cak9178/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "CrackerCat/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "Kaushikku/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "akkun2/inforcqb__susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "fengjixuchui/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "sreeshankark/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "ymuuuu/susfs4ksu-for-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "LowKeyMerlin/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "Yunnijian/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "mzday123/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "17862340956/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "gkhjn/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "abluodfa/ksuko-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "dddaaaswq/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "872446136-source/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "doccstat/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "Hobbit233/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "3273222417/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "3548077732/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "Tr4cck/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "flybird0010/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "starredjaco/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "Shiho-Patch/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "rifsxd/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "jackylimsme-svg/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "CoolBreeze0/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "feiyunwill/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "AkiHaza/susfs4ksu-lkm-YAAP",
+      "pulls": []
+    },
+    {
+      "repo": "KaliRootSuperUser/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "Hotsteel2901/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "forskifx/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "zhoudinghao408-cell/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "Bouteillepleine/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "yapixel/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "supervooc/susfs4ksu-lkm",
+      "pulls": [
+        {
+          "number": 1,
+          "title": "feat: add Python-based site (Flask + Jinja2) with CI static export",
+          "state": "open",
+          "updated": "2026-11-22T16:38:19Z",
+          "merged": null,
+          "head": "f74d3c1655d6e55f7e594bfdd14d6d6b048938e5",
+          "head_repo": "supervooc/susfs4ksu-lkm",
+          "base": "main",
+          "url": "https://github.com/supervooc/susfs4ksu-lkm/pull/1"
+        }
+      ]
+    },
+    {
+      "repo": "FengFaQ/oneplus-susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "inforcqb/susfs4ksu-for-lkm",
+      "pulls": [
+        {
+          "number": 198,
+          "title": "susfs: Update version (2.4.0)",
+          "state": "open",
+          "updated": "2026-11-27T14:37:46Z",
+          "merged": null,
+          "head": "d05f723927cfe5444e8b4f3106793de87944b93e",
+          "head_repo": "pershoot/susfs4ksu-for-lkm",
+          "base": "main",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/198"
+        },
+        {
+          "number": 226,
+          "title": "priority: fix literal newlines in packages.list log strings (build break)",
+          "state": "open",
+          "updated": "2026-11-27T13:06:21Z",
+          "merged": null,
+          "head": "0e4a5c15954038c0d2c9c00fa736df0c32729cb3",
+          "head_repo": "laninenterline/susfs4ksu-for-lkm",
+          "base": "main",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/226"
+        },
+        {
+          "number": 225,
+          "title": "ci: make the build-ddk module artifact directly flashable",
+          "state": "open",
+          "updated": "2026-11-26T19:06:24Z",
+          "merged": null,
+          "head": "172704129961a01c8841d1d382f5eb8e8676854e",
+          "head_repo": "VictorGabriel7Dev/susfs4ksu-for-lkm",
+          "base": "main",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/225"
+        },
+        {
+          "number": 221,
+          "title": "fldp: split the kernel into F/L/D/P layers",
+          "state": "closed",
+          "updated": "2026-11-23T10:09:52Z",
+          "merged": "2026-11-22T16:31:05Z",
+          "head": "b3a523a662fafb9b96504ebb7cbcf23dc6cad959",
+          "head_repo": "inforcqb/susfs4ksu-for-lkm",
+          "base": "main",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/221"
+        },
+        {
+          "number": 213,
+          "title": "susfs_kstat: make the unlisted ring slot unsigned (cherry-pick #201)",
+          "state": "closed",
+          "updated": "2026-11-23T10:09:48Z",
+          "merged": null,
+          "head": "c6a13268064a111cabc376aec377a0b842948f0c",
+          "head_repo": "inforcqb/susfs4ksu-for-lkm",
+          "base": "refactor/fldp",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/213"
+        },
+        {
+          "number": 224,
+          "title": "\u6da6\u8272\u9996\u9875\u548c 404 \u9875\u7684\u4e2d\u6587\u6587\u6848",
+          "state": "closed",
+          "updated": "2026-11-22T16:46:23Z",
+          "merged": "2026-11-22T16:46:23Z",
+          "head": "1e2166baf48b8dc960f1a1e7039f201ea12f55a2",
+          "head_repo": "inforcqb/susfs4ksu-for-lkm",
+          "base": "gh-pages",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/224"
+        },
+        {
+          "number": 223,
+          "title": "Revert #222\u3001#220\uff0c\u6062\u590d\u6539\u7248\u524d\u7684 GitHub Pages \u7ad9\u70b9",
+          "state": "closed",
+          "updated": "2026-11-22T16:26:16Z",
+          "merged": "2026-11-22T16:26:16Z",
+          "head": "34f7592afb94160af6758626be8efbc86a69b0ee",
+          "head_repo": "inforcqb/susfs4ksu-for-lkm",
+          "base": "gh-pages",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/223"
+        },
+        {
+          "number": 219,
+          "title": "fix lsm_hook",
+          "state": "closed",
+          "updated": "2026-11-22T16:25:18Z",
+          "merged": "2026-11-22T16:25:18Z",
+          "head": "fbd34238adf130dceebb07f779775e73538dac08",
+          "head_repo": "Dere3046/susfs4ksuNEXT",
+          "base": "main",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/219"
+        },
+        {
+          "number": 222,
+          "title": "\u4e3a\u9879\u76ee\u6587\u6863\u52a0\u5165\u6df1\u8272\u786c\u4ef6\u56fe\u7eb8\u98ce\u683c",
+          "state": "closed",
+          "updated": "2026-11-22T16:22:27Z",
+          "merged": "2026-11-22T16:22:27Z",
+          "head": "c532a48a9834ba46f295399b210eb651b4a0101e",
+          "head_repo": "inforcqb/susfs4ksu-for-lkm",
+          "base": "gh-pages",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/222"
+        },
+        {
+          "number": 220,
+          "title": "\u7b80\u5316\u9879\u76ee\u9996\u9875\uff0c\u7528\u6587\u6863\u6392\u7248\u66ff\u6362\u5ba3\u4f20\u5f0f\u5e03\u5c40",
+          "state": "closed",
+          "updated": "2026-11-22T16:13:03Z",
+          "merged": "2026-11-22T16:13:03Z",
+          "head": "a7b609bfb5edae36035853ade6b6f5e4c1bf6d49",
+          "head_repo": "inforcqb/susfs4ksu-for-lkm",
+          "base": "gh-pages",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/220"
+        },
+        {
+          "number": 215,
+          "title": "hide_syms: strip the PAC-signed LR before returning",
+          "state": "closed",
+          "updated": "2026-11-12T14:44:05Z",
+          "merged": null,
+          "head": "5139ba559f1fb3494003616b08be00750fa7db23",
+          "head_repo": "inforcqb/susfs4ksu-for-lkm",
+          "base": "refactor/fldp",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/215"
+        },
+        {
+          "number": 216,
+          "title": "hide_syms: HooKern inline-hook experiment",
+          "state": "closed",
+          "updated": "2026-11-12T14:42:24Z",
+          "merged": "2026-11-12T14:42:20Z",
+          "head": "82bc5d0067f99d26d003aca4ed51b06c0f0a1978",
+          "head_repo": "inforcqb/susfs4ksu-for-lkm",
+          "base": "main",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/216"
+        },
+        {
+          "number": 212,
+          "title": "F/L/D/P: land Phase 2-5 on main",
+          "state": "closed",
+          "updated": "2026-11-12T14:42:23Z",
+          "merged": "2026-11-12T14:42:23Z",
+          "head": "75efe2a520aa5488e7002c16145d407b202fd402",
+          "head_repo": "inforcqb/susfs4ksu-for-lkm",
+          "base": "main",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/212"
+        },
+        {
+          "number": 214,
+          "title": "hide_syms: keep every BTI landing pad (upstream 2c57b4c)",
+          "state": "closed",
+          "updated": "2026-11-12T04:03:26Z",
+          "merged": null,
+          "head": "dfdf90223bfc790cca76e7334631528637679564",
+          "head_repo": "inforcqb/susfs4ksu-for-lkm",
+          "base": "refactor/fldp",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/214"
+        },
+        {
+          "number": 211,
+          "title": "kstat: consume the Phase 5 view on every spoof face",
+          "state": "closed",
+          "updated": "2026-11-10T15:19:08Z",
+          "merged": "2026-11-10T15:19:04Z",
+          "head": "6fa92349119d7f436ec946fde2de4bbc34d9f47e",
+          "head_repo": "inforcqb/susfs4ksu-for-lkm",
+          "base": "refactor/fldp",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/211"
+        },
+        {
+          "number": 210,
+          "title": "kstat: carry rule flags through the Phase 5 view",
+          "state": "closed",
+          "updated": "2026-11-10T15:13:44Z",
+          "merged": "2026-11-10T15:13:40Z",
+          "head": "215e19a643083d87a38f1b6aebfbc1f97d1b7772",
+          "head_repo": "inforcqb/susfs4ksu-for-lkm",
+          "base": "refactor/fldp",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/210"
+        },
+        {
+          "number": 209,
+          "title": "kstat: add the Phase 5 lookup view",
+          "state": "closed",
+          "updated": "2026-11-10T15:00:02Z",
+          "merged": "2026-11-10T14:59:58Z",
+          "head": "66747666c04905f4dbebeb5e2f21c0256c03a158",
+          "head_repo": "inforcqb/susfs4ksu-for-lkm",
+          "base": "refactor/fldp",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/209"
+        },
+        {
+          "number": 208,
+          "title": "or_entry: wire the Phase 4 open view",
+          "state": "closed",
+          "updated": "2026-11-10T14:37:44Z",
+          "merged": "2026-11-10T14:37:40Z",
+          "head": "ffe62f5249f8f81a882e5a148b45f666a621a240",
+          "head_repo": "inforcqb/susfs4ksu-for-lkm",
+          "base": "refactor/fldp",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/208"
+        },
+        {
+          "number": 207,
+          "title": "sus_path: wire the Phase 3 view",
+          "state": "closed",
+          "updated": "2026-11-10T07:49:59Z",
+          "merged": "2026-11-10T07:49:56Z",
+          "head": "2185185115e155ca78402ef60d649b50338b1d14",
+          "head_repo": "inforcqb/susfs4ksu-for-lkm",
+          "base": "refactor/fldp",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/207"
+        },
+        {
+          "number": 196,
+          "title": "susfs: add the create-gate value view",
+          "state": "closed",
+          "updated": "2026-11-10T07:06:36Z",
+          "merged": "2026-11-10T07:06:33Z",
+          "head": "d79f3dd35172be0c644eaf50a1513573ef3ce87e",
+          "head_repo": "inforcqb/susfs4ksu-for-lkm",
+          "base": "refactor/fldp",
+          "url": "https://github.com/inforcqb/susfs4ksu-for-lkm/pull/196"
+        }
+      ]
+    },
+    {
+      "repo": "ymuuuu/susfs4ksu-lkm-x64",
+      "pulls": [
+        {
+          "number": 2,
+          "title": "sus_path: hide readlinkat with an inode_readlink LSM hook",
+          "state": "closed",
+          "updated": "2026-10-29T09:22:23Z",
+          "merged": "2026-10-29T05:48:53Z",
+          "head": "101b014dfbfee4790b0cd91bcef4a774f0a49ffb",
+          "base": "main",
+          "url": "https://github.com/ymuuuu/susfs4ksu-lkm-x64/pull/2"
+        },
+        {
+          "number": 1,
+          "title": "sus_path: hide readlinkat on registered paths",
+          "state": "closed",
+          "updated": "2026-10-18T17:36:31Z",
+          "merged": "2026-10-18T09:36:29Z",
+          "head": "6d05778c77c6e83223573d62e6e0137d6669c94b",
+          "base": "main",
+          "url": "https://github.com/ymuuuu/susfs4ksu-lkm-x64/pull/1"
+        }
+      ]
+    },
+    {
+      "repo": "evgenyvolferts/susfs4ksu-lkm-hide-mounts-by-mask",
+      "pulls": []
+    },
+    {
+      "repo": "matsuzaka-yuki/susfs-lkm-module",
+      "pulls": [
+        {
+          "number": 5,
+          "title": "kmi: fall back to the kernel version when the GKI tag is absent",
+          "state": "closed",
+          "updated": "2026-10-13T15:28:35Z",
+          "merged": "2026-10-13T15:06:35Z",
+          "head": "674f68f6fe2ef3d310b9723ab4a60173d8813eb2",
+          "base": "main",
+          "url": "https://github.com/matsuzaka-yuki/susfs-lkm-module/pull/5"
+        },
+        {
+          "number": 3,
+          "title": "add 6.12 and 6.18",
+          "state": "closed",
+          "updated": "2026-10-13T12:11:49Z",
+          "merged": null,
+          "head": "d225075d7e9923cdf0dc33fad234424a7484337e",
+          "head_repo": "AJleKcAHgP68/susfs-lkm-module",
+          "base": "main",
+          "url": "https://github.com/matsuzaka-yuki/susfs-lkm-module/pull/3"
+        },
+        {
+          "number": 4,
+          "title": "Automate upstream LKM sync (CI + scheduled release)",
+          "state": "closed",
+          "updated": "2026-10-13T12:05:56Z",
+          "merged": "2026-10-13T12:05:55Z",
+          "head": "a06cc2b339a1e93d12af32d8b1444afc5c126a8d",
+          "base": "main",
+          "url": "https://github.com/matsuzaka-yuki/susfs-lkm-module/pull/4"
+        },
+        {
+          "number": 2,
+          "title": "6.12.x 6.18.x kernel",
+          "state": "closed",
+          "updated": "2026-10-12T08:51:45Z",
+          "merged": null,
+          "head": "d225075d7e9923cdf0dc33fad234424a7484337e",
+          "head_repo": "AJleKcAHgP68/susfs-lkm-module",
+          "base": "main",
+          "url": "https://github.com/matsuzaka-yuki/susfs-lkm-module/pull/2"
+        }
+      ]
+    },
+    {
+      "repo": "Xiaogugtfgdfhgrh/SUSFS4LKM",
+      "pulls": []
+    },
+    {
+      "repo": "DawnyFY/lkm-susfs-manager",
+      "pulls": []
+    },
+    {
+      "repo": "Hotsteel2901/OP8_BakaSU_SUSFS_LKM_build",
+      "pulls": []
+    },
+    {
+      "repo": "UIRAN23/SusFS-LKM-by-uran",
+      "pulls": []
+    },
+    {
+      "repo": "supervooc/susfs4ksu-lkm-site",
+      "pulls": []
+    },
+    {
+      "repo": "kylinmode/SUSFS-Guard-LKM",
+      "pulls": []
+    },
+    {
+      "repo": "omrxm18/susfs4ksu-lkm-x64",
+      "pulls": []
+    },
+    {
+      "repo": "zhoudinghao408-cell/lkm_KernelSU_SUSFS",
+      "pulls": []
+    },
+    {
+      "repo": "RR6983/SUSFS4LKM",
+      "pulls": []
+    },
+    {
+      "repo": "gsymasd/SUSFS4LKM",
+      "pulls": []
+    },
+    {
+      "repo": "5243M/SUSFS4LKM",
+      "pulls": []
+    },
+    {
+      "repo": "bikesh109/susfs4ksu-lkm",
+      "pulls": []
+    },
+    {
+      "repo": "AlirezaParsi/susfs4ksu-lkm-x64",
+      "pulls": []
+    },
+    {
+      "repo": "mohdakil2426/susfs4ksu-lkm-x64",
+      "pulls": []
+    },
+    {
+      "repo": "CrackerCat/susfs4ksu-lkm-x64",
+      "pulls": []
+    },
+    {
+      "repo": "ahtuaan309/susfs-lkm-module",
+      "pulls": []
+    },
+    {
+      "repo": "AJleKcAHgP68/susfs-lkm-module",
+      "pulls": []
+    },
+    {
+      "repo": "starredjaco/susfs-lkm-module",
+      "pulls": []
+    },
+    {
+      "repo": "3273222417/susfs-lkm-module",
+      "pulls": []
+    },
+    {
+      "repo": "edx-sayed-salem/susfs4ksu-lkm-x64",
+      "pulls": []
+    },
+    {
+      "repo": "CoolBreeze0/susfs-lkm-module",
+      "pulls": []
+    },
+    {
+      "repo": "yobreehs/susfs-lkm-module",
+      "pulls": []
+    },
+    {
+      "repo": "strong568/susfs-lkm-module",
+      "pulls": []
+    },
+    {
+      "repo": "KaliRootSuperUser/susfs-lkm-module",
+      "pulls": []
+    },
+    {
+      "repo": "kingD2N/susfs-lkm-module",
+      "pulls": []
+    }
+  ]
+}

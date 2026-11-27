@@ -1,0 +1,398 @@
+diff --git a/kernel/spoof_cmdline.c b/kernel/spoof_cmdline.c
+index a6b22c1..55d0ac9 100644
+--- a/kernel/spoof_cmdline.c
++++ b/kernel/spoof_cmdline.c
+@@ -1,6 +1,7 @@
+ // SPDX-License-Identifier: GPL-2.0
+ /*
+- * spoof_cmdline.c - spoof /proc/bootconfig (SUSFS SPOOF_CMDLINE_OR_BOOTCONFIG).  boot_config_proc_show()
++ * spoof_cmdline.c - spoof /proc/bootconfig and /proc/cmdline (SUSFS SPOOF_CMDLINE_OR_BOOTCONFIG).
++ * boot_config_proc_show()
+  * (fs/proc/bootconfig.c) does `if (saved_boot_config) seq_puts(m, saved_boot_config);`, so rewriting the static
+  * pointer spoofs the whole file. ksud relocates this unexported pointer at load time.
+  * Writers are serialized; replaced strings are reclaimed only after a Tasks RCU
+@@ -12,9 +13,12 @@
+ #include <linux/cred.h>
+ #include <linux/mutex.h>
+ #include <linux/rcupdate.h>
++#include <linux/kprobes.h>
++#include <linux/seq_file.h>
+ #include "susfs_abi.h"
+ #include "susfs_log.h"
+ #include "susfs.h"	/* susfs_abi_path_ok */
++#include "symbol_resolver.h"
+ 
+ /* unexported static var; ksud insmod relocates it via kallsyms */
+ extern char *saved_boot_config;
+@@ -44,6 +48,93 @@ struct bootconfig_value {
+ static struct bootconfig_value *live_bootconfig;
+ static LIST_HEAD(retired_bootconfigs);
+ 
++/* saved_command_line is __ro_after_init. Leave that pointer and the kernel's
++ * internal command line untouched; replace only cmdline_proc_show()'s output.
++ * The existing Tasks-RCU retirement also covers this non-sleeping reader. */
++struct cmdline_show_args {
++	struct seq_file *m;
++	size_t start;
++};
++
++static int cmdline_show_entry(struct kretprobe_instance *ri, struct pt_regs *regs)
++{
++	struct cmdline_show_args *args = (struct cmdline_show_args *)ri->data;
++	struct seq_file *m = (struct seq_file *)regs->regs[0];
++
++	if (!m || !smp_load_acquire(&fake_boot_config))
++		return 1;
++	args->m = m;
++	args->start = m->count;
++	return 0;
++}
++
++static int cmdline_show_ret(struct kretprobe_instance *ri, struct pt_regs *regs)
++{
++	struct cmdline_show_args *args = (struct cmdline_show_args *)ri->data;
++	struct seq_file *m = args->m;
++	const char *fake;
++	size_t start = args->start, len;
++
++	if (regs_return_value(regs) || !m)
++		return 0;
++	fake = smp_load_acquire(&fake_boot_config);
++	if (!fake)
++		return 0;
++	if (start > m->count || m->count > m->size ||
++	    (!m->buf && m->count != m->size)) {
++		/* A malformed show result must not deliver the original command line. */
++		m->count = 0;
++		regs->regs[0] = (unsigned long)-EIO;
++		return 0;
++	}
++	/* Erase the original appended bytes, including a shorter fake's tail.
++	 * count == size is seq_file's overflow flag: preserve its retry protocol. */
++	if (m->buf && m->count > start)
++		memset(m->buf + start, 0, m->count - start);
++	if (m->count == m->size)
++		return 0;
++	len = strlen(fake);
++	if (len + 1 >= m->size - start) {
++		m->count = m->size;
++		return 0;
++	}
++	memcpy(m->buf + start, fake, len);
++	m->buf[start + len] = '\n';
++	m->count = start + len + 1;
++	return 0;
++}
++
++static struct kretprobe cmdline_probe = {
++	.entry_handler = cmdline_show_entry,
++	.handler = cmdline_show_ret,
++	.data_size = sizeof(struct cmdline_show_args),
++	.maxactive = 128,
++};
++static bool cmdline_registered;
++
++/* Called under bootconfig_lock, before the first value is published. */
++static int cmdline_arm_locked(void)
++{
++	unsigned long target;
++	int rc;
++
++	if (cmdline_registered)
++		return 0;
++	target = find_kernel_symbol_exact("cmdline_proc_show");
++	if (!target || !ksu_symbol_is_start(target, "cmdline_proc_show"))
++		return -ENOENT;
++	cmdline_probe.kp.addr = (kprobe_opcode_t *)target;
++	cmdline_probe.kp.flags = 0;
++	rc = register_kretprobe(&cmdline_probe);
++	if (rc) {
++		cmdline_probe.kp.addr = NULL;
++		cmdline_probe.kp.flags = 0;
++		return rc;
++	}
++	cmdline_registered = true;
++	return 0;
++}
++
+ static void bootconfig_drain_retired(void)
+ {
+ 	struct bootconfig_value *value, *next;
+@@ -60,6 +151,7 @@ static void bootconfig_drain_retired(void)
+ 	 * That window only runs strlen()/memcpy() into an existing seq buffer:
+ 	 * no allocation, voluntary scheduling or userspace access. Tasks RCU
+ 	 * covers a preempted native reader; ordinary RCU alone does not.
++	 * cmdline_show_ret() is also a non-sleeping reader of the same allocation.
+ 	 * Module init already requires CONFIG_TASKS_RCU. Never replace this wait
+ 	 * with a timed delay. No writer lock is held while waiting. */
+ 	synchronize_rcu_tasks();
+@@ -86,6 +178,9 @@ static int spoof_set(const char *fake)
+ 		rc = -ENODEV;
+ 		goto out;
+ 	}
++	rc = cmdline_arm_locked();
++	if (rc)
++		goto out;
+ 	expected = original_captured ? (spoof_active ? fake_boot_config : orig_boot_config)
+ 				     : READ_ONCE(saved_boot_config);
+ 	/* A different writer owns a foreign pointer. Do not overwrite it or lose the
+@@ -101,7 +196,7 @@ static int spoof_set(const char *fake)
+ 		if (live_bootconfig)
+ 			list_add_tail(&live_bootconfig->list, &retired_bootconfigs);
+ 		live_bootconfig = value;
+-		fake_boot_config = value->text;
++		smp_store_release(&fake_boot_config, value->text);
+ 		spoof_active = true;
+ 		bootconfig_values++;
+ 		bootconfig_sets++;
+@@ -131,7 +226,7 @@ static int spoof_reset(void)
+ 			live_bootconfig = NULL;
+ 		}
+ 		spoof_active = false;
+-		fake_boot_config = NULL;
++		smp_store_release(&fake_boot_config, NULL);
+ 		bootconfig_resets++;
+ 	}
+ 	bootconfig_last_error = rc;
+@@ -195,6 +290,12 @@ void susfs_spoof_cmdline_exit(void)
+ 	mutex_lock(&bootconfig_lock);
+ 	bootconfig_exiting = true;
+ 	mutex_unlock(&bootconfig_lock);
++	if (cmdline_registered) {
++		unregister_kretprobe(&cmdline_probe);
++		cmdline_registered = false;
++		cmdline_probe.kp.addr = NULL;
++		cmdline_probe.kp.flags = 0;
++	}
+ 	if (spoof_reset())
+ 		/* A foreign owner may still hold our live pointer. Preserve it rather
+ 		 * than overwrite foreign state or free memory with unknown readers. */
+diff --git a/tests/identity_controls/controls_test.c b/tests/identity_controls/controls_test.c
+index 1dfa2b7..82a2f38 100644
+--- a/tests/identity_controls/controls_test.c
++++ b/tests/identity_controls/controls_test.c
+@@ -58,10 +58,108 @@ static void check_uname_writers(void) {
+     }
+     assert(!pthread_join(a,NULL));assert(!pthread_join(b,NULL));
+ }
++
++static const char protected_cmdline[]="native_kernel_arguments=stay_original";
++static void original_cmdline_show(struct seq_file *m) {
++    size_t len=strlen(protected_cmdline);
++    if(m->count+len>=m->size) { m->count=m->size; return; }
++    memcpy(m->buf+m->count,protected_cmdline,len);m->count+=len;
++    if(m->count<m->size)m->buf[m->count++]='\n';
++}
++static void read_cmdline(struct seq_file *m,char *buf,size_t size,const char *prefix) {
++    size_t start=strlen(prefix);assert(start<size);memset(buf,0xa5,size);memcpy(buf,prefix,start);
++    m->buf=buf;m->size=size;m->count=start;
++    struct cmdline_show_args args={0};struct kretprobe_instance ri={.data=&args};
++    struct pt_regs regs={.regs={(unsigned long)m}};
++    int skip=cmdline_registered?cmdline_show_entry(&ri,&regs):1;
++    original_cmdline_show(m);regs.regs[0]=0;
++    if(!skip)cmdline_show_ret(&ri,&regs);
++}
++static void expect_cmdline(struct seq_file *m,const char *prefix,const char *text) {
++    size_t a=strlen(prefix),b=strlen(text);
++    assert(m->count==a+b+1);assert(!memcmp(m->buf,prefix,a));
++    assert(!memcmp(m->buf+a,text,b)&&m->buf[a+b]=='\n');
++}
++static atomic_bool cmdline_reader_entered,cmdline_reader_release;
++static void pause_cmdline_reader(const char *text) {
++    assert(!strcmp(text,"held cmdline"));atomic_store(&cmdline_reader_entered,true);
++    while(!atomic_load(&cmdline_reader_release))usleep(100);
++}
++static void *read_held_cmdline(void *data) {
++    struct seq_file *m=data;
++    struct cmdline_show_args args={.m=m,.start=0};struct kretprobe_instance ri={.data=&args};
++    struct pt_regs regs={0};assert(!pthread_rwlock_rdlock(&boot_readers));
++    cmdline_show_ret(&ri,&regs);assert(!pthread_rwlock_unlock(&boot_readers));return NULL;
++}
+ int main(int argc,char **argv)
+ {
+     assert(argc==2); const char *name=argv[1]; saved_boot_config=native; avc_su_sid=3173; avc_priv_app_sid=4567;
+-    if(!strcmp(name,"boot-cycle")) {
++    if(!strcmp(name,"boot-cmdline-default")) {
++        char buf[128];struct seq_file m={0};assert(!susfs_spoof_cmdline_init());
++        read_cmdline(&m,buf,sizeof(buf),"");expect_cmdline(&m,"",protected_cmdline);
++        assert(!cmdline_registered&&!cmdline_register_count);
++    } else if(!strcmp(name,"boot-cmdline-short")) {
++        char buf[128];struct seq_file m={0};assert(!spoof_set("fake"));
++        read_cmdline(&m,buf,sizeof(buf),"prefix:");expect_cmdline(&m,"prefix:","fake");
++        size_t old_end=strlen("prefix:")+strlen(protected_cmdline)+1;
++        for(size_t i=m.count;i<old_end;i++)assert(!buf[i]);
++        assert(!strcmp(protected_cmdline,"native_kernel_arguments=stay_original"));
++        assert(!strcmp(saved_boot_config,"fake"));
++    } else if(!strcmp(name,"boot-cmdline-grow")) {
++        char fake[80],buf[128];struct seq_file m={0};memset(fake,'X',79);fake[79]=0;
++        assert(!spoof_set(fake));read_cmdline(&m,buf,24,"pre:");assert(m.count==24);
++        for(size_t i=4;i<24;i++)assert(!buf[i]);
++        read_cmdline(&m,buf,64,"pre:");assert(m.count==64);
++        read_cmdline(&m,buf,sizeof(buf),"pre:");expect_cmdline(&m,"pre:",fake);
++        fake[63]=0;assert(!spoof_set(fake));read_cmdline(&m,buf,64,"");assert(m.count==64);
++        read_cmdline(&m,buf,sizeof(buf),"");expect_cmdline(&m,"",fake);
++    } else if(!strcmp(name,"boot-cmdline-maximum")) {
++        char fake[8192],buf[16384];struct seq_file m={0};memset(fake,'Q',8191);fake[8191]=0;
++        assert(!spoof_set(fake));read_cmdline(&m,buf,8192,"");assert(m.count==8192);
++        read_cmdline(&m,buf,sizeof(buf),"");expect_cmdline(&m,"",fake);
++    } else if(!strcmp(name,"boot-cmdline-registration")) {
++        cmdline_target=0;assert(spoof_set("refused")==-ENOENT);
++        assert(saved_boot_config==native&&!original_captured&&!atomic_load(&live_allocations));
++        cmdline_target=0x5678;cmdline_identity_valid=false;assert(spoof_set("refused")==-ENOENT);
++        cmdline_identity_valid=true;cmdline_register_error=-ENOMEM;
++        assert(spoof_set("refused")==-ENOMEM&&!cmdline_registered);
++        assert(!cmdline_probe.kp.addr&&!cmdline_probe.kp.flags);
++        assert(saved_boot_config==native&&!original_captured&&!atomic_load(&live_allocations));
++        cmdline_register_error=0;assert(!spoof_set("accepted"));assert(cmdline_register_count==2);
++        susfs_spoof_cmdline_exit();assert(cmdline_unregister_count==1&&!cmdline_registered);
++    } else if(!strcmp(name,"boot-cmdline-reset")) {
++        char buf[128];struct seq_file m={0};assert(!spoof_set("first"));assert(!spoof_reset());
++        read_cmdline(&m,buf,sizeof(buf),"");expect_cmdline(&m,"",protected_cmdline);
++        assert(!spoof_set("second"));read_cmdline(&m,buf,sizeof(buf),"");expect_cmdline(&m,"","second");
++        assert(cmdline_register_count==1);susfs_spoof_cmdline_exit();
++        assert(cmdline_unregister_count==1&&!cmdline_registered&&saved_boot_config==native);
++        read_cmdline(&m,buf,sizeof(buf),"");expect_cmdline(&m,"",protected_cmdline);
++        assert(spoof_set("after exit")==-ENODEV&&cmdline_register_count==1);
++    } else if(!strcmp(name,"boot-cmdline-invalid-show")) {
++        char buf[128];struct seq_file m={.buf=buf,.size=sizeof(buf),.count=3};
++        struct cmdline_show_args a={.m=&m,.start=4};struct kretprobe_instance ri={.data=&a};
++        struct pt_regs regs={0};assert(!spoof_set("fake"));
++        cmdline_show_ret(&ri,&regs);assert((long)regs.regs[0]==-EIO&&!m.count);
++        m.count=m.size+1;a.start=0;regs.regs[0]=0;cmdline_show_ret(&ri,&regs);
++        assert((long)regs.regs[0]==-EIO&&!m.count);
++        m.buf=NULL;m.count=1;regs.regs[0]=0;cmdline_show_ret(&ri,&regs);
++        assert((long)regs.regs[0]==-EIO&&!m.count);
++        m.buf=buf;m.count=3;a.start=0;regs.ret=-EACCES;regs.regs[0]=0;
++        cmdline_show_ret(&ri,&regs);assert(m.count==3&&!regs.regs[0]);
++    } else if(!strcmp(name,"boot-cmdline-reader")) {
++        char buf[128];struct seq_file m={.buf=buf,.size=sizeof(buf)};assert(!spoof_set("held cmdline"));
++        original_cmdline_show(&m);cmdline_acquire_hook=pause_cmdline_reader;
++        pthread_t reader,writer;assert(!pthread_create(&reader,NULL,read_held_cmdline,&m));
++        for(int i=0;i<10000&&!atomic_load(&cmdline_reader_entered);i++)usleep(100);
++        assert(atomic_load(&cmdline_reader_entered));assert(!pthread_create(&writer,NULL,replace_boot,NULL));
++        for(int i=0;i<10000&&!atomic_load(&grace_waiting)&&!atomic_load(&replacement_done);i++)usleep(100);
++        assert(atomic_load(&grace_waiting)&&!atomic_load(&replacement_done));
++        assert(!pthread_mutex_trylock(&bootconfig_lock));assert(!pthread_mutex_unlock(&bootconfig_lock));
++        atomic_store(&cmdline_reader_release,true);assert(!pthread_join(reader,NULL));
++        assert(!pthread_join(writer,NULL));cmdline_acquire_hook=NULL;
++        expect_cmdline(&m,"","held cmdline");assert(atomic_load(&live_allocations)==1);
++        read_cmdline(&m,buf,sizeof(buf),"");expect_cmdline(&m,"","replacement");
++    } else if(!strcmp(name,"boot-cycle")) {
+         assert(!spoof_set("fake one")); assert(!strcmp(saved_boot_config,"fake one"));
+         assert(!spoof_set("fake two")); assert(!strcmp(saved_boot_config,"fake two"));
+         assert(!spoof_reset()); assert(saved_boot_config==native);
+diff --git a/tests/identity_controls/host_kernel.h b/tests/identity_controls/host_kernel.h
+index e378649..0c00a18 100644
+--- a/tests/identity_controls/host_kernel.h
++++ b/tests/identity_controls/host_kernel.h
+@@ -31,6 +31,9 @@ typedef uint16_t u16;
+ #define pr_warn_ratelimited(...) ((void)0)
+ #define READ_ONCE(x) __atomic_load_n(&(x),__ATOMIC_ACQUIRE)
+ #define WRITE_ONCE(x,v) __atomic_store_n(&(x),(v),__ATOMIC_RELEASE)
++static void (*cmdline_acquire_hook)(const char *);
++#define smp_load_acquire(p) ({ __typeof__(*(p)) value_ = __atomic_load_n((p),__ATOMIC_ACQUIRE); if(cmdline_acquire_hook) cmdline_acquire_hook(value_); value_; })
++#define smp_store_release(p,v) __atomic_store_n((p),(v),__ATOMIC_RELEASE)
+ #define cmpxchg(p,old,new) ({ __typeof__(*(p)) expected_ = (old); __atomic_compare_exchange_n((p),&expected_,(new),false,__ATOMIC_SEQ_CST,__ATOMIC_SEQ_CST); expected_; })
+ #define DEFINE_MUTEX(x) pthread_mutex_t x = PTHREAD_MUTEX_INITIALIZER
+ #define mutex_lock(x) assert(!pthread_mutex_lock(x))
+@@ -96,6 +99,7 @@ static atomic_int lifecycle_active;
+ static int register_kprobe(struct kprobe *p) { assert(atomic_fetch_add(&lifecycle_active,1)==0); usleep(100); register_count++; if(!register_error) p->addr=(void*)0x1234; assert(atomic_fetch_sub(&lifecycle_active,1)==1); return register_error; }
+ static void unregister_kprobe(struct kprobe *p) { assert(atomic_fetch_add(&lifecycle_active,1)==0); usleep(100); unregister_count++; p->flags|=1; assert(atomic_fetch_sub(&lifecycle_active,1)==1); }
+ struct kretprobe_instance { void *data; };
++typedef u32 kprobe_opcode_t;
+ struct kretprobe {
+     struct kprobe kp;
+     int (*entry_handler)(struct kretprobe_instance *,struct pt_regs *);
+@@ -104,8 +108,13 @@ struct kretprobe {
+     int maxactive;
+ };
+ static int uname_register_error;
+-static int register_kretprobe(struct kretprobe *p) { return uname_register_error; }
+-static void unregister_kretprobe(struct kretprobe *p) { }
++static int cmdline_register_error,cmdline_register_count,cmdline_unregister_count;
++static unsigned long cmdline_target=0x5678;
++static bool cmdline_identity_valid=true;
++static unsigned long find_kernel_symbol_exact(const char *name) { assert(!strcmp(name,"cmdline_proc_show"));return cmdline_target; }
++static int ksu_symbol_is_start(unsigned long addr,const char *name) { assert(addr==cmdline_target&&!strcmp(name,"cmdline_proc_show"));return cmdline_identity_valid; }
++static int register_kretprobe(struct kretprobe *p) { if(p->kp.symbol_name)return uname_register_error;assert(p->kp.addr==(void*)cmdline_target&&!p->kp.flags);cmdline_register_count++;return cmdline_register_error; }
++static void unregister_kretprobe(struct kretprobe *p) { if(!p->kp.symbol_name)cmdline_unregister_count++; }
+ struct new_utsname { char sysname[65],nodename[65],release[65],version[65],machine[65],domainname[65]; };
+ static struct new_utsname native_uts={.release="native-release",.version="native-version"};
+ static struct new_utsname *utsname(void) { return &native_uts; }
+@@ -118,7 +127,7 @@ static long strscpy(char *dst,const char *src,size_t n) {
+ }
+ struct inode { int unused; };
+ struct file { int unused; };
+-struct seq_file { char buffer[4096]; };
++struct seq_file { char buffer[4096]; char *buf; size_t size,count; };
+ static void seq_printf(struct seq_file *m,const char *fmt,...) { va_list args; va_start(args,fmt); vsnprintf(m->buffer,sizeof(m->buffer),fmt,args); va_end(args); }
+ static int single_open(struct file *f,int (*show)(struct seq_file *,void *),void *v) { return 0; }
+ static ssize_t seq_read(struct file *f,char *b,size_t l,loff_t *o) { return 0; }
+diff --git a/tests/identity_controls/run.py b/tests/identity_controls/run.py
+index e0304ca..3b8ec5b 100644
+--- a/tests/identity_controls/run.py
++++ b/tests/identity_controls/run.py
+@@ -17,7 +17,9 @@ if args.leak_check and not args.sanitizers:
+     parser.error('--leak-check requires --sanitizers')
+ here=Path(__file__).resolve().parent
+ kernel=here.parents[1]/'kernel'
+-names=['boot-cycle','boot-null','boot-allocation','boot-foreign','boot-reset-input',
++names=['boot-cmdline-default','boot-cmdline-short','boot-cmdline-grow','boot-cmdline-maximum',
++       'boot-cmdline-registration','boot-cmdline-reset','boot-cmdline-invalid-show','boot-cmdline-reader',
++       'boot-cycle','boot-null','boot-allocation','boot-foreign','boot-reset-input',
+        'boot-abi-errors','boot-concurrency','boot-reclaim-bound','boot-reader-replace',
+        'boot-reader-reset','boot-foreign-unload','boot-exit','uname-shorter','uname-default',
+        'uname-initial-parameter','uname-snapshot','uname-writers','uname-registration-failure','uname-exit','uname-incomplete','variant-label','avc-register-selection','avc-repeat',
+@@ -57,7 +59,13 @@ with tempfile.TemporaryDirectory(prefix='susfs-identity-host-') as d:
+               ('omit-reader-grace','BOOT','synchronize_rcu_tasks();','/* grace period omitted */','boot-reader-replace'),
+               ('omit-uname-padding','UNAME','memset(value + len, 0, size - len);','(void)value;','uname-initial-parameter'),
+               ('overwrite-foreign-bootconfig','BOOT','if (cmpxchg(&saved_boot_config, expected, value->text) != expected)',
+-               'if ((saved_boot_config = value->text, false))','boot-foreign')]
++               'if ((saved_boot_config = value->text, false))','boot-foreign'),
++              ('omit-cmdline-content','BOOT','memcpy(m->buf + start, fake, len);','/* fake copy omitted */','boot-cmdline-short'),
++              ('leave-cmdline-tail','BOOT','memset(m->buf + start, 0, m->count - start);','(void)m;','boot-cmdline-short'),
++              ('truncate-cmdline-overflow','BOOT','m->count = m->size;','m->count = start;','boot-cmdline-grow'),
++              ('omit-cmdline-disarm','BOOT','unregister_kretprobe(&cmdline_probe);','/* disarm omitted */','boot-cmdline-reset'),
++              ('ignore-cmdline-registration','BOOT','rc = cmdline_arm_locked();','rc = 0;','boot-cmdline-registration'),
++              ('omit-cmdline-reader-grace','BOOT','synchronize_rcu_tasks();','/* grace omitted */','boot-cmdline-reader')]
+     for label,key,old,new,name in controls:
+         assert old in sources[key]
+         changed=dict(sources); changed[key]=changed[key].replace(old,new,1)
+diff --git a/tools/check_priority_artifact.py b/tools/check_priority_artifact.py
+index 9b0f451..e3e9855 100644
+--- a/tools/check_priority_artifact.py
++++ b/tools/check_priority_artifact.py
+@@ -18,6 +18,9 @@ lines=['#include <linux/kprobes.h>','#include <linux/module.h>','#include <linux
+  'static struct kprobe expected_probe __used = { .pre_handler=expected_pre, .post_handler=expected_post };',
+  'static_assert(__same_type(typeof(&expected_pre), typeof(((struct kprobe *)0)->pre_handler)));',
+  'static_assert(__same_type(typeof(&expected_post), typeof(((struct kprobe *)0)->post_handler)));',
++ 'static __used int expected_ret(struct kretprobe_instance *ri, struct pt_regs *r) { return 0; }',
++ 'static struct kretprobe expected_retprobe __used = { .entry_handler=expected_ret, .handler=expected_ret };',
++ 'static_assert(__same_type(typeof(&expected_ret), typeof(((struct kretprobe *)0)->handler)));',
+  'static_assert(__same_type(susfs_syscall_fn_t, syscall_fn_t));',
+  'static_assert(sizeof(struct st_susfs_priority_uid_filter)==65540);',
+  'static_assert(offsetof(struct st_susfs_priority_uid_filter,err)==65536);',
+@@ -38,19 +41,22 @@ with a.candidate.open('rb') as f:
+    sec=elf.get_section(s['st_shndx']);landings[s.name]=struct.unpack_from('<I',sec.data(),s['st_value']-sec['sh_addr'])[0]
+ probe_names=['prio_pre_getpriority','prio_pre_setpriority','prio_pre_ioprio_get','prio_pre_ioprio_set','prio_probe_post','or_entry_probe_pre','or_entry_probe_post']
+ probe_words={n:candidate['types'].get(n) for n in probe_names}
++kret_names=['cmdline_show_entry','cmdline_show_ret']
++kret_words={n:candidate['types'].get(n) for n in kret_names}
+ added=sorted(set(candidate['imports'])-set(before['imports']));removed=sorted(set(before['imports'])-set(candidate['imports']))
+ checks={
+  '27_syscall_wrappers':len(wrappers)==27,
+  'all_incoming_kcfi_match_real_headers':all(v==word for v in words.values()),
+  'all_have_call_landing_instructions':len(landings)==27 and all(v in [0xd503245f,0xd50324df,0xd503233f,0xd503237f] for v in landings.values()),
+  'priority_probe_callbacks_match_real_headers':all(probe_words[n]==expected['types']['expected_post' if n.endswith('_post') else 'expected_pre'] for n in probe_names),
++ 'cmdline_return_callbacks_match_real_headers':expected['types'].get('expected_ret') is not None and all(kret_words[n]==expected['types']['expected_ret'] for n in kret_names),
+  'baseline_imports_preserved':set(removed)==({'mas_find'} if a.baseline_is_audit else set()),
+  'imports_match_expected_baseline':set(added)==({'deactivate_super'} if a.baseline_is_audit else (set() if a.baseline_is_priority else {'_ctype','strim','strsep','preempt_schedule'})),
+  'module_metadata_matches_production_parameters':sorted(candidate['modinfo'])==sorted([v for v in before['modinfo'] if v != 'parmtype=fail_layer:int']+([] if a.baseline_is_priority or a.baseline_is_audit else ['parmtype=priority_auto_root:bool','parmtype=priority_appid:int'])),
+  'version_table_shape_unchanged':candidate['version_section_sizes']==before['version_section_sizes'],
+  'baseline_callback_types_preserved':all(candidate['types'].get(n)==v for n,v in before['types'].items() if n in candidate['types']),
+ }
+-report=dict(hardware_validated=False,checks=checks,wrapper_kcfi=words,probe_callback_kcfi=probe_words,baseline_is_priority=a.baseline_is_priority,wrapper_landing_instructions=landings,imports=candidate['imports'],added_imports=added,removed_imports=removed,version_section_sizes=candidate['version_section_sizes'],candidate_sha256=candidate['sha256'],baseline_sha256=before['sha256'])
++report=dict(hardware_validated=False,checks=checks,wrapper_kcfi=words,probe_callback_kcfi=probe_words,cmdline_callback_kcfi=kret_words,baseline_is_priority=a.baseline_is_priority,wrapper_landing_instructions=landings,imports=candidate['imports'],added_imports=added,removed_imports=removed,version_section_sizes=candidate['version_section_sizes'],candidate_sha256=candidate['sha256'],baseline_sha256=before['sha256'])
+ (a.output/'artifact.json').write_text(json.dumps(report,indent=2)+'\n')
+ for n,v in checks.items():print(('PASS ' if v else 'FAIL ')+n)
+ raise SystemExit(not all(checks.values()))
