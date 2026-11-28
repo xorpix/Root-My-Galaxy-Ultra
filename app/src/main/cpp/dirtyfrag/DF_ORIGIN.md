@@ -81,6 +81,41 @@ The 7a6513a module carries the fixes:
 RMGU keeps its own command instead of upstream's `/data/user_de/0/df.root/bootstrap`,
 so the per-flavor staged daemon and the existing marker contract stay intact.
 
+## Second issue #68 root cause: hook shellcode placement (1.4.9 analysis)
+
+The reporter's panic capture showed the 1.4.9 reboot was a different, earlier
+failure than the missing `module_exit`: `Kernel panic - not syncing: Attempted
+to kill init! exitcode=0x0000000b`, PID 261 comm `init` (ueventd), SIGSEGV at
+syscall return, with a `crash_dump64` exec one second earlier and no `dfroot:`
+output at all. The phone died roughly one second into the run, during the
+write/hook phase, before any module load - and the preserved 1.4.8-era panic
+archives show the identical signature. The `module_exit` fix was real (upstream
+added it for kernels that walk both CFI jump tables) but not the defect that
+reboots this phone.
+
+The defect was in the e47ea6e userspace chain: `elf_parser.c` placed the hook
+shellcode blindly at the executable segment's file tail. On the Android 17 /
+One UI 9.5 `libc++.so` that write runs past the mapped exec page into the
+bytes that follow it in the file - shared libc++ data that any process can
+fault in at any moment. An init-family process (ueventd, comm `init`) hit the
+corrupted page within a second of the run starting, and Samsung's kernel
+panics when an init-named process dies, so the phone rebooted before the
+chain could finish. The old parser also recognized only PACIASP and BTI c at
+the hook site, so a PACIBSP/BTI-j preamble was left under the trampoline,
+which breaks the function's return path the same way. That is why standalone
+DirtyFrag 1.18 (upstream V3 userspace) works on the same phone while 1.4.8
+and 1.4.9 did not.
+
+`elf_parser.c` now carries the upstream 7a6513a (V3) placement, adapted to
+the reporter plumbing: the shellcode lands in the tail only while it fits the
+rest of its page, otherwise in a zero run (alignment padding) inside the
+executable segment, and it refuses to run when neither exists. The size budget
+is the 16-byte-padded write, so the jmpback stub cannot spill past the
+placement either. The hook site skips up to two BTI/PAC preamble instructions
+(PACIASP, PACIBSP, BTI, BTI c, BTI j, BTI jc) before the trampoline lands on
+real code. Host tests pin the opcodes, the padded budget and the placement
+bounds (`tools/test_m3q_host.py`).
+
 The 7a6513a module also drops the old `soft_reboot` module parameter. RMGU's
 shellcode only passes that parameter when its soft-reboot flag is set, and
 `DfRunner` keeps the flag off because the app owns reboot timing, so insmod
@@ -108,6 +143,10 @@ so only it is rebased.
   upstream 7a6513a, including `module_exit`, the SELinux guard and the DEFEX
   patches. `tools/build_df_lkm.py` renders the per-flavor command and checks
   that the source still contains those fixes.
+- `elf_parser.c`: e47ea6e base plus the upstream 7a6513a V3 shellcode
+  placement (`find_code_cave`) and the full BTI/PAC preamble list. The
+  e47ea6e blind tail placement is gone; see the second issue #68 root cause
+  above. `exp.c` passes the padded shellcode size to the placement.
 
 ## Deliberately NOT vendored
 

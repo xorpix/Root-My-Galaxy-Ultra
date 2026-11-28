@@ -302,7 +302,7 @@ extern uint32_t libcxx_soft_reboot_off;
 
 int find_hook_target(const char *lib, const char *sym,
                      uint64_t *hook, uint64_t *payload, uint32_t *first_insn,
-                     struct Reporter *reporter);
+                     size_t shellcode_size, struct Reporter *reporter);
 
 asm(
     ".section .rodata\n"
@@ -453,7 +453,11 @@ static int patch_hook(const char *lib, const char *sym,
                       char *first_inst_copy,
                       struct Reporter *reporter, struct PatchRestore *restore) {
     uint64_t hook_off, shell_off; uint32_t first_insn;
-    if (find_hook_target(lib, sym, &hook_off, &shell_off, &first_insn, reporter)) {
+    /* The padded size drives the placement: the jmpback write and the 16-byte
+     * padding must stay inside the tail-page slack or the code cave too. */
+    size_t placement_size = ((size_t)stage_len + 15) & ~(size_t)15;
+    if (find_hook_target(lib, sym, &hook_off, &shell_off, &first_insn,
+                         placement_size, reporter)) {
         REPORTLN("find %s hook target failed", lib); return 1;
     }
     REPORTLN("%s hook=0x%lx shell=0x%lx len=%u", lib, hook_off, shell_off, stage_len);

@@ -83,6 +83,80 @@ class BundleTests(unittest.TestCase):
         runner = (JAVA / 'DfRunner.kt').read_text()
         self.assertIn('val softReboot = false', runner)
 
+    def test_dirtyfrag_hook_placement_stays_inside_the_executable_segment(self):
+        # The e47ea6e parser wrote the hook shellcode past the end of the
+        # executable segment, corrupting the mapped page that follows it and
+        # killing an init-family process on Android 17 / One UI 9.5 (issue
+        # #68). The V3 placement must be present and its size budget must be
+        # the padded write size, so the jmpback stub cannot spill either.
+        parser = (PROJECT / 'app/src/main/cpp/dirtyfrag/elf_parser.c').read_text()
+        self.assertIn('static int find_code_cave', parser)
+        for opcode in ('0xd503233fU', '0xd503237fU', '0xd503241fU',
+                       '0xd503245fU', '0xd503249fU', '0xd50324dfU'):
+            self.assertIn(opcode, parser, 'missing BTI/PAC opcode ' + opcode)
+        exp = (PROJECT / 'app/src/main/cpp/dirtyfrag/exp.c').read_text()
+        self.assertIn('placement_size = ((size_t)stage_len + 15) & ~(size_t)15', exp)
+        self.assertIn('placement_size, reporter', exp)
+        self.assertIn('executable_filesz', parser)
+
+    @unittest.skipUnless(shutil.which('cc'), 'C compiler needed for hook placement check')
+    def test_dirtyfrag_code_cave_placement_bounds(self):
+        source = (PROJECT / 'app/src/main/cpp/dirtyfrag/elf_parser.c').read_text()
+        cave = source.split('static int find_code_cave', 1)[1].split('int find_hook_target', 1)[0]
+        cave = 'static int find_code_cave' + cave
+        fixture = (
+            '#include <stdio.h>\n#include <stdint.h>\n#include <string.h>\n'
+            '#include <unistd.h>\n#include <fcntl.h>\n'
+            'struct Reporter;\n'
+            '#pragma GCC diagnostic ignored "-Wunused-parameter"\n'
+            '#define REPORTLN(...) ((void)0)\n'
+            '#define lseek64 lseek\n'
+            + cave +
+            '\nstatic uint64_t place(const char *path, uint64_t exec_off,'
+            ' uint64_t exec_filesz, uint64_t tail_off, size_t size) {\n'
+            '    int fd = open(path, O_RDONLY);\n'
+            '    uint64_t off = 0;\n'
+            '    if (fd < 0) return ~0ULL;\n'
+            '    if (find_code_cave(fd, exec_off, exec_filesz, tail_off, size, &off, 0)) {\n'
+            '        close(fd); return ~0ULL;\n'
+            '    }\n'
+            '    close(fd); return off;\n'
+            '}\n'
+            'int main(void) {\n'
+            '    const uint64_t page = (uint64_t)sysconf(_SC_PAGESIZE);\n'
+            '    const uint64_t exec_off = page, exec_filesz = 2 * page;\n'
+            '    uint64_t tail_mid = exec_off + exec_filesz - 0x40;\n'
+            '    uint64_t tail_edge = exec_off + exec_filesz;\n'
+            '    uint64_t off;\n'
+            '    /* 1. mid-page tail with enough slack keeps the tail placement. */\n'
+            '    off = place("elf.bin", exec_off, exec_filesz - 0x40, tail_mid, 0x40);\n'
+            '    if (off != tail_mid) return 1;\n'
+            '    /* 2. the padded size must also fit; one byte more falls back. */\n'
+            '    off = place("elf.bin", exec_off, exec_filesz - 0x40, tail_mid, 0x41);\n'
+            '    if (off != exec_off + 0x100) return 2;\n'
+            '    /* 3. page-aligned tail has zero slack: only the cave works. */\n'
+            '    off = place("elf.bin", exec_off, exec_filesz, tail_edge, 0x40);\n'
+            '    if (off != exec_off + 0x100) return 3;\n'
+            '    /* 4. no run large enough: refuse instead of overflowing. */\n'
+            '    off = place("elf.bin", exec_off, exec_filesz, tail_edge, 0x180);\n'
+            '    if (off != ~0ULL) return 4;\n'
+            '    /* 5. every placement stays inside the executable segment. */\n'
+            '    off = place("elf.bin", exec_off, exec_filesz, tail_edge, 0x100);\n'
+            '    if (!(off >= exec_off && off + 0x100 <= exec_off + exec_filesz)) return 5;\n'
+            '    return 0;\n'
+            '}\n')
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            (path / 'cave.c').write_text(fixture)
+            elf = bytearray(3 * 4096)
+            elf[0x1000:0x3000] = b'\xaa' * 0x2000
+            elf[0x1100:0x1160] = b'\x00' * 0x60
+            elf[0x2100:0x2240] = b'\x00' * 0x140
+            (path / 'elf.bin').write_bytes(bytes(elf))
+            subprocess.run(['cc', '-Wall', '-Wextra', '-Werror', path / 'cave.c',
+                            '-o', path / 'cave'], check=True)
+            subprocess.run([path / 'cave'], check=True, cwd=path)
+
     @unittest.skipUnless(shutil.which('cc'), 'C compiler needed for bridge selection check')
     def test_native_dirtyfrag_handoff_selects_each_backends_own_bridge(self):
         source = (PROJECT / 'app/src/main/cpp/dirtyfrag/exp.c').read_text()
