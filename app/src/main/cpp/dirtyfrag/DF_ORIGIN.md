@@ -1,8 +1,17 @@
 # DirtyFrag provenance (DF-1)
 
 Exploit family for OneUI 9 / newer kernels, alongside the M3Q flow (which is
-untouched). Source: **https://github.com/diabl0w/DFRoot** at commit
-`e47ea6eb546d71394a454454fd4b08a7af5de170` (master HEAD as vendored).
+untouched). Upstream: **https://github.com/diabl0w/DFRoot**, now GPL-2.0.
+
+Two upstream revisions are vendored because the userspace chain and the kernel
+module moved independently:
+
+- **e47ea6e** (`2026-09-30`, pre-v3.0) for the userspace chain: `exp.c`,
+  `elf_parser.c`, `libcxx.S`, `include.inc`, `aes256.h`, `hmac_sha256.h`,
+  `reporter.h`, `splicehelper.c`, and the non-6.12 prebuilt KOs.
+- **7a6513a** (`2026-11-06`, v4.7 plus the libbase fallback) for
+  `lkm/dfroot.c` and `lkm/Makefile`. The 6.12 modules are rebuilt from this
+  source by `tools/build_df_lkm.py`; see `ko/provenance.json`.
 
 ## What it is
 
@@ -10,37 +19,80 @@ DirtyFrag (CVE-2026-43284): the kernel decrypts AES-CBC ESP packets directly
 into the page cache of files open for `splice()`. Crafted IVs overwrite
 16-byte-aligned blocks of mapped shared libraries without write permission.
 The chain patches shellcode into `libc++.so`/`libc.so`, triggers via an
-orphan process into init (uid 0), `modprobe`s the embedded `dirtyfrag.ko`,
-and execs ksud from a memfd. No Shizuku, no WiFi needed.
+orphan process into init (uid 0), loads the embedded `dirtyfrag.ko` through a
+vendor library's page cache, and runs the staged ksud as init. No Shizuku, no
+WiFi needed.
 
-## Vendored here (verbatim except the renames below)
+## Vendored here
 
 - `exp.c`, `elf_parser.c`, `libcxx.S`, `include.inc`, `aes256.h`,
-  `hmac_sha256.h`, `reporter.h`, `splicehelper.c` (built, not shipped)
-- `ko/dirtyfrag-android{12-5.10,13-5.10,13-5.15,14-5.15,14-6.1,15-6.6,16-6.12,17-6.18}.ko`
-  (12048/10920/11168/11168/7176/7624/8104/8176 bytes; selected at runtime
-  by `uname`, so OneUI 9 / BZIG and BZID take a per-flavor blob below, not generic)
-- `ko/dirtyfrag-android16-6.12-{kernelsu,kernelsu-next,resukisu}.ko`
-  (11128 bytes each stripped; selected by `select_ko_image()` in `exp.c:352` when
-  `uname` reports android16/6.12 plus matching `flavorId`. Each embeds
-  `mkdir -p /data/adb && cat /data/user_de/0/dev.experimental.azhlroot/ksud`
-  `> /data/local/tmp/.ksud-stage && <ksud> late-load --package-name <flavor>`
-  `> /data/local/tmp/.ll.log 2>&1 &` plus a 60x2 s driver poll:
-  `[ -e /sys/module/kernelsu ] || [ -e /sys/module/ksunext ] ||`
-  `[ -e /sys/module/sukisu ] || [ -e /sys/module/resukisu ] ||`
-  `[ -e /sys/module/ksu ] && touch /dev/dfm0 && exit 0` on first sight
-  (late-load hangs after the daemon is up, so waiting for its exit never
-  fires), `touch /dev/dfm1` on 120 s timeout or non-zero exit. Flavor manager
-  packages: `me.weishu.kernelsu`, `com.rifsxd.ksunext`,
-  `org.bakasu.bakasu`. A `df-wipe-requested` flag next to the staged
-  daemon arms a pre-load module-state wipe (modules only, grants kept;
-  skipped while a backend is live). Staged ksud comes from
-  `DfCatalog.stage()` per-flavor `asset://azhl/<flavor>/ksud`.)
-  Rebuild with `build-df-variants.sh` (DDK docker, NDK objcopy strip).
-- `../../assets/df/ksud` (6028336 bytes, diabl0w's KernelSU fork build)
+  `hmac_sha256.h`, `reporter.h`, `splicehelper.c` (built, not shipped),
+  from e47ea6e.
+- `lkm/dfroot.c`, `lkm/Makefile`, `lkm/LICENSE`, from 7a6513a (GPL-2.0).
+- `ko/dirtyfrag-android{12-5.10,13-5.10,13-5.15,14-5.15,14-6.1,15-6.6,17-6.18}.ko`
+  (12048/10920/11168/11168/7176/7624/8176 bytes), unchanged e47ea6e blobs.
+- `ko/dirtyfrag-android16-6.12.ko` and
+  `ko/dirtyfrag-android16-6.12-{kernelsu,kernelsu-next,resukisu,kowsu}.ko`
+  (12824 bytes each, stripped), rebuilt from the 7a6513a module by
+  `tools/build_df_lkm.py`. `select_ko_image()` in `exp.c:362` picks the
+  per-flavor image when `uname` reports android16/6.12 and the flavor is
+  known, and the generic image otherwise. The module's command is the same
+  RMGU bridge the old e47ea6e blobs carried: stage the selected daemon at
+  `/data/user_de/0/dev.experimental.azhlroot/ksud`, run
+  `ksud late-load --package-name <flavor>`, and drive the marker contract:
+  - `/dev/dfm0` when the backend driver appears;
+  - `/dev/dfm1` on a 120 s timeout or a non-zero daemon exit;
+  - `/dev/dfro` after pre-load block-device protection;
+  - `/dev/dfwipe` after the armed module-state wipe (or `/dev/dfwipeskip`
+    when a backend is already live);
+  - `/dev/dfmoddis` after disabling installed modules.
+  The command backgrounds late-load because it hangs after the daemon is up;
+  waiting for its exit would never fire. Flavor manager packages:
+  `me.weishu.kernelsu`, `com.rifsxd.ksunext`, `org.bakasu.bakasu`. The
+  `kowsu` image is derived from the KernelSU image by
+  `tools/prepare_df_backends.py`, which blanks the manager override in
+  non-executable data; KowSU's daemon uses its compiled
+  `com.kowx712.supermanager` default.
+- `../../assets/df/ksud` (6028336 bytes, diabl0w's KernelSU fork build).
 - `DfExploitRunner.java` / `DfReporter.java` (from `df.root.ExploitRunner` /
   `IReporter`; only the package, class names, JNI binding and the `df/ksud`
-  asset path were adapted)
+  asset path were adapted).
+
+## One UI 9.5 / kernel 6.12.69 panic fix (issue #68)
+
+The 1.4.8 module was built from e47ea6e and had no `module_exit`. On
+`S948BXXU6ZZKN` (One UI 9.5 beta, kernel 6.12.69) the module load rebooted the
+phone right after the second page-cache patch. The old module also skipped
+Samsung DEFEX functions with kprobes and never patched `avc_has_perm`, so it
+could not survive the newer kernel even when it loaded.
+
+The 7a6513a module carries the fixes:
+
+- an empty `module_exit`/`cleanup_module`, because some kernels' `cfi_init`
+  walks both the init and cleanup jump tables and crashes in `strcmp` when the
+  cleanup entry is absent;
+- `avc_has_perm`/`avc_has_perm_noaudit` patching when the `selinux_state`
+  write is a no-op (`CONFIG_SECURITY_SELINUX_DEVELOP=n`);
+- direct DEFEX patching through `aarch64_insn_patch_text` instead of kprobes
+  that skip the function body;
+- `crash_dump64` page-cache invalidation after the trigger;
+- BTI/PAC-aware return stubs.
+
+RMGU keeps its own command instead of upstream's `/data/user_de/0/df.root/bootstrap`,
+so the per-flavor staged daemon and the existing marker contract stay intact.
+
+The 7a6513a module also drops the old `soft_reboot` module parameter. RMGU's
+shellcode only passes that parameter when its soft-reboot flag is set, and
+`DfRunner` keeps the flag off because the app owns reboot timing, so insmod
+never receives an unknown parameter. A host test guards both sides of that
+contract.
+
+The userspace chain stays at e47ea6e. Upstream's post-e47ea6e V3 refactor
+removed the HMAC/ICV ESP framing that RMGU's Samsung chain passes from Java,
+and RMGU's `exp.c` also carries its own JNI reporter, readiness wait, marker
+reporting and per-flavor KO selection. Porting the refactor would drop those
+Samsung-specific pieces; the kernel module is the part that caused the panic,
+so only it is rebased.
 
 ## Adaptations (exact)
 
@@ -51,22 +103,38 @@ and execs ksud from a memfd. No Shizuku, no WiFi needed.
 - Native lib keeps upstream's name (`exp`).
 - `splicehelper` builds into CMake's binary dir (never into sources) and is
   found by `.incbin` through the binary-dir include path.
+- `lkm/dfroot.c`: upstream's `bootstrap` exec is replaced with RMGU's
+  late-load command; `cmd[512]` grows to `cmd[4096]`. The source is otherwise
+  upstream 7a6513a, including `module_exit`, the SELinux guard and the DEFEX
+  patches. `tools/build_df_lkm.py` renders the per-flavor command and checks
+  that the source still contains those fixes.
 
 ## Deliberately NOT vendored
 
 - `BootReceiver.java`, `MainActivity.java`, resources (our app has its own
   boot, automation and UI flows; DF-2 wires the runner into those).
-- `dirtyfrag-lkm/` sources (reference for the prebuilt blobs above;
-  upstream: `dirtyfrag-lkm/dirtyfrag.c`).
+- `bootstrap.c` and the `/data/user_de/0/df.root/bootstrap` handoff (RMGU's
+  module runs the staged daemon directly).
 - `build.sh`, gradle wrapper (our toolchain builds it).
 
-## License warning
+## Build
 
-Upstream ships **no LICENSE file**. Default copyright applies. These files
-are vendored for local test builds only; **do not publish a release
-containing them without diabl0w's explicit permission** (or an upstream
-license). Upstream credits the underlying ideas to lspromise, DFReroot
-(polygraphene) and DirtyInit (combeng6th).
+```
+python tools/build_df_lkm.py            # build every 6.12 flavor
+python tools/build_df_lkm.py --check    # verify source/provenance/KO hashes
+```
+
+The build needs Docker and `ghcr.io/ylarod/ddk-min:android16-6.12`; the
+Makefile's `llvm-objcopy` strips the module inside the container. Outputs and
+the exact source/command hashes are recorded in `ko/provenance.json`.
+`build-df-variants.sh` is a thin wrapper around the same tool.
+
+## License
+
+The vendored DirtyFrag component (userspace chain and kernel module) is
+GPL-2.0; `lkm/LICENSE` is the upstream copy. The rest of Root My Galaxy Ultra
+remains under the repository's Apache-2.0 license. Keep the component's
+license notice with any redistribution of these files or the built modules.
 
 ## Roadmap (DF-2)
 
@@ -100,13 +168,15 @@ retain their exact firmware requirements. Model recognition and kernel-family
 matching do not establish vulnerability or vendor ABI compatibility; hardware
 validation remains required. See `docs/S26-ULTRA-SUPPORT.md` at the repo root.
 
-## BakaSU manager migration (2026-10-05)
+## BakaSU manager package (2026-10-05)
 
-The resukisu bridge keeps its filename and size. Only the manager-package
-literal in its non-executable data section changes to `org.bakasu.bakasu`,
-with space padding. The command suffix and executable sections are unchanged.
-The reproducible, input-hash-checked edit is in
-`tools/backend-refresh/stage.py`. This is not a new exploit build.
+The resukisu image keeps its filename and is built from the same 7a6513a
+module with `--package-name org.bakasu.bakasu`. The manager literal is part of
+the command string, so the rebuilt image has one byte less in `.rodata` than
+the KernelSU image; the aligned file size is still 12824 bytes. The old 1.4.8
+resukisu blob was a space-padded edit of the KernelSU blob; the rebuild removes
+that special case. `tools/build_df_lkm.py` builds it directly and records its
+hash in `ko/provenance.json`.
 
 ## KowSU integration (2026-10-26)
 

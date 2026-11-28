@@ -122,6 +122,61 @@ class DfBundleTest {
         }
     }
 
+    @Test fun dirtyFragLkmCarriesTheCfiExitEntryAndBridgeMarkers() {
+        val folder = File("src/main/cpp/dirtyfrag/ko")
+        val provenance = JSONObject(File(folder, "provenance.json").readText())
+        val images = provenance.getJSONObject("images")
+        listOf(
+            "dirtyfrag-android16-6.12.ko",
+            "dirtyfrag-android16-6.12-kernelsu.ko",
+            "dirtyfrag-android16-6.12-kernelsu-next.ko",
+            "dirtyfrag-android16-6.12-resukisu.ko",
+            "dirtyfrag-android16-6.12-kowsu.ko",
+        ).forEach { name ->
+            val bytes = File(folder, name).readBytes()
+            val recorded = images.getJSONObject(name)
+            assertEquals("$name size", recorded.getLong("size"), bytes.size.toLong())
+            assertEquals("$name hash", recorded.getString("sha256"),
+                MessageDigest.getInstance("SHA-256").digest(bytes).toHex())
+
+            // The e47ea6e module had no module_exit; kernels whose cfi_init walks
+            // both jump tables rebooted in strcmp before the module could run.
+            assertTrue("$name lost .exit.text", sectionNames(bytes).contains(".exit.text"))
+            assertTrue("$name lost cleanup_module",
+                bytes.toString(Charsets.ISO_8859_1).contains("cleanup_module"))
+
+            val text = bytes.toString(Charsets.ISO_8859_1)
+            val markers = mutableListOf("/dev/dfm0", "/dev/dfm1", "/dev/dfro", "/dev/dfwipe",
+                "/dev/dfwipeskip", "/dev/dfmoddis", "df-wipe-requested",
+                "df-disable-modules", "df-noro", "late-load")
+            // KowSU's bridge deliberately blanks the manager override so its
+            // daemon uses the compiled com.kowx712.supermanager default.
+            if (!name.endsWith("-kowsu.ko")) markers += "late-load --package-name"
+            markers.forEach { marker -> assertTrue("$name lost $marker", text.contains(marker)) }
+        }
+    }
+
+    private fun sectionNames(bytes: ByteArray): Set<String> {
+        require(bytes.size > 64 && bytes[0] == 0x7f.toByte() && bytes[1] == 'E'.code.toByte())
+        fun u16(offset: Int) = (bytes[offset].toInt() and 0xff) or
+            ((bytes[offset + 1].toInt() and 0xff) shl 8)
+        fun u32(offset: Int) = u16(offset) or (u16(offset + 2) shl 16)
+        fun u64(offset: Int) = u32(offset).toLong() or (u32(offset + 4).toLong() shl 32)
+        val shoff = u64(40)
+        val shentsize = u16(58)
+        val shnum = u16(60)
+        val shstrndx = u16(62)
+        val strOffset = u64((shoff + shentsize.toLong() * shstrndx).toInt() + 24).toInt()
+        val strSize = u64((shoff + shentsize.toLong() * shstrndx).toInt() + 32).toInt()
+        val strings = bytes.copyOfRange(strOffset, strOffset + strSize)
+        return (0 until shnum).map { index ->
+            val nameOffset = u32((shoff + shentsize.toLong() * index).toInt())
+            var end = nameOffset
+            while (end < strings.size && strings[end] != 0.toByte()) end++
+            strings.copyOfRange(nameOffset, end).toString(Charsets.ISO_8859_1)
+        }.toSet()
+    }
+
     private fun snapshot(firmware: FirmwareRequirement) = DeviceSnapshot(
         manufacturer = "samsung", model = firmware.model, device = firmware.device,
         kernelRelease = firmware.kernelRelease, kernelVersionInfo = "#1 SMP PREEMPT",

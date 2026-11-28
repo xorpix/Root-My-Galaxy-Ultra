@@ -1,0 +1,49 @@
+{
+  "schema": 1,
+  "upstream": {
+    "repo": "https://github.com/diabl0w/DFRoot",
+    "commit": "7a6513a",
+    "path": "lkm/dfroot.c",
+    "license": "GPL-2.0"
+  },
+  "source": {
+    "path": "app/src/main/cpp/dirtyfrag/lkm/dfroot.c",
+    "size": 7088,
+    "sha256": "fc1cdb216b3364bd408acd76bb7943bcb6f5f257ec134962df96ac97b6b460be"
+  },
+  "bridge": {
+    "staged": "/data/user_de/0/dev.experimental.azhlroot",
+    "command_sha256": "86f920d2a384f107c46bc7764d43e460c1c5e9f21539e72b5889a13347ec901d",
+    "command_bytes": 1883,
+    "markers": [
+      "/dev/dfro",
+      "/dev/dfwipe",
+      "/dev/dfwipeskip",
+      "/dev/dfmoddis",
+      "/dev/dfm0",
+      "/dev/dfm1"
+    ]
+  },
+  "images": {
+    "dirtyfrag-android16-6.12-kernelsu-next.ko": {
+      "size": 12824,
+      "sha256": "a1f42c37ebf072f073ce722bdf49f16a587cfaeb0758b1ab140c4aaed5054c31"
+    },
+    "dirtyfrag-android16-6.12-kernelsu.ko": {
+      "size": 12824,
+      "sha256": "273335808360deb4e2d2f84e1801e5c1c2ca56ebf837f390256b993dd286b218"
+    },
+    "dirtyfrag-android16-6.12-kowsu.ko": {
+      "size": 12824,
+      "sha256": "dee93d7fc9259d62fd06ad896a3912b3228e57cf18dc9fe5c0ec534a0327a3c5"
+    },
+    "dirtyfrag-android16-6.12-resukisu.ko": {
+      "size": 12824,
+      "sha256": "5c7a3f976813c60713f25fa0579ca01aa5540d61f973435fd6bd78323545f4d4"
+    },
+    "dirtyfrag-android16-6.12.ko": {
+      "size": 12824,
+      "sha256": "273335808360deb4e2d2f84e1801e5c1c2ca56ebf837f390256b993dd286b218"
+    }
+  }
+}

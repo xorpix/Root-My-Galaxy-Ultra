@@ -11,6 +11,7 @@ import tempfile
 import unittest
 
 from prepare_m3q_helpers import variant, file_offset, VERSIONS, LIBRARIES, UAPI_VERSIONS
+import build_df_lkm
 import prepare_df_backends
 
 PROJECT = Path(__file__).resolve().parents[1]
@@ -43,6 +44,44 @@ class BundleTests(unittest.TestCase):
         for invalid in (source[:-1], source[:-1] + bytes([source[-1] ^ 1])):
             with self.assertRaises(ValueError):
                 prepare_df_backends.variant(invalid)
+
+    def test_dirtyfrag_lkm_provenance_matches_vendored_upstream_module(self):
+        folder = PROJECT / 'app/src/main/cpp/dirtyfrag/ko'
+        provenance = json.loads((folder / 'provenance.json').read_text())
+        source = build_df_lkm.vendored_source()
+        self.assertEqual(
+            {'path': 'app/src/main/cpp/dirtyfrag/lkm/dfroot.c', **build_df_lkm.record(source)},
+            provenance['source'])
+        self.assertEqual('7a6513a', provenance['upstream']['commit'])
+        command = build_df_lkm.command_for(build_df_lkm.GENERIC_PACKAGE)
+        self.assertEqual(hashlib.sha256(command.encode()).hexdigest(),
+                         provenance['bridge']['command_sha256'])
+        # The vendored module must keep the upstream fixes that the old
+        # e47ea6e module lacked; render_source also refuses to build without
+        # them, and the rendered bridge must not fall back to upstream's
+        # bootstrap handoff.
+        source_text = source.decode('utf-8')
+        for flavor, package in build_df_lkm.FLAVORS.items():
+            text = build_df_lkm.render_source(source_text, package)
+            self.assertIn(f'late-load --package-name {package}', text)
+            self.assertIn('module_exit(dfroot_exit);', text)
+            self.assertNotIn('/data/user_de/0/df.root/bootstrap', text)
+        self.assertEqual(5, len(provenance['images']))
+        for name, expected in provenance['images'].items():
+            data = (folder / name).read_bytes()
+            self.assertEqual(expected, build_df_lkm.record(data), name)
+            # Without .exit.text/cleanup_module, cfi_init walks a missing
+            # jump-table entry and the load reboots the phone (issue #68).
+            self.assertTrue(build_df_lkm.elf_has_exit(data), name)
+        kernelsu = (folder / prepare_df_backends.SOURCE).read_bytes()
+        derived, _ = build_df_lkm.derive_kowsu(kernelsu)
+        self.assertEqual(derived, (folder / prepare_df_backends.OUTPUT).read_bytes())
+        # The 7a6513a module has no soft_reboot module parameter, so the
+        # shellcode in libcxx.S must never be handed one: DfRunner keeps the
+        # native flag off and the app owns reboot timing.
+        self.assertNotIn('soft_reboot', source_text)
+        runner = (JAVA / 'DfRunner.kt').read_text()
+        self.assertIn('val softReboot = false', runner)
 
     @unittest.skipUnless(shutil.which('cc'), 'C compiler needed for bridge selection check')
     def test_native_dirtyfrag_handoff_selects_each_backends_own_bridge(self):

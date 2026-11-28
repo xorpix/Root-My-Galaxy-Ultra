@@ -12,7 +12,7 @@ import struct
 
 SOURCE = 'dirtyfrag-android16-6.12-kernelsu.ko'
 OUTPUT = 'dirtyfrag-android16-6.12-kowsu.ko'
-SOURCE_SHA256 = 'cb667d8cd59a04b7ff0fa505bbafcf2e91de5b492ab2e84c7f2d0c42095bc0b4'
+SOURCE_SHA256 = '273335808360deb4e2d2f84e1801e5c1c2ca56ebf837f390256b993dd286b218'
 OVERRIDE = b' --package-name me.weishu.kernelsu'
 
 
@@ -21,7 +21,7 @@ def record(data):
 
 
 def variant(source):
-    if record(source) != {'size': 11128, 'sha256': SOURCE_SHA256}:
+    if record(source) != {'size': 12824, 'sha256': SOURCE_SHA256}:
         raise ValueError('Unrecognized DirtyFrag bridge; review before re-pinning')
     if (source[:7] != b'\x7fELF\x02\x01\x01'
             or struct.unpack_from('<HH', source, 16) != (1, 183)):

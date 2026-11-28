@@ -13,3 +13,6 @@
 # The repair diff also contains original CRLF source context.
 /docs/susfs-repairs-20261103/native.patch -text -whitespace
 /docs/susfs-maintenance-20261122/native.patch -text -whitespace
+
+# Vendored DirtyFrag LKM sources are hashed byte-for-byte in provenance.json.
+/app/src/main/cpp/dirtyfrag/lkm/* text eol=lf
