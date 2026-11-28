@@ -73,10 +73,10 @@ internal class DfRunner(
             "A DirtyFrag success marker from earlier this boot is still present. Fully reboot before another attempt."
         }
         // Never reboot from inside the native flow: this app owns reboot timing
-        // and reboots only after the result is persisted. The native flag stays off.
-        val softReboot = false
+        // and reboots only after the result is persisted. The module chain has
+        // no soft-reboot parameter, so nothing native can trigger one either.
         stage(RunStage.Exploit)
-        log("[*] DirtyFrag single exploit launch; backend ${flavor.label}; soft reboot ${if (softReboot) "on" else "off"}")
+        log("[*] DirtyFrag single exploit launch; backend ${flavor.label}")
         val reporter = object : DfReporter {
             override fun report(text: String) { log(text.trim()) }
             override fun rootReady(timeoutMillis: Long): Boolean =
@@ -85,7 +85,7 @@ internal class DfRunner(
         val rc = try {
             withTimeout(DF_RUN_TIMEOUT_MS) {
                 withContext(Dispatchers.IO) {
-                    DfExploitRunner.runPrestaged(context, reporter, softReboot, payloads.profile.flavor.id)
+                    DfExploitRunner.runPrestaged(context, reporter, payloads.profile.flavor.id)
                 }
             }
         } catch (timeout: TimeoutCancellationException) {

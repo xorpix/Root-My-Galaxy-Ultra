@@ -117,10 +117,21 @@ real code. Host tests pin the opcodes, the padded budget and the placement
 bounds (`tools/test_m3q_host.py`).
 
 The 7a6513a module also drops the old `soft_reboot` module parameter. RMGU's
-shellcode only passes that parameter when its soft-reboot flag is set, and
-`DfRunner` keeps the flag off because the app owns reboot timing, so insmod
-never receives an unknown parameter. A host test guards both sides of that
-contract.
+userspace chain now matches upstream V3 exactly: `libcxx.S` no longer carries
+the `soft_reboot=1` insmod argument or its flag, and the JNI/`DfRunner`
+plumbing for the flag is removed. That parameter belonged to the e47ea6e
+module; passing it to the 7a6513a module would fail the insmod as an unknown
+parameter, so the machinery is gone rather than merely kept off.
+
+This removal is confined to the native exploit chain. The app's real soft
+reboot feature is a separate path and is fully retained: `RecoveryTool
+.SoftReboot` runs the Samsung-patched bundled daemon through
+`RootRecovery.softReboot`, restarting the hardware composer services before
+the framework (the 1.2.7 DeX fix), selecting the bundled daemon so a
+manager-installed `/data/adb/ksud` cannot lose the fix (1.2.8), and the
+shared lifecycle hooks that cover manager-triggered soft reboots (1.2.9).
+Nothing in the DirtyFrag load path invokes or depends on any of it; the
+exploit chain only loads the backend and leaves reboot timing to the app.
 
 The userspace chain stays at e47ea6e. Upstream's post-e47ea6e V3 refactor
 removed the HMAC/ICV ESP framing that RMGU's Samsung chain passes from Java,

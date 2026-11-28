@@ -76,12 +76,8 @@ class BundleTests(unittest.TestCase):
         kernelsu = (folder / prepare_df_backends.SOURCE).read_bytes()
         derived, _ = build_df_lkm.derive_kowsu(kernelsu)
         self.assertEqual(derived, (folder / prepare_df_backends.OUTPUT).read_bytes())
-        # The 7a6513a module has no soft_reboot module parameter, so the
-        # shellcode in libcxx.S must never be handed one: DfRunner keeps the
-        # native flag off and the app owns reboot timing.
-        self.assertNotIn('soft_reboot', source_text)
-        runner = (JAVA / 'DfRunner.kt').read_text()
-        self.assertIn('val softReboot = false', runner)
+        # The 7a6513a module has no soft_reboot module parameter.
+        self.assertNotIn('soft_reboot', source.decode('utf-8'))
 
     def test_dirtyfrag_hook_placement_stays_inside_the_executable_segment(self):
         # The e47ea6e parser wrote the hook shellcode past the end of the
@@ -98,6 +94,24 @@ class BundleTests(unittest.TestCase):
         self.assertIn('placement_size = ((size_t)stage_len + 15) & ~(size_t)15', exp)
         self.assertIn('placement_size, reporter', exp)
         self.assertIn('executable_filesz', parser)
+        # The One UI 9.5 libc++.so has no placement at all (264 bytes of tail
+        # slack, largest cave 12). Upstream V3 then falls back to libbase's
+        # LogMessage destructor, which init-family processes call through
+        # android::base logging. Selection failure (return 1) is the only
+        # case that retries, and it happens before anything is written.
+        self.assertIn('_ZN7android4base10LogMessageD1Ev', exp)
+        self.assertIn('hook_rc == 1', exp)
+        self.assertLess(exp.index('_ZNSt3__113basic_ostream'),
+                        exp.index('_ZN7android4base10LogMessageD1Ev'),
+                        'libc++ must be attempted before the libbase fallback')
+        # The 7a6513a module has no soft_reboot module parameter, so the
+        # userspace chain must never be able to pass one either: the shellcode
+        # machinery is removed end to end, matching upstream V3.
+        shellcode = (PROJECT / 'app/src/main/cpp/dirtyfrag/libcxx.S').read_text()
+        self.assertNotIn('soft_reboot', shellcode)
+        self.assertNotIn('soft_reboot', exp)
+        runner = (JAVA / 'DfRunner.kt').read_text()
+        self.assertNotIn('softReboot', runner)
 
     @unittest.skipUnless(shutil.which('cc'), 'C compiler needed for hook placement check')
     def test_dirtyfrag_code_cave_placement_bounds(self):
