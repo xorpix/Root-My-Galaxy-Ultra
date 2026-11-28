@@ -987,10 +987,8 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
                 // what makes "known good" mean something, and it is why nothing is written while the
                 // exploit is running. Publishing is best-effort - a full disk must not turn a root
                 // that worked into a failure - but it is said out loud when it does not happen.
-                // DirtyFrag included, verified or not: the files are hash-checked
-                // either way, and a trigger run is enough to attempt boot root —
-                // the persisted su grant verifies there, or its absence fails
-                // the boot fast by name. "Known good" here means ran once.
+                // An unverified DirtyFrag attempt stops in installKernelSu above;
+                // running the trigger alone does not make a payload known good.
                 if (payloads.origin == PayloadOrigin.Bundled || payloads.origin == PayloadOrigin.Downloaded ||
                     payloads.origin == PayloadOrigin.Attempted) {
                     runCatching { KnownGoodPayloadStore.publish(app, payloads) }
@@ -1452,9 +1450,9 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
     /** DirtyFrag needs no shell, no helper and no claim: the JNI call is the whole launch.
      *
      * No dialogs on any path: su is attempted silently (a persisted grant
-     * verifies with no UI), a denial records the trigger as unverified, and
-     * only unattended boot runs fail — fail fast naming the grant, since
-     * nobody can answer there.
+     * verifies with no UI), and missing evidence records the trigger as
+     * unverified. Final verification rejects that result before recording
+     * a successful installation.
      */
     private var dfVerifiedInstall = false
 
@@ -1704,22 +1702,19 @@ class InstallViewModel(application: Application) : AndroidViewModel(application)
      * this app su in the manager - said in the log, not hidden.
      */
     private suspend fun verifyDfBackend(payloads: VerifiedPayloads) {
+        check(dfVerifiedInstall) {
+            "The load attempt finished, but ${payloads.profile.flavor.label} could not be verified. " +
+                "Check the backend status and this app's superuser access in its manager. " +
+                "This run has not been marked successful."
+        }
         val proof = when {
             "through su" in dfControlReport -> "su-verified"
             "native probe" in dfControlReport -> "native-probe"
-            "unverified" in dfControlReport -> "trigger-ran"
             else -> "dfm0"
         }
-        if (!dfVerifiedInstall) {
-            appendLog("Recorded ${payloads.profile.flavor.label} backend ($proof) without app verification; confirm Working in the manager, and grant su to verify later runs")
-        } else {
-            appendLog("Verified ${payloads.profile.flavor.label} backend ($proof); su grant in the manager unlocks modules, updates and automatic root at boot")
-        }
+        appendLog("Verified ${payloads.profile.flavor.label} backend ($proof); su grant in the manager unlocks modules, updates and automatic root at boot")
         AppPreferences.setLoadedFlavor(app, payloads.profile.flavor, AutoRootSupport.currentBootToken())
-        // Stored for every completed run, verified or not: the boot gate needs
-        // a receipt plus a cache entry to attempt boot root, and an unverified
-        // trigger is enough to attempt — the persisted su grant (or its
-        // absence, failed fast by name) decides the boot, not this receipt.
+        // Only a verified result may leave a success receipt for this boot.
         storeInstallReceipt()
         val refreshed = KernelSuManagerRefresh.afterLoad(app, flavor = payloads.profile.flavor)
         refreshed.forEach { packageName ->
